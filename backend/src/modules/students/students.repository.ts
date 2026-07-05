@@ -7,27 +7,41 @@ export class StudentsRepository {
 
   async findByEmail(email: string) {
     return this.prisma.students.findUnique({
-      where: {
-        email,
+      where: { email },
+      include: {
+        profile: true,
       },
     });
   }
 
   async findById(id: number) {
     return this.prisma.students.findUnique({
-      where: {
-        id,
+      where: { id },
+      include: {
+        profile: true,
       },
     });
   }
 
   async updateLastLogin(id: number) {
     return this.prisma.students.update({
-      where: {
-        id,
-      },
+      where: { id },
       data: {
         lastLoginAt: new Date(),
+      },
+    });
+  }
+
+  async saveRefreshToken(
+    studentId: number,
+    token: string,
+    expiresAt: Date,
+  ) {
+    return this.prisma.refreshToken.create({
+      data: {
+        studentId,
+        token,
+        expiresAt,
       },
     });
   }

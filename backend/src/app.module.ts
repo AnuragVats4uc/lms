@@ -10,6 +10,8 @@ import { LoggerModule } from 'nestjs-pino';
 import { loggerConfig } from './config/logger/logger.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { StudentsModule } from './modules/students/students.module';
+import { APP_GUARD } from '@nestjs/core';
+import { GlobalJwtAuthGuard } from './modules/auth/guards/global-jwt.guard';
 
 @Module({
   imports: [
@@ -30,9 +32,15 @@ import { StudentsModule } from './modules/students/students.module';
 
     PrismaModule,
     AuthModule,
-    StudentsModule
+    StudentsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: GlobalJwtAuthGuard,
+    },
+  ],
 })
 export class AppModule {}

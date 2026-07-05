@@ -1,20 +1,24 @@
 model Students {
-  id            Int      @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
 
-  email         String   @unique
-  password      String
+  email       String?  @unique
+  mobile      String?  @unique
+  password    String?
 
-  firstName     String?
-  lastName      String?
+  firstName   String?
+  lastName    String?
 
-  isActive      Boolean  @default(true)
-  isVerified    Boolean  @default(false)
+  role        StudentRole @default(STUDENT)
+  status      StudentStatus @default(ACTIVE)
 
-  lastLoginAt   DateTime?
+  isActive    Boolean  @default(true)
+  isVerified  Boolean  @default(false)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  lastLoginAt DateTime?
 
-  profile        StudentProfile?
-  refreshTokens  RefreshToken[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime? @updatedAt
+
+  profile     StudentProfile?
+  refreshTokens RefreshToken[]
 }

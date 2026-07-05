@@ -18,4 +18,16 @@ export class StudentsService {
   updateLastLogin(id: number) {
     return this.studentsRepository.updateLastLogin(id);
   }
+
+  saveRefreshToken(
+    studentId: number,
+    token: string,
+    expiresAt: Date,
+  ) {
+    return this.studentsRepository.saveRefreshToken(
+      studentId,
+      token,
+      expiresAt,
+    );
+  }
 }

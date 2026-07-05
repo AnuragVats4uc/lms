@@ -5,4 +5,6 @@ export interface JwtPayload {
   email?: string;
 
   enrollmentNo?: string;
+
+  role?:string;
 }

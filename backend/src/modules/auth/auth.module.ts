@@ -6,30 +6,38 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { StringValue } from 'ms';
 import { StudentsModule } from '../students/students.module';
+import { RefreshTokenRepository } from './repositories/refresh-token.repository';
+import { JwtStrategy } from './strategies/jwt.strategies';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Module({
   imports: [
     ConfigModule,
 
     JwtModule.registerAsync({
-      imports: [ConfigModule],
-
       inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        console.log('ACCESS SECRET:', configService.get('jwt.accessSecret'));
 
-      useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('auth.jwtSecret'),
+        console.log(
+          'ACCESS EXPIRES:',
+          configService.get('jwt.accessExpiresIn'),
+        );
 
-        signOptions: {
-          expiresIn: config.get<StringValue>('auth.jwtExpiresIn'),
-        },
-      }),
+        return {
+          secret: configService.get<string>('jwt.accessSecret'),
+          signOptions: {
+            expiresIn: configService.get<StringValue>('jwt.accessExpiresIn'),
+          },
+        };
+      },
     }),
     StudentsModule,
   ],
 
   controllers: [AuthController],
 
-  providers: [AuthService],
+  providers: [AuthService, RefreshTokenRepository, JwtStrategy, JwtAuthGuard],
 
   exports: [AuthService],
 })

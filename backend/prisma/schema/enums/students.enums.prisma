@@ -3,3 +3,8 @@ enum StudentStatus {
   INACTIVE
   BLOCKED
 }
+
+enum StudentRole {
+  STUDENT
+  ADMIN
+}
