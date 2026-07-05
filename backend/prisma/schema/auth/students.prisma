@@ -1,0 +1,20 @@
+model Students {
+  id            Int      @id @default(autoincrement())
+
+  email         String   @unique
+  password      String
+
+  firstName     String?
+  lastName      String?
+
+  isActive      Boolean  @default(true)
+  isVerified    Boolean  @default(false)
+
+  lastLoginAt   DateTime?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  profile        StudentProfile?
+  refreshTokens  RefreshToken[]
+}
