@@ -16,3 +16,14 @@ export default function TabLayout() {
     </ThemeProvider>
   );
 }
+
+// import { TamaguiProvider } from '@repo/ui';
+// import { Slot } from 'expo-router';
+
+// export default function RootLayout() {
+//   return (
+//     <TamaguiProvider>
+//       <Slot />
+//     </TamaguiProvider>
+//   );
+// }
