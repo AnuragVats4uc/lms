@@ -80,7 +80,7 @@ importers:
         version: 57.0.1(expo@57.0.2)(react-native@0.86.0(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.2)(react@19.2.3))(react@19.2.3)
       expo-router:
         specifier: ~57.0.2
-        version: 57.0.3(6awt4kbquswnihzqwbc4y4homi)
+        version: 57.0.3(54216f75027851ea6a6cfde0bc05d8fc)
       expo-splash-screen:
         specifier: ~57.0.1
         version: 57.0.2(expo@57.0.2)(typescript@6.0.3)
@@ -145,6 +145,9 @@ importers:
       '@repo/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@tanstack/react-query':
+        specifier: ^5.101.2
+        version: 5.101.2(react@19.2.4)
       next:
         specifier: 16.2.9
         version: 16.2.9(@babel/core@7.29.7)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -154,6 +157,9 @@ importers:
       react-dom:
         specifier: 19.2.4
         version: 19.2.4(react@19.2.4)
+      react-hook-form:
+        specifier: ^7.62.0
+        version: 7.81.0(react@19.2.4)
       tamagui:
         specifier: ^2.4.2
         version: 2.4.2(react-dom@19.2.4(react@19.2.4))(react-native@0.86.0(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.2)(react@19.2.4))(react@19.2.4)
@@ -185,9 +191,9 @@ importers:
 
   packages/api:
     dependencies:
-      '@repo/auth':
-        specifier: workspace:*
-        version: link:../auth
+      '@tanstack/react-query':
+        specifier: ^5.101.2
+        version: 5.101.2(react@19.2.4)
       axios:
         specifier: ^1.11.0
         version: 1.18.1
@@ -203,6 +209,9 @@ importers:
       '@repo/api':
         specifier: workspace:*
         version: link:../api
+      '@tanstack/react-query':
+        specifier: ^5.101.2
+        version: 5.101.2(react@19.2.4)
       axios:
         specifier: ^1.11.0
         version: 1.18.1
@@ -6456,7 +6465,7 @@ snapshots:
       ws: 8.21.0
       zod: 3.25.76
     optionalDependencies:
-      expo-router: 57.0.3(6awt4kbquswnihzqwbc4y4homi)
+      expo-router: 57.0.3(54216f75027851ea6a6cfde0bc05d8fc)
       react-native: 0.86.0(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.2)(react@19.2.3)
     transitivePeerDependencies:
       - '@expo/dom-webview'
@@ -6733,7 +6742,7 @@ snapshots:
       react: 19.2.3
     optionalDependencies:
       '@expo/metro-runtime': 57.0.3(@expo/log-box@57.0.0)(expo@57.0.2)(react-dom@19.2.3(react@19.2.3))(react-native@0.86.0(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.2)(react@19.2.3))(react@19.2.3)
-      expo-router: 57.0.3(6awt4kbquswnihzqwbc4y4homi)
+      expo-router: 57.0.3(54216f75027851ea6a6cfde0bc05d8fc)
       react-dom: 19.2.3(react@19.2.3)
     transitivePeerDependencies:
       - supports-color
@@ -10363,7 +10372,7 @@ snapshots:
     dependencies:
       react-native: 0.86.0(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.2)(react@19.2.3)
 
-  expo-router@57.0.3(6awt4kbquswnihzqwbc4y4homi):
+  expo-router@57.0.3(54216f75027851ea6a6cfde0bc05d8fc):
     dependencies:
       '@expo/log-box': 57.0.0(@expo/dom-webview@57.0.0)(expo@57.0.2)(react-native@0.86.0(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.2)(react@19.2.3))(react@19.2.3)
       '@expo/metro-runtime': 57.0.3(@expo/log-box@57.0.0)(expo@57.0.2)(react-dom@19.2.3(react@19.2.3))(react-native@0.86.0(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.2)(react@19.2.3))(react@19.2.3)

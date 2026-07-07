@@ -15,7 +15,9 @@ export function FormMessage({
     <Text
       color="$red10"
       mt="$1"
-      fontSize="$2"
+      fontSize="$caption"
+      fontWeight="$caption"
+      letterSpacing="$body"
     >
       {message}
     </Text>

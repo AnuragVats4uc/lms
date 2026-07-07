@@ -16,6 +16,9 @@ export const AppInput = forwardRef<any, AppInputProps>(
         size="$4"
         borderWidth={1}
         borderColor="$borderColor"
+        fontSize="$label"
+        fontWeight="$body"
+        letterSpacing="$body"
         focusStyle={{
           borderColor: "$blue10",
         }}

@@ -8,7 +8,12 @@ interface Props {
 
 export function FormLabel({ children }: Props) {
   return (
-    <Label mb="$2">
+    <Label
+      mb="$2"
+      fontSize="$label"
+      fontWeight="$label"
+      letterSpacing="$body"
+    >
       {children}
     </Label>
   );
