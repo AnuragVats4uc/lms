@@ -16,7 +16,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly refreshTokenRepository: RefreshTokenRepository,
-  ) {}
+  ) { }
 
   private async generateRefreshToken(student: {
     id: number;
@@ -66,7 +66,11 @@ export class AuthService {
       };
 
       const accessToken = await this.jwtService.signAsync(payload);
-      const refreshToken = await this.generateRefreshToken(student);
+      const refreshToken = await this.generateRefreshToken({
+        id: student.id,
+        email: student.email,
+        role: student.role,
+      });
 
       const hashedRefreshToken = await bcrypt.hash(
         refreshToken,
@@ -136,7 +140,11 @@ export class AuthService {
 
       const newAccessToken = await this.jwtService.signAsync(payload);
 
-      const newRefreshToken = await this.generateRefreshToken(student);
+      const newRefreshToken = await this.generateRefreshToken({
+        id: student.id,
+        email: student.email,
+        role: student.role,
+      });
 
       // 6. Hash new refresh token
       const hashedRefreshToken = await bcrypt.hash(

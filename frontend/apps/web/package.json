@@ -9,12 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@tamagui/next-plugin": "^2.4.1",
-    "@tamagui/next-theme": "^2.4.1",
+    "@repo/api": "workspace:*",
+    "@repo/auth": "workspace:*",
+    "@repo/ui": "workspace:*",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "@repo/ui": "workspace:*"
+    "tamagui": "^2.4.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

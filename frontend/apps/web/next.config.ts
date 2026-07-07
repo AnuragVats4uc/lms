@@ -1,13 +1,13 @@
-// import { withTamagui } from '@tamagui/next-plugin';
+import type { NextConfig } from 'next'
 
-// const nextConfig = withTamagui({
-//   config: '../../packages/ui/src/theme/tamagui.config.ts',
+const nextConfig: NextConfig = {
+  transpilePackages: [
+    '@repo/ui',
+    'tamagui',
+    '@tamagui/core',
+    '@tamagui/themes',
+    '@tamagui/font-inter',
+  ],
+}
 
-//   components: ['tamagui'],
-
-//   appDir: true,
-
-//   outputCSS: './public/tamagui.css',
-// });
-
-// export default nextConfig;
+export default nextConfig

@@ -1,0 +1,26 @@
+export {
+  YStack,
+  XStack,
+  ZStack,
+  View,
+  Text,
+  Paragraph,
+  H1,
+  H2,
+  H3,
+  H4,
+  H5,
+  H6,
+  Card,
+  Image,
+  Separator,
+  Spinner,
+  ScrollView,
+  Button,
+} from "tamagui";
+
+
+
+export * from "./provider";
+export * from "./components";
+export * from "./validation";
