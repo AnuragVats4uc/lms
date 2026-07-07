@@ -6,13 +6,6 @@ export interface LoginDto {
 export interface Student {
   id: string;
   email: string;
-  fullName: string;
-  role: string;
-}
-
-export interface Student {
-  id: string;
-  email: string;
   mobile: string | null;
   firstName: string;
   lastName: string;
@@ -31,3 +24,14 @@ export interface LoginData {
   accessToken: string;
   refreshToken: string;
 }
+
+export interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export type AuthStatus =
+  | "idle"
+  | "initializing"
+  | "authenticated"
+  | "unauthenticated";

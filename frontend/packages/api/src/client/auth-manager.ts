@@ -35,3 +35,7 @@ export function getAuthManager() {
 
   return manager;
 }
+
+export function hasAuthManager() {
+  return Boolean(manager);
+}

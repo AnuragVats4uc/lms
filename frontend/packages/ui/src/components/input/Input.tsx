@@ -1,14 +1,22 @@
 "use client";
 
-import { forwardRef } from "react";
+import {
+  ElementRef,
+  ForwardRefExoticComponent,
+  RefAttributes,
+  forwardRef,
+} from "react";
 import {
   Input as TamaguiInput,
   InputProps,
 } from "tamagui";
 
-export interface AppInputProps extends InputProps {}
+export type AppInputProps = InputProps;
 
-export const AppInput = forwardRef<any, AppInputProps>(
+export const AppInput: ForwardRefExoticComponent<
+  AppInputProps &
+    RefAttributes<ElementRef<typeof TamaguiInput>>
+> = forwardRef(
   (props, ref) => {
     return (
       <TamaguiInput

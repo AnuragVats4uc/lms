@@ -1,7 +1,10 @@
 "use client";
 
+import { ReactNode } from "react";
 import {
   Controller,
+  ControllerFieldState,
+  ControllerRenderProps,
   FieldPath,
   FieldValues,
   useFormContext,
@@ -11,18 +14,41 @@ import { AppInput, AppInputProps } from "../input";
 import { FormLabel } from "./FormLabel";
 import { FormMessage } from "./FormMessage";
 
-interface FormFieldProps<T extends FieldValues>
-  extends Omit<AppInputProps, "form"> {
-  name: FieldPath<T>;
-  label?: string;
+interface FormFieldRenderProps<
+  T extends FieldValues,
+  TName extends FieldPath<T>,
+> {
+  field: ControllerRenderProps<T, TName>;
+  fieldState: ControllerFieldState;
+  errorId: string;
+  inputId: string;
 }
 
-export function FormField<T extends FieldValues>({
+interface FormFieldProps<
+  T extends FieldValues,
+  TName extends FieldPath<T>,
+>
+  extends Omit<AppInputProps, "form" | "name"> {
+  children?: (
+    props: FormFieldRenderProps<T, TName>
+  ) => ReactNode;
+  label?: string;
+  name: TName;
+}
+
+export function FormField<
+  T extends FieldValues,
+  TName extends FieldPath<T> = FieldPath<T>,
+>({
+  children,
+  id,
   name,
   label,
   ...props
-}: FormFieldProps<T>) {
+}: FormFieldProps<T, TName>) {
   const { control } = useFormContext<T>();
+  const inputId = id ?? name;
+  const errorId = `${inputId}-error`;
 
   return (
     <Controller
@@ -30,16 +56,31 @@ export function FormField<T extends FieldValues>({
       name={name}
       render={({ field, fieldState }) => (
         <>
-          {label && <FormLabel>{label}</FormLabel>}
+          {label && <FormLabel htmlFor={inputId}>{label}</FormLabel>}
 
-          <AppInput
-            {...props}
-            value={field.value ?? ""}
-            onBlur={field.onBlur}
-            onChangeText={field.onChange}
+          {children ? (
+            children({
+              field,
+              fieldState,
+              errorId,
+              inputId,
+            })
+          ) : (
+            <AppInput
+              {...props}
+              id={inputId}
+              aria-describedby={fieldState.error ? errorId : undefined}
+              aria-invalid={fieldState.invalid}
+              value={field.value == null ? "" : String(field.value)}
+              onBlur={field.onBlur}
+              onChangeText={field.onChange}
+            />
+          )}
+
+          <FormMessage
+            id={errorId}
+            message={fieldState.error?.message}
           />
-
-          <FormMessage message={fieldState.error?.message} />
         </>
       )}
     />

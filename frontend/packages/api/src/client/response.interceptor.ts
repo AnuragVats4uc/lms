@@ -7,6 +7,11 @@ import {
 import { getAuthManager } from "./auth-manager";
 import { refreshQueue } from "./refresh.queue";
 
+const PUBLIC_AUTH_PATHS = [
+  "/api/v1/auth/login",
+  "/api/v1/auth/refresh",
+] as const;
+
 export function setupResponseInterceptor(
   api: AxiosInstance
 ) {
@@ -20,6 +25,16 @@ export function setupResponseInterceptor(
         };
 
       if (!originalRequest) {
+        return Promise.reject(error);
+      }
+
+      const requestUrl = originalRequest.url ?? "";
+
+      if (
+        PUBLIC_AUTH_PATHS.some((path) =>
+          requestUrl.includes(path)
+        )
+      ) {
         return Promise.reject(error);
       }
 

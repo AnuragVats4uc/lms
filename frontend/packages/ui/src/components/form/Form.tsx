@@ -1,14 +1,15 @@
 "use client";
 
+import { ReactNode } from "react";
 import {
+  FieldValues,
   FormProvider,
   UseFormReturn,
-  FieldValues,
 } from "react-hook-form";
 
 interface AppFormProps<T extends FieldValues> {
   form: UseFormReturn<T>;
-  children: React.ReactNode;
+  children: ReactNode;
   onSubmit: (values: T) => void | Promise<void>;
 }
 
@@ -19,7 +20,7 @@ export function AppForm<T extends FieldValues>({
 }: AppFormProps<T>) {
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
+      <form noValidate onSubmit={form.handleSubmit(onSubmit)}>
         {children}
       </form>
     </FormProvider>

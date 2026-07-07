@@ -1,10 +1,19 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  CSSProperties,
+  memo,
+  PropsWithChildren,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
+import { Resolver, useForm } from "react-hook-form";
 import {
   Button,
   Card,
   Separator,
-  Spinner,
   styled,
   Text,
   View,
@@ -12,63 +21,97 @@ import {
   YStack,
 } from "tamagui";
 
+import { AppButton } from "../button";
 import { AppCheckbox } from "../checkbox/Checkbox";
+import { AppForm, FormField } from "../form";
 import { AppInput } from "../input/Input";
 import { PasswordInput } from "../input/PasswordInput";
+import {
+  LoginFormValues,
+  loginSchema,
+} from "../../validation/auth/login.schema";
 import { LoginFooter, LoginFooterProps } from "./LoginFooter";
 import { LoginHeader, LoginHeaderProps } from "./LoginHeader";
 
-const LOGIN_SPACE = {
-  cardPadding: 34,
-  sectionGap: "$5",
-  formGap: "$3",
-  fieldGap: "$1.5",
-  fieldPadding: "$2",
-} as const;
+const LOGIN_DEFAULT_VALUES: LoginFormValues = {
+  email: "",
+  password: "",
+  rememberMe: false,
+};
+
+const loginResolver = zodResolver(
+  loginSchema as unknown as Parameters<
+    typeof zodResolver<
+      LoginFormValues,
+      unknown,
+      LoginFormValues
+    >
+  >[0]
+) as Resolver<LoginFormValues>;
 
 export interface LoginCardProps {
-  email?: string;
-  password?: string;
-  rememberMe?: boolean;
-  isLoading?: boolean;
+  apiError?: string;
+  continueLabel?: string;
+  defaultValues?: Partial<LoginFormValues>;
   emailLabel?: string;
   emailPlaceholder?: string;
+  forgotPasswordLabel?: string;
+  footerProps?: LoginFooterProps;
+  headerProps?: LoginHeaderProps;
+  isLoading?: boolean;
+  loginLabel?: string;
+  onForgotPasswordPress?: () => void;
+  onSubmit?: (values: LoginFormValues) => void | Promise<void>;
   passwordLabel?: string;
   passwordPlaceholder?: string;
   rememberLabel?: string;
-  forgotPasswordLabel?: string;
-  loginLabel?: string;
-  continueLabel?: string;
-  headerProps?: LoginHeaderProps;
-  footerProps?: LoginFooterProps;
-  onEmailChange?: (value: string) => void;
-  onPasswordChange?: (value: string) => void;
-  onRememberMeChange?: (checked: boolean) => void;
-  onLoginPress?: () => void;
-  onForgotPasswordPress?: () => void;
 }
 
-export function LoginCard({
-  email,
-  password,
-  rememberMe = false,
-  isLoading = false,
+export const LoginCard = memo(function LoginCard({
+  apiError,
+  continueLabel = "or continue with",
+  defaultValues,
   emailLabel = "Email address",
   emailPlaceholder = "Enter your email",
+  forgotPasswordLabel = "Forgot password?",
+  footerProps,
+  headerProps,
+  isLoading = false,
+  loginLabel = "Login",
+  onForgotPasswordPress,
+  onSubmit,
   passwordLabel = "Password",
   passwordPlaceholder = "Enter your password",
   rememberLabel = "Remember me",
-  forgotPasswordLabel = "Forgot password?",
-  loginLabel = "Login",
-  continueLabel = "or continue with",
-  headerProps,
-  footerProps,
-  onEmailChange,
-  onPasswordChange,
-  onRememberMeChange,
-  onLoginPress,
-  onForgotPasswordPress,
 }: LoginCardProps) {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+  const formDefaultValues = useMemo<LoginFormValues>(
+    () => ({
+      ...LOGIN_DEFAULT_VALUES,
+      ...defaultValues,
+    }),
+    [defaultValues]
+  );
+
+  const form = useForm<LoginFormValues>({
+    defaultValues: formDefaultValues,
+    resolver: loginResolver,
+  });
+
+  const handleSubmit = useCallback(
+    (values: LoginFormValues) => onSubmit?.(values),
+    [onSubmit]
+  );
+
+  const focusPasswordField = useCallback(() => {
+    form.setFocus("password");
+  }, [form]);
+
+  const togglePasswordVisibility = useCallback(() => {
+    setIsPasswordVisible((visible) => !visible);
+  }, []);
+
   return (
     <LoginShell>
       <DecorativeCorners />
@@ -76,96 +119,135 @@ export function LoginCard({
       <CardContent>
         <LoginHeader {...headerProps} />
 
-        <FormStack>
-          <FieldGroup>
-            <FieldLabel>{emailLabel}</FieldLabel>
-            <FieldFrame>
-              <AppInput
-                value={email}
-                onChangeText={onEmailChange}
+        <AppForm form={form} onSubmit={handleSubmit}>
+          <FormStack>
+            <FieldGroup>
+              <FormField<LoginFormValues, "email">
+                id="login-email"
+                name="email"
+                label={emailLabel}
                 placeholder={emailPlaceholder}
                 aria-label={emailLabel}
-                keyboardType="email-address"
                 autoCapitalize="none"
-                flex={1}
-                height={26}
-                borderWidth={0}
-                background="transparent"
-                color="#111827"
-                fontSize="$label"
-                fontWeight="$body"
-                letterSpacing="$body"
-                focusStyle={{
-                  borderColor: "transparent",
-                  outlineColor: "transparent",
-                  outlineWidth: 0,
-                }}
+                autoComplete="email"
+                autoFocus
+                disabled={isLoading}
+                enterKeyHint="next"
+                keyboardType="email-address"
+                returnKeyType="next"
+                onSubmitEditing={focusPasswordField}
               />
-            </FieldFrame>
-          </FieldGroup>
+            </FieldGroup>
 
-          <FieldGroup>
-            <FieldLabel>{passwordLabel}</FieldLabel>
-            <FieldFrame>
-              <PasswordInput
-                value={password}
-                onChangeText={onPasswordChange}
-                placeholder={passwordPlaceholder}
-                aria-label={passwordLabel}
-                flex={1}
-                height={26}
-                borderWidth={0}
-                background="transparent"
-                color="#111827"
-                fontSize="$label"
-                fontWeight="$body"
-                letterSpacing="$body"
-                focusStyle={{
-                  borderColor: "transparent",
-                  outlineColor: "transparent",
-                  outlineWidth: 0,
-                }}
-              />
-            </FieldFrame>
-          </FieldGroup>
+            <FieldGroup>
+              <FormField<LoginFormValues, "password">
+                id="login-password"
+                name="password"
+                label={passwordLabel}
+              >
+                {({ field, fieldState, errorId, inputId }) => (
+                  <PasswordFrame>
+                    <PasswordInput
+                      id={inputId}
+                      ref={field.ref}
+                      value={field.value}
+                      onBlur={field.onBlur}
+                      onChangeText={field.onChange}
+                      placeholder={passwordPlaceholder}
+                      aria-describedby={
+                        fieldState.error ? errorId : undefined
+                      }
+                      aria-invalid={fieldState.invalid}
+                      aria-label={passwordLabel}
+                      autoComplete="current-password"
+                      disabled={isLoading}
+                      enterKeyHint="done"
+                      flex={1}
+                      height={26}
+                      returnKeyType="done"
+                      secureTextEntry={!isPasswordVisible}
+                      borderWidth={0}
+                      background="transparent"
+                      color="#111827"
+                      fontSize="$label"
+                      fontWeight="$body"
+                      letterSpacing="$body"
+                      focusStyle={{
+                        borderColor: "transparent",
+                        outlineColor: "transparent",
+                        outlineWidth: 0,
+                      }}
+                    />
 
-          <ActionRow>
-            <AppCheckbox
-              id="login-remember-me"
-              checked={rememberMe}
-              label={rememberLabel}
-              onCheckedChange={(checked) => {
-                onRememberMeChange?.(checked === true);
-              }}
-            />
+                    <VisibilityButton
+                      type="button"
+                      chromeless
+                      disabled={isLoading}
+                      onPress={togglePasswordVisibility}
+                      aria-label={
+                        isPasswordVisible
+                          ? "Hide password"
+                          : "Show password"
+                      }
+                    >
+                      <VisibilityText>
+                        {isPasswordVisible ? "Hide" : "Show"}
+                      </VisibilityText>
+                    </VisibilityButton>
+                  </PasswordFrame>
+                )}
+              </FormField>
+            </FieldGroup>
 
-            <ForgotButton
-              type="button"
-              chromeless
-              pressStyle={{ opacity: 0.72 }}
-              onPress={onForgotPasswordPress}
-              aria-label={forgotPasswordLabel}
+            <ActionRow>
+              <FormField<LoginFormValues, "rememberMe">
+                id="login-remember-me"
+                name="rememberMe"
+              >
+                {({ field }) => (
+                  <AppCheckbox
+                    id="login-remember-me"
+                    checked={Boolean(field.value)}
+                    disabled={isLoading}
+                    label={rememberLabel}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked === true);
+                    }}
+                  />
+                )}
+              </FormField>
+
+              <ForgotButton
+                type="button"
+                chromeless
+                disabled={isLoading}
+                pressStyle={{ opacity: 0.72 }}
+                onPress={onForgotPasswordPress}
+                aria-label={forgotPasswordLabel}
+              >
+                <ForgotText>{forgotPasswordLabel}</ForgotText>
+              </ForgotButton>
+            </ActionRow>
+
+            {apiError ? (
+              <ApiErrorText role="alert">{apiError}</ApiErrorText>
+            ) : null}
+
+            <AppButton
+              type="submit"
+              loading={isLoading}
+              disabled={isLoading}
+              background="#10B981"
+              height={48}
+              pressStyle={{ background: "#059669" }}
+              hoverStyle={{ background: "#059669" }}
+              rounded="$3"
+              aria-label={loginLabel}
             >
-              <ForgotText>{forgotPasswordLabel}</ForgotText>
-            </ForgotButton>
-          </ActionRow>
-
-          <LoginButton
-            type="button"
-            disabled={isLoading}
-            background="#10B981"
-            pressStyle={{ background: "#059669" }}
-            hoverStyle={{ background: "#059669" }}
-            onPress={onLoginPress}
-            aria-label={loginLabel}
-          >
-            {isLoading ? (
-              <Spinner color="white" size="small" />
-            ) : (
-              <LoginButtonText>{loginLabel}</LoginButtonText>
-            )}
-          </LoginButton>
-        </FormStack>
+              {loginLabel}
+            </AppButton>
+          </FormStack>
+        </AppForm>
 
         <DividerRow>
           <Separator flex={1} borderColor="#E5E7EB" />
@@ -182,71 +264,99 @@ export function LoginCard({
       </CardContent>
     </LoginShell>
   );
+});
+
+function LoginShell({ children }: PropsWithChildren) {
+  return (
+    <LoginShellFrame style={loginShellStyle}>
+      {children}
+    </LoginShellFrame>
+  );
 }
 
-const LoginShell = styled(Card, {
+const LoginShellFrame = styled(Card, {
   background: "white",
   borderColor: "rgba(16, 185, 129, 0.16)",
   borderWidth: 1,
   overflow: "hidden",
+  p: "$7",
+  rounded: "$8",
+  shadowColor: "rgba(15, 118, 110, 0.22)",
+  shadowRadius: 28,
   width: "100%",
-  ...({
-    borderRadius: 24,
-    boxShadow: "0 24px 70px rgba(15, 118, 110, 0.22)",
-    maxWidth: 420,
-    minHeight: 600,
-    paddingBottom: LOGIN_SPACE.cardPadding,
-    paddingLeft: LOGIN_SPACE.cardPadding,
-    paddingRight: LOGIN_SPACE.cardPadding,
-    paddingTop: LOGIN_SPACE.cardPadding,
-  } as any),
+
+  $sm: {
+    p: "$5",
+    rounded: "$6",
+  },
 });
 
-const CardContent = styled(YStack, {
+const loginShellStyle = {
+  maxWidth: 420,
+  minHeight: 600,
+} satisfies CSSProperties;
+
+function CardContent({ children }: PropsWithChildren) {
+  return (
+    <CardContentStack style={cardContentStyle}>
+      {children}
+    </CardContentStack>
+  );
+}
+
+const CardContentStack = styled(YStack, {
   flex: 1,
-  gap: LOGIN_SPACE.sectionGap,
-  ...({
-    justifyContent: "center",
-    position: "relative",
-    zIndex: 1,
-  } as any),
+  gap: "$5",
+
+  $sm: {
+    gap: "$4",
+  },
 });
+
+const cardContentStyle = {
+  justifyContent: "center",
+  position: "relative",
+  zIndex: 1,
+} satisfies CSSProperties;
 
 const FormStack = styled(YStack, {
-  gap: LOGIN_SPACE.formGap,
+  gap: "$3",
 });
 
 const FieldGroup = styled(YStack, {
-  gap: LOGIN_SPACE.fieldGap,
+  gap: "$1.5",
 });
 
-const FieldLabel = styled(Text, {
-  color: "#111827",
-  fontSize: "$label",
-  fontWeight: "$label",
-  letterSpacing: "$body",
-});
+function PasswordFrame({ children }: PropsWithChildren) {
+  return (
+    <PasswordFrameStack style={centeredRowStyle}>
+      {children}
+    </PasswordFrameStack>
+  );
+}
 
-const FieldFrame = styled(XStack, {
+const PasswordFrameStack = styled(XStack, {
   background: "white",
   borderColor: "#E5E7EB",
   borderWidth: 1,
-  flexBasis: "auto",
   gap: "$2",
   height: 46,
-  p: LOGIN_SPACE.fieldPadding,
+  p: "$2",
   rounded: "$3",
-  ...({
-    alignItems: "center",
-  } as any),
 });
 
-const ActionRow = styled(XStack, {
-  ...({
-    alignItems: "center",
-    justifyContent: "space-between",
-  } as any),
-});
+function ActionRow({ children }: PropsWithChildren) {
+  return <XStack style={actionRowStyle}>{children}</XStack>;
+}
+
+const centeredRowStyle = {
+  alignItems: "center",
+} satisfies CSSProperties;
+
+const actionRowStyle = {
+  alignItems: "center",
+  justifyContent: "space-between",
+} satisfies CSSProperties;
 
 const ForgotButton = styled(Button, {
   height: 24,
@@ -260,23 +370,41 @@ const ForgotText = styled(Text, {
   letterSpacing: "$button",
 });
 
-const LoginButton = styled(Button, {
-  height: 48,
+const VisibilityButton = styled(Button, {
+  height: 28,
+  minW: 44,
+  px: "$2",
+});
+
+const VisibilityText = styled(Text, {
+  color: "#047857",
+  fontSize: "$caption",
+  fontWeight: "$button",
+  letterSpacing: "$body",
+});
+
+const ApiErrorText = styled(Text, {
+  background: "#FEF2F2",
+  borderColor: "#FECACA",
+  borderWidth: 1,
+  color: "#B91C1C",
+  fontSize: "$caption",
+  fontWeight: "$label",
+  letterSpacing: "$body",
+  p: "$2",
   rounded: "$3",
 });
 
-const LoginButtonText = styled(Text, {
-  color: "white",
-  fontSize: "$label",
-  fontWeight: "$button",
-  letterSpacing: "$button",
-});
+function DividerRow({ children }: PropsWithChildren) {
+  return (
+    <DividerRowStack style={centeredRowStyle}>
+      {children}
+    </DividerRowStack>
+  );
+}
 
-const DividerRow = styled(XStack, {
+const DividerRowStack = styled(XStack, {
   gap: "$3",
-  ...({
-    alignItems: "center",
-  } as any),
 });
 
 const DividerText = styled(Text, {
@@ -286,23 +414,32 @@ const DividerText = styled(Text, {
   letterSpacing: "$body",
 });
 
-const SocialRow = styled(XStack, {
+function SocialRow({ children }: PropsWithChildren) {
+  return (
+    <SocialRowStack style={socialRowStyle}>
+      {children}
+    </SocialRowStack>
+  );
+}
+
+const SocialRowStack = styled(XStack, {
   gap: "$4",
-  ...({
-    justifyContent: "center",
-  } as any),
 });
+
+const socialRowStyle = {
+  justifyContent: "center",
+} satisfies CSSProperties;
 
 const SocialButton = styled(Button, {
   background: "white",
   borderColor: "#E5E7EB",
   borderWidth: 1,
   height: 46,
-  rounded: 10,
+  rounded: "$4",
   width: 58,
 });
 
-function GoogleButton() {
+const GoogleButton = memo(function GoogleButton() {
   return (
     <SocialButton
       type="button"
@@ -320,9 +457,9 @@ function GoogleButton() {
       </Text>
     </SocialButton>
   );
-}
+});
 
-function MicrosoftButton() {
+const MicrosoftButton = memo(function MicrosoftButton() {
   return (
     <SocialButton
       type="button"
@@ -338,9 +475,9 @@ function MicrosoftButton() {
       </XStack>
     </SocialButton>
   );
-}
+});
 
-function DecorativeCorners() {
+const DecorativeCorners = memo(function DecorativeCorners() {
   return (
     <>
       <TopRightShape />
@@ -350,73 +487,98 @@ function DecorativeCorners() {
       <BottomRightShape />
     </>
   );
+});
+
+function TopRightShape() {
+  return <TopRightShapeFrame style={topRightShapeStyle} />;
 }
 
-const TopRightShape = styled(View, {
+const TopRightShapeFrame = styled(View, {
+  background: "#CFF7EA",
+  borderBottomLeftRadius: 76,
   height: 84,
   opacity: 0.7,
   width: 118,
-  ...({
-    backgroundColor: "#CFF7EA",
-    borderBottomLeftRadius: 76,
-    position: "absolute",
-    right: -26,
-    top: -38,
-  } as any),
 });
 
-const TopLeftLeaf = styled(View, {
+const topRightShapeStyle = {
+  position: "absolute",
+  right: -26,
+  top: -38,
+} satisfies CSSProperties;
+
+function TopLeftLeaf() {
+  return <TopLeftLeafFrame style={topLeftLeafStyle} />;
+}
+
+const TopLeftLeafFrame = styled(View, {
+  background: "#10B981",
+  borderBottomRightRadius: 18,
+  borderTopLeftRadius: 18,
   height: 18,
   opacity: 0.72,
   width: 28,
-  ...({
-    backgroundColor: "#10B981",
-    borderBottomRightRadius: 18,
-    borderTopLeftRadius: 18,
-    left: 14,
-    position: "absolute",
-    top: 18,
-    transform: "rotate(-35deg)",
-  } as any),
 });
 
-const TopLeftLeafSmall = styled(View, {
+const topLeftLeafStyle = {
+  left: 14,
+  position: "absolute",
+  top: 18,
+  transform: "rotate(-35deg)",
+} satisfies CSSProperties;
+
+function TopLeftLeafSmall() {
+  return <TopLeftLeafSmallFrame style={topLeftLeafSmallStyle} />;
+}
+
+const TopLeftLeafSmallFrame = styled(View, {
+  background: "#10B981",
+  borderBottomRightRadius: 16,
+  borderTopLeftRadius: 16,
   height: 16,
   opacity: 0.72,
   width: 24,
-  ...({
-    backgroundColor: "#10B981",
-    borderBottomRightRadius: 16,
-    borderTopLeftRadius: 16,
-    left: 48,
-    position: "absolute",
-    top: 42,
-    transform: "rotate(-35deg)",
-  } as any),
 });
 
-const BottomLeftShape = styled(View, {
+const topLeftLeafSmallStyle = {
+  left: 48,
+  position: "absolute",
+  top: 42,
+  transform: "rotate(-35deg)",
+} satisfies CSSProperties;
+
+function BottomLeftShape() {
+  return <BottomLeftShapeFrame style={bottomLeftShapeStyle} />;
+}
+
+const BottomLeftShapeFrame = styled(View, {
+  background: "#BDF4E5",
+  borderTopRightRadius: 78,
   height: 96,
   opacity: 0.78,
   width: 118,
-  ...({
-    backgroundColor: "#BDF4E5",
-    borderTopRightRadius: 78,
-    bottom: -30,
-    left: -42,
-    position: "absolute",
-  } as any),
 });
 
-const BottomRightShape = styled(View, {
+const bottomLeftShapeStyle = {
+  bottom: -30,
+  left: -42,
+  position: "absolute",
+} satisfies CSSProperties;
+
+function BottomRightShape() {
+  return <BottomRightShapeFrame style={bottomRightShapeStyle} />;
+}
+
+const BottomRightShapeFrame = styled(View, {
+  background: "#A7F3D0",
+  borderTopLeftRadius: 58,
   height: 66,
   opacity: 0.62,
   width: 72,
-  ...({
-    backgroundColor: "#A7F3D0",
-    borderTopLeftRadius: 58,
-    bottom: -18,
-    position: "absolute",
-    right: -16,
-  } as any),
 });
+
+const bottomRightShapeStyle = {
+  bottom: -18,
+  position: "absolute",
+  right: -16,
+} satisfies CSSProperties;

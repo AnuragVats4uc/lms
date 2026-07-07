@@ -4,6 +4,7 @@ import {
   LoginData,
   LoginDto,
   Student,
+  TokenPair,
 } from "../types/auth.types";
 
 import { AUTH_ENDPOINTS } from "./endpoints";
@@ -16,16 +17,19 @@ export const authApi = {
 
   me: () =>
     api
-      .get<Student>(AUTH_ENDPOINTS.ME)
-      .then((res) => res.data),
+      .get<ApiResponse<Student>>(AUTH_ENDPOINTS.ME)
+      .then((res) => res.data.data),
 
   refresh: (refreshToken: string) =>
     api
-      .post(AUTH_ENDPOINTS.REFRESH, { refreshToken })
-      .then((res) => res.data),
+      .post<ApiResponse<TokenPair>>(
+        AUTH_ENDPOINTS.REFRESH,
+        { refreshToken }
+      )
+      .then((res) => res.data.data),
 
-  logout: () =>
+  logout: (refreshToken: string) =>
     api
-      .post(AUTH_ENDPOINTS.LOGOUT)
+      .post(AUTH_ENDPOINTS.LOGOUT, { refreshToken })
       .then((res) => res.data),
 };

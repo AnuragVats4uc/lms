@@ -13,6 +13,6 @@ export async function refreshToken(refreshToken: string) {
   return authApi.refresh(refreshToken);
 }
 
-export async function logout() {
-  return;
+export async function logout(refreshToken: string) {
+  return authApi.logout(refreshToken);
 }

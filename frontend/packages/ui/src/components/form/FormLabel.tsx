@@ -1,18 +1,22 @@
 "use client";
 
-import { Label } from "tamagui";
+import { Label, LabelProps } from "tamagui";
 
-interface Props {
+interface FormLabelProps extends LabelProps {
   children: React.ReactNode;
 }
 
-export function FormLabel({ children }: Props) {
+export function FormLabel({
+  children,
+  ...props
+}: FormLabelProps) {
   return (
     <Label
       mb="$2"
       fontSize="$label"
       fontWeight="$label"
       letterSpacing="$body"
+      {...props}
     >
       {children}
     </Label>
