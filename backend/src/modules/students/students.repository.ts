@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma';
 
 @Injectable()
@@ -14,18 +15,27 @@ export class StudentsRepository {
     });
   }
 
-  async findById(id: number) {
+  async findByMobile(mobile: string) {
     return this.prisma.students.findUnique({
-      where: { id },
+      where: { mobile },
       include: {
         profile: true,
       },
     });
   }
 
-  async updateLastLogin(id: number) {
+  async findById(id: bigint | string) {
+    return this.prisma.students.findUnique({
+      where: { id: BigInt(id) },
+      include: {
+        profile: true,
+      },
+    });
+  }
+
+  async updateLastLogin(id: bigint | string) {
     return this.prisma.students.update({
-      where: { id },
+      where: { id: BigInt(id) },
       data: {
         lastLoginAt: new Date(),
       },
@@ -33,15 +43,24 @@ export class StudentsRepository {
   }
 
   async saveRefreshToken(
-    studentId: number,
+    studentId: bigint | string,
     token: string,
     expiresAt: Date,
   ) {
     return this.prisma.refreshToken.create({
       data: {
-        studentId,
+        studentId: BigInt(studentId),
         token,
         expiresAt,
+      },
+    });
+  }
+
+  async create(data: Prisma.StudentsCreateInput) {
+    return this.prisma.students.create({
+      data,
+      include: {
+        profile: true,
       },
     });
   }

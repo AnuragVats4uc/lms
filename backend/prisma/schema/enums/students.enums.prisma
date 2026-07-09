@@ -7,4 +7,12 @@ enum StudentStatus {
 enum StudentRole {
   STUDENT
   ADMIN
+  SUPER_ADMIN
+  SUPPORT
+}
+
+enum StudentGender {
+  MALE @map("Male")
+  FEMALE @map("Female")
+  OTHER @map("Other")
 }

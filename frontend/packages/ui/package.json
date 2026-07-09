@@ -17,6 +17,8 @@
     "@tamagui/core": "^2.4.2",
     "@tamagui/font-inter": "^2.4.2",
     "@tamagui/themes": "^2.4.2",
+    "lucide-react": "^1.23.0",
+    "lucide-react-native": "^1.23.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.62.0",

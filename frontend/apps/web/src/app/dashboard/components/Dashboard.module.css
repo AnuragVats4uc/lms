@@ -1,0 +1,381 @@
+.page {
+  --primary: #0aa36f;
+  --primary-dark: #058b5d;
+  --primary-light: #d9f7ed;
+  --mint: #effcf7;
+  --text-dark: #172033;
+  --text-muted: #606b80;
+  --border: #e7eee9;
+  --white: #ffffff;
+  --shadow: 0 18px 45px rgba(20, 72, 56, 0.1);
+
+  min-height: 100vh;
+  position: relative;
+  padding: 10px 32px 42px;
+  overflow-x: hidden;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(10, 163, 111, 0.12),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(10, 163, 111, 0.14),
+      transparent 32%
+    ),
+    #f8fffc;
+  color: var(--text-dark);
+  font-family:
+    Roboto,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+.leafGroup {
+  position: absolute;
+  z-index: 0;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.left {
+  left: -20px;
+  top: 130px;
+}
+
+.right {
+  right: 0;
+  top: 145px;
+  transform: rotate(8deg);
+}
+
+.bottomLeft {
+  left: -45px;
+  bottom: 25px;
+  transform: rotate(-8deg);
+}
+
+.leaf {
+  width: 95px;
+  height: 38px;
+  margin: 8px;
+  border-radius: 100% 0 100% 0;
+  background: linear-gradient(135deg, #80dfc4, #d9f7ed);
+}
+
+.small {
+  width: 48px;
+  height: 22px;
+}
+
+.circleBg {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  background: rgba(10, 163, 111, 0.09);
+}
+
+.one {
+  width: 170px;
+  height: 170px;
+  left: -80px;
+  top: 110px;
+}
+
+.two {
+  width: 250px;
+  height: 250px;
+  right: -110px;
+  bottom: -70px;
+}
+
+.three {
+  width: 130px;
+  height: 130px;
+  left: 20px;
+  bottom: 80px;
+}
+
+.navbar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 80px;
+  padding: 0 36px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--primary);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--white);
+  box-shadow: 0 8px 20px rgba(20, 72, 56, 0.08);
+  color: inherit;
+  cursor: pointer;
+}
+
+.avatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-light), var(--white));
+  color: var(--primary);
+}
+
+.profileText {
+  display: grid;
+  gap: 3px;
+  text-align: left;
+}
+
+.profileName {
+  color: var(--text-dark);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  font-family: Roboto, sans-serif;
+}
+
+.profileClass {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.2;
+  font-family: Roboto, sans-serif;
+
+}
+
+.chevron {
+  margin-left: 4px;
+  color: var(--primary);
+}
+
+.hero {
+  position: relative;
+  z-index: 1;
+  max-width: 1160px;
+  margin: 16px auto 0;
+  text-align: center;
+}
+
+.eyebrow {
+  display: inline-block;
+  /* margin-bottom: 16px; */
+  padding: 3px 18px;
+  border-radius: 999px;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-family: Roboto, sans-serif;
+
+}
+
+.hero h1 {
+  margin-bottom: 0px;
+  color: var(--text-dark);
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: 0.1;
+  line-height: 1.1;
+  margin-top: 10px !important;
+  font-family: Roboto, sans-serif;
+
+}
+
+.heroSubtitle {
+  margin-bottom: 22px;
+  color: var(--text-muted);
+  font-size: 18px;
+  margin-top: 10px !important;
+  font-weight: 500;
+  font-family: Roboto, sans-serif;
+
+}
+
+.divider {
+  width: 62px;
+  height: 4px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+.cards {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  max-width: 1020px;
+  margin: 44px auto 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 34px;
+}
+
+.courseCard {
+  display: flex;
+  min-height: 520px;
+  flex-direction: column;
+  align-items: center;
+  padding: 38px 36px 34px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow);
+  text-align: center;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.courseCard:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 60px rgba(20, 72, 56, 0.16);
+}
+
+.illustration {
+  width: 280px;
+  height: 190px;
+  margin-bottom: 24px;
+}
+
+.illustration svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.courseCard h2 {
+  margin-bottom: 18px;
+  color: var(--text-dark);
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.courseCard p {
+  max-width: 360px;
+  margin-bottom: 28px;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.cardButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 250px;
+  height: 58px;
+  margin-top: auto;
+  gap: 14px;
+  border: 0;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #13b981, #058b5d);
+  box-shadow: 0 10px 22px rgba(10, 163, 111, 0.28);
+  color: var(--white);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 800;
+  outline: 0;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.cardButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(10, 163, 111, 0.34);
+}
+
+.cardButton:focus-visible,
+.profile:focus-visible {
+  outline: 3px solid rgba(10, 163, 111, 0.3);
+  outline-offset: 3px;
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding: 14px;
+  }
+
+  .navbar {
+    height: auto;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .brand {
+    font-size: 24px;
+  }
+
+  .hero {
+    margin-top: 48px;
+  }
+
+  .hero h1 {
+    font-size: 34px;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .courseCard {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .profileName {
+    font-size: 14px;
+  }
+
+  .profileClass {
+    font-size: 12px;
+  }
+
+  .heroSubtitle {
+    font-size: 17px;
+  }
+
+  .courseCard {
+    padding: 30px 20px;
+  }
+
+  .illustration {
+    width: 230px;
+    height: 160px;
+  }
+
+  .cardButton {
+    min-width: 100%;
+  }
+}

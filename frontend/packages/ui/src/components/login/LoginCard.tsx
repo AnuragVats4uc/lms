@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   CSSProperties,
+  MouseEvent,
   memo,
   PropsWithChildren,
   useCallback,
@@ -32,6 +33,7 @@ import {
 } from "../../validation/auth/login.schema";
 import { LoginFooter, LoginFooterProps } from "./LoginFooter";
 import { LoginHeader, LoginHeaderProps } from "./LoginHeader";
+import { Eye, EyeOff } from "./LoginIcons";
 
 const LOGIN_DEFAULT_VALUES: LoginFormValues = {
   email: "",
@@ -110,7 +112,17 @@ export const LoginCard = memo(function LoginCard({
 
   const togglePasswordVisibility = useCallback(() => {
     setIsPasswordVisible((visible) => !visible);
-  }, []);
+    setTimeout(() => {
+      form.setFocus("password");
+    }, 0);
+  }, [form]);
+
+  const keepPasswordFieldFocused = useCallback(
+    (event: MouseEvent) => {
+      event.preventDefault();
+    },
+    []
+  );
 
   return (
     <LoginShell>
@@ -183,6 +195,7 @@ export const LoginCard = memo(function LoginCard({
                       type="button"
                       chromeless
                       disabled={isLoading}
+                      onMouseDown={keepPasswordFieldFocused}
                       onPress={togglePasswordVisibility}
                       aria-label={
                         isPasswordVisible
@@ -190,9 +203,19 @@ export const LoginCard = memo(function LoginCard({
                           : "Show password"
                       }
                     >
-                      <VisibilityText>
-                        {isPasswordVisible ? "Hide" : "Show"}
-                      </VisibilityText>
+                      {isPasswordVisible ? (
+                        <EyeOff
+                          size={18}
+                          color="#047857"
+                          strokeWidth={2.2}
+                        />
+                      ) : (
+                        <Eye
+                          size={18}
+                          color="#047857"
+                          strokeWidth={2.2}
+                        />
+                      )}
                     </VisibilityButton>
                   </PasswordFrame>
                 )}
@@ -221,6 +244,7 @@ export const LoginCard = memo(function LoginCard({
                 type="button"
                 chromeless
                 disabled={isLoading}
+                hoverStyle={forgotButtonStateStyle}
                 pressStyle={{ opacity: 0.72 }}
                 onPress={onForgotPasswordPress}
                 aria-label={forgotPasswordLabel}
@@ -249,16 +273,16 @@ export const LoginCard = memo(function LoginCard({
           </FormStack>
         </AppForm>
 
-        <DividerRow>
+        {/* <DividerRow>
           <Separator flex={1} borderColor="#E5E7EB" />
           <DividerText>{continueLabel}</DividerText>
           <Separator flex={1} borderColor="#E5E7EB" />
-        </DividerRow>
+        </DividerRow> */}
 
-        <SocialRow>
+        {/* <SocialRow>
           <GoogleButton />
           <MicrosoftButton />
-        </SocialRow>
+        </SocialRow> */}
 
         <LoginFooter {...footerProps} />
       </CardContent>
@@ -358,6 +382,11 @@ const actionRowStyle = {
   justifyContent: "space-between",
 } satisfies CSSProperties;
 
+const forgotButtonStateStyle = {
+  background: "transparent",
+  opacity: 1,
+} satisfies CSSProperties;
+
 const ForgotButton = styled(Button, {
   height: 24,
   p: 0,
@@ -372,15 +401,8 @@ const ForgotText = styled(Text, {
 
 const VisibilityButton = styled(Button, {
   height: 28,
-  minW: 44,
+  minW: 36,
   px: "$2",
-});
-
-const VisibilityText = styled(Text, {
-  color: "#047857",
-  fontSize: "$caption",
-  fontWeight: "$button",
-  letterSpacing: "$body",
 });
 
 const ApiErrorText = styled(Text, {

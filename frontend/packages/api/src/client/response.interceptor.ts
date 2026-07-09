@@ -8,8 +8,9 @@ import { getAuthManager } from "./auth-manager";
 import { refreshQueue } from "./refresh.queue";
 
 const PUBLIC_AUTH_PATHS = [
-  "/api/v1/auth/login",
-  "/api/v1/auth/refresh",
+  "/auth/login",
+  "/auth/register",
+  "/auth/refresh",
 ] as const;
 
 export function setupResponseInterceptor(

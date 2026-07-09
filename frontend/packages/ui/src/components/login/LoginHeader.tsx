@@ -1,6 +1,8 @@
 "use client";
 
-import { styled, Text, View, XStack, YStack } from "tamagui";
+import { styled, Text, XStack, YStack } from "tamagui";
+
+import { GraduationCap } from "./LoginIcons";
 
 export interface LoginHeaderProps {
   title?: string;
@@ -16,11 +18,11 @@ export function LoginHeader({
   return (
     <HeaderStack>
       <BrandRow>
-        <LogoMark role="img" aria-label={`${brandLabel} logo`}>
-          <LogoCap />
-          <LogoBase />
-          <LogoTassel />
-        </LogoMark>
+        <GraduationCap
+          size={24}
+          color="#10B981"
+          strokeWidth={2.4}
+        />
 
         <BrandText>{brandLabel}</BrandText>
       </BrandRow>
@@ -43,50 +45,6 @@ const BrandRow = styled(XStack, {
   gap: "$2",
   ...({
     alignItems: "center",
-  } as any),
-});
-
-const LogoMark = styled(View, {
-  height: 24,
-  width: 32,
-  ...({
-    position: "relative",
-  } as any),
-});
-
-const LogoCap = styled(View, {
-  background: "#10B981",
-  height: 14,
-  rounded: 2,
-  width: 24,
-  ...({
-    left: 4,
-    position: "absolute",
-    top: 4,
-    transform: "rotate(45deg)",
-  } as any),
-});
-
-const LogoBase = styled(View, {
-  background: "#059669",
-  height: 6,
-  rounded: 3,
-  width: 16,
-  ...({
-    left: 8,
-    position: "absolute",
-    top: 16,
-  } as any),
-});
-
-const LogoTassel = styled(View, {
-  background: "#047857",
-  height: 10,
-  width: 2,
-  ...({
-    left: 25,
-    position: "absolute",
-    top: 12,
   } as any),
 });
 

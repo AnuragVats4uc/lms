@@ -1,13 +1,20 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 
 import { StudentsService } from '../students/students.service';
 import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
 import { StringValue } from 'ms';
 import { RefreshTokenRepository } from './repositories/refresh-token.repository';
-import { RefreshToken } from '@prisma/client';
+import { Prisma, RefreshToken } from '@prisma/client';
+import { AdminImpersonationService } from '../admin-impersonation/admin-impersonation.service';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -16,22 +23,84 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly refreshTokenRepository: RefreshTokenRepository,
+    private readonly impersonationService: AdminImpersonationService,
   ) { }
 
+  async register(registerDto: RegisterDto) {
+    const email = registerDto.email.trim().toLowerCase();
+    const mobile = registerDto.mobile.trim();
+    const firstName = registerDto.firstName.trim();
+    const lastName = registerDto.lastName.trim();
+    const name = `${firstName} ${lastName}`.trim();
+    const className = registerDto.className.trim();
+    const state = registerDto.state.trim();
+    const city = registerDto.city.trim();
+    const address = registerDto.address.trim();
+
+    const existingEmailStudent =
+      await this.studentsService.findByEmail(email);
+
+    if (existingEmailStudent) {
+      throw new ConflictException('Email is already registered');
+    }
+
+    const existingMobileStudent =
+      await this.studentsService.findByMobile(mobile);
+
+    if (existingMobileStudent) {
+      throw new ConflictException('Mobile number is already registered');
+    }
+
+    const hashedPassword = await bcrypt.hash(
+      registerDto.password,
+      this.configService.get<number>('bcrypt.saltRounds')!,
+    );
+
+    try {
+      const student = await this.studentsService.create({
+        name,
+        className,
+        gender: registerDto.gender,
+        email,
+        mobile,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        profile: {
+          create: {
+            addressLine1: address,
+            city,
+            country: 'India',
+            state,
+          },
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      return {
+        student: this.studentsService.toPublicStudent(student),
+        message: 'Registration successful',
+      };
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Student already exists');
+      }
+
+      throw error;
+    }
+  }
+
   private async generateRefreshToken(student: {
-    id: number;
+    id: bigint;
     email: string;
     role: string;
   }) {
-    console.log('REFRESH SECRET:', this.configService.get('jwt.refreshSecret'));
-
-    console.log(
-      'REFRESH EXPIRES:',
-      this.configService.get('jwt.refreshExpiresIn'),
-    );
-
     const payload = {
-      sub: student.id,
+      sub: student.id.toString(),
       email: student.email,
       role: student.role,
     };
@@ -60,7 +129,7 @@ export class AuthService {
       }
 
       const payload = {
-        sub: student.id,
+        sub: student.id.toString(),
         email: student.email,
         role: student.role,
       };
@@ -84,7 +153,7 @@ export class AuthService {
       );
 
       return {
-        student,
+        student: this.studentsService.toPublicStudent(student),
         accessToken,
         refreshToken,
       };
@@ -97,7 +166,7 @@ export class AuthService {
   async refreshToken(refreshToken: string) {
     try {
       // 1. Verify JWT first (signature check)
-      const decoded = this.jwtService.verify(refreshToken, {
+      const decoded = this.jwtService.verify<JwtPayload>(refreshToken, {
         secret: this.configService.get<string>('jwt.refreshSecret'),
       });
 
@@ -132,19 +201,54 @@ export class AuthService {
       // 4. Delete OLD refresh token (ROTATION STEP 🔥)
       await this.refreshTokenRepository.deleteById(matchedToken.id);
 
+      if (decoded.impersonation) {
+        await this.impersonationService.assertActiveImpersonation(
+          decoded.impersonation,
+        );
+      }
+
       // 5. Generate new tokens
       const payload = {
-        sub: student.id,
-        email: student.email,
-      };
-
-      const newAccessToken = await this.jwtService.signAsync(payload);
-
-      const newRefreshToken = await this.generateRefreshToken({
-        id: student.id,
+        sub: student.id.toString(),
         email: student.email,
         role: student.role,
-      });
+        impersonation: decoded.impersonation,
+      };
+
+      const impersonationExpiresAt = decoded.impersonation
+        ? new Date(decoded.impersonation.expiresAt)
+        : null;
+      const expiresInSeconds = impersonationExpiresAt
+        ? Math.max(
+            1,
+            Math.floor(
+              (impersonationExpiresAt.getTime() - Date.now()) /
+                1000,
+            ),
+          )
+        : null;
+
+      const newAccessToken = await this.jwtService.signAsync(
+        payload,
+        expiresInSeconds
+          ? {
+              expiresIn: expiresInSeconds,
+            }
+          : undefined,
+      );
+
+      const newRefreshToken = decoded.impersonation
+        ? await this.jwtService.signAsync(payload, {
+            secret: this.configService.get<string>(
+              'jwt.refreshSecret',
+            ),
+            expiresIn: expiresInSeconds ?? 1,
+          })
+        : await this.generateRefreshToken({
+            id: student.id,
+            email: student.email,
+            role: student.role,
+          });
 
       // 6. Hash new refresh token
       const hashedRefreshToken = await bcrypt.hash(
@@ -156,7 +260,8 @@ export class AuthService {
       await this.refreshTokenRepository.create(
         student.id,
         hashedRefreshToken,
-        new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        impersonationExpiresAt ??
+          new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       );
 
       // 8. Return new tokens

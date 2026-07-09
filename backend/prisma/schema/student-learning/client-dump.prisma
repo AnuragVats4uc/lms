@@ -1,0 +1,268 @@
+enum LegacyDomainContentTabType {
+  career_exploration
+  educational_path
+  competency_development
+}
+
+model LegacyActivityLog {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  logName     String?   @map("log_name") @db.VarChar(255)
+  description String    @db.Text
+  subjectType String?   @map("subject_type") @db.VarChar(255)
+  event       String?   @db.VarChar(255)
+  subjectId   BigInt?   @map("subject_id") @db.UnsignedBigInt
+  causerType  String?   @map("causer_type") @db.VarChar(255)
+  causerId    BigInt?   @map("causer_id") @db.UnsignedBigInt
+  properties  String?   @db.LongText
+  batchUuid   String?   @map("batch_uuid") @db.Char(36)
+  createdAt   DateTime? @map("created_at") @db.Timestamp(0)
+  updatedAt   DateTime? @map("updated_at") @db.Timestamp(0)
+
+  @@index([subjectType, subjectId], map: "subject")
+  @@index([causerType, causerId], map: "causer")
+  @@index([logName], map: "activity_log_log_name_index")
+  @@map("activity_log")
+}
+
+model LegacyAdmin {
+  id        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name      String    @db.VarChar(255)
+  email     String    @unique(map: "admins_email_unique") @db.VarChar(255)
+  password  String    @db.VarChar(255)
+  status    Int       @default(1) @db.TinyInt
+  createdAt DateTime? @map("created_at") @db.Timestamp(0)
+  updatedAt DateTime? @map("updated_at") @db.Timestamp(0)
+
+  @@map("admins")
+}
+
+model LegacyAlertNotification {
+  id          BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  domainId    BigInt       @map("domain_id") @db.UnsignedBigInt
+  title       String       @db.VarChar(255)
+  document    String?      @db.VarChar(255)
+  description String?      @db.LongText
+  status      Int          @default(1) @db.TinyInt
+  createdAt   DateTime?    @map("created_at") @db.Timestamp(0)
+  updatedAt   DateTime?    @map("updated_at") @db.Timestamp(0)
+  domain      LegacyDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@index([domainId], map: "alert_notifications_domain_id_foreign")
+  @@map("alert_notifications")
+}
+
+model LegacyCardActivity {
+  id        BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  studentId BigInt        @map("student_id") @db.UnsignedBigInt
+  cardName  String        @map("card_name") @db.VarChar(255)
+  clickedAt DateTime      @default(now()) @updatedAt @map("clicked_at") @db.Timestamp(0)
+  duration  Int?
+  createdAt DateTime?     @map("created_at") @db.Timestamp(0)
+  updatedAt DateTime?     @map("updated_at") @db.Timestamp(0)
+  student   Students      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId], map: "card_activities_student_id_foreign")
+  @@map("card_activities")
+}
+
+model LegacyCareerExploration {
+  id              BigInt    @db.UnsignedBigInt
+  domainId        Int?      @map("domain_id")
+  name            String?   @db.VarChar(255)
+  image           String?   @db.VarChar(255)
+  workProfile     String?   @map("work_profile") @db.Text
+  salary          String?   @db.Text
+  experience      String?   @db.Text
+  growthProspects String?   @map("growth_prospects") @db.Text
+  status          Int       @default(1) @db.TinyInt
+  createdAt       DateTime? @map("created_at") @db.Timestamp(0)
+  updatedAt       DateTime? @map("updated_at") @db.Timestamp(0)
+
+  @@ignore
+  @@map("career_explorations")
+}
+
+model LegacyCompetencyDevelopment {
+  id        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  domainId  BigInt    @map("domain_id") @db.UnsignedBigInt
+  name      String?   @db.VarChar(255)
+  image     String?   @db.VarChar(255)
+  attribute String?   @db.Text
+  resources String?   @db.Text
+  status    Int       @default(1) @db.TinyInt
+  createdAt DateTime? @map("created_at") @db.Timestamp(0)
+  updatedAt DateTime? @map("updated_at") @db.Timestamp(0)
+
+  @@map("competency_developments")
+}
+
+model LegacyDomain {
+  id                 BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
+  name               String                    @db.VarChar(255)
+  slug               String?                   @db.VarChar(255)
+  status             Int                       @default(1) @db.TinyInt
+  createdAt          DateTime?                 @map("created_at") @db.Timestamp(0)
+  updatedAt          DateTime?                 @map("updated_at") @db.Timestamp(0)
+  alertNotifications LegacyAlertNotification[]
+  contents           LegacyDomainContent[]
+  studentDomains     LegacyStudentDomain[]
+
+  @@map("domains")
+}
+
+model LegacyDomainContent {
+  id              BigInt                     @id @default(autoincrement()) @db.UnsignedBigInt
+  domainId        BigInt                     @map("domain_id") @db.UnsignedBigInt
+  tabType         LegacyDomainContentTabType @map("tab_type")
+  name            String                     @db.VarChar(255)
+  image           String?                    @db.VarChar(255)
+  workProfile     String?                    @map("work_profile") @db.LongText
+  salary          String?                    @db.VarChar(255)
+  experience      String?                    @db.VarChar(255)
+  growthProspects String?                    @map("growth_prospects") @db.LongText
+  status          Int                        @default(1) @db.TinyInt
+  createdAt       DateTime?                  @map("created_at") @db.Timestamp(0)
+  updatedAt       DateTime?                  @map("updated_at") @db.Timestamp(0)
+  domain          LegacyDomain               @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@index([domainId], map: "domain_contents_domain_id_foreign")
+  @@map("domain_contents")
+}
+
+model LegacyEducationalPath {
+  id                            BigInt    @db.UnsignedBigInt
+  domainId                      BigInt    @map("domain_id") @db.UnsignedBigInt
+  name                          String?   @db.VarChar(255)
+  image                         String?   @db.VarChar(255)
+  discriptionCoursesFeeDuration String?   @map("discription_courses_fee_duration") @db.Text
+  eligibilityCriteria           String?   @map("eligibility_criteria") @db.Text
+  examAccepted                  String?   @map("exam_accepted") @db.Text
+  website                       String?   @db.Text
+  status                        Int       @default(1) @db.TinyInt
+  createdAt                     DateTime? @map("created_at") @db.Timestamp(0)
+  updatedAt                     DateTime? @map("updated_at") @db.Timestamp(0)
+
+  @@ignore
+  @@map("educational_paths")
+}
+
+model LegacyFailedJob {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid       String   @unique(map: "failed_jobs_uuid_unique") @db.VarChar(255)
+  connection String   @db.Text
+  queue      String   @db.Text
+  payload    String   @db.LongText
+  exception  String   @db.LongText
+  failedAt   DateTime @default(now()) @map("failed_at") @db.Timestamp(0)
+
+  @@map("failed_jobs")
+}
+
+model LegacyMigration {
+  id        Int    @id @default(autoincrement()) @db.UnsignedInt
+  migration String @db.VarChar(255)
+  batch     Int
+
+  @@map("migrations")
+}
+
+model LegacyNotification {
+  id                        BigInt    @db.UnsignedBigInt
+  domainId                  BigInt    @map("domain_id") @db.UnsignedBigInt
+  admissionNotification     String?   @map("admission_notification") @db.Text
+  entranceExamAlert         String?   @map("entrance_exam_alert") @db.Text
+  scholarshipAlert          String?   @map("scholarship_alert") @db.Text
+  expertSessionNotification String?   @map("expert_session_notification") @db.Text
+  status                    Int       @default(1) @db.TinyInt
+  createdAt                 DateTime? @map("created_at") @db.Timestamp(0)
+  updatedAt                 DateTime? @map("updated_at") @db.Timestamp(0)
+
+  @@ignore
+  @@map("notifications")
+}
+
+model LegacyPasswordResetToken {
+  email     String    @id @db.VarChar(255)
+  token     String    @db.VarChar(255)
+  createdAt DateTime? @map("created_at") @db.Timestamp(0)
+
+  @@map("password_reset_tokens")
+}
+
+model LegacyPersonalAccessToken {
+  id            BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  tokenableType String    @map("tokenable_type") @db.VarChar(255)
+  tokenableId   BigInt    @map("tokenable_id") @db.UnsignedBigInt
+  name          String    @db.VarChar(255)
+  token         String    @unique(map: "personal_access_tokens_token_unique") @db.VarChar(64)
+  abilities     String?   @db.Text
+  lastUsedAt    DateTime? @map("last_used_at") @db.Timestamp(0)
+  expiresAt     DateTime? @map("expires_at") @db.Timestamp(0)
+  createdAt     DateTime? @map("created_at") @db.Timestamp(0)
+  updatedAt     DateTime? @map("updated_at") @db.Timestamp(0)
+
+  @@index([tokenableType, tokenableId], map: "personal_access_tokens_tokenable_type_tokenable_id_index")
+  @@map("personal_access_tokens")
+}
+
+model LegacyStudentActivity {
+  id         BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  studentId  BigInt        @map("student_id") @db.UnsignedBigInt
+  sessionId  String        @map("session_id") @db.VarChar(64)
+  cardName   String        @map("card_name") @db.VarChar(255)
+  visitedUrl String?       @map("visited_url") @db.LongText
+  startedAt  DateTime      @default(now()) @updatedAt @map("started_at") @db.Timestamp(0)
+  endedAt    DateTime?     @map("ended_at") @db.Timestamp(0)
+  duration   Float         @default(0)
+  createdAt  DateTime?     @map("created_at") @db.Timestamp(0)
+  updatedAt  DateTime?     @map("updated_at") @db.Timestamp(0)
+  student    Students      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId], map: "student_activities_student_id_foreign")
+  @@index([sessionId], map: "student_activities_session_id_index")
+  @@map("student_activities")
+}
+
+model LegacyStudentDomain {
+  id        BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  studentId BigInt        @map("student_id") @db.UnsignedBigInt
+  domainId  BigInt        @map("domain_id") @db.UnsignedBigInt
+  createdAt DateTime?     @map("created_at") @db.Timestamp(0)
+  updatedAt DateTime?     @map("updated_at") @db.Timestamp(0)
+  domain    LegacyDomain  @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  student   Students      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId], map: "student_domains_student_id_foreign")
+  @@index([domainId], map: "student_domains_domain_id_foreign")
+  @@map("student_domains")
+}
+
+model LegacyStudentSession {
+  id         BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  studentId  BigInt        @map("student_id") @db.UnsignedBigInt
+  loginAt    DateTime      @default(now()) @updatedAt @map("login_at") @db.Timestamp(0)
+  ipAddress  String?       @map("ip_address") @db.VarChar(45)
+  userAgent  String?       @map("user_agent") @db.Text
+  logoutAt   DateTime?     @map("logout_at") @db.Timestamp(0)
+  duration   Float?
+  logoutType String?       @map("logout_type") @db.VarChar(255)
+  createdAt  DateTime?     @map("created_at") @db.Timestamp(0)
+  updatedAt  DateTime?     @map("updated_at") @db.Timestamp(0)
+  student    Students      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId], map: "student_sessions_student_id_foreign")
+  @@map("student_sessions")
+}
+
+model LegacyUser {
+  id              BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name            String    @db.VarChar(255)
+  email           String    @unique(map: "users_email_unique") @db.VarChar(255)
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamp(0)
+  password        String    @db.VarChar(255)
+  rememberToken   String?   @map("remember_token") @db.VarChar(100)
+  createdAt       DateTime? @map("created_at") @db.Timestamp(0)
+  updatedAt       DateTime? @map("updated_at") @db.Timestamp(0)
+
+  @@map("users")
+}

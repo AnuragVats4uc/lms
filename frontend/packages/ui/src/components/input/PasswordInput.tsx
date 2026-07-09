@@ -3,12 +3,16 @@
 import { AppInput } from "./Input";
 
 export function PasswordInput(
-  props: React.ComponentProps<typeof AppInput>
+  {
+    secureTextEntry = true,
+    ...props
+  }: React.ComponentProps<typeof AppInput>
 ) {
   return (
     <AppInput
-      secureTextEntry
       {...props}
+      secureTextEntry={secureTextEntry}
+      type={secureTextEntry ? "password" : "text"}
     />
   );
 }

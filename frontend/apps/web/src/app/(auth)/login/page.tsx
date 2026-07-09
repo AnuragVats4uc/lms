@@ -5,6 +5,7 @@ import {
   PropsWithChildren,
   useCallback,
 } from "react";
+import { useRouter } from "next/navigation";
 import {
   getAuthErrorMessage,
   PublicRoute,
@@ -19,6 +20,7 @@ import {
 } from "@repo/ui";
 
 export default function LoginPage() {
+  const router = useRouter();
   const {
     error,
     isPending,
@@ -45,6 +47,9 @@ export default function LoginPage() {
             error ? getAuthErrorMessage(error) : undefined
           }
           isLoading={isPending}
+          footerProps={{
+            onRegisterPress: () => router.push("/register"),
+          }}
           onForgotPasswordPress={() => undefined}
           onSubmit={handleSubmit}
         />

@@ -1,7 +1,7 @@
 model StudentProfile {
   id Int @id @default(autoincrement())
 
-  studentId Int @unique
+  studentId BigInt @unique @db.UnsignedBigInt
 
   student Students @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
@@ -31,4 +31,6 @@ model StudentProfile {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@map("StudentProfile")
 }

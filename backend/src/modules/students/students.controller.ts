@@ -5,6 +5,11 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentStudent } from '../auth/decorators/current-student.decorator';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+
+interface AuthenticatedStudent extends Omit<JwtPayload, 'sub'> {
+  studentId: string;
+}
 
 @Controller('students')
 export class StudentsController {
@@ -12,8 +17,8 @@ export class StudentsController {
 
   // 👇 Protected route (only logged-in users)
   @Get('me')
-  getMe(@CurrentStudent() student: any) {
-    return this.studentsService.findById(student.studentId);
+  getMe(@CurrentStudent() student: AuthenticatedStudent) {
+    return this.studentsService.findPublicById(student.studentId);
   }
 
   // 👇 ADMIN ONLY ROUTE

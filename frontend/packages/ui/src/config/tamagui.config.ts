@@ -1,9 +1,11 @@
 import { defaultConfig } from '@tamagui/config/v4'
 import { createFont, createTamagui } from 'tamagui'
 
-const interFont = createFont({
-  family:
-    'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+const robotoFontFamily =
+  'Roboto, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+
+const robotoFont = createFont({
+  family: robotoFontFamily,
   size: {
     display: 48,
     h1: 36,
@@ -29,18 +31,18 @@ const interFont = createFont({
     true: 24,
   },
   weight: {
-    heading: '700',
-    subheading: '600',
+    heading: '800',
+    subheading: '700',
     body: '400',
     label: '500',
-    button: '600',
+    button: '700',
     caption: '400',
     true: '400',
   },
   letterSpacing: {
-    heading: -0.02,
+    heading: 0,
     body: 0,
-    button: 0.01,
+    button: 0,
     true: 0,
   },
 })
@@ -49,8 +51,8 @@ export const config = createTamagui({
   ...defaultConfig,
   fonts: {
     ...defaultConfig.fonts,
-    heading: interFont,
-    body: interFont,
+    heading: robotoFont,
+    body: robotoFont,
   },
 })
 

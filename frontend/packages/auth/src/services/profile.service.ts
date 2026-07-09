@@ -3,7 +3,7 @@ import { Student } from "../types";
 
 export async function getProfile() {
     const response = await api.get<ApiResponse<Student>>(
-        "/api/v1/students/me"
+        "/students/me"
     );
 
     return response.data.data;

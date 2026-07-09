@@ -9,6 +9,7 @@ import { StudentsModule } from '../students/students.module';
 import { RefreshTokenRepository } from './repositories/refresh-token.repository';
 import { JwtStrategy } from './strategies/jwt.strategies';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { AdminImpersonationModule } from '../admin-impersonation/admin-impersonation.module';
 
 @Module({
   imports: [
@@ -17,13 +18,6 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        console.log('ACCESS SECRET:', configService.get('jwt.accessSecret'));
-
-        console.log(
-          'ACCESS EXPIRES:',
-          configService.get('jwt.accessExpiresIn'),
-        );
-
         return {
           secret: configService.get<string>('jwt.accessSecret'),
           signOptions: {
@@ -32,6 +26,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
         };
       },
     }),
+    AdminImpersonationModule,
     StudentsModule,
   ],
 

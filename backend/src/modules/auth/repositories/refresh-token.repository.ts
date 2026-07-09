@@ -5,10 +5,10 @@ import { PrismaService } from '../../../prisma';
 export class RefreshTokenRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(studentId: number, token: string, expiresAt: Date) {
+  async create(studentId: bigint | string, token: string, expiresAt: Date) {
     return this.prisma.refreshToken.create({
       data: {
-        studentId,
+        studentId: BigInt(studentId),
         token,
         expiresAt,
       },
@@ -19,17 +19,17 @@ export class RefreshTokenRepository {
     return this.prisma.refreshToken.findMany();
   }
 
-  async deleteAllByStudentId(studentId: number) {
+  async deleteAllByStudentId(studentId: bigint | string) {
     return this.prisma.refreshToken.deleteMany({
       where: {
-        studentId,
+        studentId: BigInt(studentId),
       },
     });
   }
 
-  async findAllByStudent(studentId: number) {
+  async findAllByStudent(studentId: bigint | string) {
     return this.prisma.refreshToken.findMany({
-      where: { studentId },
+      where: { studentId: BigInt(studentId) },
     });
   }
 

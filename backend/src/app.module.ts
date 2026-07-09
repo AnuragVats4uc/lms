@@ -10,6 +10,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { loggerConfig } from './config/logger/logger.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { StudentsModule } from './modules/students/students.module';
+import { AdminImpersonationModule } from './modules/admin-impersonation/admin-impersonation.module';
 import { APP_GUARD } from '@nestjs/core';
 import { GlobalJwtAuthGuard } from './modules/auth/guards/global-jwt.guard';
 
@@ -32,6 +33,7 @@ import { GlobalJwtAuthGuard } from './modules/auth/guards/global-jwt.guard';
 
     PrismaModule,
     AuthModule,
+    AdminImpersonationModule,
     StudentsModule,
   ],
   controllers: [AppController],

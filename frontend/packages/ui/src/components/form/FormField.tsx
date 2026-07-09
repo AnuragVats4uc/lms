@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
+import { LabelProps } from "tamagui";
 import {
   Controller,
   ControllerFieldState,
@@ -33,6 +34,7 @@ interface FormFieldProps<
     props: FormFieldRenderProps<T, TName>
   ) => ReactNode;
   label?: string;
+  labelProps?: Omit<LabelProps, "children">;
   name: TName;
 }
 
@@ -44,6 +46,7 @@ export function FormField<
   id,
   name,
   label,
+  labelProps,
   ...props
 }: FormFieldProps<T, TName>) {
   const { control } = useFormContext<T>();
@@ -56,7 +59,11 @@ export function FormField<
       name={name}
       render={({ field, fieldState }) => (
         <>
-          {label && <FormLabel htmlFor={inputId}>{label}</FormLabel>}
+          {label && (
+            <FormLabel htmlFor={inputId} {...labelProps}>
+              {label}
+            </FormLabel>
+          )}
 
           {children ? (
             children({
