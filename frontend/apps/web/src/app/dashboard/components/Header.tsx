@@ -22,7 +22,7 @@ export function Header({
       <div className={styles.brand}>
         <GraduationCap
           aria-hidden="true"
-          size={38}
+          size={30}
           strokeWidth={2.8}
         />
         <span>LMS</span>

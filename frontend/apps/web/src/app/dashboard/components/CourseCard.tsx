@@ -37,7 +37,7 @@ export function CourseCard({
         {actionLabel}
         <ArrowRight
           aria-hidden="true"
-          size={22}
+          size={16}
           strokeWidth={2.8}
         />
       </button>

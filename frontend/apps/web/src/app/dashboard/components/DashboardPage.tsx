@@ -110,29 +110,15 @@ function StudyMaterialsIllustration() {
       viewBox="0 0 280 190"
       role="img"
     >
-      <circle
-        cx="145"
-        cy="86"
-        r="58"
-        fill="#D9F7ED"
-      />
-      <circle
-        cx="190"
-        cy="96"
-        r="42"
-        fill="#EFFCF7"
-      />
+      <circle cx="145" cy="86" r="58" fill="#D9F7ED" />
+      <circle cx="190" cy="96" r="42" fill="#EFFCF7" />
       <path
         d="M44 154h170"
         stroke="#0AA36F"
         strokeOpacity="0.4"
         strokeWidth="2"
       />
-      <path
-        d="M72 154V92"
-        stroke="#058B5D"
-        strokeWidth="2"
-      />
+      <path d="M72 154V92" stroke="#058B5D" strokeWidth="2" />
       <path
         d="M72 126c-25-10-38 7-38 7s21 10 38-7Z"
         fill="#B9EFDC"
@@ -202,12 +188,7 @@ function MockTestsIllustration() {
       viewBox="0 0 280 190"
       role="img"
     >
-      <circle
-        cx="126"
-        cy="86"
-        r="58"
-        fill="#D9F7ED"
-      />
+      <circle cx="126" cy="86" r="58" fill="#D9F7ED" />
       <path
         d="M48 162h170"
         stroke="#0AA36F"
