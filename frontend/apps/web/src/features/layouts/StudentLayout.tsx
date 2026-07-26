@@ -1,6 +1,6 @@
 "use client";
 
-import { WorkspaceLayout } from "./WorkspaceLayout";
+import WorkspaceLayout  from "./WorkspaceLayout";
 import { studentNavigation } from "./navigation";
 
 export function StudentLayout({

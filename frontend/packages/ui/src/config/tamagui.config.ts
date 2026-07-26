@@ -1,11 +1,11 @@
 import { defaultConfig } from '@tamagui/config/v4'
 import { createFont, createTamagui } from 'tamagui'
 
-const robotoFontFamily =
-  'Roboto, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+const libreFranklinFontFamily =
+  '"Libre Franklin", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
 
-const robotoFont = createFont({
-  family: robotoFontFamily,
+const libreFranklinFont = createFont({
+  family: libreFranklinFontFamily,
   size: {
     display: 48,
     h1: 36,
@@ -51,8 +51,8 @@ export const config = createTamagui({
   ...defaultConfig,
   fonts: {
     ...defaultConfig.fonts,
-    heading: robotoFont,
-    body: robotoFont,
+    heading: libreFranklinFont,
+    body: libreFranklinFont,
   },
 })
 

@@ -5,10 +5,9 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, '../..'),
   transpilePackages: [
     '@repo/ui',
-    'tamagui',
-    '@tamagui/core',
-    '@tamagui/themes',
-    '@tamagui/font-inter',
+    '@repo/api',
+    '@repo/auth',
+    '@repo/types',
   ],
 }
 

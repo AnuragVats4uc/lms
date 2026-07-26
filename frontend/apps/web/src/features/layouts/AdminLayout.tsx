@@ -1,6 +1,6 @@
 "use client";
 
-import { WorkspaceLayout } from "./WorkspaceLayout";
+import WorkspaceLayout from "./WorkspaceLayout";
 import { adminNavigation } from "./navigation";
 
 export function AdminLayout({

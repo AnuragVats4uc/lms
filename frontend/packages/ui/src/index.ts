@@ -17,6 +17,11 @@ export {
   Spinner,
   ScrollView,
   Button,
+  Input,
+  Avatar,
+  Heading,
+  Spacer,
+  Theme,
   styled,
 } from "tamagui";
 

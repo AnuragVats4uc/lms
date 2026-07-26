@@ -67,16 +67,16 @@ export const adminNavigation: NavigationItem[] = [
     icon: FileText,
     label: "Resources",
   },
-  {
-    href: "/admin/attendance",
-    icon: ClipboardCheck,
-    label: "Attendance",
-  },
-  {
-    href: "/admin/reports",
-    icon: FileBarChart,
-    label: "Reports",
-  },
+  // {
+  //   href: "/admin/attendance",
+  //   icon: ClipboardCheck,
+  //   label: "Attendance",
+  // },
+  // {
+  //   href: "/admin/reports",
+  //   icon: FileBarChart,
+  //   label: "Reports",
+  // },
   {
     href: "/admin/settings",
     icon: Settings,

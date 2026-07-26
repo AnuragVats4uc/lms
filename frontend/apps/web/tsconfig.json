@@ -20,7 +20,16 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@repo/ui": ["../../packages/ui/src"]
+      "@repo/api": ["../../packages/api/src"],
+      "@repo/auth": ["../../packages/auth/src"],
+      "@repo/types": ["../../packages/types/src"],
+      "@repo/ui": ["../../packages/ui/src"],
+      "@repo/ui/dashboard": [
+        "../../packages/ui/src/components/dashboard/index.ts"
+      ],
+      "@repo/ui/primitives": [
+        "../../packages/ui/src/components/primitives/index.ts"
+      ]
     }
   },
   "include": [
