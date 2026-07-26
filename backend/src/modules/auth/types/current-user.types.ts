@@ -1,17 +1,11 @@
 export type CurrentUser = {
-  id: number;
+  userId: number;
 
-  email?: string;
+  email: string;
 
-  enrollmentNo?: string;
+  organizationId?: number | null;
 
-  role?: string;
+  roles?: string[];
 
-  impersonation?: {
-    adminUserId: string;
-    expiresAt: string;
-    logId: string;
-    studentId: string;
-    tokenId: string;
-  };
+  permissions?: string[];
 };

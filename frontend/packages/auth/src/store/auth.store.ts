@@ -1,11 +1,11 @@
 import { create } from "zustand";
 import {
+  AuthUser,
   AuthStatus,
-  Student,
 } from "../types/auth.types";
 
 export interface AuthState {
-  student: Student | null;
+  currentUser: AuthUser | null;
 
   accessToken: string | null;
 
@@ -26,18 +26,18 @@ export interface AuthState {
   setUnauthenticated: () => void;
 
   login: (
-    student: Student,
+    user: AuthUser,
     accessToken: string,
     refreshToken: string
   ) => void;
 
   logout: () => void;
 
-  updateStudent: (student: Student) => void;
+  updateUser: (user: AuthUser) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  student: null,
+  currentUser: null,
 
   accessToken: null,
 
@@ -61,7 +61,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setUnauthenticated: () =>
     set({
-      student: null,
+      currentUser: null,
       accessToken: null,
       refreshToken: null,
       status: "unauthenticated",
@@ -71,21 +71,21 @@ export const useAuthStore = create<AuthState>((set) => ({
       role: null,
     }),
 
-  login: (student, accessToken, refreshToken) =>
+  login: (user, accessToken, refreshToken) =>
     set({
-      student,
+      currentUser: user,
       accessToken,
       refreshToken,
       status: "authenticated",
       isAuthenticated: true,
       isInitializing: false,
-      permissions: student.role ? [student.role] : [],
-      role: student.role,
+      permissions: user.permissions ?? [],
+      role: user.role ?? user.roles?.[0] ?? null,
     }),
 
   logout: () =>
     set({
-      student: null,
+      currentUser: null,
       accessToken: null,
       refreshToken: null,
       status: "unauthenticated",
@@ -95,10 +95,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       role: null,
     }),
 
-  updateStudent: (student) =>
+  updateUser: (user) =>
     set({
-      student,
-      permissions: student.role ? [student.role] : [],
-      role: student.role,
+      currentUser: user,
+      permissions: user.permissions ?? [],
+      role: user.role ?? user.roles?.[0] ?? null,
     }),
 }));

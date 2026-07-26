@@ -8,6 +8,7 @@ import {
 import {
   useIsAuthInitializing,
   useIsAuthenticated,
+  useCurrentUser,
 } from "../store";
 import { useAuthNavigation } from "../providers/AuthNavigationProvider";
 
@@ -23,9 +24,10 @@ export function PublicRoute({
 }: PublicRouteProps) {
   const isAuthenticated = useIsAuthenticated();
   const isInitializing = useIsAuthInitializing();
+  const currentUser = useCurrentUser();
   const navigation = useAuthNavigation();
   const destination =
-    redirectTo ?? navigation.dashboardPath;
+    redirectTo ?? navigation.getAuthenticatedPath(currentUser);
 
   useEffect(() => {
     if (!isInitializing && isAuthenticated) {
@@ -33,6 +35,7 @@ export function PublicRoute({
     }
   }, [
     destination,
+    currentUser,
     isAuthenticated,
     isInitializing,
     navigation,

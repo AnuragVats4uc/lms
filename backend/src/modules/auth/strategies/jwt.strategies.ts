@@ -1,15 +1,21 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
-import { AdminImpersonationService } from '../../admin-impersonation/admin-impersonation.service';
+import { RolesService } from '../../roles/services/roles.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    private configService: ConfigService,
-    private readonly impersonationService: AdminImpersonationService,
+    @Inject(ConfigService)
+    configService: ConfigService,
+    @Inject(RolesService)
+    private readonly rolesService: RolesService,
   ) {
     const accessSecret = configService.get<string>('jwt.accessSecret');
 
@@ -28,17 +34,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Invalid token payload');
     }
 
-    if (payload.impersonation) {
-      await this.impersonationService.assertActiveImpersonation(
-        payload.impersonation,
-      );
-    }
+    const accessContext =
+      await this.rolesService.getUserAccessContext(payload.sub);
+    const roles = accessContext.roles.length
+      ? accessContext.roles
+      : payload.roles ?? [];
+    const permissions = accessContext.permissions.length
+      ? accessContext.permissions
+      : [];
 
     return {
-      studentId: payload.sub,
+      userId: payload.sub,
       email: payload.email,
-      role: payload.role,
-      impersonation: payload.impersonation,
+      organizationId: payload.organizationId,
+      roles,
+      permissions,
     };
   }
 }

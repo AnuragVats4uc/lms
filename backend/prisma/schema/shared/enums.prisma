@@ -1,18 +1,12 @@
-enum UserRole {
-  ADMIN
-  STUDENT
-}
-
-enum Gender {
-  MALE
-  FEMALE
-  OTHER
-}
-
-enum PackageStatus {
+enum OrganizationStatus {
   ACTIVE
-  EXPIRED
-  PENDING
+  INACTIVE
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
 }
 
 enum RefreshTokenStatus {

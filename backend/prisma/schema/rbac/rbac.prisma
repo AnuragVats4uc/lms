@@ -1,0 +1,75 @@
+model Role {
+  id              Int              @id @default(autoincrement())
+  uuid            String           @unique @default(uuid())
+
+  name            String           @unique(map: "roles_name_unique") @db.VarChar(150)
+  code            String           @unique(map: "roles_code_unique") @db.VarChar(50)
+  description     String?          @db.Text
+
+  isActive        Boolean          @default(true) @map("is_active")
+
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  permissions     RolePermission[]
+  userRoles       UserRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id              Int              @id @default(autoincrement())
+  uuid            String           @unique @default(uuid())
+
+  module          String           @db.VarChar(100)
+  action          String           @db.VarChar(100)
+  key             String           @unique(map: "permissions_key_unique") @db.VarChar(191)
+  description     String?          @db.Text
+
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  roles           RolePermission[]
+
+  @@unique([module, action], map: "permissions_module_action_unique")
+  @@map("permissions")
+}
+
+model RolePermission {
+  id              Int              @id @default(autoincrement())
+
+  roleId          Int              @map("role_id")
+  permissionId    Int              @map("permission_id")
+
+  role            Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission      Permission       @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  @@unique([roleId, permissionId], map: "role_permissions_role_id_permission_id_unique")
+  @@index([permissionId], map: "role_permissions_permission_id_idx")
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id              Int              @id @default(autoincrement())
+
+  userId          Int              @map("user_id")
+  roleId          Int              @map("role_id")
+  organizationId  Int?             @map("organization_id")
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role            Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  organization    Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  isActive        Boolean          @default(true) @map("is_active")
+
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  @@unique([userId, roleId, organizationId], map: "user_roles_user_id_role_id_organization_id_unique")
+  @@index([userId], map: "user_roles_user_id_idx")
+  @@index([roleId], map: "user_roles_role_id_idx")
+  @@index([organizationId], map: "user_roles_organization_id_idx")
+  @@map("user_roles")
+}

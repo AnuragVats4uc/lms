@@ -5,12 +5,14 @@ export interface AuthManager {
 
   saveTokens(
     accessToken: string,
-    refreshToken: string
+    refreshToken: string,
+    user?: unknown
   ): Promise<void>;
 
   refreshToken(
     refreshToken: string
   ): Promise<{
+    user?: unknown;
     accessToken: string;
     refreshToken: string;
   }>;

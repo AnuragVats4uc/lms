@@ -9,7 +9,6 @@ import { refreshQueue } from "./refresh.queue";
 
 const PUBLIC_AUTH_PATHS = [
   "/auth/login",
-  "/auth/register",
   "/auth/refresh",
 ] as const;
 
@@ -88,7 +87,8 @@ export function setupResponseInterceptor(
 
         await auth.saveTokens(
           tokens.accessToken,
-          tokens.refreshToken
+          tokens.refreshToken,
+          tokens.user
         );
 
         // Retry all queued requests

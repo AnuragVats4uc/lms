@@ -7,10 +7,15 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
   "dependencies": {
     "@repo/api": "workspace:*",
+    "@repo/types": "workspace:*",
     "@tanstack/react-query": "^5.101.2",
     "axios": "^1.11.0",
+    "react": "^19.2.0",
     "zustand": "^5.0.8"
   }
 }

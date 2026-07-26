@@ -41,11 +41,15 @@ export function configureAuth({
 
     saveTokens: (
       accessToken,
-      refreshTokenValue
+      refreshTokenValue,
+      user
     ) =>
       sessionManager.saveTokens(
         accessToken,
-        refreshTokenValue
+        refreshTokenValue,
+        user as Parameters<
+          typeof sessionManager.saveTokens
+        >[2]
       ),
 
     refreshToken,

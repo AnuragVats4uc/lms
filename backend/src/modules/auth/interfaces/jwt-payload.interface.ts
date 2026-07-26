@@ -1,18 +1,10 @@
 
 export interface JwtPayload {
-  sub: string;
+  sub: number;
 
-  email?: string;
+  email: string;
 
-  enrollmentNo?: string;
+  organizationId?: number | null;
 
-  role?: string;
-
-  impersonation?: {
-    adminUserId: string;
-    expiresAt: string;
-    logId: string;
-    studentId: string;
-    tokenId: string;
-  };
+  roles: string[];
 }

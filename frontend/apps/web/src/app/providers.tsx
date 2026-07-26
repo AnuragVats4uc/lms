@@ -9,6 +9,10 @@ import {
     AuthProvider,
     createBrowserStorageAdapter,
 } from "@repo/auth";
+import {
+    getAuthenticatedPath,
+    LOGIN_PATH,
+} from "@/features/auth/routes";
 
 export default function Providers({
     children,
@@ -24,8 +28,9 @@ export default function Providers({
     return (
         <QueryClientProvider client={queryClient}>
             <AuthProvider
-                dashboardPath="/dashboard"
-                loginPath="/login"
+                dashboardPath="/admin/dashboard"
+                getAuthenticatedPath={getAuthenticatedPath}
+                loginPath={LOGIN_PATH}
                 onRedirect={router.replace}
                 queryClient={queryClient}
                 storage={storage}

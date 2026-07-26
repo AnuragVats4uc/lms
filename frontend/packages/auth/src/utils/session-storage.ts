@@ -1,12 +1,12 @@
 import { AUTH_KEYS } from "../constants/auth.constant";
-import { Student } from "../types/auth.types";
+import { AuthUser } from "../types/auth.types";
 import { getStorage } from "./auth-storage";
 
 export const storedSession = {
-  async saveUser(student: Student) {
+  async saveUser(user: AuthUser) {
     await getStorage().setItem(
       AUTH_KEYS.USER,
-      JSON.stringify(student)
+      JSON.stringify(user)
     );
   },
 
@@ -20,7 +20,7 @@ export const storedSession = {
     }
 
     try {
-      return JSON.parse(value) as Student;
+      return JSON.parse(value) as AuthUser;
     } catch {
       await getStorage().removeItem(AUTH_KEYS.USER);
       return null;

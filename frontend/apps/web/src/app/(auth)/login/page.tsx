@@ -47,11 +47,11 @@ export default function LoginPage() {
             error ? getAuthErrorMessage(error) : undefined
           }
           isLoading={isPending}
-          footerProps={{
-            onRegisterPress: () => router.push("/register"),
-          }}
-          onForgotPasswordPress={() => undefined}
+          onForgotPasswordPress={() =>
+            router.push("/forgot-password")
+          }
           onSubmit={handleSubmit}
+          showFooter={false}
         />
       </LoginPageShell>
     </PublicRoute>

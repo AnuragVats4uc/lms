@@ -6,9 +6,11 @@ import {
   useContext,
   useMemo,
 } from "react";
+import type { AuthUser } from "../types";
 
 interface AuthNavigationContextValue {
   dashboardPath: string;
+  getAuthenticatedPath: (user: AuthUser | null) => string;
   loginPath: string;
   redirect: (path: string) => void;
 }
@@ -21,6 +23,7 @@ const AuthNavigationContext =
 interface AuthNavigationProviderProps
   extends PropsWithChildren {
   dashboardPath: string;
+  getAuthenticatedPath?: (user: AuthUser | null) => string;
   loginPath: string;
   redirect: (path: string) => void;
 }
@@ -28,16 +31,20 @@ interface AuthNavigationProviderProps
 export function AuthNavigationProvider({
   children,
   dashboardPath,
+  getAuthenticatedPath,
   loginPath,
   redirect,
 }: AuthNavigationProviderProps) {
   const value = useMemo(
     () => ({
       dashboardPath,
+      getAuthenticatedPath:
+        getAuthenticatedPath ??
+        (() => dashboardPath),
       loginPath,
       redirect,
     }),
-    [dashboardPath, loginPath, redirect]
+    [dashboardPath, getAuthenticatedPath, loginPath, redirect]
   );
 
   return (

@@ -9,7 +9,7 @@ export function useLogin() {
 
     async onSuccess(data) {
       await sessionManager.login(
-        data.student,
+        data.user,
         data.accessToken,
         data.refreshToken
       );

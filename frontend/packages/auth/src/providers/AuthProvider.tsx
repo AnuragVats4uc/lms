@@ -6,6 +6,7 @@ import {
   useMemo,
 } from "react";
 import { QueryClient } from "@tanstack/react-query";
+import type { AuthUser } from "../types";
 
 import { useBootstrapSession } from "../hooks";
 import {
@@ -17,6 +18,7 @@ import { AuthNavigationProvider } from "./AuthNavigationProvider";
 
 interface AuthProviderProps extends PropsWithChildren {
   dashboardPath?: string;
+  getAuthenticatedPath?: (user: AuthUser | null) => string;
   loadingFallback?: React.ReactNode;
   loginPath?: string;
   onRedirect: (path: string) => void;
@@ -27,6 +29,7 @@ interface AuthProviderProps extends PropsWithChildren {
 export function AuthProvider({
   children,
   dashboardPath = "/dashboard",
+  getAuthenticatedPath,
   loadingFallback = null,
   loginPath = "/login",
   onRedirect,
@@ -58,6 +61,7 @@ export function AuthProvider({
   return (
     <AuthNavigationProvider
       dashboardPath={dashboardPath}
+      getAuthenticatedPath={getAuthenticatedPath}
       loginPath={loginPath}
       redirect={onRedirect}
     >

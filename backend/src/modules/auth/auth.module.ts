@@ -2,14 +2,14 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
 import { StringValue } from 'ms';
-import { StudentsModule } from '../students/students.module';
-import { RefreshTokenRepository } from './repositories/refresh-token.repository';
 import { JwtStrategy } from './strategies/jwt.strategies';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { AdminImpersonationModule } from '../admin-impersonation/admin-impersonation.module';
+import { RolesModule } from '../roles/roles.module';
+import { AuthController } from './controllers/auth.controller';
+import { AuthRepository } from './repositories/auth.repository';
+import { AuthService } from './services/auth.service';
+import { PasswordService } from './services/password.service';
 
 @Module({
   imports: [
@@ -26,14 +26,19 @@ import { AdminImpersonationModule } from '../admin-impersonation/admin-impersona
         };
       },
     }),
-    AdminImpersonationModule,
-    StudentsModule,
+    RolesModule,
   ],
 
   controllers: [AuthController],
 
-  providers: [AuthService, RefreshTokenRepository, JwtStrategy, JwtAuthGuard],
+  providers: [
+    AuthRepository,
+    AuthService,
+    JwtStrategy,
+    JwtAuthGuard,
+    PasswordService,
+  ],
 
-  exports: [AuthService],
+  exports: [JwtAuthGuard, PasswordService],
 })
 export class AuthModule {}

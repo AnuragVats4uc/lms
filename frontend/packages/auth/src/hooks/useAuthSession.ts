@@ -8,7 +8,9 @@ import { sessionManager } from "../session";
 import { useAuthStore } from "../store";
 
 export function useAuthSession() {
-  const student = useAuthStore((state) => state.student);
+  const currentUser = useAuthStore(
+    (state) => state.currentUser
+  );
   const accessToken = useAuthStore(
     (state) => state.accessToken
   );
@@ -40,7 +42,7 @@ export function useAuthSession() {
   return useMemo(
     () => ({
       accessToken,
-      currentUser: student,
+      currentUser,
       isAuthenticated,
       isInitializing,
       logout,
@@ -60,7 +62,7 @@ export function useAuthSession() {
       refreshToken,
       role,
       status,
-      student,
+      currentUser,
     ]
   );
 }

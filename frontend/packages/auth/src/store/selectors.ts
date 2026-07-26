@@ -1,9 +1,7 @@
 import { useAuthStore } from "./auth.store";
 
-export const useStudent = () =>
-    useAuthStore((state) => state.student);
-
-export const useCurrentUser = useStudent;
+export const useCurrentUser = () =>
+    useAuthStore((state) => state.currentUser);
 
 export const useAccessToken = () =>
     useAuthStore((state) => state.accessToken);

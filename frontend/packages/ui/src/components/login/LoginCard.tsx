@@ -67,6 +67,7 @@ export interface LoginCardProps {
   passwordLabel?: string;
   passwordPlaceholder?: string;
   rememberLabel?: string;
+  showFooter?: boolean;
 }
 
 export const LoginCard = memo(function LoginCard({
@@ -85,6 +86,7 @@ export const LoginCard = memo(function LoginCard({
   passwordLabel = "Password",
   passwordPlaceholder = "Enter your password",
   rememberLabel = "Remember me",
+  showFooter = true,
 }: LoginCardProps) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
@@ -284,7 +286,7 @@ export const LoginCard = memo(function LoginCard({
           <MicrosoftButton />
         </SocialRow> */}
 
-        <LoginFooter {...footerProps} />
+        {showFooter ? <LoginFooter {...footerProps} /> : null}
       </CardContent>
     </LoginShell>
   );

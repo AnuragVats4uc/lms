@@ -1,0 +1,45 @@
+model User {
+  id             Int                @id @default(autoincrement())
+  uuid           String             @unique @default(uuid())
+
+  organizationId Int?               @map("organization_id")
+  firstName      String             @map("first_name") @db.VarChar(100)
+  lastName       String?            @map("last_name") @db.VarChar(100)
+  email          String             @unique(map: "users_email_unique") @db.VarChar(191)
+  password       String             @db.VarChar(255)
+  phone          String?            @unique(map: "users_phone_unique") @db.VarChar(30)
+  status         UserStatus         @default(ACTIVE)
+  isActive       Boolean            @default(true) @map("is_active")
+  isVerified     Boolean            @default(false) @map("is_verified")
+  lastLoginAt    DateTime?          @map("last_login_at")
+
+  organization   Organization?      @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  refreshTokens  RefreshToken[]
+  userRoles      UserRole[]
+
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  @@index([organizationId], map: "users_organization_id_idx")
+  @@index([status], map: "users_status_idx")
+  @@map("users")
+}
+
+model RefreshToken {
+  id        Int                @id @default(autoincrement())
+  uuid      String             @unique @default(uuid())
+
+  userId    Int                @map("user_id")
+  token     String             @unique(map: "refresh_tokens_token_unique") @db.VarChar(255)
+  status    RefreshTokenStatus @default(ACTIVE)
+  expiresAt DateTime           @map("expires_at")
+
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
+
+  @@index([userId], map: "refresh_tokens_user_id_idx")
+  @@index([status], map: "refresh_tokens_status_idx")
+  @@map("refresh_tokens")
+}

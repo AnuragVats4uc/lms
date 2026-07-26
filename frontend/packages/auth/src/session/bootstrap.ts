@@ -1,4 +1,3 @@
-import { getProfile } from "../services";
 import { sessionManager } from "./session-manager";
 import { useAuthStore } from "../store";
 
@@ -18,29 +17,19 @@ export async function bootstrapSession() {
 
     const storedUser = await sessionManager.getStoredUser();
 
-    if (storedUser) {
-        useAuthStore.getState().login(
-            storedUser,
-            accessToken,
-            refreshToken
-        );
-    }
-
-    try {
-        const student = await getProfile();
-
-        await sessionManager.restoreAuthenticatedSession(
-            student,
-            accessToken,
-            refreshToken
-        );
-
-        return true;
-    } catch {
+    if (!storedUser) {
         await sessionManager.logout({
             notify: false,
             revoke: false,
         });
         return false;
     }
+
+    await sessionManager.restoreAuthenticatedSession(
+        storedUser,
+        accessToken,
+        refreshToken
+    );
+
+    return true;
 }

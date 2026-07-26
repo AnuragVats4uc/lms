@@ -9,10 +9,14 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { loggerConfig } from './config/logger/logger.config';
 import { AuthModule } from './modules/auth/auth.module';
-import { StudentsModule } from './modules/students/students.module';
-import { AdminImpersonationModule } from './modules/admin-impersonation/admin-impersonation.module';
 import { APP_GUARD } from '@nestjs/core';
 import { GlobalJwtAuthGuard } from './modules/auth/guards/global-jwt.guard';
+import { OrganizationModule } from './modules/organization/organization.module';
+import { PermissionsGuard } from './modules/auth/permissions/permissions.guard';
+import { PermissionsModule } from './modules/permissions/permissions.module';
+import { RolesModule } from './modules/roles/roles.module';
+import { RolesGuard } from './modules/auth/roles/roles.guard';
+import { StudentsModule } from './modules/students/students.module';
 
 @Module({
   imports: [
@@ -33,7 +37,9 @@ import { GlobalJwtAuthGuard } from './modules/auth/guards/global-jwt.guard';
 
     PrismaModule,
     AuthModule,
-    AdminImpersonationModule,
+    PermissionsModule,
+    RolesModule,
+    OrganizationModule,
     StudentsModule,
   ],
   controllers: [AppController],
@@ -42,6 +48,14 @@ import { GlobalJwtAuthGuard } from './modules/auth/guards/global-jwt.guard';
     {
       provide: APP_GUARD,
       useClass: GlobalJwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PermissionsGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
 })
