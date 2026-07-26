@@ -25,6 +25,7 @@ export const UploadDropzone = memo(function UploadDropzone({
 }: UploadDropzoneProps) {
   return (
     <DropzoneFrame
+      className="lms-dashboard-upload"
       style={{
         alignItems: "center",
         overflow: "hidden",
@@ -32,6 +33,7 @@ export const UploadDropzone = memo(function UploadDropzone({
       }}
     >
       <XStack
+        className="lms-dashboard-upload-copy"
         gap="$4"
         style={{ alignItems: "center", flex: "1 1 auto", minWidth: 0 }}
       >
@@ -51,6 +53,7 @@ export const UploadDropzone = memo(function UploadDropzone({
         </YStack>
       </XStack>
       <Button
+        className="lms-dashboard-upload-button"
         background="#059669"
         height={40}
         px="$4"

@@ -75,6 +75,7 @@ export const FolderCard = memo(function FolderCard({
 
   return (
     <AppCard
+      className="lms-dashboard-folder-card"
       background="#FFFFFF"
       borderColor="#E1E7F0"
       p="$4"
@@ -161,7 +162,11 @@ export const FolderCard = memo(function FolderCard({
             </XStack>
           ))}
         </XStack>
-        <XStack gap="$2" style={{ minWidth: 0 }}>
+        <XStack
+          className="lms-dashboard-folder-actions"
+          gap="$2"
+          style={{ minWidth: 0 }}
+        >
           {actions.map((action) => (
             <Button
               key={action.label}

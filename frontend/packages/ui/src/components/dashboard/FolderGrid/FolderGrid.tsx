@@ -11,6 +11,7 @@ export const ResourceFolderGrid = memo(function ResourceFolderGrid({
 }: FolderGridProps) {
   return (
     <YStack
+      className="lms-dashboard-folder-grid"
       gap="$4"
       style={{
         display: "grid",

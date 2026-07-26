@@ -46,7 +46,11 @@ export const QuickActionsCard = memo(function QuickActionsCard({
             {title}
           </Text>
         </XStack>
-        <XStack gap="$3" style={{ alignItems: "stretch", width: "100%" }}>
+        <XStack
+          className="lms-dashboard-quick-actions-grid"
+          gap="$3"
+          style={{ alignItems: "stretch", width: "100%" }}
+        >
           {actions.map((action) => (
             <QuickActionButton key={action.label} {...action} />
           ))}

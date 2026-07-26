@@ -11,6 +11,7 @@ export const RoleGrid = memo(function RoleGrid({
 }: RoleGridProps) {
   return (
     <YStack
+      className="lms-dashboard-role-grid"
       gap="$3"
       style={{
         display: "grid",

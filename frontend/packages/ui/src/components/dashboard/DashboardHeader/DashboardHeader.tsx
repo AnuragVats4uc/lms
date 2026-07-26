@@ -177,6 +177,12 @@ const AvatarFrame = styled(XStack, {
   width: 32,
 });
 
+const leadingActionStyle = {
+  alignItems: "center",
+  flexShrink: 0,
+  justifyContent: "center",
+} satisfies CSSProperties;
+
 const headerStyle = {
   alignItems: "center",
   alignSelf: "stretch",
@@ -243,6 +249,7 @@ const profileStyle = {
 
 export const DashboardHeader = memo(function DashboardHeader({
   actions = [],
+  leadingAction,
   organizationIcon,
   organizationLabel,
   profile,
@@ -252,8 +259,17 @@ export const DashboardHeader = memo(function DashboardHeader({
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   return (
-    <HeaderFrame style={headerStyle}>
+    <HeaderFrame className="lms-dashboard-header" style={headerStyle}>
+      {leadingAction ? (
+        <XStack
+          className="lms-dashboard-header-leading"
+          style={leadingActionStyle}
+        >
+          {leadingAction}
+        </XStack>
+      ) : null}
       <SearchFrame
+        className="lms-dashboard-header-search"
         style={{
           ...searchStyle,
           ...(isSearchFocused ? searchFocusedStyle : null),
@@ -273,11 +289,19 @@ export const DashboardHeader = memo(function DashboardHeader({
           onFocus={() => setIsSearchFocused(true)}
           style={searchInputStyle}
         />
-        <ShortcutBadge>{shortcutLabel}</ShortcutBadge>
+        <ShortcutBadge className="lms-dashboard-header-shortcut">
+          {shortcutLabel}
+        </ShortcutBadge>
       </SearchFrame>
 
-      <HeaderActionsFrame style={actionsStyle}>
-        <HeaderIconGroup style={iconGroupStyle}>
+      <HeaderActionsFrame
+        className="lms-dashboard-header-actions"
+        style={actionsStyle}
+      >
+        <HeaderIconGroup
+          className="lms-dashboard-header-icons"
+          style={iconGroupStyle}
+        >
           {actions.map((action) => (
             <IconButton
               aria-label={action.label}
@@ -300,7 +324,10 @@ export const DashboardHeader = memo(function DashboardHeader({
           ))}
         </HeaderIconGroup>
 
-        <SelectorFrame style={selectorStyle}>
+        <SelectorFrame
+          className="lms-dashboard-header-selector"
+          style={selectorStyle}
+        >
           {organizationIcon}
           <Text
             color="#172033"
@@ -319,7 +346,10 @@ export const DashboardHeader = memo(function DashboardHeader({
           />
         </SelectorFrame>
 
-        <ProfileFrame style={profileStyle}>
+        <ProfileFrame
+          className="lms-dashboard-header-profile"
+          style={profileStyle}
+        >
           <AvatarFrame style={centerStyle}>
             {profile.imageSrc ? (
               <img

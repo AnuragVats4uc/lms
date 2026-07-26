@@ -22,7 +22,7 @@ export const DashboardStats = memo(function DashboardStats({
   stats,
 }: DashboardStatsProps) {
   return (
-    <StatsGrid style={gridStyle}>
+    <StatsGrid className="lms-dashboard-stats-grid" style={gridStyle}>
       {stats.map((stat) => (
         <StatCard key={stat.title} minW={0} {...stat} />
       ))}

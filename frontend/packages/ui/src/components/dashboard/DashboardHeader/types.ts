@@ -14,6 +14,7 @@ export interface DashboardHeaderProfile {
 
 export interface DashboardHeaderProps {
   actions?: DashboardHeaderAction[];
+  leadingAction?: ReactNode;
   organizationLabel: string;
   organizationIcon?: ReactNode;
   profile: DashboardHeaderProfile;

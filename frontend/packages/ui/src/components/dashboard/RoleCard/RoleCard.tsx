@@ -44,6 +44,7 @@ export const RoleCard = memo(function RoleCard({
 
   return (
     <AppCard
+      className="lms-dashboard-role-card"
       background="#FFFFFF"
       borderColor="#E1E7F0"
       p="$4"

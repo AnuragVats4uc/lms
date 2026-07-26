@@ -71,6 +71,7 @@ export function ResourceManagementSection({
       <YStack gap="$4">
         <BreadcrumbNavigation items={breadcrumbs} />
         <XStack
+          className="lms-resource-management-grid"
           gap="$4"
           style={{
             display: "grid",
@@ -79,6 +80,7 @@ export function ResourceManagementSection({
           }}
         >
           <AppCard
+            className="lms-resource-tree-panel"
             background="#FFFFFF"
             borderColor="#E1E7F0"
             p="$4"
@@ -106,6 +108,7 @@ export function ResourceManagementSection({
             </YStack>
           </AppCard>
           <AppCard
+            className="lms-resource-folders-panel"
             background="#FFFFFF"
             borderColor="#E1E7F0"
             p="$4"
@@ -113,6 +116,7 @@ export function ResourceManagementSection({
           >
             <YStack gap="$4">
               <XStack
+                className="lms-resource-folders-header"
                 style={{
                   alignItems: "flex-start",
                   gap: 12,

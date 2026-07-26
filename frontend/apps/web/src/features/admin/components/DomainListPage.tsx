@@ -35,7 +35,7 @@ interface DomainListPageProps<T> {
   title: string;
 }
 
-export function DomainListPage<T>({
+export function   DomainListPage<T>({
   description,
   emptyLabel,
   fields,
