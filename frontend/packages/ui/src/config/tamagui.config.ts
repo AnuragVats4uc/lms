@@ -1,11 +1,11 @@
 import { defaultConfig } from '@tamagui/config/v4'
 import { createFont, createTamagui } from 'tamagui'
 
-const libreFranklinFontFamily =
-  '"Libre Franklin", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+const manropeFontFamily =
+  '"Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
 
-const libreFranklinFont = createFont({
-  family: libreFranklinFontFamily,
+const manropeFont = createFont({
+  family: manropeFontFamily,
   size: {
     display: 48,
     h1: 36,
@@ -51,8 +51,8 @@ export const config = createTamagui({
   ...defaultConfig,
   fonts: {
     ...defaultConfig.fonts,
-    heading: libreFranklinFont,
-    body: libreFranklinFont,
+    heading: manropeFont,
+    body: manropeFont,
   },
 })
 
