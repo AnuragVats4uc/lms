@@ -45,6 +45,7 @@ function DataTableHeaderComponent<TData>({
         minWidth: "max-content",
         position: stickyHeader ? "sticky" : undefined,
         top: stickyHeader ? 0 : undefined,
+        width: "100%",
         zIndex: stickyHeader ? 5 : undefined,
       }}
     >
@@ -59,8 +60,14 @@ function DataTableHeaderComponent<TData>({
                   : false
             }
             aria-label="Select all rows on this page"
-            background={allPageRowsSelected ? DATA_TABLE_COLORS.green : "#FFFFFF"}
-            borderColor={allPageRowsSelected ? DATA_TABLE_COLORS.green : DATA_TABLE_COLORS.border}
+            background={
+              allPageRowsSelected ? DATA_TABLE_COLORS.green : "#FFFFFF"
+            }
+            borderColor={
+              allPageRowsSelected
+                ? DATA_TABLE_COLORS.green
+                : DATA_TABLE_COLORS.border
+            }
             borderWidth={1}
             height={18}
             onPress={toggleAllPageRows}
@@ -79,7 +86,8 @@ function DataTableHeaderComponent<TData>({
             ? ArrowUp
             : ArrowDown
           : ChevronsUpDown;
-        const sticky = stickyFirstColumn && index === 0 && !selectable;
+        const stickyEnd = column.meta?.stickyEnd === true;
+        const sticky = stickyEnd || (stickyFirstColumn && index === 0);
         const header =
           column.headerCell?.({ column }) ??
           (typeof column.header === "function"
@@ -91,6 +99,8 @@ function DataTableHeaderComponent<TData>({
             align={column.align}
             key={column.id}
             sticky={sticky}
+            stickyOffset={stickyEnd ? 0 : selectable ? 48 : 0}
+            stickySide={stickyEnd ? "right" : "left"}
             width={column.width}
           >
             <XStack
@@ -144,5 +154,5 @@ function DataTableHeaderComponent<TData>({
 }
 
 export const DataTableHeader = memo(
-  DataTableHeaderComponent
+  DataTableHeaderComponent,
 ) as typeof DataTableHeaderComponent;

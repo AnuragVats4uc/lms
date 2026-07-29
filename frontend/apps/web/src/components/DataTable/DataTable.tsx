@@ -118,15 +118,13 @@ function DataTableComponent<TData>(props: DataTableProps<TData>) {
       actionColumn
         ? [...state.visibleColumns, actionColumn]
         : state.visibleColumns,
-    [actionColumn, state.visibleColumns]
+    [actionColumn, state.visibleColumns],
   );
 
   const gridTemplateColumns = useMemo(() => {
     const selectionColumn = selectable ? "48px " : "";
 
-    return `${selectionColumn}${visibleColumns
-      .map(getColumnSize)
-      .join(" ")}`;
+    return `${selectionColumn}${visibleColumns.map(getColumnSize).join(" ")}`;
   }, [selectable, visibleColumns]);
 
   const renderContext = {
@@ -145,6 +143,7 @@ function DataTableComponent<TData>(props: DataTableProps<TData>) {
     <AppCard
       background={DATA_TABLE_COLORS.background}
       borderColor={DATA_TABLE_COLORS.border}
+      className="lms-data-table-card"
       p={0}
       style={{
         borderRadius: 14,
@@ -202,6 +201,7 @@ function DataTableComponent<TData>(props: DataTableProps<TData>) {
             {loading ? (
               <DataTableSkeleton
                 columnCount={visibleColumns.length + (selectable ? 1 : 0)}
+                gridTemplateColumns={gridTemplateColumns}
               />
             ) : error ? (
               <DataTableError error={error} />
@@ -245,6 +245,4 @@ function DataTableComponent<TData>(props: DataTableProps<TData>) {
   );
 }
 
-export const DataTable = memo(
-  DataTableComponent
-) as typeof DataTableComponent;
+export const DataTable = memo(DataTableComponent) as typeof DataTableComponent;

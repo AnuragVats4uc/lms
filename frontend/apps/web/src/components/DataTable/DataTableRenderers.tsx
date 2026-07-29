@@ -3,11 +3,7 @@
 import { memo, type ReactNode } from "react";
 import { ExternalLink } from "lucide-react";
 import { Text, XStack, YStack } from "@repo/ui";
-import {
-  AppAvatar,
-  AppBadge,
-  type AppBadgeTone,
-} from "@repo/ui/primitives";
+import { AppAvatar, AppBadge, type AppBadgeTone } from "@repo/ui/primitives";
 
 import { DATA_TABLE_COLORS } from "./constants";
 
@@ -88,7 +84,7 @@ export const DataTableTextCell = memo(function DataTableTextCell({
           color={DATA_TABLE_COLORS.muted}
           fontSize={11}
           lineHeight={14}
-          numberOfLines={1}
+          numberOfLines={2}
         >
           {secondary}
         </Text>
@@ -107,8 +103,9 @@ export const DataTableEmailCell = memo(function DataTableEmailCell({
     <Text
       color={DATA_TABLE_COLORS.muted}
       fontSize="$caption"
-      lineHeight="$caption"
-      numberOfLines={1}
+      lineHeight={16}
+      numberOfLines={2}
+      style={{ maxWidth: "100%", overflowWrap: "anywhere" }}
     >
       <a
         href={href.startsWith("mailto:") ? href : `mailto:${href}`}
@@ -148,8 +145,9 @@ export const DataTableWebsiteCell = memo(function DataTableWebsiteCell({
         color={DATA_TABLE_COLORS.green}
         fontSize="$caption"
         fontWeight="$button"
-        lineHeight="$caption"
-        numberOfLines={1}
+        lineHeight={16}
+        numberOfLines={2}
+        style={{ maxWidth: "100%", overflowWrap: "anywhere" }}
       >
         <a
           href={href}

@@ -7,11 +7,13 @@ import { DATA_TABLE_COLORS } from "./constants";
 
 interface DataTableSkeletonProps {
   columnCount: number;
+  gridTemplateColumns?: string;
   rowCount?: number;
 }
 
 export const DataTableSkeleton = memo(function DataTableSkeleton({
   columnCount,
+  gridTemplateColumns,
   rowCount = 8,
 }: DataTableSkeletonProps) {
   return (
@@ -23,12 +25,16 @@ export const DataTableSkeleton = memo(function DataTableSkeleton({
             borderBottomColor: DATA_TABLE_COLORS.divider,
             borderBottomWidth: 1,
             display: "grid",
-            gridTemplateColumns: `repeat(${columnCount}, minmax(140px, 1fr))`,
-            minHeight: 58,
+            gridTemplateColumns:
+              gridTemplateColumns ??
+              `repeat(${columnCount}, minmax(140px, 1fr))`,
+            minHeight: 64,
+            minWidth: "max-content",
+            width: "100%",
           }}
         >
           {Array.from({ length: columnCount }).map((__, columnIndex) => (
-            <XStack key={columnIndex} px="$4" style={{ alignItems: "center" }}>
+            <XStack key={columnIndex} px="$3" style={{ alignItems: "center" }}>
               <XStack
                 style={{
                   backgroundColor: DATA_TABLE_COLORS.graySoft,

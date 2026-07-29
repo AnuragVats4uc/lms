@@ -49,6 +49,7 @@ function DataTableRowComponent<TData>({
           gridTemplateColumns,
           minWidth: "max-content",
           transition: "background-color 160ms ease",
+          width: "100%",
         }}
       >
         {selectable ? (
@@ -57,7 +58,9 @@ function DataTableRowComponent<TData>({
               aria-checked={Boolean(isSelected)}
               aria-label="Select row"
               background={isSelected ? DATA_TABLE_COLORS.green : "#FFFFFF"}
-              borderColor={isSelected ? DATA_TABLE_COLORS.green : DATA_TABLE_COLORS.border}
+              borderColor={
+                isSelected ? DATA_TABLE_COLORS.green : DATA_TABLE_COLORS.border
+              }
               borderWidth={1}
               height={18}
               onPress={onToggleSelected}
@@ -71,13 +74,16 @@ function DataTableRowComponent<TData>({
 
         {columns.map((column, columnIndex) => {
           const value = getRowValue(row, column);
-          const sticky = stickyFirstColumn && columnIndex === 0 && !selectable;
+          const stickyEnd = column.meta?.stickyEnd === true;
+          const sticky = stickyEnd || (stickyFirstColumn && columnIndex === 0);
 
           return (
             <DataTableCell
               align={column.align}
               key={column.id}
               sticky={sticky}
+              stickyOffset={stickyEnd ? 0 : selectable ? 48 : 0}
+              stickySide={stickyEnd ? "right" : "left"}
               width={column.width}
             >
               {column.cell
@@ -104,5 +110,5 @@ function DataTableRowComponent<TData>({
 }
 
 export const DataTableRow = memo(
-  DataTableRowComponent
+  DataTableRowComponent,
 ) as typeof DataTableRowComponent;

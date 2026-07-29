@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 
 export interface NavigationItem {
+  children?: NavigationItem[];
+  group?: string;
   href: string;
   icon: ComponentType<{
     color?: string;

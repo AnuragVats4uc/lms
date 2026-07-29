@@ -39,6 +39,7 @@ export const DataTablePagination = memo(function DataTablePagination({
 
   return (
     <XStack
+      className="lms-data-table-pagination"
       px="$4"
       py="$3"
       style={{
@@ -53,7 +54,11 @@ export const DataTablePagination = memo(function DataTablePagination({
         Showing {start}-{end} of {total} {entityLabel}
       </Text>
 
-      <XStack gap="$2" style={{ alignItems: "center" }}>
+      <XStack
+        className="lms-data-table-pagination-pages"
+        gap="$2"
+        style={{ alignItems: "center" }}
+      >
         <Button
           aria-label="Previous page"
           background="#FFFFFF"
@@ -87,16 +92,22 @@ export const DataTablePagination = memo(function DataTablePagination({
                 pageNumber === page ? DATA_TABLE_COLORS.greenSoft : "#FFFFFF"
               }
               borderColor={
-                pageNumber === page ? DATA_TABLE_COLORS.green : DATA_TABLE_COLORS.border
+                pageNumber === page
+                  ? DATA_TABLE_COLORS.green
+                  : DATA_TABLE_COLORS.border
               }
               borderWidth={1}
               height={36}
               key={pageNumber}
               onPress={() => setPage(pageNumber)}
               rounded="$3"
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+              }}
               width={36}
             >
-              <Button.Text
+              <Text
                 color={
                   pageNumber === page
                     ? DATA_TABLE_COLORS.green
@@ -105,10 +116,10 @@ export const DataTablePagination = memo(function DataTablePagination({
                 fontSize="$caption"
                 fontWeight="$button"
               >
-                {pageNumber}
-              </Button.Text>
+                {String(pageNumber)}
+              </Text>
             </Button>
-          )
+          ),
         )}
 
         <Button
@@ -128,7 +139,11 @@ export const DataTablePagination = memo(function DataTablePagination({
         </Button>
       </XStack>
 
-      <XStack gap="$2" style={{ alignItems: "center" }}>
+      <XStack
+        className="lms-data-table-page-size"
+        gap="$2"
+        style={{ alignItems: "center" }}
+      >
         <Text color={DATA_TABLE_COLORS.muted} fontSize="$caption">
           Rows per page
         </Text>

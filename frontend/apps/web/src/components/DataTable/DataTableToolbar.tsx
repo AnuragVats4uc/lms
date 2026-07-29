@@ -1,12 +1,7 @@
 "use client";
 
 import { memo, useEffect, useState } from "react";
-import {
-  Download,
-  RefreshCw,
-  Search,
-  SlidersHorizontal,
-} from "lucide-react";
+import { Download, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
 import { Button, Input, Text, XStack, YStack } from "@repo/ui";
 
 import { DATA_TABLE_COLORS } from "./constants";
@@ -54,7 +49,7 @@ function DataTableToolbarComponent<TData>({
   useEffect(() => {
     const timeout = window.setTimeout(
       () => setSearchValue(draftSearch),
-      searchConfig?.debounceMs ?? 300
+      searchConfig?.debounceMs ?? 300,
     );
 
     return () => window.clearTimeout(timeout);
@@ -65,6 +60,7 @@ function DataTableToolbarComponent<TData>({
   return (
     <YStack gap="$3">
       <XStack
+        className="lms-data-table-toolbar"
         gap="$3"
         style={{
           alignItems: "center",
@@ -74,6 +70,7 @@ function DataTableToolbarComponent<TData>({
       >
         {searchConfig?.enabled === false ? null : (
           <XStack
+            className="lms-data-table-search"
             gap="$3"
             px="$3"
             style={{
@@ -102,16 +99,18 @@ function DataTableToolbarComponent<TData>({
               height={38}
               onChangeText={setDraftSearch}
               p={0}
-              placeholder={
-                searchConfig?.placeholder ?? "Search..."
-              }
+              placeholder={searchConfig?.placeholder ?? "Search..."}
               placeholderTextColor={DATA_TABLE_COLORS.muted as never}
               value={draftSearch}
             />
           </XStack>
         )}
 
-        <XStack gap="$2" style={{ alignItems: "center", flexWrap: "wrap" }}>
+        <XStack
+          className="lms-data-table-toolbar-actions"
+          gap="$2"
+          style={{ alignItems: "center", flexWrap: "wrap" }}
+        >
           {hasBulkSelection
             ? bulkActions.map((action) => (
                 <Button
@@ -133,7 +132,9 @@ function DataTableToolbarComponent<TData>({
                 >
                   {action.icon}
                   <Button.Text
-                    color={action.destructive ? DATA_TABLE_COLORS.red : "#FFFFFF"}
+                    color={
+                      action.destructive ? DATA_TABLE_COLORS.red : "#FFFFFF"
+                    }
                     fontSize="$caption"
                     fontWeight="$button"
                   >
@@ -238,5 +239,5 @@ function DataTableToolbarComponent<TData>({
 }
 
 export const DataTableToolbar = memo(
-  DataTableToolbarComponent
+  DataTableToolbarComponent,
 ) as typeof DataTableToolbarComponent;

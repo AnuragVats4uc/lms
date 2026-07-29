@@ -11,6 +11,8 @@ interface DataTableCellProps {
   children: ReactNode;
   className?: string;
   sticky?: boolean;
+  stickyOffset?: number;
+  stickySide?: "left" | "right";
   width?: number | string;
 }
 
@@ -25,20 +27,30 @@ export const DataTableCell = memo(function DataTableCell({
   children,
   className,
   sticky,
+  stickyOffset = 0,
+  stickySide = "left",
   width,
 }: DataTableCellProps) {
   return (
     <XStack
-      className={className}
-      px="$4"
+      className={[
+        className,
+        sticky ? "lms-data-table-cell-sticky" : "",
+        sticky && stickySide === "left" ? "is-sticky-left" : "",
+        sticky && stickySide === "right" ? "is-sticky-right" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      px="$3"
       style={{
         alignItems: "center",
         backgroundColor: sticky ? DATA_TABLE_COLORS.background : undefined,
         justifyContent: alignmentMap[align],
-        minHeight: 58,
+        minHeight: 64,
         minWidth: 0,
         position: sticky ? "sticky" : undefined,
-        left: sticky ? 0 : undefined,
+        left: sticky && stickySide === "left" ? stickyOffset : undefined,
+        right: sticky && stickySide === "right" ? stickyOffset : undefined,
         width,
         zIndex: sticky ? 2 : undefined,
       }}
