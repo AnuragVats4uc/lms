@@ -734,6 +734,10 @@ body {
 .lms-organization-management-grid {
   align-items: flex-start !important;
   display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.lms-organization-management-grid.is-side-panel-open {
   grid-template-columns: minmax(0, 1fr) 336px;
 }
 

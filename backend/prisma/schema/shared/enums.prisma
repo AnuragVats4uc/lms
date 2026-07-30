@@ -3,6 +3,13 @@ enum OrganizationStatus {
   INACTIVE
 }
 
+enum SessionStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE

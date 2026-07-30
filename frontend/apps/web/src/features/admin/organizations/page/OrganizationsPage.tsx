@@ -81,7 +81,12 @@ function OrganizationsPageContent() {
       />
 
       <XStack
-        className="lms-organization-management-grid"
+        className={[
+          "lms-organization-management-grid",
+          page.isSidePanelOpen ? "is-side-panel-open" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         gap="$4"
         style={{ alignItems: "flex-start", width: "100%" }}
       >

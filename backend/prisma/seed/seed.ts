@@ -34,6 +34,7 @@ const permissionModules = [
   'students',
   'roles',
   'permissions',
+  'session',
 ] as const;
 
 const crudActions = [

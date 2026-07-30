@@ -16,6 +16,7 @@ import { PermissionsGuard } from './modules/auth/permissions/permissions.guard';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { RolesGuard } from './modules/auth/roles/roles.guard';
+import { SessionModule } from './modules/session/session.module';
 import { StudentsModule } from './modules/students/students.module';
 
 @Module({
@@ -40,6 +41,7 @@ import { StudentsModule } from './modules/students/students.module';
     PermissionsModule,
     RolesModule,
     OrganizationModule,
+    SessionModule,
     StudentsModule,
   ],
   controllers: [AppController],
