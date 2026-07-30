@@ -46,7 +46,7 @@ export const DataTableCell = memo(function DataTableCell({
         alignItems: "center",
         backgroundColor: sticky ? DATA_TABLE_COLORS.background : undefined,
         justifyContent: alignmentMap[align],
-        minHeight: 64,
+        minHeight: 58,
         minWidth: 0,
         position: sticky ? "sticky" : undefined,
         left: sticky && stickySide === "left" ? stickyOffset : undefined,
@@ -58,8 +58,8 @@ export const DataTableCell = memo(function DataTableCell({
       {typeof children === "string" || typeof children === "number" ? (
         <Text
           color={DATA_TABLE_COLORS.text}
-          fontSize="$caption"
-          lineHeight="$caption"
+          fontSize={11}
+          lineHeight={15}
           numberOfLines={1}
         >
           {children}

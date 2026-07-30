@@ -2,8 +2,8 @@
 
 import { memo, type ReactNode } from "react";
 import { ExternalLink } from "lucide-react";
-import { Text, XStack, YStack } from "@repo/ui";
-import { AppAvatar, AppBadge, type AppBadgeTone } from "@repo/ui/primitives";
+import { Avatar, Text, XStack, YStack } from "@repo/ui";
+import { AppBadge, type AppBadgeTone } from "@repo/ui/primitives";
 
 import { DATA_TABLE_COLORS } from "./constants";
 
@@ -54,12 +54,76 @@ const redBadgeStyle = {
   color: DATA_TABLE_COLORS.red,
 } as const;
 
+function getInitials(label: string) {
+  const parts = label.trim().split(/\s+/u).filter(Boolean);
+
+  if (!parts.length) {
+    return "?";
+  }
+
+  return parts
+    .slice(0, 2)
+    .map((part) => part.charAt(0))
+    .join("")
+    .toUpperCase();
+}
+
 export const DataTableAvatarCell = memo(function DataTableAvatarCell({
   imageSrc,
   label,
   subtitle,
 }: DataTableAvatarCellProps) {
-  return <AppAvatar imageSrc={imageSrc} label={label} subtitle={subtitle} />;
+  return (
+    <XStack gap="$2" style={{ alignItems: "center", minWidth: 0, width: "100%" }}>
+      {imageSrc ? (
+        <Avatar circular size={30} style={{ flexShrink: 0 }}>
+          <Avatar.Image src={imageSrc} />
+          <Avatar.Fallback background="#DDF4E7">
+            <Text color="#047857" fontSize={11} fontWeight="$button">
+              {getInitials(label)}
+            </Text>
+          </Avatar.Fallback>
+        </Avatar>
+      ) : (
+        <XStack
+          style={{
+            alignItems: "center",
+            backgroundColor: "#DDF4E7",
+            borderRadius: 999,
+            flexShrink: 0,
+            height: 30,
+            justifyContent: "center",
+            width: 30,
+          }}
+        >
+          <Text color="#047857" fontSize={11} fontWeight="$button">
+            {getInitials(label)}
+          </Text>
+        </XStack>
+      )}
+      <YStack style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          color={DATA_TABLE_COLORS.text}
+          fontSize={12}
+          fontWeight="$button"
+          lineHeight={16}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+        {subtitle ? (
+          <Text
+            color={DATA_TABLE_COLORS.muted}
+            fontSize={11}
+            lineHeight={15}
+            numberOfLines={2}
+          >
+            {subtitle}
+          </Text>
+        ) : null}
+      </YStack>
+    </XStack>
+  );
 });
 
 export const DataTableUserCell = DataTableAvatarCell;
@@ -72,9 +136,9 @@ export const DataTableTextCell = memo(function DataTableTextCell({
     <YStack gap="$1" style={{ minWidth: 0 }}>
       <Text
         color={DATA_TABLE_COLORS.text}
-        fontSize="$caption"
+        fontSize={12}
         fontWeight="$button"
-        lineHeight="$caption"
+        lineHeight={16}
         numberOfLines={1}
       >
         {primary}
@@ -82,7 +146,7 @@ export const DataTableTextCell = memo(function DataTableTextCell({
       {secondary ? (
         <Text
           color={DATA_TABLE_COLORS.muted}
-          fontSize={11}
+          fontSize={10}
           lineHeight={14}
           numberOfLines={2}
         >
@@ -102,8 +166,8 @@ export const DataTableEmailCell = memo(function DataTableEmailCell({
   return (
     <Text
       color={DATA_TABLE_COLORS.muted}
-      fontSize="$caption"
-      lineHeight={16}
+      fontSize={11}
+      lineHeight={15}
       numberOfLines={2}
       style={{ maxWidth: "100%", overflowWrap: "anywhere" }}
     >
@@ -125,8 +189,8 @@ export const DataTablePhoneCell = memo(function DataTablePhoneCell({
   return (
     <Text
       color={DATA_TABLE_COLORS.text}
-      fontSize="$caption"
-      lineHeight="$caption"
+      fontSize={11}
+      lineHeight={15}
       numberOfLines={1}
     >
       {value || "-"}
@@ -143,9 +207,9 @@ export const DataTableWebsiteCell = memo(function DataTableWebsiteCell({
     <XStack gap="$1" style={{ alignItems: "center", minWidth: 0 }}>
       <Text
         color={DATA_TABLE_COLORS.green}
-        fontSize="$caption"
+        fontSize={11}
         fontWeight="$button"
-        lineHeight={16}
+        lineHeight={15}
         numberOfLines={2}
         style={{ maxWidth: "100%", overflowWrap: "anywhere" }}
       >
@@ -176,7 +240,7 @@ export const DataTableBadgeCell = memo(function DataTableBadgeCell({
   if (tone === "red") {
     return (
       <Text
-        fontSize={11}
+        fontSize={10}
         fontWeight="$button"
         px="$2"
         py="$1"
@@ -207,8 +271,8 @@ export const DataTableDateCell = memo(function DataTableDateCell({
   return (
     <Text
       color={DATA_TABLE_COLORS.text}
-      fontSize="$caption"
-      lineHeight="$caption"
+      fontSize={11}
+      lineHeight={15}
       numberOfLines={1}
     >
       {label}
@@ -229,8 +293,8 @@ export const DataTableNumberCell = memo(function DataTableNumberCell({
   return (
     <Text
       color={DATA_TABLE_COLORS.text}
-      fontSize="$caption"
-      lineHeight="$caption"
+      fontSize={11}
+      lineHeight={15}
       numberOfLines={1}
       style={{ textAlign: "right", width: "100%" }}
     >

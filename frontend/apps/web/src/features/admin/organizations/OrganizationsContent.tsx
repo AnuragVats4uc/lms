@@ -7,12 +7,15 @@ import {
   useMemo,
   useRef,
   useState,
+  type FormEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Activity,
+  AlertTriangle,
   Building2,
   Check,
   CheckCircle2,
@@ -29,8 +32,14 @@ import {
 import { Button, Input, Text, XStack, YStack } from "@repo/ui";
 import { AppCard } from "@repo/ui/primitives";
 import { organizationsApi } from "@repo/api";
-import type { Organization, OrganizationStatus } from "@repo/types";
+import type {
+  CreateOrganizationRequest,
+  Organization,
+  OrganizationStatus,
+  UpdateOrganizationRequest,
+} from "@repo/types";
 
+import { AppModal } from "@/components/AppModal";
 import { DataTable, type DataTableRowId } from "@/components/DataTable";
 
 import {
@@ -69,6 +78,34 @@ interface OrganizationStat {
   value: number;
 }
 
+interface AddOrganizationFormState {
+  address: string;
+  code: string;
+  description: string;
+  email: string;
+  name: string;
+  phone: string;
+  status: OrganizationStatus;
+  website: string;
+}
+
+type OrganizationConfirmAction =
+  | { kind: "bulk-delete"; organizations: OrganizationTableRow[] }
+  | {
+      active: boolean;
+      kind: "bulk-toggle";
+      organizations: OrganizationTableRow[];
+    }
+  | { kind: "delete"; organization: OrganizationTableRow }
+  | { kind: "toggle"; organization: OrganizationTableRow };
+
+interface OrganizationToastState {
+  id: number;
+  message: string;
+  tone: "error" | "success";
+  title: string;
+}
+
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const DEFAULT_FILTERS: OrganizationFiltersState = {
   availability: [],
@@ -79,6 +116,16 @@ const DEFAULT_FILTERS: OrganizationFiltersState = {
   status: "ALL",
   syncStatus: "ALL",
   updatedBy: "",
+};
+const DEFAULT_ADD_ORGANIZATION_FORM: AddOrganizationFormState = {
+  address: "",
+  code: "",
+  description: "",
+  email: "",
+  name: "",
+  phone: "",
+  status: "ACTIVE",
+  website: "",
 };
 
 const availabilityOptions: Array<{ label: string; value: AvailabilityFilter }> =
@@ -320,11 +367,10 @@ function getActiveFilterChips(filters: OrganizationFiltersState) {
 }
 
 function useAnimatedNumber(value: number, isEnabled: boolean) {
-  const [displayValue, setDisplayValue] = useState(isEnabled ? 0 : value);
+  const [displayValue, setDisplayValue] = useState(0);
 
   useEffect(() => {
     if (!isEnabled) {
-      setDisplayValue(value);
       return;
     }
 
@@ -345,7 +391,7 @@ function useAnimatedNumber(value: number, isEnabled: boolean) {
     return () => window.clearInterval(interval);
   }, [isEnabled, value]);
 
-  return displayValue;
+  return isEnabled ? displayValue : value;
 }
 
 const OrganizationStatCard = memo(function OrganizationStatCard({
@@ -415,31 +461,58 @@ function SelectControl({
   value: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ left: 0, top: 0, width: 0 });
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const selectedOption =
     options.find((option) => option.value === value) ?? options[0];
+
+  const updateMenuPosition = useCallback(() => {
+    const root = rootRef.current;
+
+    if (!root) {
+      return;
+    }
+
+    const rect = root.getBoundingClientRect();
+
+    setMenuPosition({
+      left: rect.left,
+      top: rect.bottom + 6,
+      width: rect.width,
+    });
+  }, []);
 
   useEffect(() => {
     if (!isOpen) {
       return;
     }
 
+    updateMenuPosition();
+
     const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+
       if (
-        rootRef.current &&
-        event.target instanceof Node &&
-        !rootRef.current.contains(event.target)
+        target instanceof Node &&
+        !rootRef.current?.contains(target) &&
+        !menuRef.current?.contains(target)
       ) {
         setIsOpen(false);
       }
     };
+    const handleViewportChange = () => updateMenuPosition();
 
     document.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
 
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
     };
-  }, [isOpen]);
+  }, [isOpen, updateMenuPosition]);
 
   return (
     <div
@@ -452,84 +525,69 @@ function SelectControl({
         .join(" ")}
       ref={rootRef}
     >
-      <Button
+      <button
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-label={ariaLabel}
-        background="transparent"
-        borderWidth={0}
-        height={38}
-        onPress={() => setIsOpen((current) => !current)}
-        p={0}
-        role="combobox"
-        style={{
-          alignItems: "center",
-          justifyContent: "space-between",
-          width: "100%",
+        className="lms-organization-select-trigger"
+        onClick={() => {
+          updateMenuPosition();
+          setIsOpen((current) => !current);
         }}
+        type="button"
       >
-        <YStack gap={1} style={{ minWidth: 0 }}>
-          <Text color="#52627A" fontSize={10} fontWeight="$button">
-            {label}
-          </Text>
-          <Button.Text
-            color="#0F1D3A"
-            fontSize={12}
-            fontWeight="$button"
-            numberOfLines={1}
-          >
-            {selectedOption?.label ?? value}
-          </Button.Text>
-        </YStack>
+        <span className="lms-organization-select-label">{label}</span>
+        <span className="lms-organization-select-value">
+          {selectedOption?.label ?? value}
+        </span>
         <ChevronDown
           aria-hidden="true"
           className="lms-organization-select-chevron"
-          color="#52627A"
-          size={15}
+          size={13}
         />
-      </Button>
+      </button>
 
-      {isOpen ? (
-        <div
-          className="lms-organization-select-menu"
-          role="listbox"
-          style={{ minWidth: "100%" }}
-        >
-          {options.map((option) => {
-            const isSelected = option.value === value;
+      {isOpen && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="lms-organization-select-menu"
+              ref={menuRef}
+              role="listbox"
+              style={{
+                left: menuPosition.left,
+                minWidth: menuPosition.width,
+                top: menuPosition.top,
+              }}
+            >
+              {options.map((option) => {
+                const isSelected = option.value === value;
 
-            return (
-              <Button
-                aria-selected={isSelected}
-                background={isSelected ? "#E4F7EF" : "transparent"}
-                borderWidth={0}
-                className="lms-organization-select-option"
-                height={34}
-                key={option.value}
-                onPress={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                px="$2"
-                role="option"
-                rounded="$3"
-                style={{ justifyContent: "space-between" }}
-              >
-                <Button.Text
-                  color={isSelected ? "#047857" : "#0F1D3A"}
-                  fontSize={12}
-                  fontWeight={isSelected ? "$button" : "$body"}
-                >
-                  {option.label}
-                </Button.Text>
-                {isSelected ? (
-                  <Check aria-hidden="true" color="#047857" size={14} />
-                ) : null}
-              </Button>
-            );
-          })}
-        </div>
-      ) : null}
+                return (
+                  <button
+                    aria-selected={isSelected}
+                    className={[
+                      "lms-organization-select-option",
+                      isSelected ? "is-selected" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    key={option.value}
+                    onClick={() => {
+                      onChange(option.value);
+                      setIsOpen(false);
+                    }}
+                    role="option"
+                    type="button"
+                  >
+                    <span>{option.label}</span>
+                    {isSelected ? <Check aria-hidden="true" size={13} /> : null}
+                  </button>
+                );
+              })}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
@@ -604,12 +662,19 @@ function OrganizationFilterToolbar({
               aria-label="Search organizations"
               background="transparent"
               borderWidth={0}
+              className="lms-organization-search-input"
               flex={1}
               height={36}
               onChangeText={(value) => update("search", value)}
               p={0}
-              placeholder="Search name, code, email, phone, website, admin, domain..."
+              placeholder="Search name, code, email, phone, website..."
               placeholderTextColor={"#52627A" as never}
+              focusStyle={{
+                borderColor: "transparent",
+                boxShadow: "none",
+                outlineColor: "transparent",
+              }}
+              style={{ boxShadow: "none", minWidth: 0, outline: "none" }}
               value={filters.search}
             />
           </XStack>
@@ -703,6 +768,7 @@ function OrganizationFilterToolbar({
             background="#FFFFFF"
             borderColor="#D8E1EC"
             borderWidth={1}
+            className="lms-organization-toolbar-button"
             height={40}
             onPress={onToggleAdvanced}
             rounded="$4"
@@ -717,6 +783,7 @@ function OrganizationFilterToolbar({
             background="#FFFFFF"
             borderColor="#D8E1EC"
             borderWidth={1}
+            className="lms-organization-toolbar-button"
             height={40}
             onPress={onClearFilters}
             rounded="$4"
@@ -731,6 +798,7 @@ function OrganizationFilterToolbar({
             background="#FFFFFF"
             borderColor="#D8E1EC"
             borderWidth={1}
+            className="lms-organization-toolbar-button lms-organization-toolbar-icon-button"
             height={40}
             onPress={onRefresh}
             rounded="$4"
@@ -743,6 +811,7 @@ function OrganizationFilterToolbar({
             background="#FFFFFF"
             borderColor="#D8E1EC"
             borderWidth={1}
+            className="lms-organization-toolbar-button"
             height={40}
             onPress={onExport}
             rounded="$4"
@@ -1153,6 +1222,425 @@ function PanelCount({ label, value }: { label: string; value: number }) {
   );
 }
 
+function toCreateOrganizationPayload(
+  form: AddOrganizationFormState,
+): CreateOrganizationRequest {
+  const payload: CreateOrganizationRequest = {
+    code: form.code.trim().toUpperCase(),
+    name: form.name.trim(),
+    status: form.status,
+  };
+
+  const optionalFields: Array<keyof Omit<
+    AddOrganizationFormState,
+    "code" | "name" | "status"
+  >> = ["address", "description", "email", "phone", "website"];
+
+  optionalFields.forEach((field) => {
+    const value = form[field].trim();
+
+    if (value) {
+      payload[field] = value;
+    }
+  });
+
+  return payload;
+}
+
+function toUpdateOrganizationPayload(
+  form: AddOrganizationFormState,
+): UpdateOrganizationRequest {
+  return toCreateOrganizationPayload(form);
+}
+
+function toOrganizationFormState(
+  organization: OrganizationTableRow,
+): AddOrganizationFormState {
+  return {
+    address: organization.address ?? "",
+    code: organization.code,
+    description: organization.description ?? "",
+    email: organization.email ?? "",
+    name: organization.name,
+    phone: organization.phone ?? "",
+    status: organization.status,
+    website: organization.website ?? "",
+  };
+}
+
+function AddOrganizationModal({
+  description = "Create a tenant organization and refresh the current list.",
+  error,
+  form,
+  isOpen,
+  isSubmitting,
+  onChange,
+  onClose,
+  onSubmit,
+  submitLabel = "Create Organization",
+  submittingLabel = "Creating...",
+  title = "Add Organization",
+}: {
+  description?: string;
+  error?: string;
+  form: AddOrganizationFormState;
+  isOpen: boolean;
+  isSubmitting: boolean;
+  onChange: <K extends keyof AddOrganizationFormState>(
+    key: K,
+    value: AddOrganizationFormState[K],
+  ) => void;
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  submitLabel?: string;
+  submittingLabel?: string;
+  title?: string;
+}) {
+  const formId = `organization-${title.toLowerCase().replace(/\s+/gu, "-")}-form`;
+  const submitForm = () => {
+    const formElement = document.getElementById(formId);
+
+    if (formElement instanceof HTMLFormElement) {
+      formElement.requestSubmit();
+    }
+  };
+
+  return (
+    <AppModal
+      className="lms-organization-create-modal"
+      description={description}
+      footer={
+        <>
+          <Button
+            background="#FFFFFF"
+            borderColor="#D8E1EC"
+            borderWidth={1}
+            disabled={isSubmitting}
+            height={38}
+            onPress={onClose}
+            rounded="$3"
+          >
+            <Button.Text fontSize="$caption" fontWeight="$button">
+              Cancel
+            </Button.Text>
+          </Button>
+          <Button
+            background="#059669"
+            borderColor="#059669"
+            borderWidth={1}
+            disabled={isSubmitting}
+            height={38}
+            onPress={submitForm}
+            rounded="$3"
+            type="button"
+          >
+            <Button.Text
+              color="#FFFFFF"
+              fontSize="$caption"
+              fontWeight="$button"
+            >
+              {isSubmitting ? submittingLabel : submitLabel}
+            </Button.Text>
+          </Button>
+        </>
+      }
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+    >
+      <form
+        className="lms-organization-form"
+        id={formId}
+        onSubmit={onSubmit}
+      >
+        <div className="lms-organization-form-grid">
+          <label className="lms-form-field">
+            <span>Name</span>
+            <input
+              autoFocus
+              minLength={3}
+              onChange={(event) => onChange("name", event.currentTarget.value)}
+              placeholder="Acme Learning Institute"
+              required
+              value={form.name}
+            />
+          </label>
+
+          <label className="lms-form-field">
+            <span>Code</span>
+            <input
+              maxLength={20}
+              onChange={(event) =>
+                onChange("code", event.currentTarget.value.toUpperCase())
+              }
+              pattern="[A-Z0-9_-]+"
+              placeholder="ACME"
+              required
+              value={form.code}
+            />
+          </label>
+
+          <label className="lms-form-field">
+            <span>Email</span>
+            <input
+              onChange={(event) => onChange("email", event.currentTarget.value)}
+              placeholder="admin@acme-learning.example.com"
+              type="email"
+              value={form.email}
+            />
+          </label>
+
+          <label className="lms-form-field">
+            <span>Phone</span>
+            <input
+              onChange={(event) => onChange("phone", event.currentTarget.value)}
+              placeholder="+919999999999"
+              value={form.phone}
+            />
+          </label>
+
+          <label className="lms-form-field">
+            <span>Website</span>
+            <input
+              onChange={(event) =>
+                onChange("website", event.currentTarget.value)
+              }
+              placeholder="https://acme-learning.example.com"
+              type="url"
+              value={form.website}
+            />
+          </label>
+
+          <label className="lms-form-field">
+            <span>Status</span>
+            <select
+              onChange={(event) =>
+                onChange(
+                  "status",
+                  event.currentTarget.value === "INACTIVE"
+                    ? "INACTIVE"
+                    : "ACTIVE",
+                )
+              }
+              value={form.status}
+            >
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+            </select>
+          </label>
+
+          <label className="lms-form-field">
+            <span>Description</span>
+            <textarea
+              onChange={(event) =>
+                onChange("description", event.currentTarget.value)
+              }
+              placeholder="Online learning programs."
+              rows={3}
+              value={form.description}
+            />
+          </label>
+
+          <label className="lms-form-field">
+            <span>Address</span>
+            <textarea
+              onChange={(event) =>
+                onChange("address", event.currentTarget.value)
+              }
+              placeholder="Sector 12, New Delhi"
+              rows={2}
+              value={form.address}
+            />
+          </label>
+        </div>
+
+        {error ? (
+          <Text color="#DC2626" fontSize="$caption" lineHeight="$caption">
+            {error}
+          </Text>
+        ) : null}
+      </form>
+    </AppModal>
+  );
+}
+
+function OrganizationConfirmModal({
+  action,
+  error,
+  isSubmitting,
+  onClose,
+  onConfirm,
+}: {
+  action: OrganizationConfirmAction | null;
+  error?: string;
+  isSubmitting: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const organizations = action
+    ? "organization" in action
+      ? [action.organization]
+      : action.organizations
+    : [];
+  const isBulk = organizations.length > 1;
+  const isDelete = action?.kind === "delete" || action?.kind === "bulk-delete";
+  const organization = organizations[0];
+  const nextActive =
+    action?.kind === "bulk-toggle"
+      ? action.active
+      : organization
+        ? !organization.isActive
+        : false;
+  const title = isDelete
+    ? `Delete ${isBulk ? "Organizations" : "Organization"}`
+    : `${nextActive ? "Activate" : "Deactivate"} ${
+        isBulk ? "Organizations" : "Organization"
+      }`;
+  const description = isDelete
+    ? "This will soft delete the selected organization records and refresh the list."
+    : "This will update the active state and sync status for the selected records.";
+
+  return (
+    <AppModal
+      className={isDelete ? "lms-confirm-modal is-danger" : "lms-confirm-modal"}
+      description={description}
+      isOpen={Boolean(action)}
+      onClose={onClose}
+      title={title}
+    >
+      <YStack className="lms-confirm-content" gap="$4">
+        <XStack
+          gap="$3"
+          style={{ alignItems: "center", minWidth: 0, width: "100%" }}
+        >
+          <XStack
+            className="lms-confirm-icon"
+            style={{
+              alignItems: "center",
+              flexShrink: 0,
+              justifyContent: "center",
+            }}
+          >
+            <AlertTriangle aria-hidden="true" size={22} />
+          </XStack>
+          <YStack style={{ minWidth: 0 }}>
+            <Text color="#0F1D3A" fontSize="$label" fontWeight="$button">
+              {isBulk
+                ? `${organizations.length} selected organizations`
+                : organization?.name ?? "Selected organization"}
+            </Text>
+            <Text color="#52627A" fontSize="$caption" lineHeight="$caption">
+              {isDelete
+                ? "The selected row data will be removed from the active workspace."
+                : `Status will change to ${nextActive ? "Active" : "Inactive"}.`}
+            </Text>
+          </YStack>
+        </XStack>
+
+        {error ? (
+          <Text color="#DC2626" fontSize="$caption" lineHeight="$caption">
+            {error}
+          </Text>
+        ) : null}
+
+        <XStack gap="$2" style={{ justifyContent: "flex-end" }}>
+          <Button
+            background="#FFFFFF"
+            borderColor="#D8E1EC"
+            borderWidth={1}
+            disabled={isSubmitting}
+            height={38}
+            onPress={onClose}
+            rounded="$3"
+          >
+            <Button.Text fontSize="$caption" fontWeight="$button">
+              Cancel
+            </Button.Text>
+          </Button>
+          <Button
+            background={isDelete ? "#DC2626" : "#059669"}
+            borderColor={isDelete ? "#DC2626" : "#059669"}
+            borderWidth={1}
+            disabled={isSubmitting}
+            height={38}
+            onPress={onConfirm}
+            rounded="$3"
+          >
+            <Button.Text
+              color="#FFFFFF"
+              fontSize="$caption"
+              fontWeight="$button"
+            >
+              {isSubmitting
+                ? "Working..."
+                : isDelete
+                  ? "Delete Organization"
+                  : nextActive
+                    ? "Activate"
+                    : "Deactivate"}
+            </Button.Text>
+          </Button>
+        </XStack>
+      </YStack>
+    </AppModal>
+  );
+}
+
+function OrganizationToast({
+  onDismiss,
+  toast,
+}: {
+  onDismiss: () => void;
+  toast: OrganizationToastState | null;
+}) {
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    const timeout = window.setTimeout(onDismiss, 3600);
+
+    return () => window.clearTimeout(timeout);
+  }, [onDismiss, toast]);
+
+  if (!toast || typeof document === "undefined") {
+    return null;
+  }
+
+  const Icon = toast.tone === "success" ? CheckCircle2 : XCircle;
+
+  return createPortal(
+    <div
+      className={[
+        "lms-organization-toast",
+        toast.tone === "error" ? "is-error" : "is-success",
+      ].join(" ")}
+      role="status"
+      aria-atomic="true"
+      aria-live="polite"
+    >
+      <div className="lms-organization-toast-content">
+        <div className="lms-organization-toast-icon">
+          <Icon aria-hidden="true" size={18} />
+        </div>
+        <div className="lms-organization-toast-copy">
+          <strong>{toast.title}</strong>
+          <span>{toast.message}</span>
+        </div>
+      </div>
+      <button
+        aria-label="Dismiss notification"
+        className="lms-organization-toast-close"
+        onClick={onDismiss}
+        type="button"
+      >
+        <X aria-hidden="true" size={13} />
+      </button>
+    </div>,
+    document.body,
+  );
+}
+
 export function OrganizationsContent() {
   const router = useRouter();
   const pathname = usePathname();
@@ -1167,9 +1655,24 @@ export function OrganizationsContent() {
     getFiltersFromParams(searchParams),
   );
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingOrganization, setEditingOrganization] =
+    useState<OrganizationTableRow | null>(null);
+  const [confirmAction, setConfirmAction] =
+    useState<OrganizationConfirmAction | null>(null);
   const [selectedRowIds, setSelectedRowIds] = useState<DataTableRowId[]>([]);
   const [selectedOrganization, setSelectedOrganization] =
     useState<OrganizationTableRow | null>(null);
+  const [addForm, setAddForm] = useState<AddOrganizationFormState>(
+    DEFAULT_ADD_ORGANIZATION_FORM,
+  );
+  const [editForm, setEditForm] = useState<AddOrganizationFormState>(
+    DEFAULT_ADD_ORGANIZATION_FORM,
+  );
+  const [addFormError, setAddFormError] = useState<string | null>(null);
+  const [editFormError, setEditFormError] = useState<string | null>(null);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [toast, setToast] = useState<OrganizationToastState | null>(null);
 
   const serverStatus =
     filters.status === "ACTIVE" || filters.status === "INACTIVE"
@@ -1193,6 +1696,22 @@ export function OrganizationsContent() {
       serverStatus,
     ],
     staleTime: 30_000,
+  });
+  const addOrganizationMutation = useMutation({
+    mutationFn: (payload: CreateOrganizationRequest) =>
+      organizationsApi.create(payload),
+  });
+  const updateOrganizationMutation = useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number;
+      payload: UpdateOrganizationRequest;
+    }) => organizationsApi.update(id, payload),
+  });
+  const deleteOrganizationMutation = useMutation({
+    mutationFn: (id: number) => organizationsApi.remove(id),
   });
 
   const rows = useMemo(
@@ -1258,7 +1777,7 @@ export function OrganizationsContent() {
 
     const nextSelected = rows.find((row) => row.id === selectedOrganization.id);
     if (nextSelected) {
-      setSelectedOrganization(nextSelected);
+      queueMicrotask(() => setSelectedOrganization(nextSelected));
     }
   }, [rows, selectedOrganization]);
 
@@ -1302,41 +1821,317 @@ export function OrganizationsContent() {
     console.info("Export organizations", { filters, page, pageSize });
   }, [filters, page, pageSize]);
 
-  const handleAddOrganization = useCallback(() => {
-    console.info("Add organization");
-  }, []);
-
-  const handleConfirmedAction = useCallback(
-    (message: string, callback: () => void) => {
-      if (window.confirm(message)) {
-        callback();
-      }
+  const showToast = useCallback(
+    (toastState: Omit<OrganizationToastState, "id">) => {
+      setToast({ ...toastState, id: Date.now() });
     },
     [],
   );
+
+  const dismissToast = useCallback(() => {
+    setToast(null);
+  }, []);
+
+  const handleOpenAddOrganization = useCallback(() => {
+    setAddForm(DEFAULT_ADD_ORGANIZATION_FORM);
+    setAddFormError(null);
+    setIsAddModalOpen(true);
+  }, []);
+
+  const handleCloseAddOrganization = useCallback(() => {
+    if (addOrganizationMutation.isPending) {
+      return;
+    }
+
+    setIsAddModalOpen(false);
+    setAddFormError(null);
+  }, [addOrganizationMutation.isPending]);
+
+  const updateAddForm = useCallback(
+    <K extends keyof AddOrganizationFormState>(
+      key: K,
+      value: AddOrganizationFormState[K],
+    ) => {
+      setAddForm((current) => ({ ...current, [key]: value }));
+      setAddFormError(null);
+    },
+    [],
+  );
+
+  const handleSubmitAddOrganization = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
+      const payload = toCreateOrganizationPayload(addForm);
+
+      if (!payload.name || !payload.code) {
+        const message = "Organization name and code are required.";
+
+        setAddFormError(message);
+        showToast({
+          message,
+          title: "Missing organization details",
+          tone: "error",
+        });
+        return;
+      }
+
+      try {
+        const organization = await addOrganizationMutation.mutateAsync(payload);
+
+        setIsAddModalOpen(false);
+        setAddForm(DEFAULT_ADD_ORGANIZATION_FORM);
+        setSelectedOrganization(toOrganizationRow(organization));
+        showToast({
+          message: `${organization.name} has been created successfully.`,
+          title: "Organization created",
+          tone: "success",
+        });
+        await organizationsQuery.refetch();
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "The organization could not be created.";
+
+        setAddFormError(message);
+        showToast({
+          message,
+          title: "Create failed",
+          tone: "error",
+        });
+      }
+    },
+    [addForm, addOrganizationMutation, organizationsQuery, showToast],
+  );
+
+  const handleOpenEditOrganization = useCallback(
+    (organization: OrganizationTableRow) => {
+      setEditingOrganization(organization);
+      setEditForm(toOrganizationFormState(organization));
+      setEditFormError(null);
+    },
+    [],
+  );
+
+  const handleCloseEditOrganization = useCallback(() => {
+    if (updateOrganizationMutation.isPending) {
+      return;
+    }
+
+    setEditingOrganization(null);
+    setEditFormError(null);
+  }, [updateOrganizationMutation.isPending]);
+
+  const updateEditForm = useCallback(
+    <K extends keyof AddOrganizationFormState>(
+      key: K,
+      value: AddOrganizationFormState[K],
+    ) => {
+      setEditForm((current) => ({ ...current, [key]: value }));
+      setEditFormError(null);
+    },
+    [],
+  );
+
+  const handleSubmitEditOrganization = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
+      if (!editingOrganization) {
+        return;
+      }
+
+      const payload = toUpdateOrganizationPayload(editForm);
+
+      if (!payload.name || !payload.code) {
+        const message = "Organization name and code are required.";
+
+        setEditFormError(message);
+        showToast({
+          message,
+          title: "Missing organization details",
+          tone: "error",
+        });
+        return;
+      }
+
+      try {
+        const organization = await updateOrganizationMutation.mutateAsync({
+          id: editingOrganization.id,
+          payload,
+        });
+
+        setEditingOrganization(null);
+        setSelectedOrganization(toOrganizationRow(organization));
+        showToast({
+          message: `${organization.name} has been updated successfully.`,
+          title: "Organization updated",
+          tone: "success",
+        });
+        await organizationsQuery.refetch();
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "The organization could not be updated.";
+
+        setEditFormError(
+          message,
+        );
+        showToast({
+          message,
+          title: "Update failed",
+          tone: "error",
+        });
+      }
+    },
+    [
+      editForm,
+      editingOrganization,
+      organizationsQuery,
+      showToast,
+      updateOrganizationMutation,
+    ],
+  );
+
+  const handleCloseConfirmAction = useCallback(() => {
+    if (
+      deleteOrganizationMutation.isPending ||
+      updateOrganizationMutation.isPending
+    ) {
+      return;
+    }
+
+    setConfirmAction(null);
+    setConfirmError(null);
+  }, [deleteOrganizationMutation.isPending, updateOrganizationMutation.isPending]);
+
+  const handleConfirmOrganizationAction = useCallback(async () => {
+    if (!confirmAction) {
+      return;
+    }
+
+    try {
+      if (confirmAction.kind === "delete") {
+        const { organization } = confirmAction;
+
+        await deleteOrganizationMutation.mutateAsync(organization.id);
+
+        setSelectedRowIds((current) =>
+          current.filter((id) => id !== organization.id),
+        );
+        setSelectedOrganization((current) =>
+          current?.id === organization.id ? null : current,
+        );
+        showToast({
+          message: `${organization.name} has been deleted.`,
+          title: "Organization deleted",
+          tone: "success",
+        });
+      } else if (confirmAction.kind === "bulk-delete") {
+        await Promise.all(
+          confirmAction.organizations.map((organization) =>
+            deleteOrganizationMutation.mutateAsync(organization.id),
+          ),
+        );
+
+        const deletedIds = new Set(
+          confirmAction.organizations.map((organization) => organization.id),
+        );
+
+        setSelectedRowIds((current) =>
+          current.filter((id) => !deletedIds.has(Number(id))),
+        );
+        setSelectedOrganization((current) =>
+          current && deletedIds.has(current.id) ? null : current,
+        );
+        showToast({
+          message: `${confirmAction.organizations.length} organizations have been deleted.`,
+          title: "Organizations deleted",
+          tone: "success",
+        });
+      } else if (confirmAction.kind === "toggle") {
+        const isActive = !confirmAction.organization.isActive;
+        const updated = await updateOrganizationMutation.mutateAsync({
+          id: confirmAction.organization.id,
+          payload: {
+            isActive,
+            status: isActive ? "ACTIVE" : "INACTIVE",
+          },
+        });
+
+        setSelectedOrganization(toOrganizationRow(updated));
+        showToast({
+          message: `${updated.name} is now ${isActive ? "active" : "inactive"}.`,
+          title: "Status updated",
+          tone: "success",
+        });
+      } else {
+        await Promise.all(
+          confirmAction.organizations.map((organization) =>
+            updateOrganizationMutation.mutateAsync({
+              id: organization.id,
+              payload: {
+                isActive: confirmAction.active,
+                status: confirmAction.active ? "ACTIVE" : "INACTIVE",
+              },
+            }),
+          ),
+        );
+        showToast({
+          message: `${confirmAction.organizations.length} organizations are now ${
+            confirmAction.active ? "active" : "inactive"
+          }.`,
+          title: "Statuses updated",
+          tone: "success",
+        });
+      }
+
+      setConfirmAction(null);
+      setConfirmError(null);
+      await organizationsQuery.refetch();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "The organization action could not be completed.";
+
+      setConfirmError(message);
+      showToast({
+        message,
+        title: "Action failed",
+        tone: "error",
+      });
+    }
+  }, [
+    confirmAction,
+    deleteOrganizationMutation,
+    organizationsQuery,
+    showToast,
+    updateOrganizationMutation,
+  ]);
 
   const rowActionHandlers = useMemo<OrganizationRowActionHandlers>(
     () => ({
       onAssignCourses: (organization) =>
         console.info("Assign courses", organization.id),
-      onDelete: (organization) =>
-        handleConfirmedAction(`Delete ${organization.name}?`, () =>
-          console.info("Delete organization", organization.id),
-        ),
-      onEdit: (organization) =>
-        console.info("Edit organization", organization.id),
+      onDelete: (organization) => {
+        setConfirmAction({ kind: "delete", organization });
+        setConfirmError(null);
+      },
+      onEdit: handleOpenEditOrganization,
       onManageUsers: (organization) =>
         console.info("Manage users", organization.id),
-      onToggleActive: (organization) =>
-        handleConfirmedAction(
-          `${organization.isActive ? "Deactivate" : "Activate"} ${organization.name}?`,
-          () => console.info("Toggle organization", organization.id),
-        ),
+      onToggleActive: (organization) => {
+        setConfirmAction({ kind: "toggle", organization });
+        setConfirmError(null);
+      },
       onView: (organization) => setSelectedOrganization(organization),
       onViewAnalytics: (organization) =>
         console.info("View analytics", organization.id),
     }),
-    [handleConfirmedAction],
+    [handleOpenEditOrganization],
   );
 
   const columns = useMemo(
@@ -1368,6 +2163,9 @@ export function OrganizationsContent() {
   ];
 
   const hasFilters = activeChips.length > 0;
+  const selectedOrganizationsForBulk = filteredRows.filter((row) =>
+    selectedRowIds.includes(row.id),
+  );
   const emptyDescription =
     filters.search || hasFilters
       ? "No organizations match the current search or filter criteria."
@@ -1444,7 +2242,7 @@ export function OrganizationsContent() {
           </OrganizationHeaderAction>
           <OrganizationHeaderAction
             icon={<Plus aria-hidden="true" color="#FFFFFF" size={16} />}
-            onPress={handleAddOrganization}
+            onPress={handleOpenAddOrganization}
             primary
           >
             Add Organization
@@ -1482,6 +2280,43 @@ export function OrganizationsContent() {
         onToggleAdvanced={() => setIsAdvancedOpen((current) => !current)}
       />
 
+      <AddOrganizationModal
+        error={addFormError ?? undefined}
+        form={addForm}
+        isOpen={isAddModalOpen}
+        isSubmitting={addOrganizationMutation.isPending}
+        onChange={updateAddForm}
+        onClose={handleCloseAddOrganization}
+        onSubmit={handleSubmitAddOrganization}
+      />
+
+      <AddOrganizationModal
+        description="Update organization profile data and refresh the current list."
+        error={editFormError ?? undefined}
+        form={editForm}
+        isOpen={Boolean(editingOrganization)}
+        isSubmitting={updateOrganizationMutation.isPending}
+        onChange={updateEditForm}
+        onClose={handleCloseEditOrganization}
+        onSubmit={handleSubmitEditOrganization}
+        submitLabel="Update Organization"
+        submittingLabel="Updating..."
+        title="Edit Organization"
+      />
+
+      <OrganizationConfirmModal
+        action={confirmAction}
+        error={confirmError ?? undefined}
+        isSubmitting={
+          deleteOrganizationMutation.isPending ||
+          updateOrganizationMutation.isPending
+        }
+        onClose={handleCloseConfirmAction}
+        onConfirm={handleConfirmOrganizationAction}
+      />
+
+      <OrganizationToast onDismiss={dismissToast} toast={toast} />
+
       <ActiveFilterChips
         filters={activeChips}
         onClear={clearFilters}
@@ -1497,19 +2332,22 @@ export function OrganizationsContent() {
           <BulkActionBar
             count={selectedRowIds.length}
             onClear={() => setSelectedRowIds([])}
-            onDelete={() =>
-              handleConfirmedAction(
-                `Delete ${selectedRowIds.length} selected organizations?`,
-                () => console.info("Delete selected", selectedRowIds),
-              )
-            }
+            onDelete={() => {
+              setConfirmAction({
+                kind: "bulk-delete",
+                organizations: selectedOrganizationsForBulk,
+              });
+              setConfirmError(null);
+            }}
             onExport={() => console.info("Export selected", selectedRowIds)}
-            onSetActive={(active) =>
-              console.info(
-                active ? "Activate selected" : "Deactivate selected",
-                selectedRowIds,
-              )
-            }
+            onSetActive={(active) => {
+              setConfirmAction({
+                active,
+                kind: "bulk-toggle",
+                organizations: selectedOrganizationsForBulk,
+              });
+              setConfirmError(null);
+            }}
           />
 
           <DataTable<OrganizationTableRow>
@@ -1520,7 +2358,7 @@ export function OrganizationsContent() {
               primaryAction: (
                 <OrganizationHeaderAction
                   icon={<Plus aria-hidden="true" color="#FFFFFF" size={16} />}
-                  onPress={handleAddOrganization}
+                  onPress={handleOpenAddOrganization}
                   primary
                 >
                   Add Organization

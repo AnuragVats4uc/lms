@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   BarChart3,
   BookOpen,
@@ -18,7 +19,7 @@ import {
   Trash2,
   UsersRound,
 } from "lucide-react";
-import { Button, Text, XStack, YStack } from "@repo/ui";
+import { Button, Text } from "@repo/ui";
 import type { Organization } from "@repo/types";
 
 import {
@@ -159,6 +160,7 @@ const OrganizationActionsCell = memo(function OrganizationActionsCell({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ left: 0, top: 0 });
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLDivElement | null>(null);
 
   const updateMenuPosition = useCallback(() => {
@@ -198,10 +200,13 @@ const OrganizationActionsCell = memo(function OrganizationActionsCell({
     updateMenuPosition();
 
     const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+
       if (
+        target instanceof Node &&
         triggerRef.current &&
-        event.target instanceof Node &&
-        !triggerRef.current.contains(event.target)
+        !triggerRef.current.contains(target) &&
+        !menuRef.current?.contains(target)
       ) {
         setIsOpen(false);
       }
@@ -261,58 +266,67 @@ const OrganizationActionsCell = memo(function OrganizationActionsCell({
         <MoreVertical aria-hidden="true" color="#0F1D3A" size={16} />
       </Button>
 
-      {isOpen ? (
-        <YStack
-          className="lms-organization-row-menu"
-          p="$2"
-          role="menu"
-          style={{
-            background: "linear-gradient(180deg, #FFFFFF 0%, #FBFDFD 100%)",
-            borderColor: "#D8E1EC",
-            borderRadius: 12,
-            borderWidth: 1,
-            boxShadow:
-              "0 20px 44px rgba(15, 23, 42, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.92)",
-            gap: 2,
-            left: menuPosition.left,
-            minWidth: 206,
-            position: "fixed",
-            top: menuPosition.top,
-            zIndex: 1000,
-          }}
-        >
-          {menuActions.map((action) => {
-            const Icon = action.icon;
+      {isOpen && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="lms-organization-row-menu"
+              ref={menuRef}
+              role="menu"
+              style={{
+                background:
+                  "linear-gradient(180deg, #FFFFFF 0%, #FBFDFD 100%)",
+                border: "1px solid #D8E1EC",
+                borderRadius: 12,
+                boxShadow:
+                  "0 20px 44px rgba(15, 23, 42, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.92)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                left: menuPosition.left,
+                minWidth: 206,
+                padding: 8,
+                position: "fixed",
+                top: menuPosition.top,
+                zIndex: 5000,
+              }}
+            >
+              {menuActions.map((action) => {
+                const Icon = action.icon;
 
-            return (
-              <Button
-                aria-label={action.label}
-                background="transparent"
-                chromeless
-                height={36}
-                key={action.id}
-                onPress={() => runAction(action.id)}
-                px="$2"
-                rounded="$3"
-                style={{ alignItems: "center", justifyContent: "flex-start" }}
-              >
-                <Icon
-                  aria-hidden="true"
-                  color={action.destructive ? "#DC2626" : "#435266"}
-                  size={15}
-                />
-                <Button.Text
-                  color={action.destructive ? "#DC2626" : "#0F1D3A"}
-                  fontSize="$caption"
-                  fontWeight="$button"
-                >
-                  {action.label}
-                </Button.Text>
-              </Button>
-            );
-          })}
-        </YStack>
-      ) : null}
+                return (
+                  <Button
+                    aria-label={action.label}
+                    background="transparent"
+                    chromeless
+                    height={36}
+                    key={action.id}
+                    onPress={() => runAction(action.id)}
+                    px="$2"
+                    rounded="$3"
+                    style={{
+                      alignItems: "center",
+                      justifyContent: "flex-start",
+                    }}
+                  >
+                    <Icon
+                      aria-hidden="true"
+                      color={action.destructive ? "#DC2626" : "#435266"}
+                      size={15}
+                    />
+                    <Button.Text
+                      color={action.destructive ? "#DC2626" : "#0F1D3A"}
+                      fontSize="$caption"
+                      fontWeight="$button"
+                    >
+                      {action.label}
+                    </Button.Text>
+                  </Button>
+                );
+              })}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 });

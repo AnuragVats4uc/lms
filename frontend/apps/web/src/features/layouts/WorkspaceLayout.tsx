@@ -33,7 +33,8 @@ const WorkspaceLayout = ({
       className="lms-workspace-shell"
       style={{
         backgroundColor: "#FCFDFD",
-        minHeight: "100vh",
+        height: "100vh",
+        overflow: "hidden",
       }}
     >
       <WorkspaceSidebar navigation={visibleNavigation} title={title} />
@@ -49,7 +50,13 @@ const WorkspaceLayout = ({
       <YStack
         className="lms-workspace-main"
         flex={1}
-        style={{ backgroundColor: "#FCFDFD", minWidth: 0 }}
+        style={{
+          backgroundColor: "#FCFDFD",
+          height: "100vh",
+          minHeight: 0,
+          minWidth: 0,
+          overflow: "hidden",
+        }}
       >
         <DashboardHeader
           {...dashboardHeader}
@@ -73,7 +80,7 @@ const WorkspaceLayout = ({
           <YStack
             className="lms-workspace-content"
             p="$5"
-            style={{ backgroundColor: "#FCFDFD" }}
+            style={{ backgroundColor: "#FCFDFD", minHeight: "100%" }}
           >
             {children}
           </YStack>
