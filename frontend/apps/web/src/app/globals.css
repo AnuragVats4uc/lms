@@ -453,6 +453,10 @@ body {
 }
 
 @media (max-width: 1199px) {
+  .lms-dashboard-quick-actions-grid {
+    grid-template-columns: repeat(4, minmax(68px, 1fr)) !important;
+  }
+
   .lms-sidebar-rail {
     width: 220px;
   }
@@ -504,6 +508,10 @@ body {
 
   .lms-dashboard-stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .lms-dashboard-stats-grid > :last-child {
+    grid-column: 1 / -1;
   }
 
   .lms-resource-management-grid {
@@ -609,7 +617,10 @@ body {
   }
 
   .lms-dashboard-folder-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(min(100%, 280px), 1fr)
+    ) !important;
   }
 }
 
@@ -660,13 +671,15 @@ body {
   }
 
   .lms-dashboard-stats-grid,
-  .lms-dashboard-role-grid,
+  .lms-dashboard-role-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
   .lms-dashboard-folder-grid {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
   .lms-dashboard-quick-actions-grid {
-    display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
@@ -1161,8 +1174,7 @@ body {
 .lms-modal-panel {
   animation: lms-menu-enter 160ms ease-out both;
   background:
-    linear-gradient(180deg, rgba(242, 250, 247, 0.92) 0%, #ffffff 92px),
-    #ffffff;
+    linear-gradient(180deg, rgba(242, 250, 247, 0.92) 0%, #ffffff 92px), #ffffff;
   border: 1px solid #d8e1ec;
   border-radius: 16px;
   box-shadow: 0 28px 70px rgba(15, 23, 42, 0.22);
@@ -1249,8 +1261,7 @@ body {
 
 .lms-organization-form-actions {
   background:
-    linear-gradient(180deg, rgba(248, 251, 253, 0.9) 0%, #ffffff 56%),
-    #ffffff;
+    linear-gradient(180deg, rgba(248, 251, 253, 0.9) 0%, #ffffff 56%), #ffffff;
   border-top: 1px solid #e8eef6;
   bottom: -18px;
   margin: 2px -18px -18px;

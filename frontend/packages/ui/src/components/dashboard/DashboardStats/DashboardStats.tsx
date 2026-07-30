@@ -14,7 +14,7 @@ const StatsGrid = styled(YStack, {
 
 const gridStyle = {
   display: "grid",
-  gridTemplateColumns: "minmax(0, 0.92fr) minmax(0, 0.92fr) minmax(0, 0.92fr) minmax(360px, 1.42fr)",
+  gridTemplateColumns: "repeat(3, minmax(200px, 1fr)) minmax(376px, 1.35fr)",
 } as const;
 
 export const DashboardStats = memo(function DashboardStats({

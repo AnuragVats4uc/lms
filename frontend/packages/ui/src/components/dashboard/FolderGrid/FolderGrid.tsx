@@ -15,7 +15,7 @@ export const ResourceFolderGrid = memo(function ResourceFolderGrid({
       gap="$4"
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+        gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
         minWidth: 0,
       }}
     >

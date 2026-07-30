@@ -26,16 +26,13 @@ export const QuickActionsCard = memo(function QuickActionsCard({
       }}
     >
       <YStack
-        gap="$3"
+        gap="$2.5"
         style={{
           height: "100%",
           justifyContent: "space-between",
         }}
       >
-        <XStack
-          gap="$2"
-          style={{ alignItems: "center", color: "#059669" }}
-        >
+        <XStack gap="$2" style={{ alignItems: "center", color: "#059669" }}>
           {icon}
           <Text
             color="#0F1D3A"
@@ -48,8 +45,13 @@ export const QuickActionsCard = memo(function QuickActionsCard({
         </XStack>
         <XStack
           className="lms-dashboard-quick-actions-grid"
-          gap="$3"
-          style={{ alignItems: "stretch", width: "100%" }}
+          gap="$2"
+          style={{
+            alignItems: "stretch",
+            display: "grid",
+            gridTemplateColumns: "repeat(4, minmax(72px, 1fr))",
+            width: "100%",
+          }}
         >
           {actions.map((action) => (
             <QuickActionButton key={action.label} {...action} />

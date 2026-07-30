@@ -12,9 +12,9 @@ const QuickButton = styled(Button, {
   borderWidth: 1,
   color: "#059669",
   flex: 1,
-  height: 76,
+  height: 78,
   minW: 0,
-  px: "$2",
+  px: "$1.5",
   rounded: "$4",
   shadowColor: "#0F172A",
   shadowOffset: { width: 0, height: 1 },
@@ -56,6 +56,7 @@ export const QuickActionButton = memo(function QuickActionButton({
           alignItems: "center",
           justifyContent: "center",
           minWidth: 0,
+          overflow: "hidden",
           width: "100%",
         }}
       >
@@ -71,6 +72,7 @@ export const QuickActionButton = memo(function QuickActionButton({
             overflowWrap: "break-word",
             textAlign: "center",
             whiteSpace: "normal",
+            wordBreak: "normal",
           }}
         >
           {loading ? "Loading..." : label}
