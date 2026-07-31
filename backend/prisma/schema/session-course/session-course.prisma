@@ -1,0 +1,30 @@
+model SessionCourse {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  sessionId Int @map("session_id")
+  courseId  Int @map("course_id")
+
+  displayName String? @map("display_name") @db.VarChar(150)
+  description String? @db.Text
+
+  sortOrder   Int     @default(0) @map("sort_order")
+  isPublished Boolean @default(false) @map("is_published")
+
+  status   SessionCourseStatus @default(DRAFT)
+  isActive Boolean             @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  course  Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, courseId], map: "session_courses_session_id_course_id_unique")
+  @@index([sessionId], map: "session_courses_session_id_idx")
+  @@index([courseId], map: "session_courses_course_id_idx")
+  @@index([status], map: "session_courses_status_idx")
+  @@index([isActive], map: "session_courses_is_active_idx")
+  @@index([sessionId, status], map: "session_courses_session_id_status_idx")
+  @@map("session_courses")
+}

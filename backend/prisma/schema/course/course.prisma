@@ -1,0 +1,24 @@
+model Course {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  name        String  @unique(map: "courses_name_unique") @db.VarChar(150)
+  code        String  @unique(map: "courses_code_unique") @db.VarChar(30)
+  description String? @db.Text
+
+  thumbnail      String?
+  durationInDays Int?    @map("duration_in_days")
+
+  status   CourseStatus @default(DRAFT)
+  isActive Boolean      @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  sessionCourses SessionCourse[]
+
+  @@index([status], map: "courses_status_idx")
+  @@index([isActive], map: "courses_is_active_idx")
+  @@index([status, isActive], map: "courses_status_is_active_idx")
+  @@map("courses")
+}

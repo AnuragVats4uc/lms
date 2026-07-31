@@ -18,6 +18,8 @@ import { RolesModule } from './modules/roles/roles.module';
 import { RolesGuard } from './modules/auth/roles/roles.guard';
 import { SessionModule } from './modules/session/session.module';
 import { StudentsModule } from './modules/students/students.module';
+import { CourseModule } from './modules/course/course.module';
+import { SessionCourseModule } from './modules/session-course/session-course.module';
 
 @Module({
   imports: [
@@ -42,6 +44,8 @@ import { StudentsModule } from './modules/students/students.module';
     RolesModule,
     OrganizationModule,
     SessionModule,
+    CourseModule,
+    SessionCourseModule,
     StudentsModule,
   ],
   controllers: [AppController],

@@ -10,6 +10,20 @@ enum SessionStatus {
   ARCHIVED
 }
 
+enum CourseStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum SessionCourseStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE

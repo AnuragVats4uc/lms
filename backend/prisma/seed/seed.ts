@@ -7,8 +7,7 @@ const prisma = new PrismaClient();
 
 const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 10);
 const passwordService = new PasswordService({
-  get: (key: string) =>
-    key === 'bcrypt.saltRounds' ? saltRounds : undefined,
+  get: (key: string) => (key === 'bcrypt.saltRounds' ? saltRounds : undefined),
 } as ConfigService);
 
 const defaultRoles = [
@@ -35,14 +34,11 @@ const permissionModules = [
   'roles',
   'permissions',
   'session',
+  'course',
+  'session-course',
 ] as const;
 
-const crudActions = [
-  'create',
-  'read',
-  'update',
-  'delete',
-] as const;
+const crudActions = ['create', 'read', 'update', 'delete'] as const;
 
 const defaultPermissions = permissionModules.flatMap((module) =>
   crudActions.map((action) => ({
@@ -65,10 +61,7 @@ async function main() {
 
   const superAdmin = await seedSuperAdmin();
 
-  await assignRoleToUser(
-    superAdmin.id,
-    rolesByCode.get('SUPER_ADMIN')!.id,
-  );
+  await assignRoleToUser(superAdmin.id, rolesByCode.get('SUPER_ADMIN')!.id);
 
   await seedDemoStudent(rolesByCode.get('STUDENT')!.id);
 
@@ -112,10 +105,7 @@ async function seedPermissions() {
       create: permission,
     });
 
-    permissionsByKey.set(
-      seededPermission.key,
-      seededPermission,
-    );
+    permissionsByKey.set(seededPermission.key, seededPermission);
   }
 
   return permissionsByKey;
@@ -164,10 +154,9 @@ async function seedDemoStudent(studentRoleId: number) {
   const password = await passwordService.hash('Student@123');
 
   const result = await prisma.$transaction(async (tx) => {
-    const existingOrganization =
-      await tx.organization.findUnique({
-        where: { code: 'DEMO' },
-      });
+    const existingOrganization = await tx.organization.findUnique({
+      where: { code: 'DEMO' },
+    });
 
     const organization =
       existingOrganization ??
@@ -199,10 +188,7 @@ async function seedDemoStudent(studentRoleId: number) {
         },
       }));
 
-    if (
-      existingStudent &&
-      existingStudent.organizationId !== organization.id
-    ) {
+    if (existingStudent && existingStudent.organizationId !== organization.id) {
       await tx.user.update({
         where: { id: existingStudent.id },
         data: { organizationId: organization.id },
@@ -240,31 +226,13 @@ async function seedDemoStudent(studentRoleId: number) {
     };
   });
 
-  logDemoSeedResult(
-    'Demo Organization',
-    'created',
-    result.organizationCreated,
-  );
-  logDemoSeedResult(
-    'Demo Student',
-    'created',
-    result.studentCreated,
-  );
-  logDemoSeedResult(
-    'STUDENT role',
-    'assigned',
-    result.roleAssigned,
-  );
+  logDemoSeedResult('Demo Organization', 'created', result.organizationCreated);
+  logDemoSeedResult('Demo Student', 'created', result.studentCreated);
+  logDemoSeedResult('STUDENT role', 'assigned', result.roleAssigned);
 }
 
-function logDemoSeedResult(
-  label: string,
-  action: string,
-  created: boolean,
-) {
-  console.log(
-    created ? `✓ ${label} ${action}` : `✓ ${label} already exists`,
-  );
+function logDemoSeedResult(label: string, action: string, created: boolean) {
+  console.log(created ? `✓ ${label} ${action}` : `✓ ${label} already exists`);
 }
 
 async function assignRoleToUser(userId: number, roleId: number) {
