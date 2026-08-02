@@ -22,3 +22,10 @@ export interface CrudFilterDefinition {
   label: string;
   options: CrudFilterOption[];
 }
+
+export interface CrudToastState {
+  id: number;
+  message: string;
+  title: string;
+  tone: "error" | "success";
+}

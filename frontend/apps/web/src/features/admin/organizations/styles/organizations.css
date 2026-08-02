@@ -290,8 +290,7 @@
 .lms-organization-search {
   align-items: center !important;
   border-radius: 12px;
-  flex: "1 1 360px",
-
+  flex: 1 1 360px;
 }
 
 .lms-organization-search input,

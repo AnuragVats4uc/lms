@@ -8,7 +8,8 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { Database } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Database, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button, XStack, YStack } from "@repo/ui";
 import type { PaginatedData } from "@repo/types";
@@ -21,15 +22,17 @@ import {
 } from "@/components/DataTable";
 import { userHasPermission } from "@/features/shared/access";
 import { useAuthSession } from "@repo/auth";
-import { ConfirmationDialog } from "../organizations/dialogs/ConfirmationDialog";
-import { OrganizationToast } from "../organizations/components/shared/OrganizationToast";
-import type { OrganizationToastState } from "../organizations/types";
 import {
   CrudDetailPanel,
+  CrudActionMenu,
+  CrudActiveFilterChips,
+  CrudConfirmationDialog,
   CrudFilterToolbar,
   CrudPageHeader,
-  CrudRowActions,
   CrudStats,
+  CrudToast,
+  type CrudMenuAction,
+  type CrudToastState,
   type CrudFilterDefinition,
   type CrudStat,
 } from "./crud";
@@ -41,6 +44,7 @@ export interface ResourceQuery {
   status?: string;
   type?: string;
   published?: boolean;
+  filters?: Record<string, string>;
 }
 
 export interface ResourceFormContext<Form> {
@@ -78,6 +82,29 @@ export interface ResourceManagementPageProps<
   statusOptions?: Array<{ label: string; value: string }>;
   typeOptions?: Array<{ label: string; value: string }>;
   publishedOptions?: Array<{ label: string; value: string }>;
+  filterDefinitions?: CrudFilterDefinition[];
+  clientFilterRows?: (rows: Item[], filters: Record<string, string>) => Item[];
+  rowActions?: CrudMenuAction<Item>[];
+  additionalRowActions?: CrudMenuAction<Item>[];
+  selectable?: boolean;
+  selectedRowIds?: DataTableRowId[];
+  selectedItems?: Item[];
+  onSelectionChange?: (ids: DataTableRowId[], selectedRows: Item[]) => void;
+  selectedItem?: Item | null;
+  onSelectedItemChange?: (item: Item | null) => void;
+  renderDetailPanel?: (item: Item | null, isLoading: boolean) => ReactNode;
+  renderBulkActions?: (
+    items: Item[],
+    clear: () => void,
+    refresh: () => Promise<unknown>,
+  ) => ReactNode;
+  showActiveFilterChips?: boolean;
+  filterActions?: ReactNode;
+  initialFilters?: Record<string, string>;
+  initialPage?: number;
+  initialPageSize?: number;
+  syncUrl?: boolean;
+  urlFilterDefaults?: Record<string, string>;
   getStats?: (context: {
     isLoading: boolean;
     rows: Item[];
@@ -120,6 +147,25 @@ export function ResourceManagementPage<
   statusOptions,
   typeOptions,
   publishedOptions,
+  filterDefinitions: extraFilterDefinitions,
+  clientFilterRows,
+  rowActions,
+  additionalRowActions,
+  selectable = false,
+  selectedRowIds: controlledSelectedRowIds,
+  selectedItems: controlledSelectedItems,
+  onSelectionChange,
+  selectedItem: controlledSelectedItem,
+  onSelectedItemChange,
+  renderDetailPanel,
+  renderBulkActions,
+  showActiveFilterChips = false,
+  filterActions,
+  initialFilters,
+  initialPage = 1,
+  initialPageSize = 10,
+  syncUrl = false,
+  urlFilterDefaults = {},
   getStats,
   searchPlaceholder,
   createLabel,
@@ -128,6 +174,8 @@ export function ResourceManagementPage<
   emptyDescription,
 }: ResourceManagementPageProps<Item, Form, CreatePayload, UpdatePayload>) {
   const { currentUser } = useAuthSession();
+  const router = useRouter();
+  const pathname = usePathname();
   const canCreate =
     Boolean(create) &&
     userHasPermission(currentUser, permissionPrefix + ".create");
@@ -137,21 +185,37 @@ export function ResourceManagementPage<
   const canDelete =
     Boolean(remove) &&
     userHasPermission(currentUser, permissionPrefix + ".delete");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [publishedFilter, setPublishedFilter] = useState("");
+  const [page, setPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialPageSize);
+  const [search, setSearch] = useState(initialFilters?.search ?? "");
+  const [debouncedSearch, setDebouncedSearch] = useState(
+    initialFilters?.search ?? "",
+  );
+  const [status, setStatus] = useState(initialFilters?.status ?? "");
+  const [typeFilter, setTypeFilter] = useState(initialFilters?.type ?? "");
+  const [publishedFilter, setPublishedFilter] = useState(
+    initialFilters?.published ?? "",
+  );
+  const [customFilters, setCustomFilters] = useState<Record<string, string>>(
+    () => {
+      const values = { ...(initialFilters ?? {}) };
+      delete values.status;
+      delete values.type;
+      delete values.published;
+      return values;
+    },
+  );
   const [selected, setSelected] = useState<Item | null>(null);
+  const [internalSelectedRowIds, setInternalSelectedRowIds] = useState<
+    DataTableRowId[]
+  >([]);
   const [editing, setEditing] = useState<Item | null>(null);
   const [form, setForm] = useState<Form>(initialForm);
   const [formError, setFormError] = useState<string | null>(null);
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [confirmItem, setConfirmItem] = useState<Item | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
-  const [toast, setToast] = useState<OrganizationToastState | null>(null);
+  const [toast, setToast] = useState<CrudToastState | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -160,6 +224,40 @@ export function ResourceManagementPage<
     }, 350);
     return () => window.clearTimeout(timer);
   }, [search]);
+
+  useEffect(() => {
+    if (!syncUrl) return;
+
+    const params = new URLSearchParams();
+    if (page > 1) params.set("page", String(page));
+    if (pageSize !== 10) params.set("limit", String(pageSize));
+    if (search.trim()) params.set("search", search.trim());
+    if (status) params.set("status", status);
+    if (typeFilter) params.set("type", typeFilter);
+    if (publishedFilter) params.set("published", publishedFilter);
+    Object.entries(customFilters).forEach(([key, value]) => {
+      if (value && value !== "ALL" && value !== urlFilterDefaults[key]) {
+        params.set(key, value);
+      }
+    });
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
+      scroll: false,
+    });
+  }, [
+    customFilters,
+    page,
+    pageSize,
+    pathname,
+    publishedFilter,
+    router,
+    search,
+    status,
+    syncUrl,
+    typeFilter,
+    urlFilterDefaults,
+  ]);
 
   const query = useQuery({
     enabled,
@@ -172,6 +270,7 @@ export function ResourceManagementPage<
         type: typeFilter || undefined,
         published:
           publishedFilter === "" ? undefined : publishedFilter === "true",
+        filters: customFilters,
       }),
     queryKey: [
       ...queryKey,
@@ -181,6 +280,7 @@ export function ResourceManagementPage<
       status,
       typeFilter,
       publishedFilter,
+      customFilters,
     ],
     staleTime: 30_000,
   });
@@ -194,7 +294,16 @@ export function ResourceManagementPage<
   const deleteMutation = useMutation({
     mutationFn: (id: number) => remove?.(id) as Promise<Item>,
   });
-  const rows = query.data?.items ?? [];
+  const rawRows = query.data?.items ?? [];
+  const filterValues = {
+    ...customFilters,
+    published: publishedFilter || "ALL",
+    status: status || "ALL",
+    type: typeFilter || "ALL",
+  };
+  const rows = clientFilterRows
+    ? clientFilterRows(rawRows, filterValues)
+    : rawRows;
   const total = query.data?.meta.total ?? 0;
   const isSubmitting =
     createMutation.isPending ||
@@ -212,8 +321,23 @@ export function ResourceManagementPage<
       ...(publishedOptions?.length
         ? [{ id: "published", label: "Published", options: publishedOptions }]
         : []),
+      ...(extraFilterDefinitions ?? []),
     ],
-    [publishedOptions, statusOptions, typeOptions],
+    [extraFilterDefinitions, publishedOptions, statusOptions, typeOptions],
+  );
+
+  const selectedItem =
+    controlledSelectedItem !== undefined ? controlledSelectedItem : selected;
+  const selectedRowIds = controlledSelectedRowIds ?? internalSelectedRowIds;
+  const selectedItems =
+    controlledSelectedItems ??
+    rows.filter((row) => selectedRowIds.includes(getRowId(row)));
+  const setSelectedItem = useCallback(
+    (item: Item | null) => {
+      setSelected(item);
+      onSelectedItemChange?.(item);
+    },
+    [onSelectedItemChange],
   );
 
   const stats = getStats?.({ isLoading: query.isLoading, rows, total }) ?? [
@@ -260,6 +384,9 @@ export function ResourceManagementPage<
     if (id === "status") setStatus(nextValue);
     if (id === "type") setTypeFilter(nextValue);
     if (id === "published") setPublishedFilter(nextValue);
+    if (id !== "status" && id !== "type" && id !== "published") {
+      setCustomFilters((current) => ({ ...current, [id]: value }));
+    }
     setPage(1);
   };
   const clearFilters = () => {
@@ -267,6 +394,7 @@ export function ResourceManagementPage<
     setStatus("");
     setTypeFilter("");
     setPublishedFilter("");
+    setCustomFilters({});
     setPage(1);
   };
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -283,7 +411,7 @@ export function ResourceManagementPage<
           id: editing.id,
           payload: toUpdatePayload(form),
         });
-        setSelected(item);
+        setSelectedItem(item);
         showToast(
           entityLabel + " updated",
           getDisplayName(item) + " was updated successfully.",
@@ -291,7 +419,7 @@ export function ResourceManagementPage<
         );
       } else if (!editing && create) {
         const item = await createMutation.mutateAsync(toCreatePayload(form));
-        setSelected(item);
+        setSelectedItem(item);
         showToast(
           entityLabel + " created",
           getDisplayName(item) + " was created successfully.",
@@ -315,7 +443,7 @@ export function ResourceManagementPage<
       await deleteMutation.mutateAsync(confirmItem.id);
       setConfirmItem(null);
       setConfirmError(null);
-      setSelected(null);
+      setSelectedItem(null);
       showToast(
         entityLabel + " deleted",
         getDisplayName(confirmItem) + " was deleted successfully.",
@@ -331,48 +459,91 @@ export function ResourceManagementPage<
       showToast("Delete failed", message, "error");
     }
   };
+  const permittedActions = useMemo(
+    () =>
+      (
+        rowActions ?? [
+          ...(renderDetails
+            ? [
+                {
+                  id: "view",
+                  label: "View",
+                  icon: ExternalLink,
+                  onAction: (item: Item) => setSelectedItem(item),
+                },
+              ]
+            : []),
+          ...(canUpdate
+            ? [
+                {
+                  id: "edit",
+                  label: "Edit",
+                  icon: Pencil,
+                  onAction: (item: Item) => openEdit(item),
+                },
+              ]
+            : []),
+          ...(canDelete
+            ? [
+                {
+                  id: "delete",
+                  label: "Delete",
+                  icon: Trash2,
+                  destructive: true,
+                  onAction: (item: Item) => {
+                    setConfirmItem(item);
+                    setConfirmError(null);
+                  },
+                },
+              ]
+            : []),
+        ]
+      )
+        .concat(additionalRowActions ?? [])
+        .filter(
+          (action) =>
+            !action.permission ||
+            userHasPermission(currentUser, action.permission),
+        )
+        .map((action) => ({
+          ...action,
+          onAction: async (item: Item) => {
+            await action.onAction(item);
+            await query.refetch();
+          },
+        })),
+    [
+      canDelete,
+      canUpdate,
+      currentUser,
+      openEdit,
+      query,
+      renderDetails,
+      rowActions,
+      additionalRowActions,
+      setSelectedItem,
+    ],
+  );
+
   const tableColumns = useMemo<DataTableColumn<Item>[]>(
     () => [
       ...columns,
       {
         align: "center",
         cell: ({ row }) => (
-          <CrudRowActions
-            actions={[
-              ...(renderDetails
-                ? [
-                    {
-                      label: "View",
-                      onPress: (item: Item) => setSelected(item),
-                    },
-                  ]
-                : []),
-              ...(canUpdate
-                ? [{ label: "Edit", onPress: (item: Item) => openEdit(item) }]
-                : []),
-              ...(canDelete
-                ? [
-                    {
-                      destructive: true,
-                      label: "Delete",
-                      onPress: (item: Item) => {
-                        setConfirmItem(item);
-                        setConfirmError(null);
-                      },
-                    },
-                  ]
-                : []),
-            ]}
+          <CrudActionMenu
+            actions={permittedActions}
+            getItemLabel={getDisplayName}
             item={row}
           />
         ),
         header: "Actions",
         id: "__actions",
         meta: { stickyEnd: true },
-        width: 210,
+        width: 76,
       },
     ],
-    [canDelete, canUpdate, columns, openEdit, renderDetails],
+    [columns, getDisplayName, permittedActions],
   );
 
   const formTitle = editing ? "Edit " + entityLabel : "Add " + entityLabel;
@@ -399,23 +570,37 @@ export function ResourceManagementPage<
       <CrudStats isLoading={query.isLoading} stats={stats} />
       {context}
       <CrudFilterToolbar
+        actions={filterActions}
         entityLabel={entityLabel}
         filters={filterDefinitions}
         onClear={clearFilters}
         onFilterChange={handleFilterChange}
+        onRefresh={() => void query.refetch()}
         onSearch={setSearch}
         searchPlaceholder={searchPlaceholder}
         searchValue={search}
-        values={{
-          published: publishedFilter || "ALL",
-          status: status || "ALL",
-          type: typeFilter || "ALL",
-        }}
+        values={filterValues}
       />
+      {showActiveFilterChips ? (
+        <CrudActiveFilterChips
+          filters={filterDefinitions}
+          onClear={clearFilters}
+          onRemove={(id) => {
+            if (id === "status") setStatus("");
+            else if (id === "type") setTypeFilter("");
+            else if (id === "published") setPublishedFilter("");
+            else setCustomFilters((current) => ({ ...current, [id]: "ALL" }));
+            setPage(1);
+          }}
+          values={filterValues}
+        />
+      ) : null}
       <XStack
         className={[
           "lms-organization-management-grid",
-          selected && renderDetails ? "is-side-panel-open" : "",
+          selectedItem && (renderDetails || renderDetailPanel)
+            ? "is-side-panel-open"
+            : "",
         ]
           .filter(Boolean)
           .join(" ")}
@@ -423,6 +608,14 @@ export function ResourceManagementPage<
         style={{ alignItems: "flex-start", width: "100%" }}
       >
         <YStack gap="$3" style={{ flex: 1, minWidth: 0 }}>
+          {renderBulkActions?.(
+            selectedItems,
+            () => {
+              setInternalSelectedRowIds([]);
+              onSelectionChange?.([], []);
+            },
+            query.refetch,
+          )}
           <DataTable<Item>
             columns={tableColumns}
             data={rows}
@@ -454,7 +647,11 @@ export function ResourceManagementPage<
               setPageSize(size);
               setPage(1);
             }}
-            onRowClick={setSelected}
+            onRowClick={setSelectedItem}
+            onSelectionChange={(ids, selectedRows) => {
+              setInternalSelectedRowIds(ids);
+              onSelectionChange?.(ids, selectedRows);
+            }}
             pagination={{
               entityLabel: entityLabel.toLowerCase(),
               mode: "server",
@@ -466,21 +663,29 @@ export function ResourceManagementPage<
             }}
             renderToolbar={() => null}
             searchable={false}
+            selectable={selectable}
+            selectedRowIds={selectedRowIds}
             stickyFirstColumn
             stickyHeader
           />
         </YStack>
-        {renderDetails ? (
+        {renderDetailPanel ? (
+          renderDetailPanel(
+            selectedItem,
+            query.isLoading && Boolean(selectedItem),
+          )
+        ) : renderDetails ? (
           <CrudDetailPanel
             getDisplayName={getDisplayName}
-            isLoading={query.isLoading && Boolean(selected)}
-            item={selected}
-            onClose={() => setSelected(null)}
+            isLoading={query.isLoading && Boolean(selectedItem)}
+            item={selectedItem}
+            onClose={() => setSelectedItem(null)}
             renderDetails={renderDetails}
           />
         ) : null}
       </XStack>
       <AppModal
+        className="lms-organization-create-modal"
         description="Save the form and refresh the current list."
         isOpen={isCreateOpen || Boolean(editing)}
         onClose={closeForm}
@@ -521,7 +726,7 @@ export function ResourceManagementPage<
           })}
         </form>
       </AppModal>
-      <ConfirmationDialog
+      <CrudConfirmationDialog
         confirmLabel="Delete"
         description="This action cannot be undone from the application."
         destructive
@@ -538,7 +743,7 @@ export function ResourceManagementPage<
         subject={confirmItem ? getDisplayName(confirmItem) : ""}
         title={"Delete " + entityLabel}
       />
-      <OrganizationToast onDismiss={() => setToast(null)} toast={toast} />
+      <CrudToast onDismiss={() => setToast(null)} toast={toast} />
     </YStack>
   );
 }
