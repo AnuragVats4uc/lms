@@ -1,10 +1,5 @@
-import { AdminPlaceholderPage } from "@/features/admin/components/AdminPlaceholderPage";
+import { ResourcesPage } from "@/features/admin/resources";
 
 export default function Page() {
-  return (
-    <AdminPlaceholderPage
-      title="Resources"
-      description="Resources will connect to future videos, documents, and folders APIs."
-    />
-  );
+  return <ResourcesPage />;
 }

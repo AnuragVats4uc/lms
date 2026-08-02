@@ -25,6 +25,8 @@ export interface ResourceQuery {
   limit: number;
   search?: string;
   status?: string;
+  type?: string;
+  published?: boolean;
 }
 
 export interface ResourceFormContext<Form> {
@@ -60,6 +62,8 @@ export interface ResourceManagementPageProps<
   update?: (id: number, payload: UpdatePayload) => Promise<Item>;
   remove?: (id: number) => Promise<Item>;
   statusOptions?: Array<{ label: string; value: string }>;
+  typeOptions?: Array<{ label: string; value: string }>;
+  publishedOptions?: Array<{ label: string; value: string }>;
   context?: ReactNode;
   enabled?: boolean;
   emptyDescription?: string;
@@ -93,6 +97,8 @@ export function ResourceManagementPage<
   update,
   remove,
   statusOptions,
+  typeOptions,
+  publishedOptions,
   context,
   enabled = true,
   emptyDescription,
@@ -106,6 +112,8 @@ export function ResourceManagementPage<
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [publishedFilter, setPublishedFilter] = useState("");
   const [selected, setSelected] = useState<Item | null>(null);
   const [editing, setEditing] = useState<Item | null>(null);
   const [form, setForm] = useState<Form>(initialForm);
@@ -130,8 +138,21 @@ export function ResourceManagementPage<
       page,
       search: debouncedSearch || undefined,
       status: status || undefined,
+      type: typeFilter || undefined,
+      published:
+        publishedFilter === ""
+          ? undefined
+          : publishedFilter === "true",
     }),
-    queryKey: [...queryKey, page, pageSize, debouncedSearch, status],
+    queryKey: [
+      ...queryKey,
+      page,
+      pageSize,
+      debouncedSearch,
+      status,
+      typeFilter,
+      publishedFilter,
+    ],
     staleTime: 30_000,
   });
   const createMutation = useMutation({ mutationFn: (payload: CreatePayload) => create?.(payload) as Promise<Item> });
@@ -255,7 +276,9 @@ export function ResourceManagementPage<
       <XStack gap="$3" style={{ alignItems: "center", flexWrap: "wrap" }}>
         <OrganizationSearch ariaLabel={"Search " + entityLabel.toLowerCase()} onChange={setSearch} placeholder={"Search " + entityLabel.toLowerCase() + "..."} value={search} />
         {statusOptions?.length ? <OrganizationSelect ariaLabel={"Filter " + entityLabel.toLowerCase() + " by status"} label="Status" onChange={(value) => { setStatus(value === "ALL" ? "" : value); setPage(1); }} options={statusOptions} value={status || "ALL"} /> : null}
-        <Button aria-label={"Clear " + entityLabel.toLowerCase() + " filters"} background="#FFFFFF" borderColor="#D8E1EC" borderWidth={1} height={40} onPress={() => { setSearch(""); setStatus(""); setPage(1); }} rounded="$4"><X aria-hidden="true" color="#0F1D3A" size={16} /><Button.Text fontSize="$caption">Clear</Button.Text></Button>
+        {typeOptions?.length ? <OrganizationSelect ariaLabel={"Filter " + entityLabel.toLowerCase() + " by type"} label="Type" onChange={(value) => { setTypeFilter(value === "ALL" ? "" : value); setPage(1); }} options={typeOptions} value={typeFilter || "ALL"} /> : null}
+        {publishedOptions?.length ? <OrganizationSelect ariaLabel={"Filter " + entityLabel.toLowerCase() + " by published state"} label="Published" onChange={(value) => { setPublishedFilter(value === "ALL" ? "" : value); setPage(1); }} options={publishedOptions} value={publishedFilter || "ALL"} /> : null}
+        <Button aria-label={"Clear " + entityLabel.toLowerCase() + " filters"} background="#FFFFFF" borderColor="#D8E1EC" borderWidth={1} height={40} onPress={() => { setSearch(""); setStatus(""); setTypeFilter(""); setPublishedFilter(""); setPage(1); }} rounded="$4"><X aria-hidden="true" color="#0F1D3A" size={16} /><Button.Text fontSize="$caption">Clear</Button.Text></Button>
       </XStack>
       <DataTable<Item>
         columns={tableColumns}

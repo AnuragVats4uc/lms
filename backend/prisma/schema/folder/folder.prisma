@@ -20,6 +20,7 @@ model Folder {
   sessionCourse SessionCourse @relation(fields: [sessionCourseId], references: [id], onDelete: Cascade)
   parentFolder  Folder?       @relation("FolderHierarchy", fields: [parentFolderId], references: [id], onDelete: SetNull)
   children      Folder[]      @relation("FolderHierarchy")
+  resources     Resource[]
 
   @@unique([parentFolderId, sessionCourseId, name], map: "folders_parent_folder_id_session_course_id_name_unique")
   @@index([sessionCourseId], map: "folders_session_course_id_idx")

@@ -88,6 +88,7 @@ export const adminNavigation: NavigationItem[] = [
     href: "/admin/resources",
     icon: FileText,
     label: "Resources",
+    permission: "resource.read",
   },
   // {
   //   href: "/admin/attendance",

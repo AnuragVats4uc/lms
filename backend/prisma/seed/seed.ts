@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, ResourceType } from '@prisma/client';
 
 import { PasswordService } from '../../src/modules/auth/services/password.service';
 
@@ -37,6 +37,7 @@ const permissionModules = [
   'course',
   'session-course',
   'folder',
+  'resource',
 ] as const;
 
 const crudActions = ['create', 'read', 'update', 'delete'] as const;
@@ -165,7 +166,123 @@ async function seedDemoFolderHierarchy() {
     }
   }
 
+  await seedDemoResources(sessionCourse.id);
+
   console.log('✓ ABC Institute folder hierarchy seeded');
+}
+
+async function seedDemoResources(sessionCourseId: number) {
+  const resourcesByFolder: Record<
+    string,
+    Array<{
+      title: string;
+      type: ResourceType;
+      documentUrl?: string;
+      videoUrl?: string;
+      mimeType?: string;
+      durationInSeconds?: number;
+    }>
+  > = {
+    Motion: [
+      {
+        title: 'Motion Notes',
+        type: ResourceType.DOCUMENT,
+        documentUrl: 'https://cdn.example.com/lms/motion-notes.pdf',
+        mimeType: 'application/pdf',
+      },
+      {
+        title: 'Motion Lecture',
+        type: ResourceType.VIDEO,
+        videoUrl: 'https://cdn.example.com/lms/motion-lecture.mp4',
+        durationInSeconds: 3600,
+      },
+    ],
+    Organic: [
+      {
+        title: 'Organic Notes',
+        type: ResourceType.DOCUMENT,
+        documentUrl: 'https://cdn.example.com/lms/organic-notes.pdf',
+        mimeType: 'application/pdf',
+      },
+      {
+        title: 'Organic Lecture',
+        type: ResourceType.VIDEO,
+        videoUrl: 'https://cdn.example.com/lms/organic-lecture.mp4',
+        durationInSeconds: 3600,
+      },
+    ],
+    Algebra: [
+      {
+        title: 'Algebra Notes',
+        type: ResourceType.DOCUMENT,
+        documentUrl: 'https://cdn.example.com/lms/algebra-notes.pdf',
+        mimeType: 'application/pdf',
+      },
+      {
+        title: 'Algebra Lecture',
+        type: ResourceType.VIDEO,
+        videoUrl: 'https://cdn.example.com/lms/algebra-lecture.mp4',
+        durationInSeconds: 3600,
+      },
+    ],
+  };
+
+  for (const [folderName, resources] of Object.entries(resourcesByFolder)) {
+    const folder = await prisma.folder.findFirst({
+      where: { sessionCourseId, name: folderName },
+    });
+
+    if (!folder) continue;
+
+    for (const resource of resources) {
+      await upsertSeedResource(folder.id, resource);
+    }
+  }
+
+  console.log(
+    'âœ“ Document and video resources seeded; exam resources skipped because no Exam module exists',
+  );
+}
+
+async function upsertSeedResource(
+  folderId: number,
+  resource: {
+    title: string;
+    type: ResourceType;
+    documentUrl?: string;
+    videoUrl?: string;
+    mimeType?: string;
+    durationInSeconds?: number;
+  },
+) {
+  const existing = await prisma.resource.findFirst({
+    where: {
+      folderId,
+      title: resource.title,
+      type: resource.type,
+    },
+  });
+
+  const data = {
+    ...resource,
+    status: 'PUBLISHED' as const,
+    isPublished: true,
+    isActive: true,
+  };
+
+  if (existing) {
+    return prisma.resource.update({
+      where: { id: existing.id },
+      data,
+    });
+  }
+
+  return prisma.resource.create({
+    data: {
+      folderId,
+      ...data,
+    },
+  });
 }
 
 async function upsertSeedFolder(

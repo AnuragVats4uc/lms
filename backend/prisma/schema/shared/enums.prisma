@@ -29,6 +29,18 @@ enum FolderStatus {
   ARCHIVED
 }
 
+enum ResourceType {
+  DOCUMENT
+  VIDEO
+  EXAM
+}
+
+enum ResourceStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE

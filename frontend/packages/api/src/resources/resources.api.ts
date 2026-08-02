@@ -1,0 +1,33 @@
+import type {
+  ApiResponse,
+  CreateResourceRequest,
+  Resource,
+  ResourceList,
+  ResourceQuery,
+  UpdateResourceRequest,
+} from "@repo/types";
+
+import { api } from "../client/axios";
+import { unwrapApiData } from "../client/response";
+
+function endpoint(folderId: number) {
+  return "/folders/" + folderId + "/resources";
+}
+
+export const resourcesApi = {
+  create(folderId: number, payload: CreateResourceRequest) {
+    return api.post<ApiResponse<Resource>>(endpoint(folderId), payload).then(unwrapApiData);
+  },
+  findAll(folderId: number, query?: ResourceQuery) {
+    return api.get<ApiResponse<ResourceList>>(endpoint(folderId), { params: query }).then(unwrapApiData);
+  },
+  findOne(folderId: number, resourceId: number) {
+    return api.get<ApiResponse<Resource>>(endpoint(folderId) + "/" + resourceId).then(unwrapApiData);
+  },
+  update(folderId: number, resourceId: number, payload: UpdateResourceRequest) {
+    return api.patch<ApiResponse<Resource>>(endpoint(folderId) + "/" + resourceId, payload).then(unwrapApiData);
+  },
+  remove(folderId: number, resourceId: number) {
+    return api.delete<ApiResponse<Resource>>(endpoint(folderId) + "/" + resourceId).then(unwrapApiData);
+  },
+};
