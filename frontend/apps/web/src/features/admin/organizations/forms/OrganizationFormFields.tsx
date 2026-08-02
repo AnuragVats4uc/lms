@@ -7,13 +7,13 @@ export type OrganizationFormChangeHandler = <
   value: AddOrganizationFormState[K],
 ) => void;
 
-export function OrganizationFormFields({
+export const OrganizationFormFields = ({
   form,
   onChange,
 }: {
   form: AddOrganizationFormState;
   onChange: OrganizationFormChangeHandler;
-}) {
+}) => {
   return (
     <div className="lms-organization-form-grid">
       <label className="lms-form-field">
@@ -110,4 +110,4 @@ export function OrganizationFormFields({
       </label>
     </div>
   );
-}
+};

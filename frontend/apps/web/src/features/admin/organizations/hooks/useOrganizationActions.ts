@@ -1,10 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import type {
-  Organization,
-  UpdateOrganizationRequest,
-} from "@repo/types";
+import type { Organization, UpdateOrganizationRequest } from "@repo/types";
 
 import { toOrganizationRow } from "../services";
 import { useOrganizationStore } from "../store";
@@ -25,13 +22,11 @@ interface UseOrganizationActionsOptions {
   isUpdating: boolean;
   refetch: () => Promise<unknown>;
   removeSelectedOrganizations: (organizationIds: number[]) => void;
-  setSelectedOrganization: (
-    organization: OrganizationTableRow | null,
-  ) => void;
+  setSelectedOrganization: (organization: OrganizationTableRow | null) => void;
   updateOrganization: (input: UpdateOrganizationInput) => Promise<Organization>;
 }
 
-export function useOrganizationActions({
+export const useOrganizationActions = ({
   deleteOrganization,
   isDeleting,
   isUpdating,
@@ -39,7 +34,7 @@ export function useOrganizationActions({
   removeSelectedOrganizations,
   setSelectedOrganization,
   updateOrganization,
-}: UseOrganizationActionsOptions) {
+}: UseOrganizationActionsOptions) => {
   const { confirmAction, setConfirmAction } = useOrganizationStore();
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [toast, setToast] = useState<OrganizationToastState | null>(null);
@@ -233,4 +228,4 @@ export function useOrganizationActions({
     showToast,
     toast,
   };
-}
+};

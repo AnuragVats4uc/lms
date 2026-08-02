@@ -6,14 +6,8 @@ import {
   DeleteDialog,
   StatusDialog,
 } from "../../dialogs";
-import {
-  AddOrganizationModal,
-  EditOrganizationModal,
-} from "../../forms";
-import type {
-  useOrganizationActions,
-  useOrganizationForm,
-} from "../../hooks";
+import { AddOrganizationModal, EditOrganizationModal } from "../../forms";
+import type { useOrganizationActions, useOrganizationForm } from "../../hooks";
 import { OrganizationToast } from "./OrganizationToast";
 
 type OrganizationActions = ReturnType<typeof useOrganizationActions>;
@@ -24,10 +18,10 @@ interface OrganizationOverlaysProps {
   form: OrganizationForm;
 }
 
-export function OrganizationOverlays({
+export const OrganizationOverlays = ({
   actions,
   form,
-}: OrganizationOverlaysProps) {
+}: OrganizationOverlaysProps) => {
   return (
     <>
       <AddOrganizationModal
@@ -93,4 +87,4 @@ export function OrganizationOverlays({
       />
     </>
   );
-}
+};

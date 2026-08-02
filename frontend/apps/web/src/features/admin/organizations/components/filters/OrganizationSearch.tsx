@@ -10,27 +10,23 @@ export interface OrganizationSearchProps {
   value: string;
 }
 
-export function OrganizationSearch({
+export const OrganizationSearch = ({
   ariaLabel = "Search organizations",
   onChange,
   placeholder = "Search name, code, email, phone, website...",
   value,
-}: OrganizationSearchProps) {
+}: OrganizationSearchProps) => {
   return (
     <XStack
       className="lms-organization-search"
       gap="$3"
       px="$3"
-      style={{
-        alignItems: "center",
-        backgroundColor: "#FCFCFD",
-        borderColor: "#D8E1EC",
-        borderRadius: 12,
-        borderWidth: 1,
-        flex: "1 1 360px",
-        maxWidth: 560,
-        minHeight: 42,
-      }}
+      maxW={560}
+      minW={0}
+      minH={42}
+      background="#FCFCFD"
+      borderColor="#D8E1EC"
+      borderWidth={1}
     >
       <Search aria-hidden="true" color="#52627A" size={18} />
       <Input
@@ -49,9 +45,11 @@ export function OrganizationSearch({
           boxShadow: "none",
           outlineColor: "transparent",
         }}
-        style={{ boxShadow: "none", minWidth: 0, outline: "none" }}
+        minW={0}
+        outline="none"
+        boxShadow="none"
         value={value}
       />
     </XStack>
   );
-}
+};

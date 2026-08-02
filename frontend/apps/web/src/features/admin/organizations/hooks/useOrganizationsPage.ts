@@ -11,7 +11,7 @@ import { useOrganizations } from "./useOrganizations";
 import { useOrganizationSelection } from "./useOrganizationSelection";
 import { useOrganizationStatistics } from "./useOrganizationStatistics";
 
-export function useOrganizationsPage() {
+export const useOrganizationsPage = () => {
   const { isSidePanelOpen } = useOrganizationStore();
   const filters = useOrganizationFilters();
   const organizations = useOrganizations({
@@ -73,4 +73,4 @@ export function useOrganizationsPage() {
     selection,
     statistics,
   };
-}
+};

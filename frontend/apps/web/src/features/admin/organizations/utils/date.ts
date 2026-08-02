@@ -1,4 +1,4 @@
-export function formatDate(value: string) {
+export const formatDate = (value: string) => {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
@@ -10,4 +10,4 @@ export function formatDate(value: string) {
     month: "short",
     year: "numeric",
   }).format(date);
-}
+};

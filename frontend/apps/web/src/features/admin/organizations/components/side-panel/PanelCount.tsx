@@ -5,16 +5,16 @@ export interface PanelCountProps {
   value: number;
 }
 
-export function PanelCount({ label, value }: PanelCountProps) {
+export const PanelCount = ({ label, value }: PanelCountProps) => {
   return (
     <YStack
       gap="$1"
       p="$2"
+      background="#F8FBFD"
+      borderColor="#E1E7F0"
+      borderWidth={1}
       style={{
-        backgroundColor: "#F8FBFD",
-        borderColor: "#E1E7F0",
         borderRadius: 10,
-        borderWidth: 1,
         flex: "1 1 45%",
       }}
     >
@@ -26,4 +26,4 @@ export function PanelCount({ label, value }: PanelCountProps) {
       </Text>
     </YStack>
   );
-}
+};

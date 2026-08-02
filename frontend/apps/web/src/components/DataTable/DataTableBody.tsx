@@ -19,7 +19,7 @@ interface DataTableBodyProps<TData> {
   toggleRowSelected: (row: TData, index: number) => void;
 }
 
-function DataTableBodyComponent<TData>({
+const DataTableBodyComponent = <TData,>({
   columns,
   getRowExpandedContent,
   getRowId,
@@ -30,7 +30,7 @@ function DataTableBodyComponent<TData>({
   selectedIds,
   stickyFirstColumn,
   toggleRowSelected,
-}: DataTableBodyProps<TData>) {
+}: DataTableBodyProps<TData>) => {
   return (
     <YStack role="rowgroup">
       {rows.map((row, rowIndex) => {
@@ -54,8 +54,8 @@ function DataTableBodyComponent<TData>({
       })}
     </YStack>
   );
-}
+};
 
 export const DataTableBody = memo(
-  DataTableBodyComponent
+  DataTableBodyComponent,
 ) as typeof DataTableBodyComponent;

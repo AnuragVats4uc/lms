@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export function useAnimatedNumber(value: number, isEnabled: boolean) {
+export const useAnimatedNumber = (value: number, isEnabled: boolean) => {
   const [displayValue, setDisplayValue] = useState(0);
 
   useEffect(() => {
@@ -28,14 +28,14 @@ export function useAnimatedNumber(value: number, isEnabled: boolean) {
   }, [isEnabled, value]);
 
   return isEnabled ? displayValue : value;
-}
+};
 
-export function AnimatedNumber({
+export const AnimatedNumber = ({
   isEnabled,
   value,
 }: {
   isEnabled: boolean;
   value: number;
-}) {
+}) => {
   return useAnimatedNumber(value, isEnabled);
-}
+};

@@ -1,7 +1,7 @@
 import type { OrganizationTableRow } from "../types";
 import { ConfirmationDialog } from "./ConfirmationDialog";
 
-export function BulkDeleteDialog({
+export const BulkDeleteDialog = ({
   error,
   isOpen,
   isSubmitting,
@@ -15,7 +15,7 @@ export function BulkDeleteDialog({
   onClose: () => void;
   onConfirm: () => void;
   organizations: OrganizationTableRow[];
-}) {
+}) => {
   const isBulk = organizations.length > 1;
   const organization = organizations[0];
 
@@ -38,4 +38,4 @@ export function BulkDeleteDialog({
       title={`Delete ${isBulk ? "Organizations" : "Organization"}`}
     />
   );
-}
+};

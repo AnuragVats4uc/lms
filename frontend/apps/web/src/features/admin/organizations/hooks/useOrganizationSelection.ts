@@ -11,10 +11,10 @@ interface UseOrganizationSelectionOptions {
   visibleRows: OrganizationTableRow[];
 }
 
-export function useOrganizationSelection({
+export const useOrganizationSelection = ({
   rows,
   visibleRows,
-}: UseOrganizationSelectionOptions) {
+}: UseOrganizationSelectionOptions) => {
   const {
     selectedOrganization,
     selectedRowIds,
@@ -91,4 +91,4 @@ export function useOrganizationSelection({
     setSelectedOrganization,
     toggle,
   };
-}
+};

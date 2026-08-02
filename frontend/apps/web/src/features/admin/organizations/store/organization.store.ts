@@ -69,15 +69,15 @@ const createDefaultState = (): OrganizationStoreState => ({
   selectedRowIds: [],
 });
 
-function resolveStateAction<T>(value: SetStateAction<T>, current: T): T {
+const resolveStateAction = <T>(value: SetStateAction<T>, current: T): T => {
   return typeof value === "function"
     ? (value as (previous: T) => T)(current)
     : value;
-}
+};
 
-function createState(
+const createState = (
   initialState?: OrganizationStoreInitialState,
-): OrganizationStoreState {
+): OrganizationStoreState => {
   const defaults = createDefaultState();
 
   return {
@@ -92,17 +92,17 @@ function createState(
       ? [...initialState.selectedRowIds]
       : defaults.selectedRowIds,
   };
-}
+};
 
 const OrganizationStoreContext = createContext<OrganizationStore | null>(null);
 
-export function OrganizationStoreProvider({
+export const OrganizationStoreProvider = ({
   children,
   initialState,
 }: {
   children: ReactNode;
   initialState?: OrganizationStoreInitialState;
-}) {
+}) => {
   const [state, setState] = useState<OrganizationStoreState>(() =>
     createState(initialState),
   );
@@ -227,9 +227,9 @@ export function OrganizationStoreProvider({
   );
 
   return createElement(OrganizationStoreContext.Provider, { value }, children);
-}
+};
 
-export function useOrganizationStore(): OrganizationStore {
+export const useOrganizationStore = (): OrganizationStore => {
   const store = useContext(OrganizationStoreContext);
 
   if (!store) {
@@ -239,4 +239,4 @@ export function useOrganizationStore(): OrganizationStore {
   }
 
   return store;
-}
+};

@@ -9,7 +9,7 @@ import type { OrganizationFormChangeHandler } from "./OrganizationFormFields";
 
 const EDIT_ORGANIZATION_FORM_ID = "organization-edit-organization-form";
 
-export function EditOrganizationModal({
+export const EditOrganizationModal = ({
   error,
   form,
   isOpen,
@@ -25,7 +25,7 @@ export function EditOrganizationModal({
   onChange: OrganizationFormChangeHandler;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-}) {
+}) => {
   const submitForm = () => {
     const formElement = document.getElementById(EDIT_ORGANIZATION_FORM_ID);
 
@@ -86,4 +86,4 @@ export function EditOrganizationModal({
       />
     </AppModal>
   );
-}
+};

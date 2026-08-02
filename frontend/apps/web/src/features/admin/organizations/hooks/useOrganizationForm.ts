@@ -15,11 +15,7 @@ import type {
   OrganizationTableRow,
   OrganizationToastState,
 } from "../types";
-import {
-  toCreatePayload,
-  toOrganizationForm,
-  toUpdatePayload,
-} from "../utils";
+import { toCreatePayload, toOrganizationForm, toUpdatePayload } from "../utils";
 
 interface UpdateOrganizationInput {
   id: number;
@@ -27,18 +23,18 @@ interface UpdateOrganizationInput {
 }
 
 interface UseOrganizationFormOptions {
-  createOrganization: (payload: CreateOrganizationRequest) => Promise<Organization>;
+  createOrganization: (
+    payload: CreateOrganizationRequest,
+  ) => Promise<Organization>;
   isCreating: boolean;
   isUpdating: boolean;
   refetch: () => Promise<unknown>;
-  setSelectedOrganization: (
-    organization: OrganizationTableRow | null,
-  ) => void;
+  setSelectedOrganization: (organization: OrganizationTableRow | null) => void;
   showToast: (toast: Omit<OrganizationToastState, "id">) => void;
   updateOrganization: (input: UpdateOrganizationInput) => Promise<Organization>;
 }
 
-export function useOrganizationForm({
+export const useOrganizationForm = ({
   createOrganization,
   isCreating,
   isUpdating,
@@ -46,7 +42,7 @@ export function useOrganizationForm({
   setSelectedOrganization,
   showToast,
   updateOrganization,
-}: UseOrganizationFormOptions) {
+}: UseOrganizationFormOptions) => {
   const {
     editingOrganization,
     isAddModalOpen,
@@ -246,4 +242,4 @@ export function useOrganizationForm({
     updateAddForm,
     updateEditForm,
   };
-}
+};

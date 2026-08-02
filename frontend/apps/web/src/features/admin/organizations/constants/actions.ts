@@ -21,24 +21,24 @@ export const menuActions = [
     id: "edit",
     label: "Edit",
   },
-  {
-    destructive: false,
-    icon: UsersRound,
-    id: "users",
-    label: "Manage Users",
-  },
-  {
-    destructive: false,
-    icon: BookOpen,
-    id: "courses",
-    label: "Assign Courses",
-  },
-  {
-    destructive: false,
-    icon: BarChart3,
-    id: "analytics",
-    label: "View Analytics",
-  },
+  // {
+  //   destructive: false,
+  //   icon: UsersRound,
+  //   id: "users",
+  //   label: "Manage Users",
+  // },
+  // {
+  //   destructive: false,
+  //   icon: BookOpen,
+  //   id: "courses",
+  //   label: "Assign Courses",
+  // },
+  // {
+  //   destructive: false,
+  //   icon: BarChart3,
+  //   id: "analytics",
+  //   label: "View Analytics",
+  // },
   {
     destructive: false,
     icon: Power,

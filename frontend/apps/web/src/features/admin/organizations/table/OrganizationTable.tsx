@@ -3,10 +3,7 @@
 import { useMemo } from "react";
 import { Plus } from "lucide-react";
 
-import {
-  DataTable,
-  type DataTableRowId,
-} from "@/components/DataTable";
+import { DataTable, type DataTableRowId } from "@/components/DataTable";
 
 import { OrganizationHeaderAction } from "../components/header";
 import { PAGE_SIZE_OPTIONS } from "../constants";
@@ -44,7 +41,7 @@ interface OrganizationTableProps {
   selectedRowIds: DataTableRowId[];
 }
 
-export function OrganizationTable({
+export const OrganizationTable = ({
   actions,
   data,
   error,
@@ -60,11 +57,8 @@ export function OrganizationTable({
   onSelectionChange,
   pagination,
   selectedRowIds,
-}: OrganizationTableProps) {
-  const columns = useMemo(
-    () => createOrganizationColumns(actions),
-    [actions],
-  );
+}: OrganizationTableProps) => {
+  const columns = useMemo(() => createOrganizationColumns(actions), [actions]);
   const hasActiveCriteria = hasSearch || hasFilters;
 
   return (
@@ -124,4 +118,4 @@ export function OrganizationTable({
       stickyHeader
     />
   );
-}
+};

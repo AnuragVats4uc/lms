@@ -5,18 +5,18 @@ import type {
   OrganizationSyncStatus,
 } from "../types";
 
-export function getDomain(organization: Organization): string | null {
+export const getDomain = (organization: Organization): string | null => {
   const fromWebsite = organization.website
     ?.replace(/^https?:\/\//u, "")
     .split("/")[0];
   const fromEmail = organization.email?.split("@")[1];
 
   return fromWebsite || fromEmail || null;
-}
+};
 
-export function getAdministrator(
+export const getAdministrator = (
   organization: Organization,
-): OrganizationAdministrator | null {
+): OrganizationAdministrator | null => {
   if (!organization.email) {
     return null;
   }
@@ -32,22 +32,22 @@ export function getAdministrator(
     email: organization.email,
     name: name || "Primary Administrator",
   };
-}
+};
 
-export function getSyncStatus(
+export const getSyncStatus = (
   organization: Organization,
-): OrganizationSyncStatus {
+): OrganizationSyncStatus => {
   if (!organization.isActive) {
     return "PENDING";
   }
 
   return "SYNCED";
-}
+};
 
-export function normalizeWebsite(value: string | null): string | null {
+export const normalizeWebsite = (value: string | null): string | null => {
   if (!value) {
     return null;
   }
 
   return /^https?:\/\//u.test(value) ? value : `https://${value}`;
-}
+};

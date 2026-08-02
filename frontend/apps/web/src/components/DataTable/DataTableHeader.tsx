@@ -21,7 +21,7 @@ interface DataTableHeaderProps<TData> {
   toggleSort: (columnId: string, multi?: boolean) => void;
 }
 
-function DataTableHeaderComponent<TData>({
+const DataTableHeaderComponent = <TData,>({
   allPageRowsSelected,
   columns,
   gridTemplateColumns,
@@ -32,21 +32,22 @@ function DataTableHeaderComponent<TData>({
   stickyHeader = true,
   toggleAllPageRows,
   toggleSort,
-}: DataTableHeaderProps<TData>) {
+}: DataTableHeaderProps<TData>) => {
   return (
     <XStack
       role="row"
+      background={DATA_TABLE_COLORS.background}
+      borderBottomColor={DATA_TABLE_COLORS.divider}
+      borderBottomWidth={1}
+      minW="max-content"
+      position={stickyHeader ? "sticky" : undefined}
+      start={stickyHeader ? 0 : undefined}
+      width="100%"
+      z={stickyHeader ? 5 : undefined}
       style={{
-        backgroundColor: DATA_TABLE_COLORS.background,
-        borderBottomColor: DATA_TABLE_COLORS.divider,
-        borderBottomWidth: 1,
         display: "grid",
         gridTemplateColumns,
-        minWidth: "max-content",
-        position: stickyHeader ? "sticky" : undefined,
         top: stickyHeader ? 0 : undefined,
-        width: "100%",
-        zIndex: stickyHeader ? 5 : undefined,
       }}
     >
       {selectable ? (
@@ -105,15 +106,10 @@ function DataTableHeaderComponent<TData>({
           >
             <XStack
               gap="$2"
+              justify={column.align === "right" ? "flex-end" : column.align === "center" ? "center" : "flex-start"}
+              width="100%"
               style={{
                 alignItems: "center",
-                justifyContent:
-                  column.align === "right"
-                    ? "flex-end"
-                    : column.align === "center"
-                      ? "center"
-                      : "flex-start",
-                width: "100%",
               }}
             >
               <Text
@@ -151,7 +147,7 @@ function DataTableHeaderComponent<TData>({
       })}
     </XStack>
   );
-}
+};
 
 export const DataTableHeader = memo(
   DataTableHeaderComponent,

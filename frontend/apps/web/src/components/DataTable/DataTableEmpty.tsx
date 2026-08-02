@@ -11,29 +11,27 @@ interface DataTableEmptyProps {
   emptyState?: DataTableEmptyState;
 }
 
-export const DataTableEmpty = memo(function DataTableEmpty({
-  emptyState,
-}: DataTableEmptyProps) {
+export const DataTableEmpty = memo(({ emptyState }: DataTableEmptyProps) => {
   return (
     <YStack
       gap="$3"
       p="$8"
+      justify="center"
+      minH={280}
       style={{
         alignItems: "center",
-        justifyContent: "center",
-        minHeight: 280,
         textAlign: "center",
       }}
     >
       <XStack
+        background={DATA_TABLE_COLORS.greenSoft}
+        justify="center"
+        width={54}
+        height={54}
         style={{
           alignItems: "center",
-          backgroundColor: DATA_TABLE_COLORS.greenSoft,
           borderRadius: 999,
           color: DATA_TABLE_COLORS.green,
-          height: 54,
-          justifyContent: "center",
-          width: 54,
         }}
       >
         {emptyState?.icon ?? <Inbox aria-hidden="true" size={26} />}
@@ -63,3 +61,5 @@ export const DataTableEmpty = memo(function DataTableEmpty({
     </YStack>
   );
 });
+
+DataTableEmpty.displayName = "DataTableEmpty";

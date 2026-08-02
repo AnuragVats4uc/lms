@@ -5,10 +5,10 @@ import type {
   DataTableSort,
 } from "../types";
 
-export function getRowValue<TData>(
+export const getRowValue = <TData>(
   row: TData,
-  column: DataTableColumn<TData>
-): unknown {
+  column: DataTableColumn<TData>,
+): unknown => {
   if (column.accessorFn) {
     return column.accessorFn(row);
   }
@@ -18,21 +18,19 @@ export function getRowValue<TData>(
   }
 
   return undefined;
-}
+};
 
-export function defaultGetRowId<TData>(
+export const defaultGetRowId = <TData>(
   row: TData,
-  index: number
-): DataTableRowId {
+  index: number,
+): DataTableRowId => {
   const record = row as Record<string, unknown>;
   const id = record.id ?? record.uuid;
 
-  return typeof id === "string" || typeof id === "number"
-    ? id
-    : index;
-}
+  return typeof id === "string" || typeof id === "number" ? id : index;
+};
 
-export function stringifyCellValue(value: unknown): string {
+export const stringifyCellValue = (value: unknown): string => {
   if (value === null || value === undefined) {
     return "";
   }
@@ -46,13 +44,13 @@ export function stringifyCellValue(value: unknown): string {
   }
 
   return String(value);
-}
+};
 
-export function applyClientSearch<TData>(
+export const applyClientSearch = <TData>(
   data: TData[],
   columns: DataTableColumn<TData>[],
-  searchValue: string
-): TData[] {
+  searchValue: string,
+): TData[] => {
   const normalizedSearch = searchValue.trim().toLowerCase();
 
   if (!normalizedSearch) {
@@ -60,28 +58,28 @@ export function applyClientSearch<TData>(
   }
 
   const searchableColumns = columns.filter(
-    (column) => column.searchable !== false
+    (column) => column.searchable !== false,
   );
 
   return data.filter((row) =>
     searchableColumns.some((column) =>
       stringifyCellValue(getRowValue(row, column))
         .toLowerCase()
-        .includes(normalizedSearch)
-    )
+        .includes(normalizedSearch),
+    ),
   );
-}
+};
 
-export function applyClientFilters<TData>(
+export const applyClientFilters = <TData>(
   data: TData[],
   columns: DataTableColumn<TData>[],
-  filters: DataTableFilter<TData>[]
-): TData[] {
+  filters: DataTableFilter<TData>[],
+): TData[] => {
   const activeFilters = filters.filter(
     (filter) =>
       filter.value !== undefined &&
       filter.value !== null &&
-      filter.value !== ""
+      filter.value !== "",
   );
 
   if (!activeFilters.length) {
@@ -118,15 +116,15 @@ export function applyClientFilters<TData>(
       return stringifyCellValue(value)
         .toLowerCase()
         .includes(String(filter.value).toLowerCase());
-    })
+    }),
   );
-}
+};
 
-export function applyClientSorting<TData>(
+export const applyClientSorting = <TData>(
   data: TData[],
   columns: DataTableColumn<TData>[],
-  sorting: DataTableSort[]
-): TData[] {
+  sorting: DataTableSort[],
+): TData[] => {
   if (!sorting.length) {
     return data;
   }
@@ -144,7 +142,7 @@ export function applyClientSorting<TData>(
       const comparison = stringifyCellValue(leftValue).localeCompare(
         stringifyCellValue(rightValue),
         undefined,
-        { numeric: true, sensitivity: "base" }
+        { numeric: true, sensitivity: "base" },
       );
 
       if (comparison !== 0) {
@@ -154,12 +152,12 @@ export function applyClientSorting<TData>(
 
     return 0;
   });
-}
+};
 
-export function getPageNumbers(
+export const getPageNumbers = (
   currentPage: number,
-  totalPages: number
-): Array<number | "ellipsis"> {
+  totalPages: number,
+): Array<number | "ellipsis"> => {
   if (totalPages <= 7) {
     return Array.from({ length: totalPages }, (_, index) => index + 1);
   }
@@ -188,4 +186,4 @@ export function getPageNumbers(
   });
 
   return result;
-}
+};

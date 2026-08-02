@@ -1,9 +1,9 @@
 import type { OrganizationTableRow, SortOption } from "../types";
 
-export function sortRows(
+export const sortRows = (
   rows: OrganizationTableRow[],
   sort: SortOption,
-): OrganizationTableRow[] {
+): OrganizationTableRow[] => {
   return [...rows].sort((first, second) => {
     if (sort === "oldest") {
       return (
@@ -28,8 +28,7 @@ export function sortRows(
     }
 
     return (
-      new Date(second.createdAt).getTime() -
-      new Date(first.createdAt).getTime()
+      new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
     );
   });
-}
+};

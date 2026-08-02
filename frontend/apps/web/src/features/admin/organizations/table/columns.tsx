@@ -21,17 +21,17 @@ import {
   WebsiteCell,
 } from "./cells";
 
-function EmptyCell() {
+const EmptyCell = () => {
   return (
     <Text color="#52627A" fontSize="$caption">
       -
     </Text>
   );
-}
+};
 
-export function createOrganizationColumns(
+export const createOrganizationColumns = (
   handlers: OrganizationRowActionHandlers,
-): DataTableColumn<OrganizationTableRow>[] {
+): DataTableColumn<OrganizationTableRow>[] => {
   return [
     {
       cell: ({ row }) => <AvatarCell organization={row} />,
@@ -114,13 +114,11 @@ export function createOrganizationColumns(
     },
     {
       align: "center",
-      cell: ({ row }) => (
-        <ActionsCell handlers={handlers} organization={row} />
-      ),
+      cell: ({ row }) => <ActionsCell handlers={handlers} organization={row} />,
       header: "Actions",
       id: "actions",
       meta: { stickyEnd: true },
       width: 76,
     },
   ];
-}
+};

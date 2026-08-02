@@ -7,7 +7,7 @@ import {
   type OrganizationFormChangeHandler,
 } from "./OrganizationFormFields";
 
-export function OrganizationForm({
+export const OrganizationForm = ({
   error,
   form,
   formId,
@@ -19,7 +19,7 @@ export function OrganizationForm({
   formId: string;
   onChange: OrganizationFormChangeHandler;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-}) {
+}) => {
   return (
     <form className="lms-organization-form" id={formId} onSubmit={onSubmit}>
       <OrganizationFormFields form={form} onChange={onChange} />
@@ -31,4 +31,4 @@ export function OrganizationForm({
       ) : null}
     </form>
   );
-}
+};

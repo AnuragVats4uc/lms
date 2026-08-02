@@ -11,10 +11,10 @@ interface OrganizationToastProps {
   toast: OrganizationToastState | null;
 }
 
-export function OrganizationToast({
+export const OrganizationToast = ({
   onDismiss,
   toast,
-}: OrganizationToastProps) {
+}: OrganizationToastProps) => {
   useEffect(() => {
     if (!toast) {
       return;
@@ -61,4 +61,4 @@ export function OrganizationToast({
     </div>,
     document.body,
   );
-}
+};

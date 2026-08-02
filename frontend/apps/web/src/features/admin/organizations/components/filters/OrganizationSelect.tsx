@@ -17,13 +17,13 @@ export interface OrganizationSelectProps {
   value: string;
 }
 
-export function OrganizationSelect({
+export const OrganizationSelect = ({
   ariaLabel,
   label,
   onChange,
   options,
   value,
-}: OrganizationSelectProps) {
+}: OrganizationSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({
     left: 0,
@@ -158,4 +158,4 @@ export function OrganizationSelect({
         : null}
     </div>
   );
-}
+};

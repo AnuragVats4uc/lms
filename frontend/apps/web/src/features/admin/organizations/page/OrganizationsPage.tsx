@@ -14,8 +14,9 @@ import { useOrganizationsPage } from "../hooks";
 import { OrganizationStoreProvider } from "../store";
 import { OrganizationTable } from "../table";
 import { getFiltersFromParams, parseInteger } from "../utils";
+import "../styles/organizations.css";
 
-export function OrganizationsPage() {
+export const OrganizationsPage = () => {
   const searchParams = useSearchParams();
   const [initialStoreState] = useState(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -32,17 +33,13 @@ export function OrganizationsPage() {
       <OrganizationsPageContent />
     </OrganizationStoreProvider>
   );
-}
+};
 
-function OrganizationsPageContent() {
+const OrganizationsPageContent = () => {
   const page = useOrganizationsPage();
 
   return (
-    <YStack
-      className="lms-organizations-page"
-      gap="$5"
-      style={{ width: "100%" }}
-    >
+    <YStack className="lms-organizations-page" gap="$5" width="100%">
       <OrganizationHeader
         isFetching={page.organizations.isFetching}
         onAdd={page.form.openAddOrganization}
@@ -82,9 +79,10 @@ function OrganizationsPageContent() {
           .filter(Boolean)
           .join(" ")}
         gap="$4"
-        style={{ alignItems: "flex-start", width: "100%" }}
+        width="100%"
+        style={{ alignItems: "flex-start" }}
       >
-        <YStack gap="$3" style={{ flex: 1, minWidth: 0 }}>
+        <YStack gap="$3" flex={1} minW={0}>
           <BulkActionBar
             count={page.selection.selectedRowIds.length}
             onClear={page.selection.clearSelection}
@@ -136,6 +134,6 @@ function OrganizationsPageContent() {
       </XStack>
     </YStack>
   );
-}
+};
 
 export default OrganizationsPage;

@@ -5,11 +5,11 @@ import { DataTableWebsiteCell } from "@/components/DataTable";
 import type { OrganizationTableRow } from "../../types";
 import { normalizeWebsite } from "../../utils";
 
-export function WebsiteCell({
+export const WebsiteCell = ({
   organization,
 }: {
   organization: OrganizationTableRow;
-}) {
+}) => {
   const website = normalizeWebsite(organization.website);
 
   if (!website) {
@@ -26,4 +26,4 @@ export function WebsiteCell({
       label={organization.domain ?? website}
     />
   );
-}
+};

@@ -27,7 +27,7 @@ interface DataTableToolbarProps<TData> {
   toolbarActions?: DataTableToolbarAction[];
 }
 
-function DataTableToolbarComponent<TData>({
+const DataTableToolbarComponent = <TData,>({
   bulkActions = [],
   filters,
   loading,
@@ -39,7 +39,7 @@ function DataTableToolbarComponent<TData>({
   setFilterValue,
   setSearchValue,
   toolbarActions = [],
-}: DataTableToolbarProps<TData>) {
+}: DataTableToolbarProps<TData>) => {
   const [draftSearch, setDraftSearch] = useState(searchValue);
 
   useEffect(() => {
@@ -62,28 +62,21 @@ function DataTableToolbarComponent<TData>({
       <XStack
         className="lms-data-table-toolbar"
         gap="$3"
-        style={{
-          alignItems: "center",
-          justifyContent: "space-between",
-          minWidth: 0,
-        }}
+        justify="space-between"
+        flexDirection="column"
+        minW={0}
       >
         {searchConfig?.enabled === false ? null : (
           <XStack
             className="lms-data-table-search"
             gap="$3"
             px="$3"
-            style={{
-              alignItems: "center",
-              backgroundColor: "#FCFCFD",
-              borderColor: DATA_TABLE_COLORS.border,
-              borderRadius: 12,
-              borderWidth: 1,
-              flex: "1 1 420px",
-              maxWidth: 520,
-              minHeight: 44,
-              minWidth: 240,
-            }}
+            background="#FCFCFD"
+            borderColor={DATA_TABLE_COLORS.border}
+            borderWidth={1}
+            maxW={520}
+            minH={44}
+            minW={240}
           >
             <Search
               aria-hidden="true"
@@ -109,39 +102,40 @@ function DataTableToolbarComponent<TData>({
         <XStack
           className="lms-data-table-toolbar-actions"
           gap="$2"
-          style={{ alignItems: "center", flexWrap: "wrap" }}
+          flexWrap="wrap"
+          justify="flex-start"
         >
           {hasBulkSelection
             ? bulkActions.map((action) => (
-                <Button
-                  aria-label={action.label}
-                  background={
-                    action.destructive ? "#FFFFFF" : DATA_TABLE_COLORS.green
+              <Button
+                aria-label={action.label}
+                background={
+                  action.destructive ? "#FFFFFF" : DATA_TABLE_COLORS.green
+                }
+                borderColor={
+                  action.destructive
+                    ? DATA_TABLE_COLORS.red
+                    : DATA_TABLE_COLORS.green
+                }
+                borderWidth={1}
+                disabled={loading || action.disabled}
+                height={40}
+                key={action.id}
+                onPress={() => action.onAction(selectedRows)}
+                rounded="$3"
+              >
+                {action.icon}
+                <Button.Text
+                  color={
+                    action.destructive ? DATA_TABLE_COLORS.red : "#FFFFFF"
                   }
-                  borderColor={
-                    action.destructive
-                      ? DATA_TABLE_COLORS.red
-                      : DATA_TABLE_COLORS.green
-                  }
-                  borderWidth={1}
-                  disabled={loading || action.disabled}
-                  height={40}
-                  key={action.id}
-                  onPress={() => action.onAction(selectedRows)}
-                  rounded="$3"
+                  fontSize="$caption"
+                  fontWeight="$button"
                 >
-                  {action.icon}
-                  <Button.Text
-                    color={
-                      action.destructive ? DATA_TABLE_COLORS.red : "#FFFFFF"
-                    }
-                    fontSize="$caption"
-                    fontWeight="$button"
-                  >
-                    {action.label}
-                  </Button.Text>
-                </Button>
-              ))
+                  {action.label}
+                </Button.Text>
+              </Button>
+            ))
             : null}
 
           {filters.length ? (
@@ -236,7 +230,7 @@ function DataTableToolbarComponent<TData>({
       ) : null}
     </YStack>
   );
-}
+};
 
 export const DataTableToolbar = memo(
   DataTableToolbarComponent,

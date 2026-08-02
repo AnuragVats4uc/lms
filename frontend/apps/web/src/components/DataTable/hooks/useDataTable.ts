@@ -19,9 +19,7 @@ import {
   defaultGetRowId,
 } from "../utils";
 
-export function useDataTable<TData>(
-  props: DataTableProps<TData>
-) {
+export const useDataTable = <TData>(props: DataTableProps<TData>) => {
   const {
     columnVisibility,
     columns,
@@ -42,8 +40,7 @@ export function useDataTable<TData>(
     sorting,
   } = props;
 
-  const searchConfig =
-    typeof searchable === "object" ? searchable : undefined;
+  const searchConfig = typeof searchable === "object" ? searchable : undefined;
   const searchEnabled =
     typeof searchable === "boolean"
       ? searchable
@@ -52,19 +49,19 @@ export function useDataTable<TData>(
   const paginationMode = pagination?.mode ?? "client";
 
   const [internalSearch, setInternalSearch] = useState(
-    searchConfig?.defaultValue ?? ""
+    searchConfig?.defaultValue ?? "",
   );
   const [internalSorting, setInternalSorting] =
     useState<DataTableSort[]>(defaultSorting);
   const [internalFilters, setInternalFilters] =
     useState<DataTableFilter<TData>[]>(filters);
   const [internalPage, setInternalPage] = useState(
-    pagination?.defaultPage ?? 1
+    pagination?.defaultPage ?? 1,
   );
   const [internalPageSize, setInternalPageSize] = useState(
     pagination?.defaultPageSize ??
       pagination?.pageSize ??
-      DATA_TABLE_DEFAULT_PAGE_SIZE
+      DATA_TABLE_DEFAULT_PAGE_SIZE,
   );
   const [internalSelectedIds, setInternalSelectedIds] = useState<
     DataTableRowId[]
@@ -81,12 +78,11 @@ export function useDataTable<TData>(
     () =>
       columns.filter((column) => {
         const explicitVisible = column.visible !== false;
-        const controlledVisible =
-          columnVisibility?.value?.[column.id] ?? true;
+        const controlledVisible = columnVisibility?.value?.[column.id] ?? true;
 
         return explicitVisible && controlledVisible;
       }),
-    [columnVisibility?.value, columns]
+    [columnVisibility?.value, columns],
   );
 
   const processedRows = useMemo(() => {
@@ -100,7 +96,7 @@ export function useDataTable<TData>(
     const filtered = applyClientFilters(
       searched,
       visibleColumns,
-      activeFilters
+      activeFilters,
     );
 
     return applyClientSorting(filtered, visibleColumns, activeSorting);
@@ -133,14 +129,14 @@ export function useDataTable<TData>(
   const selectedRows = useMemo(
     () =>
       data.filter((row, index) =>
-        activeSelectedIds.includes(getRowId(row, index))
+        activeSelectedIds.includes(getRowId(row, index)),
       ),
-    [activeSelectedIds, data, getRowId]
+    [activeSelectedIds, data, getRowId],
   );
 
   const pageRowIds = useMemo(
     () => pageRows.map((row, index) => getRowId(row, index)),
-    [getRowId, pageRows]
+    [getRowId, pageRows],
   );
 
   const allPageRowsSelected =
@@ -157,12 +153,12 @@ export function useDataTable<TData>(
       }
 
       const nextRows = data.filter((row, index) =>
-        nextIds.includes(getRowId(row, index))
+        nextIds.includes(getRowId(row, index)),
       );
 
       onSelectionChange?.(nextIds, nextRows);
     },
-    [data, getRowId, onSelectionChange, selectedRowIds]
+    [data, getRowId, onSelectionChange, selectedRowIds],
   );
 
   const setSearchValue = useCallback(
@@ -173,15 +169,12 @@ export function useDataTable<TData>(
 
       onSearch?.(value);
     },
-    [onSearch, searchConfig?.value]
+    [onSearch, searchConfig?.value],
   );
 
   const setPage = useCallback(
     (nextPage: number) => {
-      const normalizedPage = Math.min(
-        Math.max(nextPage, 1),
-        totalPages
-      );
+      const normalizedPage = Math.min(Math.max(nextPage, 1), totalPages);
 
       if (pagination?.page === undefined) {
         setInternalPage(normalizedPage);
@@ -189,7 +182,7 @@ export function useDataTable<TData>(
 
       onPageChange?.(normalizedPage);
     },
-    [onPageChange, pagination?.page, totalPages]
+    [onPageChange, pagination?.page, totalPages],
   );
 
   const setPageSize = useCallback(
@@ -201,7 +194,7 @@ export function useDataTable<TData>(
 
       onPageSizeChange?.(nextPageSize);
     },
-    [onPageSizeChange, pagination?.pageSize]
+    [onPageSizeChange, pagination?.pageSize],
   );
 
   const toggleSort = useCallback(
@@ -211,10 +204,7 @@ export function useDataTable<TData>(
         current?.direction === "asc" ? "desc" : "asc";
       const nextSort = { id: columnId, direction: nextDirection };
       const nextSorting = multi
-        ? [
-            ...activeSorting.filter((item) => item.id !== columnId),
-            nextSort,
-          ]
+        ? [...activeSorting.filter((item) => item.id !== columnId), nextSort]
         : [nextSort];
 
       if (!sorting) {
@@ -223,13 +213,13 @@ export function useDataTable<TData>(
 
       onSort?.(nextSorting);
     },
-    [activeSorting, onSort, sorting]
+    [activeSorting, onSort, sorting],
   );
 
   const setFilterValue = useCallback(
     (id: string, value: unknown) => {
       const nextFilters = activeFilters.map((filter) =>
-        filter.id === id ? { ...filter, value } : filter
+        filter.id === id ? { ...filter, value } : filter,
       );
 
       if (!onFilterChange) {
@@ -238,7 +228,7 @@ export function useDataTable<TData>(
 
       onFilterChange?.(nextFilters);
     },
-    [activeFilters, onFilterChange]
+    [activeFilters, onFilterChange],
   );
 
   const toggleRowSelected = useCallback(
@@ -256,42 +246,30 @@ export function useDataTable<TData>(
 
       updateSelectedIds(nextIds);
     },
-    [
-      activeSelectedIds,
-      getRowId,
-      selectionMode,
-      updateSelectedIds,
-    ]
+    [activeSelectedIds, getRowId, selectionMode, updateSelectedIds],
   );
 
   const toggleAllPageRows = useCallback(() => {
     if (allPageRowsSelected) {
       updateSelectedIds(
-        activeSelectedIds.filter((id) => !pageRowIds.includes(id))
+        activeSelectedIds.filter((id) => !pageRowIds.includes(id)),
       );
       return;
     }
 
     updateSelectedIds([...new Set([...activeSelectedIds, ...pageRowIds])]);
-  }, [
-    activeSelectedIds,
-    allPageRowsSelected,
-    pageRowIds,
-    updateSelectedIds,
-  ]);
+  }, [activeSelectedIds, allPageRowsSelected, pageRowIds, updateSelectedIds]);
 
   const clearSelection = useCallback(
     () => updateSelectedIds([]),
-    [updateSelectedIds]
+    [updateSelectedIds],
   );
 
   const state: DataTableState<TData> = {
     allPageRowsSelected,
     filters: activeFilters,
-    hasNext:
-      pagination?.hasNext ?? page < totalPages,
-    hasPrevious:
-      pagination?.hasPrevious ?? page > 1,
+    hasNext: pagination?.hasNext ?? page < totalPages,
+    hasPrevious: pagination?.hasPrevious ?? page > 1,
     page,
     pageSize,
     rows: pageRows,
@@ -308,8 +286,7 @@ export function useDataTable<TData>(
   return {
     clearSelection,
     pageSizeOptions:
-      pagination?.pageSizeOptions ??
-      Array.from(DATA_TABLE_PAGE_SIZE_OPTIONS),
+      pagination?.pageSizeOptions ?? Array.from(DATA_TABLE_PAGE_SIZE_OPTIONS),
     setFilterValue,
     setPage,
     setPageSize,
@@ -319,4 +296,4 @@ export function useDataTable<TData>(
     toggleRowSelected,
     toggleSort,
   };
-}
+};

@@ -3,14 +3,11 @@ import type {
   UpdateOrganizationRequest,
 } from "@repo/types";
 
-import type {
-  AddOrganizationFormState,
-  OrganizationTableRow,
-} from "../types";
+import type { AddOrganizationFormState, OrganizationTableRow } from "../types";
 
-export function toCreatePayload(
+export const toCreatePayload = (
   form: AddOrganizationFormState,
-): CreateOrganizationRequest {
+): CreateOrganizationRequest => {
   const payload: CreateOrganizationRequest = {
     code: form.code.trim().toUpperCase(),
     name: form.name.trim(),
@@ -30,17 +27,17 @@ export function toCreatePayload(
   });
 
   return payload;
-}
+};
 
-export function toUpdatePayload(
+export const toUpdatePayload = (
   form: AddOrganizationFormState,
-): UpdateOrganizationRequest {
+): UpdateOrganizationRequest => {
   return toCreatePayload(form);
-}
+};
 
-export function toOrganizationForm(
+export const toOrganizationForm = (
   organization: OrganizationTableRow,
-): AddOrganizationFormState {
+): AddOrganizationFormState => {
   return {
     address: organization.address ?? "",
     code: organization.code,
@@ -51,7 +48,7 @@ export function toOrganizationForm(
     status: organization.status,
     website: organization.website ?? "",
   };
-}
+};
 
 // Temporary compatibility aliases for any imports outside this module.
 export const toCreateOrganizationPayload = toCreatePayload;

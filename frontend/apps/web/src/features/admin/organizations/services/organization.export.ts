@@ -8,14 +8,14 @@ export interface OrganizationExportRequest {
 
 export type OrganizationExportRowId = string | number;
 
-export function exportOrganizations(request: OrganizationExportRequest) {
+export const exportOrganizations = (request: OrganizationExportRequest) => {
   // Preserve the current placeholder behavior until an export API is connected.
   console.info("Export organizations", request);
-}
+};
 
-export function exportSelectedOrganizations(
+export const exportSelectedOrganizations = (
   selectedRowIds: readonly OrganizationExportRowId[],
-) {
+) => {
   // Preserve the current placeholder behavior until an export API is connected.
   console.info("Export selected", selectedRowIds);
-}
+};

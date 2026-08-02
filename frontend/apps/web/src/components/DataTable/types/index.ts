@@ -16,8 +16,10 @@ export interface DataTableColumnContext<TData, TValue = unknown> {
   column: DataTableColumn<TData, TValue>;
 }
 
-export interface DataTableCellContext<TData, TValue = unknown>
-  extends DataTableColumnContext<TData, TValue> {
+export interface DataTableCellContext<
+  TData,
+  TValue = unknown,
+> extends DataTableColumnContext<TData, TValue> {
   row: TData;
   rowIndex: number;
   value: TValue;
@@ -25,7 +27,8 @@ export interface DataTableCellContext<TData, TValue = unknown>
 
 export interface DataTableColumn<TData, TValue = unknown> {
   id: string;
-  header: ReactNode | ((context: DataTableColumnContext<TData, TValue>) => ReactNode);
+  header:
+    ReactNode | ((context: DataTableColumnContext<TData, TValue>) => ReactNode);
   accessorKey?: keyof TData & string;
   accessorFn?: (row: TData) => TValue;
   sortable?: boolean;
@@ -177,7 +180,10 @@ export interface DataTableProps<TData> {
   onFilterChange?: (filters: DataTableFilter<TData>[]) => void;
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
-  onSelectionChange?: (selectedIds: DataTableRowId[], selectedRows: TData[]) => void;
+  onSelectionChange?: (
+    selectedIds: DataTableRowId[],
+    selectedRows: TData[],
+  ) => void;
   onRefresh?: () => void;
   onExport?: () => void;
 }

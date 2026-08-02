@@ -1,7 +1,7 @@
 import type { OrganizationTableRow } from "../types";
 import { ConfirmationDialog } from "./ConfirmationDialog";
 
-export function BulkStatusDialog({
+export const BulkStatusDialog = ({
   active,
   error,
   isOpen,
@@ -17,7 +17,7 @@ export function BulkStatusDialog({
   onClose: () => void;
   onConfirm: () => void;
   organizations: OrganizationTableRow[];
-}) {
+}) => {
   const isBulk = organizations.length > 1;
   const organization = organizations[0];
 
@@ -41,4 +41,4 @@ export function BulkStatusDialog({
       }`}
     />
   );
-}
+};

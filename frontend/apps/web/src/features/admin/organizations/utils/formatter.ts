@@ -1,36 +1,36 @@
-import type {
-  OrganizationSyncStatus,
-  OrganizationTableRow,
-} from "../types";
+import type { OrganizationSyncStatus, OrganizationTableRow } from "../types";
 
-export function parseInteger(value: string | null, fallback: number): number {
+export const parseInteger = (
+  value: string | null,
+  fallback: number,
+): number => {
   const parsed = Number(value);
 
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
+};
 
-export function getStatusTone(
+export const getStatusTone = (
   organization: OrganizationTableRow,
-): "green" | "gray" {
+): "green" | "gray" => {
   return organization.status === "ACTIVE" && organization.isActive
     ? "green"
     : "gray";
-}
+};
 
-export function getSyncTone(
+export const getSyncTone = (
   syncStatus: OrganizationSyncStatus,
-): "red" | "orange" | "green" {
+): "red" | "orange" | "green" => {
   if (syncStatus === "FAILED") {
     return "red";
   }
 
   return syncStatus === "PENDING" ? "orange" : "green";
-}
+};
 
-export function getSyncLabel(syncStatus: OrganizationSyncStatus): string {
+export const getSyncLabel = (syncStatus: OrganizationSyncStatus): string => {
   return syncStatus === "SYNCED"
     ? "Synced"
     : syncStatus === "PENDING"
       ? "Pending"
       : "Failed";
-}
+};

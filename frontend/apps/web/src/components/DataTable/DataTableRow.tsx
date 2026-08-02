@@ -5,7 +5,7 @@ import { Button, XStack, YStack } from "@repo/ui";
 
 import { DATA_TABLE_COLORS } from "./constants";
 import { DataTableCell } from "./DataTableCell";
-import type { DataTableColumn, DataTableRowId } from "./types";
+import type { DataTableColumn } from "./types";
 import { getRowValue } from "./utils";
 
 interface DataTableRowProps<TData> {
@@ -22,7 +22,7 @@ interface DataTableRowProps<TData> {
   stickyFirstColumn?: boolean;
 }
 
-function DataTableRowComponent<TData>({
+const DataTableRowComponent = <TData,>({
   columns,
   getRowExpandedContent,
   gridTemplateColumns,
@@ -34,22 +34,22 @@ function DataTableRowComponent<TData>({
   rowIndex,
   selectable,
   stickyFirstColumn,
-}: DataTableRowProps<TData>) {
+}: DataTableRowProps<TData>) => {
   return (
     <YStack role="rowgroup">
       <XStack
         hoverStyle={{ background: DATA_TABLE_COLORS.hover }}
         onPress={() => onRowClick?.(row)}
         role="row"
+        borderBottomColor={DATA_TABLE_COLORS.divider}
+        borderBottomWidth={1}
+        cursor={onRowClick ? "pointer" : "default"}
+        minW="max-content"
+        width="100%"
         style={{
-          borderBottomColor: DATA_TABLE_COLORS.divider,
-          borderBottomWidth: 1,
-          cursor: onRowClick ? "pointer" : "default",
           display: "grid",
           gridTemplateColumns,
-          minWidth: "max-content",
           transition: "background-color 160ms ease",
-          width: "100%",
         }}
       >
         {selectable ? (
@@ -96,18 +96,16 @@ function DataTableRowComponent<TData>({
       {isExpanded && getRowExpandedContent ? (
         <YStack
           p="$4"
-          style={{
-            backgroundColor: DATA_TABLE_COLORS.subtle,
-            borderBottomColor: DATA_TABLE_COLORS.divider,
-            borderBottomWidth: 1,
-          }}
+          background={DATA_TABLE_COLORS.subtle}
+          borderBottomColor={DATA_TABLE_COLORS.divider}
+          borderBottomWidth={1}
         >
           {getRowExpandedContent(row)}
         </YStack>
       ) : null}
     </YStack>
   );
-}
+};
 
 export const DataTableRow = memo(
   DataTableRowComponent,

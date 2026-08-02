@@ -21,7 +21,7 @@ import type {
 } from "./types";
 import { defaultGetRowId } from "./utils";
 
-function getColumnSize<TData>(column: DataTableColumn<TData>) {
+const getColumnSize = <TData,>(column: DataTableColumn<TData>) => {
   if (typeof column.width === "number") {
     return `${column.width}px`;
   }
@@ -31,9 +31,9 @@ function getColumnSize<TData>(column: DataTableColumn<TData>) {
   }
 
   return `minmax(${column.minWidth ?? 148}px, 1fr)`;
-}
+};
 
-function DataTableComponent<TData>(props: DataTableProps<TData>) {
+const DataTableComponent = <TData,>(props: DataTableProps<TData>) => {
   const {
     actions,
     bulkActions,
@@ -71,7 +71,7 @@ function DataTableComponent<TData>(props: DataTableProps<TData>) {
     return {
       align: "center",
       cell: ({ row }) => (
-        <XStack gap="$1" style={{ justifyContent: "center" }}>
+        <XStack gap="$1" justify="center">
           {actions.length === 1 ? (
             <Button
               aria-label={actions[0]?.label ?? "Row action"}
@@ -145,12 +145,9 @@ function DataTableComponent<TData>(props: DataTableProps<TData>) {
       borderColor={DATA_TABLE_COLORS.border}
       className="lms-data-table-card"
       p={0}
-      style={{
-        borderRadius: 14,
-        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.04)",
-        overflow: "hidden",
-        width: "100%",
-      }}
+      overflow="hidden"
+      width="100%"
+      boxShadow="0 10px 30px rgba(15, 23, 42, 0.04)"
     >
       <YStack>
         {renderToolbar ? (
@@ -173,18 +170,8 @@ function DataTableComponent<TData>(props: DataTableProps<TData>) {
           </YStack>
         )}
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator
-          style={{ maxWidth: "100%" }}
-        >
-          <YStack
-            role="table"
-            style={{
-              minWidth: "100%",
-              width: "max-content",
-            }}
-          >
+        <ScrollView horizontal showsHorizontalScrollIndicator maxW="100%">
+          <YStack role="table" minW="100%" width="max-content">
             <DataTableHeader
               allPageRowsSelected={state.allPageRowsSelected}
               columns={visibleColumns}
@@ -243,6 +230,6 @@ function DataTableComponent<TData>(props: DataTableProps<TData>) {
       </YStack>
     </AppCard>
   );
-}
+};
 
 export const DataTable = memo(DataTableComponent) as typeof DataTableComponent;

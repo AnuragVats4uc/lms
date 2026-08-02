@@ -8,7 +8,7 @@ import { useOrganizationStore } from "../store";
 import type { OrganizationFiltersState, OrganizationTableRow } from "../types";
 import { getActiveFilterChips, isWithinCreatedDate, sortRows } from "../utils";
 
-export function useOrganizationFilters() {
+export const useOrganizationFilters = () => {
   const router = useRouter();
   const pathname = usePathname();
   const { filters, page, pageSize, setFilters, setPage, setPageSize } =
@@ -101,4 +101,4 @@ export function useOrganizationFilters() {
     setPage,
     updateFilters,
   };
-}
+};

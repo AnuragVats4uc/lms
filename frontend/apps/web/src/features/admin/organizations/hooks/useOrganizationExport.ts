@@ -16,12 +16,12 @@ interface UseOrganizationExportOptions {
   selectedRowIds: DataTableRowId[];
 }
 
-export function useOrganizationExport({
+export const useOrganizationExport = ({
   filters,
   page,
   pageSize,
   selectedRowIds,
-}: UseOrganizationExportOptions) {
+}: UseOrganizationExportOptions) => {
   const exportOrganizations = useCallback(() => {
     runOrganizationExport({ filters, page, pageSize });
   }, [filters, page, pageSize]);
@@ -34,4 +34,4 @@ export function useOrganizationExport({
     exportOrganizations,
     exportSelectedOrganizations,
   };
-}
+};

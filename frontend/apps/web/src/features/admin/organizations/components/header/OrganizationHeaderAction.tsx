@@ -31,9 +31,10 @@ export const OrganizationHeaderAction = ({
       pressStyle={{ scale: 0.98 }}
       px="$4"
       rounded="$4"
-      boxShadow={primary
-        ? "0 10px 18px rgba(5, 150, 105, 0.18)"
-        : "0 8px 20px rgba(15, 23, 42, 0.035)"
+      boxShadow={
+        primary
+          ? "0 10px 18px rgba(5, 150, 105, 0.18)"
+          : "0 8px 20px rgba(15, 23, 42, 0.035)"
       }
       style={{
         transition: "transform 160ms ease, background-color 160ms ease",
@@ -49,4 +50,4 @@ export const OrganizationHeaderAction = ({
       </Button.Text>
     </Button>
   );
-}
+};

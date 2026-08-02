@@ -62,13 +62,14 @@ export function AppModal({
         aria-modal={true}
         className={["lms-modal-panel", className].filter(Boolean).join(" ")}
         role="dialog"
-        style={{ position: "relative" }}
+        position="relative"
       >
         <XStack
           className="lms-modal-header"
-          style={{ alignItems: "flex-start", justifyContent: "space-between" }}
+          justify="space-between"
+          style={{ alignItems: "flex-start", }}
         >
-          <YStack gap="$1" style={{ minWidth: 0 }}>
+          <YStack gap="$1" minW={0}>
             <Text color="#0F1D3A" fontSize={20} fontWeight="$heading">
               {title}
             </Text>
@@ -99,7 +100,7 @@ export function AppModal({
           <XStack
             className="lms-modal-footer"
             gap="$2"
-            style={{ justifyContent: "flex-end" }}
+            justify="flex-end"
           >
             {footer}
           </XStack>

@@ -3,11 +3,11 @@ import { DataTableBadgeCell } from "@/components/DataTable";
 import type { OrganizationTableRow } from "../../types";
 import { getStatusTone } from "../../utils";
 
-export function StatusCell({
+export const StatusCell = ({
   organization,
 }: {
   organization: OrganizationTableRow;
-}) {
+}) => {
   return (
     <DataTableBadgeCell
       label={
@@ -18,4 +18,4 @@ export function StatusCell({
       tone={getStatusTone(organization)}
     />
   );
-}
+};

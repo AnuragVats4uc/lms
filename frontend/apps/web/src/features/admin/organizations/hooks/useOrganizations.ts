@@ -21,12 +21,12 @@ interface UseOrganizationsOptions {
   status: OrganizationFiltersState["status"];
 }
 
-export function useOrganizations({
+export const useOrganizations = ({
   page,
   pageSize,
   search,
   status,
-}: UseOrganizationsOptions) {
+}: UseOrganizationsOptions) => {
   const serverStatus =
     status === "ACTIVE" || status === "INACTIVE" ? status : undefined;
 
@@ -76,4 +76,4 @@ export function useOrganizations({
     total: query.data?.meta?.total ?? 0,
     updateOrganization: updateMutation.mutateAsync,
   };
-}
+};

@@ -1,7 +1,7 @@
 import type { OrganizationTableRow } from "../types";
 import { ConfirmationDialog } from "./ConfirmationDialog";
 
-export function StatusDialog({
+export const StatusDialog = ({
   error,
   isOpen,
   isSubmitting,
@@ -15,7 +15,7 @@ export function StatusDialog({
   onClose: () => void;
   onConfirm: () => void;
   organization: OrganizationTableRow | null;
-}) {
+}) => {
   const nextActive = organization ? !organization.isActive : false;
 
   return (
@@ -32,4 +32,4 @@ export function StatusDialog({
       title={`${nextActive ? "Activate" : "Deactivate"} Organization`}
     />
   );
-}
+};

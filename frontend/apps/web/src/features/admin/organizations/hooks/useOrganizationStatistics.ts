@@ -5,15 +5,14 @@ import { useMemo } from "react";
 import type { OrganizationTableRow } from "../types";
 import { isWithinCreatedDate } from "../utils";
 
-export function useOrganizationStatistics(
+export const useOrganizationStatistics = (
   rows: OrganizationTableRow[],
   total: number,
-) {
+) => {
   return useMemo(
     () => ({
-      activeCount: rows.filter(
-        (row) => row.status === "ACTIVE" && row.isActive,
-      ).length,
+      activeCount: rows.filter((row) => row.status === "ACTIVE" && row.isActive)
+        .length,
       inactiveCount: rows.filter(
         (row) => row.status === "INACTIVE" || !row.isActive,
       ).length,
@@ -24,4 +23,4 @@ export function useOrganizationStatistics(
     }),
     [rows, total],
   );
-}
+};

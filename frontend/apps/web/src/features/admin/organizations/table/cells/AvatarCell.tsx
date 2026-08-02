@@ -1,15 +1,12 @@
-import {
-  DataTableAvatarCell,
-  DataTableTextCell,
-} from "@/components/DataTable";
+import { DataTableAvatarCell, DataTableTextCell } from "@/components/DataTable";
 
 import type { OrganizationTableRow } from "../../types";
 
-export function AvatarCell({
+export const AvatarCell = ({
   organization,
 }: {
   organization: OrganizationTableRow;
-}) {
+}) => {
   return (
     <DataTableAvatarCell
       imageSrc={organization.logo ?? undefined}
@@ -19,19 +16,16 @@ export function AvatarCell({
       }`}
     />
   );
-}
+};
 
-export function AdministratorAvatarCell({
+export const AdministratorAvatarCell = ({
   organization,
 }: {
   organization: OrganizationTableRow;
-}) {
+}) => {
   if (!organization.primaryAdministrator) {
     return (
-      <DataTableTextCell
-        primary="Not assigned"
-        secondary="No administrator"
-      />
+      <DataTableTextCell primary="Not assigned" secondary="No administrator" />
     );
   }
 
@@ -42,4 +36,4 @@ export function AdministratorAvatarCell({
       subtitle={organization.primaryAdministrator.email}
     />
   );
-}
+};

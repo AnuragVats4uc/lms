@@ -1,9 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { Plus, RefreshCw, X } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import { Database } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Text, XStack, YStack } from "@repo/ui";
+import { Button, XStack, YStack } from "@repo/ui";
 import type { PaginatedData } from "@repo/types";
 
 import { AppModal } from "@/components/AppModal";
@@ -14,11 +21,18 @@ import {
 } from "@/components/DataTable";
 import { userHasPermission } from "@/features/shared/access";
 import { useAuthSession } from "@repo/auth";
-import { OrganizationSearch, OrganizationSelect } from "../organizations/components/filters";
 import { ConfirmationDialog } from "../organizations/dialogs/ConfirmationDialog";
-import { OrganizationHeaderAction } from "../organizations/components/header/OrganizationHeaderAction";
 import { OrganizationToast } from "../organizations/components/shared/OrganizationToast";
 import type { OrganizationToastState } from "../organizations/types";
+import {
+  CrudDetailPanel,
+  CrudFilterToolbar,
+  CrudPageHeader,
+  CrudRowActions,
+  CrudStats,
+  type CrudFilterDefinition,
+  type CrudStat,
+} from "./crud";
 
 export interface ResourceQuery {
   page: number;
@@ -64,6 +78,13 @@ export interface ResourceManagementPageProps<
   statusOptions?: Array<{ label: string; value: string }>;
   typeOptions?: Array<{ label: string; value: string }>;
   publishedOptions?: Array<{ label: string; value: string }>;
+  getStats?: (context: {
+    isLoading: boolean;
+    rows: Item[];
+    total: number;
+  }) => CrudStat[];
+  searchPlaceholder?: string;
+  createLabel?: string;
   context?: ReactNode;
   enabled?: boolean;
   emptyDescription?: string;
@@ -99,14 +120,23 @@ export function ResourceManagementPage<
   statusOptions,
   typeOptions,
   publishedOptions,
+  getStats,
+  searchPlaceholder,
+  createLabel,
   context,
   enabled = true,
   emptyDescription,
 }: ResourceManagementPageProps<Item, Form, CreatePayload, UpdatePayload>) {
   const { currentUser } = useAuthSession();
-  const canCreate = Boolean(create) && userHasPermission(currentUser, permissionPrefix + ".create");
-  const canUpdate = Boolean(update) && userHasPermission(currentUser, permissionPrefix + ".update");
-  const canDelete = Boolean(remove) && userHasPermission(currentUser, permissionPrefix + ".delete");
+  const canCreate =
+    Boolean(create) &&
+    userHasPermission(currentUser, permissionPrefix + ".create");
+  const canUpdate =
+    Boolean(update) &&
+    userHasPermission(currentUser, permissionPrefix + ".update");
+  const canDelete =
+    Boolean(remove) &&
+    userHasPermission(currentUser, permissionPrefix + ".delete");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState("");
@@ -133,17 +163,16 @@ export function ResourceManagementPage<
 
   const query = useQuery({
     enabled,
-    queryFn: () => queryFn({
-      limit: pageSize,
-      page,
-      search: debouncedSearch || undefined,
-      status: status || undefined,
-      type: typeFilter || undefined,
-      published:
-        publishedFilter === ""
-          ? undefined
-          : publishedFilter === "true",
-    }),
+    queryFn: () =>
+      queryFn({
+        limit: pageSize,
+        page,
+        search: debouncedSearch || undefined,
+        status: status || undefined,
+        type: typeFilter || undefined,
+        published:
+          publishedFilter === "" ? undefined : publishedFilter === "true",
+      }),
     queryKey: [
       ...queryKey,
       page,
@@ -155,15 +184,51 @@ export function ResourceManagementPage<
     ],
     staleTime: 30_000,
   });
-  const createMutation = useMutation({ mutationFn: (payload: CreatePayload) => create?.(payload) as Promise<Item> });
-  const updateMutation = useMutation({
-    mutationFn: (input: { id: number; payload: UpdatePayload }) => update?.(input.id, input.payload) as Promise<Item>,
+  const createMutation = useMutation({
+    mutationFn: (payload: CreatePayload) => create?.(payload) as Promise<Item>,
   });
-  const deleteMutation = useMutation({ mutationFn: (id: number) => remove?.(id) as Promise<Item> });
+  const updateMutation = useMutation({
+    mutationFn: (input: { id: number; payload: UpdatePayload }) =>
+      update?.(input.id, input.payload) as Promise<Item>,
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => remove?.(id) as Promise<Item>,
+  });
   const rows = query.data?.items ?? [];
-  const isSubmitting = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+  const total = query.data?.meta.total ?? 0;
+  const isSubmitting =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    deleteMutation.isPending;
 
-  const showToast = (titleText: string, message: string, tone: "success" | "error") => {
+  const filterDefinitions = useMemo<CrudFilterDefinition[]>(
+    () => [
+      ...(statusOptions?.length
+        ? [{ id: "status", label: "Status", options: statusOptions }]
+        : []),
+      ...(typeOptions?.length
+        ? [{ id: "type", label: "Type", options: typeOptions }]
+        : []),
+      ...(publishedOptions?.length
+        ? [{ id: "published", label: "Published", options: publishedOptions }]
+        : []),
+    ],
+    [publishedOptions, statusOptions, typeOptions],
+  );
+
+  const stats = getStats?.({ isLoading: query.isLoading, rows, total }) ?? [
+    {
+      icon: <Database aria-hidden="true" color="#059669" size={20} />,
+      label: `Total ${entityLabel}s`,
+      value: total,
+    },
+  ];
+
+  const showToast = (
+    titleText: string,
+    message: string,
+    tone: "success" | "error",
+  ) => {
     setToast({ id: Date.now(), title: titleText, message, tone });
   };
   const closeForm = () => {
@@ -178,14 +243,31 @@ export function ResourceManagementPage<
     setFormError(null);
     setCreateOpen(true);
   };
-  const openEdit = useCallback((item: Item) => {
-    setForm(toForm(item));
-    setFormError(null);
-    setEditing(item);
-  }, [toForm]);
+  const openEdit = useCallback(
+    (item: Item) => {
+      setForm(toForm(item));
+      setFormError(null);
+      setEditing(item);
+    },
+    [toForm],
+  );
   const onChange = <K extends keyof Form>(key: K, value: Form[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
     setFormError(null);
+  };
+  const handleFilterChange = (id: string, value: string) => {
+    const nextValue = value === "ALL" ? "" : value;
+    if (id === "status") setStatus(nextValue);
+    if (id === "type") setTypeFilter(nextValue);
+    if (id === "published") setPublishedFilter(nextValue);
+    setPage(1);
+  };
+  const clearFilters = () => {
+    setSearch("");
+    setStatus("");
+    setTypeFilter("");
+    setPublishedFilter("");
+    setPage(1);
   };
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -202,16 +284,27 @@ export function ResourceManagementPage<
           payload: toUpdatePayload(form),
         });
         setSelected(item);
-        showToast(entityLabel + " updated", getDisplayName(item) + " was updated successfully.", "success");
+        showToast(
+          entityLabel + " updated",
+          getDisplayName(item) + " was updated successfully.",
+          "success",
+        );
       } else if (!editing && create) {
         const item = await createMutation.mutateAsync(toCreatePayload(form));
         setSelected(item);
-        showToast(entityLabel + " created", getDisplayName(item) + " was created successfully.", "success");
+        showToast(
+          entityLabel + " created",
+          getDisplayName(item) + " was created successfully.",
+          "success",
+        );
       }
       closeForm();
       await query.refetch();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "The request could not be completed.";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "The request could not be completed.";
       setFormError(message);
       showToast("Request failed", message, "error");
     }
@@ -223,31 +316,64 @@ export function ResourceManagementPage<
       setConfirmItem(null);
       setConfirmError(null);
       setSelected(null);
-      showToast(entityLabel + " deleted", getDisplayName(confirmItem) + " was deleted successfully.", "success");
+      showToast(
+        entityLabel + " deleted",
+        getDisplayName(confirmItem) + " was deleted successfully.",
+        "success",
+      );
       await query.refetch();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "The delete request could not be completed.";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "The delete request could not be completed.";
       setConfirmError(message);
       showToast("Delete failed", message, "error");
     }
   };
-  const tableColumns = useMemo<DataTableColumn<Item>[]>(() => [
-    ...columns,
-    {
-      align: "center",
-      cell: ({ row }) => (
-        <XStack gap="$1" style={{ justifyContent: "center" }}>
-          {renderDetails ? <Button aria-label={"View " + getDisplayName(row)} background="#FFFFFF" borderColor="#D8E1EC" borderWidth={1} height={32} onPress={() => setSelected(row)} rounded="$3"><Button.Text fontSize="$caption">View</Button.Text></Button> : null}
-          {canUpdate ? <Button aria-label={"Edit " + getDisplayName(row)} background="#FFFFFF" borderColor="#D8E1EC" borderWidth={1} height={32} onPress={() => openEdit(row)} rounded="$3"><Button.Text fontSize="$caption">Edit</Button.Text></Button> : null}
-          {canDelete ? <Button aria-label={"Delete " + getDisplayName(row)} background="#FFFFFF" borderColor="#FECACA" borderWidth={1} height={32} onPress={() => { setConfirmItem(row); setConfirmError(null); }} rounded="$3"><Button.Text color="#B42318" fontSize="$caption">Delete</Button.Text></Button> : null}
-        </XStack>
-      ),
-      header: "Actions",
-      id: "__actions",
-      meta: { stickyEnd: true },
-      width: 210,
-    },
-  ], [canDelete, canUpdate, columns, getDisplayName, openEdit, renderDetails]);
+  const tableColumns = useMemo<DataTableColumn<Item>[]>(
+    () => [
+      ...columns,
+      {
+        align: "center",
+        cell: ({ row }) => (
+          <CrudRowActions
+            actions={[
+              ...(renderDetails
+                ? [
+                    {
+                      label: "View",
+                      onPress: (item: Item) => setSelected(item),
+                    },
+                  ]
+                : []),
+              ...(canUpdate
+                ? [{ label: "Edit", onPress: (item: Item) => openEdit(item) }]
+                : []),
+              ...(canDelete
+                ? [
+                    {
+                      destructive: true,
+                      label: "Delete",
+                      onPress: (item: Item) => {
+                        setConfirmItem(item);
+                        setConfirmError(null);
+                      },
+                    },
+                  ]
+                : []),
+            ]}
+            item={row}
+          />
+        ),
+        header: "Actions",
+        id: "__actions",
+        meta: { stickyEnd: true },
+        width: 210,
+      },
+    ],
+    [canDelete, canUpdate, columns, openEdit, renderDetails],
+  );
 
   const formTitle = editing ? "Edit " + entityLabel : "Add " + entityLabel;
   const submitForm = () => {
@@ -256,55 +382,162 @@ export function ResourceManagementPage<
   };
 
   return (
-    <YStack className="lms-organizations-page" gap="$5" style={{ width: "100%" }}>
-      <XStack className="lms-organizations-header" gap="$4" style={{ alignItems: "flex-start", justifyContent: "space-between", width: "100%" }}>
-        <YStack gap="$2" style={{ maxWidth: 720, minWidth: 0 }}>
-          <XStack gap="$3" style={{ alignItems: "center", flexWrap: "wrap" }}>
-            <Text color="#0F1D3A" fontSize={30} fontWeight="$heading">{title}</Text>
-            <XStack px="$3" py="$1" rounded="$6" style={{ alignItems: "center", backgroundColor: query.isFetching ? "#EFF6FF" : "#DDF4E7", borderColor: query.isFetching ? "#BFDBFE" : "#B7E4CB", borderWidth: 1 }}>
-              <Text color={query.isFetching ? "#2563EB" : "#047857"} fontSize={11} fontWeight="$button">{query.isFetching ? "Syncing" : "Synced"}</Text>
-            </XStack>
-          </XStack>
-          <Text color="#52627A" fontSize="$label" lineHeight="$label">{description}</Text>
-        </YStack>
-        <XStack className="lms-organizations-actions" gap="$3" style={{ alignItems: "center", flexWrap: "wrap" }}>
-          <OrganizationHeaderAction icon={<RefreshCw aria-hidden="true" size={16} />} onPress={() => void query.refetch()}>Refresh</OrganizationHeaderAction>
-          {canCreate ? <OrganizationHeaderAction icon={<Plus aria-hidden="true" color="#FFFFFF" size={16} />} onPress={openCreate} primary>Add {entityLabel}</OrganizationHeaderAction> : null}
-        </XStack>
-      </XStack>
-      {context}
-      <XStack gap="$3" style={{ alignItems: "center", flexWrap: "wrap" }}>
-        <OrganizationSearch ariaLabel={"Search " + entityLabel.toLowerCase()} onChange={setSearch} placeholder={"Search " + entityLabel.toLowerCase() + "..."} value={search} />
-        {statusOptions?.length ? <OrganizationSelect ariaLabel={"Filter " + entityLabel.toLowerCase() + " by status"} label="Status" onChange={(value) => { setStatus(value === "ALL" ? "" : value); setPage(1); }} options={statusOptions} value={status || "ALL"} /> : null}
-        {typeOptions?.length ? <OrganizationSelect ariaLabel={"Filter " + entityLabel.toLowerCase() + " by type"} label="Type" onChange={(value) => { setTypeFilter(value === "ALL" ? "" : value); setPage(1); }} options={typeOptions} value={typeFilter || "ALL"} /> : null}
-        {publishedOptions?.length ? <OrganizationSelect ariaLabel={"Filter " + entityLabel.toLowerCase() + " by published state"} label="Published" onChange={(value) => { setPublishedFilter(value === "ALL" ? "" : value); setPage(1); }} options={publishedOptions} value={publishedFilter || "ALL"} /> : null}
-        <Button aria-label={"Clear " + entityLabel.toLowerCase() + " filters"} background="#FFFFFF" borderColor="#D8E1EC" borderWidth={1} height={40} onPress={() => { setSearch(""); setStatus(""); setTypeFilter(""); setPublishedFilter(""); setPage(1); }} rounded="$4"><X aria-hidden="true" color="#0F1D3A" size={16} /><Button.Text fontSize="$caption">Clear</Button.Text></Button>
-      </XStack>
-      <DataTable<Item>
-        columns={tableColumns}
-        data={rows}
-        emptyState={{ description: emptyDescription ?? "No " + entityLabel.toLowerCase() + " records match the current filters.", title: "No " + entityLabel.toLowerCase() + " found" }}
-        error={query.error ? { description: query.error instanceof Error ? query.error.message : "The list could not be loaded.", onRetry: () => void query.refetch(), retryLabel: "Retry", title: "Unable to load " + entityLabel.toLowerCase() } : null}
-        getRowId={getRowId}
-        loading={query.isLoading}
-        onPageChange={setPage}
-        onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
-        onRowClick={setSelected}
-        pagination={{ entityLabel: entityLabel.toLowerCase(), mode: "server", page, pageSize, pageSizeOptions: PAGE_SIZE_OPTIONS, total: query.data?.meta.total ?? 0, totalPages: query.data?.meta.totalPages ?? 1 }}
-        renderToolbar={() => null}
-        searchable={false}
-        stickyFirstColumn
-        stickyHeader
+    <YStack
+      className="lms-organizations-page"
+      gap="$5"
+      style={{ width: "100%" }}
+    >
+      <CrudPageHeader
+        canCreate={canCreate}
+        createLabel={createLabel ?? `Add ${entityLabel}`}
+        description={description}
+        isFetching={query.isFetching}
+        onCreate={openCreate}
+        onRefresh={() => void query.refetch()}
+        title={title}
       />
-      <AppModal description="Review the saved record details." isOpen={Boolean(selected && renderDetails)} onClose={() => setSelected(null)} title={selected ? getDisplayName(selected) : entityLabel}>
-        {selected && renderDetails ? <YStack gap="$3">{renderDetails(selected)}<Button background="#FFFFFF" borderColor="#D8E1EC" borderWidth={1} onPress={() => setSelected(null)} rounded="$3"><Button.Text>Close</Button.Text></Button></YStack> : null}
-      </AppModal>
-      <AppModal description="Save the form and refresh the current list." isOpen={isCreateOpen || Boolean(editing)} onClose={closeForm} title={formTitle} footer={<XStack gap="$2" style={{ justifyContent: "flex-end" }}><Button background="#FFFFFF" borderColor="#D8E1EC" borderWidth={1} disabled={isSubmitting} onPress={closeForm} rounded="$3"><Button.Text>Cancel</Button.Text></Button><Button background="#059669" borderColor="#059669" borderWidth={1} disabled={isSubmitting} onPress={submitForm} rounded="$3"><Button.Text color="#FFFFFF">{isSubmitting ? "Saving..." : editing ? "Update" : "Create"}</Button.Text></Button></XStack>}>
+      <CrudStats isLoading={query.isLoading} stats={stats} />
+      {context}
+      <CrudFilterToolbar
+        entityLabel={entityLabel}
+        filters={filterDefinitions}
+        onClear={clearFilters}
+        onFilterChange={handleFilterChange}
+        onSearch={setSearch}
+        searchPlaceholder={searchPlaceholder}
+        searchValue={search}
+        values={{
+          published: publishedFilter || "ALL",
+          status: status || "ALL",
+          type: typeFilter || "ALL",
+        }}
+      />
+      <XStack
+        className={[
+          "lms-organization-management-grid",
+          selected && renderDetails ? "is-side-panel-open" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        gap="$4"
+        style={{ alignItems: "flex-start", width: "100%" }}
+      >
+        <YStack gap="$3" style={{ flex: 1, minWidth: 0 }}>
+          <DataTable<Item>
+            columns={tableColumns}
+            data={rows}
+            emptyState={{
+              description:
+                emptyDescription ??
+                "No " +
+                  entityLabel.toLowerCase() +
+                  " records match the current filters.",
+              title: "No " + entityLabel.toLowerCase() + " found",
+            }}
+            error={
+              query.error
+                ? {
+                    description:
+                      query.error instanceof Error
+                        ? query.error.message
+                        : "The list could not be loaded.",
+                    onRetry: () => void query.refetch(),
+                    retryLabel: "Retry",
+                    title: "Unable to load " + entityLabel.toLowerCase(),
+                  }
+                : null
+            }
+            getRowId={getRowId}
+            loading={query.isLoading}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
+            onRowClick={setSelected}
+            pagination={{
+              entityLabel: entityLabel.toLowerCase(),
+              mode: "server",
+              page,
+              pageSize,
+              pageSizeOptions: PAGE_SIZE_OPTIONS,
+              total,
+              totalPages: query.data?.meta.totalPages ?? 1,
+            }}
+            renderToolbar={() => null}
+            searchable={false}
+            stickyFirstColumn
+            stickyHeader
+          />
+        </YStack>
+        {renderDetails ? (
+          <CrudDetailPanel
+            getDisplayName={getDisplayName}
+            isLoading={query.isLoading && Boolean(selected)}
+            item={selected}
+            onClose={() => setSelected(null)}
+            renderDetails={renderDetails}
+          />
+        ) : null}
+      </XStack>
+      <AppModal
+        description="Save the form and refresh the current list."
+        isOpen={isCreateOpen || Boolean(editing)}
+        onClose={closeForm}
+        title={formTitle}
+        footer={
+          <XStack gap="$2" style={{ justifyContent: "flex-end" }}>
+            <Button
+              background="#FFFFFF"
+              borderColor="#D8E1EC"
+              borderWidth={1}
+              disabled={isSubmitting}
+              onPress={closeForm}
+              rounded="$3"
+            >
+              <Button.Text>Cancel</Button.Text>
+            </Button>
+            <Button
+              background="#059669"
+              borderColor="#059669"
+              borderWidth={1}
+              disabled={isSubmitting}
+              onPress={submitForm}
+              rounded="$3"
+            >
+              <Button.Text color="#FFFFFF">
+                {isSubmitting ? "Saving..." : editing ? "Update" : "Create"}
+              </Button.Text>
+            </Button>
+          </XStack>
+        }
+      >
         <form id="resource-management-form" onSubmit={submit}>
-          {renderForm({ error: formError, form, isEdit: Boolean(editing), onChange })}
+          {renderForm({
+            error: formError,
+            form,
+            isEdit: Boolean(editing),
+            onChange,
+          })}
         </form>
       </AppModal>
-      <ConfirmationDialog confirmLabel="Delete" description="This action cannot be undone from the application." destructive detail={confirmItem ? "Delete " + getDisplayName(confirmItem) + "?" : ""} error={confirmError ?? undefined} isOpen={Boolean(confirmItem)} isSubmitting={deleteMutation.isPending} onClose={() => { if (!deleteMutation.isPending) setConfirmItem(null); }} onConfirm={() => void confirmDelete()} subject={confirmItem ? getDisplayName(confirmItem) : ""} title={"Delete " + entityLabel} />
+      <ConfirmationDialog
+        confirmLabel="Delete"
+        description="This action cannot be undone from the application."
+        destructive
+        detail={
+          confirmItem ? "Delete " + getDisplayName(confirmItem) + "?" : ""
+        }
+        error={confirmError ?? undefined}
+        isOpen={Boolean(confirmItem)}
+        isSubmitting={deleteMutation.isPending}
+        onClose={() => {
+          if (!deleteMutation.isPending) setConfirmItem(null);
+        }}
+        onConfirm={() => void confirmDelete()}
+        subject={confirmItem ? getDisplayName(confirmItem) : ""}
+        title={"Delete " + entityLabel}
+      />
       <OrganizationToast onDismiss={() => setToast(null)} toast={toast} />
     </YStack>
   );

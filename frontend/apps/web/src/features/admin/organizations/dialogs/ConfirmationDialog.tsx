@@ -3,7 +3,7 @@ import { Button, Text, XStack, YStack } from "@repo/ui";
 
 import { AppModal } from "@/components/AppModal";
 
-export function ConfirmationDialog({
+export const ConfirmationDialog = ({
   confirmLabel,
   description,
   destructive = false,
@@ -27,10 +27,12 @@ export function ConfirmationDialog({
   onConfirm: () => void;
   subject: string;
   title: string;
-}) {
+}) => {
   return (
     <AppModal
-      className={destructive ? "lms-confirm-modal is-danger" : "lms-confirm-modal"}
+      className={
+        destructive ? "lms-confirm-modal is-danger" : "lms-confirm-modal"
+      }
       description={description}
       isOpen={isOpen}
       onClose={onClose}
@@ -43,10 +45,10 @@ export function ConfirmationDialog({
         >
           <XStack
             className="lms-confirm-icon"
+            justify="center"
             style={{
               alignItems: "center",
               flexShrink: 0,
-              justifyContent: "center",
             }}
           >
             <AlertTriangle aria-hidden="true" size={22} />
@@ -67,7 +69,7 @@ export function ConfirmationDialog({
           </Text>
         ) : null}
 
-        <XStack gap="$2" style={{ justifyContent: "flex-end" }}>
+        <XStack gap="$2" justify="flex-end">
           <Button
             background="#FFFFFF"
             borderColor="#D8E1EC"
@@ -102,4 +104,4 @@ export function ConfirmationDialog({
       </YStack>
     </AppModal>
   );
-}
+};

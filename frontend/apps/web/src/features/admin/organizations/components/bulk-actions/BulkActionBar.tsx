@@ -11,13 +11,13 @@ export interface BulkActionBarProps {
   onSetActive: (active: boolean) => void;
 }
 
-export function BulkActionBar({
+export const BulkActionBar = ({
   count,
   onClear,
   onDelete,
   onExport,
   onSetActive,
-}: BulkActionBarProps) {
+}: BulkActionBarProps) => {
   if (!count) {
     return null;
   }
@@ -27,14 +27,14 @@ export function BulkActionBar({
       className="lms-organization-bulk-bar"
       gap="$2"
       p="$3"
+      background="#F2FAF7"
+      borderColor="#B7E4CB"
+      borderWidth={1}
+      flexWrap="wrap"
+      justify="space-between"
       style={{
         alignItems: "center",
-        backgroundColor: "#F2FAF7",
-        borderColor: "#B7E4CB",
         borderRadius: 14,
-        borderWidth: 1,
-        flexWrap: "wrap",
-        justifyContent: "space-between",
       }}
     >
       <Text color="#047857" fontSize="$caption" fontWeight="$button">
@@ -70,4 +70,4 @@ export function BulkActionBar({
       </XStack>
     </XStack>
   );
-}
+};

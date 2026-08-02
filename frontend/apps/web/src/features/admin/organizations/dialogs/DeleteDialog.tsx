@@ -1,7 +1,7 @@
 import type { OrganizationTableRow } from "../types";
 import { ConfirmationDialog } from "./ConfirmationDialog";
 
-export function DeleteDialog({
+export const DeleteDialog = ({
   error,
   isOpen,
   isSubmitting,
@@ -15,7 +15,7 @@ export function DeleteDialog({
   onClose: () => void;
   onConfirm: () => void;
   organization: OrganizationTableRow | null;
-}) {
+}) => {
   return (
     <ConfirmationDialog
       confirmLabel="Delete Organization"
@@ -31,4 +31,4 @@ export function DeleteDialog({
       title="Delete Organization"
     />
   );
-}
+};

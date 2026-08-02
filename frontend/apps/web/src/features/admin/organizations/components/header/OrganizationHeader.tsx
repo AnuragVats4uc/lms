@@ -23,16 +23,15 @@ export const OrganizationHeader = ({
       width="100%"
       gap="$4"
       justify="space-between"
-      style={{
-        alignItems: "flex-start",
-      }}
+      minW={0}
     >
       <YStack gap="$2" minW={0} maxW={720}>
-        <XStack gap="$3" flexWrap="wrap" style={{ alignItems: "center" }}>
+        <XStack className="items-center" gap="$3" flexWrap="wrap">
           <Text color="#0F1D3A" fontSize={30} fontWeight="$heading">
             Organizations
           </Text>
           <XStack
+            className="items-center"
             px="$3"
             py="$1"
             rounded="$6"
@@ -40,8 +39,8 @@ export const OrganizationHeader = ({
             borderWidth={1}
             borderColor={isFetching ? "#BFDBFE" : "#B7E4CB"}
             style={{
-              alignItems: "center",
-              transition: "background-color 180ms ease, border-color 180ms ease",
+              transition:
+                "background-color 180ms ease, border-color 180ms ease",
             }}
           >
             <Text
@@ -54,16 +53,18 @@ export const OrganizationHeader = ({
           </XStack>
         </XStack>
         <Text color="#52627A" fontSize="$label" lineHeight="$label">
-          Manage tenant organizations, administrators, access readiness, and
-          LMS tenancy configuration from one role-aware workspace.
+          Manage tenant organizations, administrators, access readiness, and LMS
+          tenancy configuration from one role-aware workspace.
         </Text>
       </YStack>
 
       <XStack
         className="lms-organizations-actions"
         gap="$3"
+        maxW="100%"
+        minW={0}
+        justify="flex-end"
         flexWrap="wrap"
-        style={{ alignItems: "center", }}
       >
         <OrganizationHeaderAction
           icon={<RefreshCw aria-hidden="true" size={16} />}
@@ -81,4 +82,4 @@ export const OrganizationHeader = ({
       </XStack>
     </XStack>
   );
-}
+};

@@ -5,10 +5,10 @@ export type ActiveFilterChip = {
   label: string;
 };
 
-export function isWithinCreatedDate(
+export const isWithinCreatedDate = (
   value: string,
   filter: CreatedDateFilter,
-): boolean {
+): boolean => {
   if (filter === "all" || filter === "custom") {
     return true;
   }
@@ -39,11 +39,11 @@ export function isWithinCreatedDate(
   }
 
   return createdAt >= start;
-}
+};
 
-export function getFiltersFromParams(
+export const getFiltersFromParams = (
   params: URLSearchParams,
-): OrganizationFiltersState {
+): OrganizationFiltersState => {
   const status = params.get("status");
   const syncStatus = params.get("syncStatus");
   const createdDate = params.get("createdDate");
@@ -74,11 +74,11 @@ export function getFiltersFromParams(
         ? syncStatus
         : "ALL",
   };
-}
+};
 
-export function getActiveFilterChips(
+export const getActiveFilterChips = (
   filters: OrganizationFiltersState,
-): ActiveFilterChip[] {
+): ActiveFilterChip[] => {
   const chips: ActiveFilterChip[] = [];
 
   if (filters.search) {
@@ -105,4 +105,4 @@ export function getActiveFilterChips(
   }
 
   return chips;
-}
+};

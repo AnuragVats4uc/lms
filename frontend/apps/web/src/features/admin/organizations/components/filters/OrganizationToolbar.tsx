@@ -22,13 +22,13 @@ export interface OrganizationToolbarProps {
   onRefresh: () => void;
 }
 
-export function OrganizationToolbar({
+export const OrganizationToolbar = ({
   filters,
   onClearFilters,
   onExport,
   onFilterChange,
   onRefresh,
-}: OrganizationToolbarProps) {
+}: OrganizationToolbarProps) => {
   const update = <K extends keyof OrganizationFiltersState>(
     key: K,
     value: OrganizationFiltersState[K],
@@ -40,16 +40,17 @@ export function OrganizationToolbar({
       background="#FFFFFF"
       borderColor="#E1E7F0"
       p="$4"
-      style={{
-        borderRadius: 16,
-        boxShadow: "0 12px 34px rgba(15, 23, 42, 0.04)",
-      }}
+      transform={"rotateY(-2px)"}
+      boxShadow="0 12px 34px rgba(15, 23, 42, 0.04)"
+      position="relative"
+      overflow="hidden"
     >
       <YStack gap="$3">
         <XStack
           className="lms-organization-filter-row"
           gap="$3"
-          style={{ alignItems: "center", flexWrap: "wrap" }}
+          maxW="100%"
+          flexWrap="wrap"
         >
           <OrganizationSearch
             onChange={(value) => update("search", value)}
@@ -132,36 +133,8 @@ export function OrganizationToolbar({
               Clear
             </Button.Text>
           </Button>
-          <Button
-            aria-label="Refresh organizations"
-            background="#FFFFFF"
-            borderColor="#D8E1EC"
-            borderWidth={1}
-            className="lms-organization-toolbar-button lms-organization-toolbar-icon-button"
-            height={40}
-            onPress={onRefresh}
-            rounded="$4"
-            width={40}
-          >
-            <RefreshCw aria-hidden="true" color="#0F1D3A" size={16} />
-          </Button>
-          <Button
-            aria-label="Export organizations"
-            background="#FFFFFF"
-            borderColor="#D8E1EC"
-            borderWidth={1}
-            className="lms-organization-toolbar-button"
-            height={40}
-            onPress={onExport}
-            rounded="$4"
-          >
-            <Download aria-hidden="true" color="#0F1D3A" size={16} />
-            <Button.Text fontSize="$caption" fontWeight="$button">
-              Export
-            </Button.Text>
-          </Button>
         </XStack>
       </YStack>
     </AppCard>
   );
-}
+};

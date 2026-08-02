@@ -10,16 +10,16 @@ interface DataTableFiltersProps<TData> {
   setFilterValue: (id: string, value: unknown) => void;
 }
 
-function DataTableFiltersComponent<TData>({
+const DataTableFiltersComponent = <TData,>({
   filters,
   setFilterValue,
-}: DataTableFiltersProps<TData>) {
+}: DataTableFiltersProps<TData>) => {
   if (!filters.length) {
     return null;
   }
 
   return (
-    <XStack gap="$3" style={{ flexWrap: "wrap" }}>
+    <XStack gap="$3" flexWrap="wrap">
       {filters.map((filter) => {
         if (filter.render) {
           return (
@@ -34,12 +34,12 @@ function DataTableFiltersComponent<TData>({
             <XStack
               gap="$2"
               px="$3"
+              borderColor={DATA_TABLE_COLORS.border}
+              borderWidth={1}
+              minH={40}
               style={{
                 alignItems: "center",
-                borderColor: DATA_TABLE_COLORS.border,
                 borderRadius: 10,
-                borderWidth: 1,
-                minHeight: 40,
               }}
             >
               <Text
@@ -55,12 +55,11 @@ function DataTableFiltersComponent<TData>({
                   onChange={(event) =>
                     setFilterValue(filter.id, event.target.value)
                   }
+                  className="border-0 outlin-0"
                   style={{
                     background: "transparent",
-                    border: 0,
                     color: DATA_TABLE_COLORS.text,
                     font: "inherit",
-                    outline: "none",
                   }}
                   value={String(filter.value ?? "")}
                 >
@@ -77,12 +76,11 @@ function DataTableFiltersComponent<TData>({
                   onChange={(event) =>
                     setFilterValue(filter.id, event.target.value)
                   }
+                  className="border-0 outline-0"
                   style={{
                     background: "transparent",
-                    border: 0,
                     color: DATA_TABLE_COLORS.text,
                     font: "inherit",
-                    outline: "none",
                     width: 140,
                   }}
                   value={String(filter.value ?? "")}
@@ -94,8 +92,8 @@ function DataTableFiltersComponent<TData>({
       })}
     </XStack>
   );
-}
+};
 
 export const DataTableFilters = memo(
-  DataTableFiltersComponent
+  DataTableFiltersComponent,
 ) as typeof DataTableFiltersComponent;

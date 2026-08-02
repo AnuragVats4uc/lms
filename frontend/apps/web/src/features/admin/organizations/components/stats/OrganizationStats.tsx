@@ -1,12 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import {
-  Activity,
-  Building2,
-  CheckCircle2,
-  XCircle,
-} from "lucide-react";
+import { Activity, Building2, CheckCircle2, XCircle } from "lucide-react";
 import { XStack } from "@repo/ui";
 
 import type { OrganizationStat } from "../../types";
@@ -54,14 +49,7 @@ export const OrganizationStats = ({
   );
 
   return (
-    <XStack
-      className="lms-organization-stats-grid"
-      gap="$3"
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-      }}
-    >
+    <XStack className="lms-organization-stats-grid" gap="$3">
       {stats.map((stat) => (
         <OrganizationStatCard
           icon={stat.icon}
@@ -73,4 +61,4 @@ export const OrganizationStats = ({
       ))}
     </XStack>
   );
-}
+};

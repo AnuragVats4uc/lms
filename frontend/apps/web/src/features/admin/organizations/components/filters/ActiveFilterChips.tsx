@@ -11,17 +11,17 @@ export interface ActiveFilterChipsProps {
   onRemove: (id: string) => void;
 }
 
-export function ActiveFilterChips({
+export const ActiveFilterChips = ({
   filters,
   onClear,
   onRemove,
-}: ActiveFilterChipsProps) {
+}: ActiveFilterChipsProps) => {
   if (!filters.length) {
     return null;
   }
 
   return (
-    <XStack gap="$2" style={{ alignItems: "center", flexWrap: "wrap" }}>
+    <XStack gap="$2" flexWrap="wrap" style={{ alignItems: "center" }}>
       <Text color="#52627A" fontSize="$caption" fontWeight="$button">
         {filters.length} active filters
       </Text>
@@ -49,4 +49,4 @@ export function ActiveFilterChips({
       </Button>
     </XStack>
   );
-}
+};

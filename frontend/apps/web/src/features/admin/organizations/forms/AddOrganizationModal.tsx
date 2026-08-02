@@ -9,7 +9,7 @@ import type { OrganizationFormChangeHandler } from "./OrganizationFormFields";
 
 const ADD_ORGANIZATION_FORM_ID = "organization-add-organization-form";
 
-export function AddOrganizationModal({
+export const AddOrganizationModal = ({
   error,
   form,
   isOpen,
@@ -25,7 +25,7 @@ export function AddOrganizationModal({
   onChange: OrganizationFormChangeHandler;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-}) {
+}) => {
   const submitForm = () => {
     const formElement = document.getElementById(ADD_ORGANIZATION_FORM_ID);
 
@@ -86,4 +86,4 @@ export function AddOrganizationModal({
       />
     </AppModal>
   );
-}
+};

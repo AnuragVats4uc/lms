@@ -7,9 +7,9 @@ import {
   getSyncStatus,
 } from "../utils/organization";
 
-export function toOrganizationRow(
+export const toOrganizationRow = (
   organization: Organization,
-): OrganizationTableRow {
+): OrganizationTableRow => {
   return {
     ...organization,
     domain: getDomain(organization),
@@ -24,4 +24,4 @@ export function toOrganizationRow(
     primaryAdministrator: getAdministrator(organization),
     syncStatus: getSyncStatus(organization),
   };
-}
+};

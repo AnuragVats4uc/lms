@@ -18,21 +18,21 @@ export interface UpdateOrganizationInput {
   payload: UpdateOrganizationRequest;
 }
 
-export function getOrganizations(params: OrganizationListParams) {
+export const getOrganizations = (params: OrganizationListParams) => {
   return organizationsApi.findAll(params);
-}
+};
 
-export function createOrganization(payload: CreateOrganizationRequest) {
+export const createOrganization = (payload: CreateOrganizationRequest) => {
   return organizationsApi.create(payload);
-}
+};
 
-export function updateOrganization({
+export const updateOrganization = ({
   id,
   payload,
-}: UpdateOrganizationInput) {
+}: UpdateOrganizationInput) => {
   return organizationsApi.update(id, payload);
-}
+};
 
-export function deleteOrganization(id: number) {
+export const deleteOrganization = (id: number) => {
   return organizationsApi.remove(id);
-}
+};

@@ -5,9 +5,9 @@ export interface PanelMetricProps {
   value: string;
 }
 
-export function PanelMetric({ label, value }: PanelMetricProps) {
+export const PanelMetric = ({ label, value }: PanelMetricProps) => {
   return (
-    <XStack style={{ justifyContent: "space-between" }}>
+    <XStack justify="space-between">
       <Text color="#52627A" fontSize="$caption">
         {label}
       </Text>
@@ -21,4 +21,4 @@ export function PanelMetric({ label, value }: PanelMetricProps) {
       </Text>
     </XStack>
   );
-}
+};
