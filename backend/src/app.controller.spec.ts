@@ -15,8 +15,12 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('should return the backend health status', () => {
+      expect(appController.getHello()).toEqual({
+        application: 'LMS Backend',
+        version: '1.0.0',
+        status: 'Running Successfully',
+      });
     });
   });
 });

@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Button } from "@repo/ui";
 
 interface OrganizationHeaderActionProps {
-  children: string;
+  children: ReactNode;
   icon?: ReactNode;
   onPress?: () => void;
   primary?: boolean;
@@ -18,7 +18,7 @@ export function OrganizationHeaderAction({
 }: OrganizationHeaderActionProps) {
   return (
     <Button
-      aria-label={children}
+      aria-label={typeof children === "string" ? children : undefined}
       background={primary ? "#059669" : "#FFFFFF"}
       borderColor={primary ? "#059669" : "#D8E1EC"}
       borderWidth={1}

@@ -36,6 +36,7 @@ const permissionModules = [
   'session',
   'course',
   'session-course',
+  'folder',
 ] as const;
 
 const crudActions = ['create', 'read', 'update', 'delete'] as const;
@@ -64,8 +65,136 @@ async function main() {
   await assignRoleToUser(superAdmin.id, rolesByCode.get('SUPER_ADMIN')!.id);
 
   await seedDemoStudent(rolesByCode.get('STUDENT')!.id);
+  await seedDemoFolderHierarchy();
 
   console.log('Seed completed successfully');
+}
+
+async function seedDemoFolderHierarchy() {
+  const organization = await prisma.organization.upsert({
+    where: { code: 'ABC' },
+    update: {
+      name: 'ABC Institute',
+      status: 'ACTIVE',
+      isActive: true,
+    },
+    create: {
+      name: 'ABC Institute',
+      code: 'ABC',
+      status: 'ACTIVE',
+      isActive: true,
+    },
+  });
+
+  const session = await prisma.session.upsert({
+    where: {
+      organizationId_name: {
+        organizationId: organization.id,
+        name: '2025-2026',
+      },
+    },
+    update: {
+      status: 'ACTIVE',
+      isActive: true,
+    },
+    create: {
+      organizationId: organization.id,
+      name: '2025-2026',
+      status: 'ACTIVE',
+      startDate: new Date('2025-04-01T00:00:00.000Z'),
+      endDate: new Date('2026-03-31T23:59:59.999Z'),
+      isActive: true,
+    },
+  });
+
+  const course = await prisma.course.upsert({
+    where: { code: 'JEE-FDN' },
+    update: {
+      name: 'JEE Foundation',
+      status: 'ACTIVE',
+      isActive: true,
+    },
+    create: {
+      name: 'JEE Foundation',
+      code: 'JEE-FDN',
+      description: 'Foundation course for JEE aspirants.',
+      status: 'ACTIVE',
+      isActive: true,
+    },
+  });
+
+  const sessionCourse = await prisma.sessionCourse.upsert({
+    where: {
+      sessionId_courseId: {
+        sessionId: session.id,
+        courseId: course.id,
+      },
+    },
+    update: {
+      displayName: 'JEE Foundation',
+      status: 'ACTIVE',
+      isPublished: true,
+      isActive: true,
+    },
+    create: {
+      sessionId: session.id,
+      courseId: course.id,
+      displayName: 'JEE Foundation',
+      status: 'ACTIVE',
+      isPublished: true,
+      isActive: true,
+    },
+  });
+
+  const roots = new Map<string, { id: number }>();
+  for (const name of ['Physics', 'Chemistry', 'Mathematics']) {
+    const root = await upsertSeedFolder(sessionCourse.id, name, null);
+    roots.set(name, root);
+  }
+
+  const children: Record<string, string[]> = {
+    Physics: ['Motion', 'Gravitation', 'Laws of Motion'],
+    Chemistry: ['Organic', 'Inorganic'],
+    Mathematics: ['Algebra', 'Calculus'],
+  };
+
+  for (const [parentName, childNames] of Object.entries(children)) {
+    const parent = roots.get(parentName)!;
+    for (const name of childNames) {
+      await upsertSeedFolder(sessionCourse.id, name, parent.id);
+    }
+  }
+
+  console.log('✓ ABC Institute folder hierarchy seeded');
+}
+
+async function upsertSeedFolder(
+  sessionCourseId: number,
+  name: string,
+  parentFolderId: number | null,
+) {
+  const existing = await prisma.folder.findFirst({
+    where: { sessionCourseId, parentFolderId, name },
+  });
+
+  if (existing) {
+    return prisma.folder.update({
+      where: { id: existing.id },
+      data: { status: 'ACTIVE', isActive: true },
+      select: { id: true },
+    });
+  }
+
+  return prisma.folder.create({
+    data: {
+      sessionCourseId,
+      parentFolderId,
+      name,
+      status: 'ACTIVE',
+      isActive: true,
+    },
+    select: { id: true },
+  });
 }
 
 async function seedRoles() {

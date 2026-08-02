@@ -20,7 +20,10 @@ interface Field<T> {
   render: (item: T) => ReactNode;
 }
 
-type ButtonProps = Omit<ComponentProps<typeof Button>, "children" | "icon">;
+type ButtonProps = Omit<
+  ComponentProps<typeof Button>,
+  "children" | "icon" | "key"
+>;
 
 export interface ActionButton extends ButtonProps {
   label: string;

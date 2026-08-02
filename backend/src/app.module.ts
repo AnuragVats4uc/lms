@@ -20,6 +20,7 @@ import { SessionModule } from './modules/session/session.module';
 import { StudentsModule } from './modules/students/students.module';
 import { CourseModule } from './modules/course/course.module';
 import { SessionCourseModule } from './modules/session-course/session-course.module';
+import { FolderModule } from './modules/folder/folder.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { SessionCourseModule } from './modules/session-course/session-course.mod
     SessionModule,
     CourseModule,
     SessionCourseModule,
+    FolderModule,
     StudentsModule,
   ],
   controllers: [AppController],

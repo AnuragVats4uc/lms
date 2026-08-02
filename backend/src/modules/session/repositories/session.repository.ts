@@ -77,7 +77,7 @@ export class SessionRepository {
       this.prisma.session.findMany({
         where,
         orderBy: {
-          createdAt: 'desc',
+          [query.sort]: query.order,
         },
         skip,
         take: query.limit,

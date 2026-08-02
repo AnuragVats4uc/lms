@@ -20,6 +20,8 @@ model SessionCourse {
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   course  Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
+  folders Folder[]
+
   @@unique([sessionId, courseId], map: "session_courses_session_id_course_id_unique")
   @@index([sessionId], map: "session_courses_session_id_idx")
   @@index([courseId], map: "session_courses_course_id_idx")

@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Settings,
   ShieldCheck,
+  CalendarRange,
   UserRound,
   UsersRound,
 } from "lucide-react";
@@ -63,6 +64,25 @@ export const adminNavigation: NavigationItem[] = [
     href: "/admin/courses",
     icon: GraduationCap,
     label: "Courses",
+    permission: "course.read",
+  },
+  {
+    href: "/admin/session-courses",
+    icon: BookOpen,
+    label: "Session Courses",
+    permission: "session-course.read",
+  },
+  {
+    href: "/admin/folders",
+    icon: FileText,
+    label: "Folders",
+    permission: "folder.read",
+  },
+  {
+    href: "/admin/sessions",
+    icon: CalendarRange,
+    label: "Sessions",
+    permission: "session.read",
   },
   {
     href: "/admin/resources",

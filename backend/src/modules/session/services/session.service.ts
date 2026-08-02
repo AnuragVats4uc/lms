@@ -147,6 +147,8 @@ export class SessionService {
       page: query.page ?? 1,
       limit: query.limit ?? 10,
       search: query.search ?? '',
+      sort: query.sort ?? 'createdAt',
+      order: query.order ?? 'desc',
       status: query.status ?? undefined,
     };
   }

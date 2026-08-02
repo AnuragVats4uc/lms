@@ -4,12 +4,16 @@ import { Search } from "lucide-react";
 import { Input, XStack } from "@repo/ui";
 
 export interface OrganizationSearchProps {
+  ariaLabel?: string;
   onChange: (value: string) => void;
+  placeholder?: string;
   value: string;
 }
 
 export function OrganizationSearch({
+  ariaLabel = "Search organizations",
   onChange,
+  placeholder = "Search name, code, email, phone, website...",
   value,
 }: OrganizationSearchProps) {
   return (
@@ -30,7 +34,7 @@ export function OrganizationSearch({
     >
       <Search aria-hidden="true" color="#52627A" size={18} />
       <Input
-        aria-label="Search organizations"
+        aria-label={ariaLabel}
         background="transparent"
         borderWidth={0}
         className="lms-organization-search-input"
@@ -38,7 +42,7 @@ export function OrganizationSearch({
         height={36}
         onChangeText={onChange}
         p={0}
-        placeholder="Search name, code, email, phone, website..."
+        placeholder={placeholder}
         placeholderTextColor={"#52627A" as never}
         focusStyle={{
           borderColor: "transparent",

@@ -1,7 +1,15 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { SessionStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class SessionQueryDto {
   @ApiPropertyOptional({
@@ -34,6 +42,19 @@ export class SessionQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @ApiPropertyOptional({
+    enum: ['name', 'startDate', 'endDate', 'createdAt', 'updatedAt'],
+    default: 'createdAt',
+  })
+  @IsOptional()
+  @IsIn(['name', 'startDate', 'endDate', 'createdAt', 'updatedAt'])
+  sort?: 'name' | 'startDate' | 'endDate' | 'createdAt' | 'updatedAt';
+
+  @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  order?: 'asc' | 'desc';
 
   @ApiPropertyOptional({
     enum: SessionStatus,
