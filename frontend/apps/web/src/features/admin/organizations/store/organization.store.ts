@@ -24,7 +24,6 @@ export interface OrganizationStoreState {
   editingOrganization: OrganizationTableRow | null;
   filters: OrganizationFiltersState;
   isAddModalOpen: boolean;
-  isAdvancedFiltersOpen: boolean;
   isSidePanelOpen: boolean;
   page: number;
   pageSize: number;
@@ -38,7 +37,6 @@ interface OrganizationStoreActions {
   closeSidePanel: () => void;
   openSidePanel: () => void;
   setAddModalOpen: (value: SetStateAction<boolean>) => void;
-  setAdvancedFiltersOpen: (value: SetStateAction<boolean>) => void;
   setConfirmAction: (
     value: SetStateAction<OrganizationConfirmAction | null>,
   ) => void;
@@ -62,10 +60,8 @@ const createDefaultState = (): OrganizationStoreState => ({
   editingOrganization: null,
   filters: {
     ...DEFAULT_FILTERS,
-    availability: [...DEFAULT_FILTERS.availability],
   },
   isAddModalOpen: false,
-  isAdvancedFiltersOpen: false,
   isSidePanelOpen: false,
   page: 1,
   pageSize: 10,
@@ -90,7 +86,6 @@ function createState(
     filters: initialState?.filters
       ? {
           ...initialState.filters,
-          availability: [...initialState.filters.availability],
         }
       : defaults.filters,
     selectedRowIds: initialState?.selectedRowIds
@@ -164,19 +159,6 @@ export function OrganizationStoreProvider({
     [],
   );
 
-  const setAdvancedFiltersOpen = useCallback(
-    (value: SetStateAction<boolean>) => {
-      setState((current) => ({
-        ...current,
-        isAdvancedFiltersOpen: resolveStateAction(
-          value,
-          current.isAdvancedFiltersOpen,
-        ),
-      }));
-    },
-    [],
-  );
-
   const setAddModalOpen = useCallback((value: SetStateAction<boolean>) => {
     setState((current) => ({
       ...current,
@@ -221,7 +203,6 @@ export function OrganizationStoreProvider({
       closeSidePanel,
       openSidePanel,
       setAddModalOpen,
-      setAdvancedFiltersOpen,
       setConfirmAction,
       setEditingOrganization,
       setFilters,
@@ -234,7 +215,6 @@ export function OrganizationStoreProvider({
       closeSidePanel,
       openSidePanel,
       setAddModalOpen,
-      setAdvancedFiltersOpen,
       setConfirmAction,
       setEditingOrganization,
       setFilters,

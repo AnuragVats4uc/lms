@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, RefreshCw, SlidersHorizontal, X } from "lucide-react";
+import { Download, RefreshCw, X } from "lucide-react";
 import { Button, XStack, YStack } from "@repo/ui";
 import { AppCard } from "@repo/ui/primitives";
 
@@ -10,48 +10,29 @@ import {
   statusOptions,
   syncStatusOptions,
 } from "../../constants";
-import type {
-  AvailabilityFilter,
-  OrganizationFiltersState,
-} from "../../types";
-import { AdvancedFilters } from "./AdvancedFilters";
+import type { OrganizationFiltersState } from "../../types";
 import { OrganizationSearch } from "./OrganizationSearch";
 import { OrganizationSelect } from "./OrganizationSelect";
 
 export interface OrganizationToolbarProps {
-  activeFilterCount: number;
   filters: OrganizationFiltersState;
-  isAdvancedOpen: boolean;
   onClearFilters: () => void;
   onExport: () => void;
   onFilterChange: (filters: OrganizationFiltersState) => void;
   onRefresh: () => void;
-  onToggleAdvanced: () => void;
 }
 
 export function OrganizationToolbar({
-  activeFilterCount,
   filters,
-  isAdvancedOpen,
   onClearFilters,
   onExport,
   onFilterChange,
   onRefresh,
-  onToggleAdvanced,
 }: OrganizationToolbarProps) {
   const update = <K extends keyof OrganizationFiltersState>(
     key: K,
     value: OrganizationFiltersState[K],
   ) => onFilterChange({ ...filters, [key]: value });
-
-  const toggleAvailability = (value: AvailabilityFilter) => {
-    update(
-      "availability",
-      filters.availability.includes(value)
-        ? filters.availability.filter((item) => item !== value)
-        : [...filters.availability, value],
-    );
-  };
 
   return (
     <AppCard
@@ -137,22 +118,6 @@ export function OrganizationToolbar({
             value={filters.sort}
           />
           <Button
-            aria-expanded={isAdvancedOpen}
-            aria-label="Toggle advanced filters"
-            background="#FFFFFF"
-            borderColor="#D8E1EC"
-            borderWidth={1}
-            className="lms-organization-toolbar-button"
-            height={40}
-            onPress={onToggleAdvanced}
-            rounded="$4"
-          >
-            <SlidersHorizontal aria-hidden="true" color="#0F1D3A" size={16} />
-            <Button.Text fontSize="$caption" fontWeight="$button">
-              Advanced {activeFilterCount ? `(${activeFilterCount})` : ""}
-            </Button.Text>
-          </Button>
-          <Button
             aria-label="Clear filters"
             background="#FFFFFF"
             borderColor="#D8E1EC"
@@ -196,15 +161,6 @@ export function OrganizationToolbar({
             </Button.Text>
           </Button>
         </XStack>
-
-        {isAdvancedOpen ? (
-          <AdvancedFilters
-            filters={filters}
-            onAvailabilityToggle={toggleAvailability}
-            onCreatedByChange={(value) => update("createdBy", value)}
-            onUpdatedByChange={(value) => update("updatedBy", value)}
-          />
-        ) : null}
       </YStack>
     </AppCard>
   );

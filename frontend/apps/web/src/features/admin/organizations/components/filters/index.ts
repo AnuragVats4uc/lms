@@ -1,7 +1,5 @@
 export { ActiveFilterChips } from "./ActiveFilterChips";
 export type { ActiveFilterChipsProps } from "./ActiveFilterChips";
-export { AdvancedFilters } from "./AdvancedFilters";
-export type { AdvancedFiltersProps } from "./AdvancedFilters";
 export { OrganizationSearch } from "./OrganizationSearch";
 export type { OrganizationSearchProps } from "./OrganizationSearch";
 export { OrganizationSelect } from "./OrganizationSelect";

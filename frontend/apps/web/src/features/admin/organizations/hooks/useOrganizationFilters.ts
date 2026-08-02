@@ -5,29 +5,14 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { DEFAULT_FILTERS } from "../constants";
 import { useOrganizationStore } from "../store";
-import type {
-  AvailabilityFilter,
-  OrganizationFiltersState,
-  OrganizationTableRow,
-} from "../types";
-import {
-  applyAvailabilityFilters,
-  getActiveFilterChips,
-  isWithinCreatedDate,
-  sortRows,
-} from "../utils";
+import type { OrganizationFiltersState, OrganizationTableRow } from "../types";
+import { getActiveFilterChips, isWithinCreatedDate, sortRows } from "../utils";
 
 export function useOrganizationFilters() {
   const router = useRouter();
   const pathname = usePathname();
-  const {
-    filters,
-    page,
-    pageSize,
-    setFilters,
-    setPage,
-    setPageSize,
-  } = useOrganizationStore();
+  const { filters, page, pageSize, setFilters, setPage, setPageSize } =
+    useOrganizationStore();
 
   const activeChips = useMemo(() => getActiveFilterChips(filters), [filters]);
 
@@ -45,10 +30,6 @@ export function useOrganizationFilters() {
       params.set("createdDate", filters.createdDate);
     }
     if (filters.sort !== "newest") params.set("sort", filters.sort);
-    if (filters.createdBy) params.set("createdBy", filters.createdBy);
-    if (filters.updatedBy) params.set("updatedBy", filters.updatedBy);
-    filters.availability.forEach((value) => params.append("has", value));
-
     const nextQuery = params.toString();
     router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, {
       scroll: false,
@@ -70,20 +51,10 @@ export function useOrganizationFilters() {
 
   const removeFilter = useCallback(
     (id: string) => {
-      if (id.startsWith("has:")) {
-        const value = id.replace("has:", "") as AvailabilityFilter;
-
-        updateFilters({
-          ...filters,
-          availability: filters.availability.filter((item) => item !== value),
-        });
-        return;
-      }
-
       updateFilters({
         ...filters,
         [id]:
-          id === "search" || id === "createdBy" || id === "updatedBy"
+          id === "search"
             ? ""
             : id === "sort"
               ? "newest"
@@ -104,12 +75,7 @@ export function useOrganizationFilters() {
       const dateFiltered = syncFiltered.filter((row) =>
         isWithinCreatedDate(row.createdAt, filters.createdDate),
       );
-      const advancedFiltered = applyAvailabilityFilters(
-        dateFiltered,
-        filters.availability,
-      );
-
-      return sortRows(advancedFiltered, filters.sort);
+      return sortRows(dateFiltered, filters.sort);
     },
     [filters],
   );

@@ -10,12 +10,12 @@ interface OrganizationHeaderActionProps {
   primary?: boolean;
 }
 
-export function OrganizationHeaderAction({
+export const OrganizationHeaderAction = ({
   children,
   icon,
   onPress,
   primary,
-}: OrganizationHeaderActionProps) {
+}: OrganizationHeaderActionProps) => {
   return (
     <Button
       aria-label={typeof children === "string" ? children : undefined}
@@ -31,10 +31,11 @@ export function OrganizationHeaderAction({
       pressStyle={{ scale: 0.98 }}
       px="$4"
       rounded="$4"
+      boxShadow={primary
+        ? "0 10px 18px rgba(5, 150, 105, 0.18)"
+        : "0 8px 20px rgba(15, 23, 42, 0.035)"
+      }
       style={{
-        boxShadow: primary
-          ? "0 10px 18px rgba(5, 150, 105, 0.18)"
-          : "0 8px 20px rgba(15, 23, 42, 0.035)",
         transition: "transform 160ms ease, background-color 160ms ease",
       }}
     >

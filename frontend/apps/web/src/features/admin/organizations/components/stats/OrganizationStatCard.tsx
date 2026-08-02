@@ -21,32 +21,33 @@ export const OrganizationStatCard = memo(function OrganizationStatCard({
       background="#FFFFFF"
       borderColor="#E1E7F0"
       p="$3"
+      boxShadow="0 10px 26px rgba(15, 23, 42, 0.035)"
+      minH={88}
       style={{
         borderRadius: 14,
-        boxShadow: "0 10px 26px rgba(15, 23, 42, 0.035)",
-        minHeight: 88,
       }}
     >
       {isLoading ? (
         <YStack gap="$2">
-          <XStack className="lms-skeleton" style={{ height: 24, width: 42 }} />
-          <XStack className="lms-skeleton" style={{ height: 12, width: 120 }} />
+          <XStack className="lms-skeleton" height={24} width={42} />
+          <XStack className="lms-skeleton" height={12} width={120} />
         </YStack>
       ) : (
         <XStack gap="$3" style={{ alignItems: "center" }}>
           <XStack
+            background="#EAF7F3"
+            height={44}
+            width={44}
+            justify={"center"}
             style={{
               alignItems: "center",
               backgroundColor: "#EAF7F3",
               borderRadius: 12,
-              height: 44,
-              justifyContent: "center",
-              width: 44,
             }}
           >
             {icon}
           </XStack>
-          <YStack gap="$1" style={{ minWidth: 0 }}>
+          <YStack gap="$1" minW={0}>
             <Text color="#0F1D3A" fontSize={22} fontWeight="$heading">
               {animatedValue}
             </Text>

@@ -20,13 +20,13 @@ interface OrganizationStatsProps {
   total: number;
 }
 
-export function OrganizationStats({
+export const OrganizationStats = ({
   activeCount,
   inactiveCount,
   isLoading,
   newlyCreatedCount,
   total,
-}: OrganizationStatsProps) {
+}: OrganizationStatsProps) => {
   const stats = useMemo<OrganizationStat[]>(
     () => [
       {

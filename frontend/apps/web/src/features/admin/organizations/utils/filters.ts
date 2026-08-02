@@ -1,10 +1,4 @@
-import { availabilityOptions } from "../constants";
-import type {
-  AvailabilityFilter,
-  CreatedDateFilter,
-  OrganizationFiltersState,
-  OrganizationTableRow,
-} from "../types";
+import type { CreatedDateFilter, OrganizationFiltersState } from "../types";
 
 export type ActiveFilterChip = {
   id: string;
@@ -47,29 +41,6 @@ export function isWithinCreatedDate(
   return createdAt >= start;
 }
 
-export function applyAvailabilityFilters(
-  rows: OrganizationTableRow[],
-  availability: AvailabilityFilter[],
-): OrganizationTableRow[] {
-  if (!availability.length) {
-    return rows;
-  }
-
-  return rows.filter((row) =>
-    availability.every((filter) => {
-      if (filter === "website") return Boolean(row.website);
-      if (filter === "email") return Boolean(row.email);
-      if (filter === "phone") return Boolean(row.phone);
-      if (filter === "logo") return Boolean(row.logo);
-      if (filter === "administrator") return Boolean(row.primaryAdministrator);
-      if (filter === "courses") return row.metrics.courses > 0;
-      if (filter === "students") return row.metrics.students > 0;
-
-      return true;
-    }),
-  );
-}
-
 export function getFiltersFromParams(
   params: URLSearchParams,
 ): OrganizationFiltersState {
@@ -77,15 +48,8 @@ export function getFiltersFromParams(
   const syncStatus = params.get("syncStatus");
   const createdDate = params.get("createdDate");
   const sort = params.get("sort");
-  const availability = params
-    .getAll("has")
-    .filter((value): value is AvailabilityFilter =>
-      availabilityOptions.some((option) => option.value === value),
-    );
 
   return {
-    availability,
-    createdBy: params.get("createdBy") ?? "",
     createdDate:
       createdDate === "today" ||
       createdDate === "7d" ||
@@ -109,7 +73,6 @@ export function getFiltersFromParams(
       syncStatus === "FAILED"
         ? syncStatus
         : "ALL",
-    updatedBy: params.get("updatedBy") ?? "",
   };
 }
 
@@ -140,29 +103,6 @@ export function getActiveFilterChips(
   if (filters.sort !== "newest") {
     chips.push({ id: "sort", label: `Sort: ${filters.sort}` });
   }
-
-  if (filters.createdBy) {
-    chips.push({
-      id: "createdBy",
-      label: `Created by: ${filters.createdBy}`,
-    });
-  }
-
-  if (filters.updatedBy) {
-    chips.push({
-      id: "updatedBy",
-      label: `Updated by: ${filters.updatedBy}`,
-    });
-  }
-
-  filters.availability.forEach((value) => {
-    const option = availabilityOptions.find((item) => item.value === value);
-
-    chips.push({
-      id: `has:${value}`,
-      label: option?.label ?? value,
-    });
-  });
 
   return chips;
 }

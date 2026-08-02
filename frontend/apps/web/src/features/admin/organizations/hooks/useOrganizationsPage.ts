@@ -12,11 +12,7 @@ import { useOrganizationSelection } from "./useOrganizationSelection";
 import { useOrganizationStatistics } from "./useOrganizationStatistics";
 
 export function useOrganizationsPage() {
-  const {
-    isAdvancedFiltersOpen,
-    isSidePanelOpen,
-    setAdvancedFiltersOpen,
-  } = useOrganizationStore();
+  const { isSidePanelOpen } = useOrganizationStore();
   const filters = useOrganizationFilters();
   const organizations = useOrganizations({
     page: filters.page,
@@ -70,13 +66,11 @@ export function useOrganizationsPage() {
     filteredRows,
     filters,
     form,
-    isAdvancedFiltersOpen,
     isSidePanelOpen,
     organizationExport,
     organizations,
     rowActions,
     selection,
-    setAdvancedFiltersOpen,
     statistics,
   };
 }

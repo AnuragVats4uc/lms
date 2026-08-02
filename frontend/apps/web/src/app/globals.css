@@ -1040,12 +1040,6 @@ body {
   white-space: nowrap;
 }
 
-.lms-organization-advanced-filters {
-  animation: lms-filter-expand 180ms ease-out both;
-  border-top: 1px solid #e8eef6;
-  padding-top: 12px;
-}
-
 .lms-organization-row-menu {
   animation: lms-menu-enter 140ms ease-out both;
   isolation: isolate;

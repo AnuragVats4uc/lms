@@ -5,18 +5,13 @@ import { useSearchParams } from "next/navigation";
 import { XStack, YStack } from "@repo/ui";
 
 import { BulkActionBar } from "../components/bulk-actions";
-import {
-  ActiveFilterChips,
-  OrganizationToolbar,
-} from "../components/filters";
+import { ActiveFilterChips, OrganizationToolbar } from "../components/filters";
 import { OrganizationHeader } from "../components/header";
 import { OrganizationSidePanel } from "../components/side-panel";
 import { OrganizationOverlays } from "../components/shared";
 import { OrganizationStats } from "../components/stats";
 import { useOrganizationsPage } from "../hooks";
-import {
-  OrganizationStoreProvider,
-} from "../store";
+import { OrganizationStoreProvider } from "../store";
 import { OrganizationTable } from "../table";
 import { getFiltersFromParams, parseInteger } from "../utils";
 
@@ -43,7 +38,11 @@ function OrganizationsPageContent() {
   const page = useOrganizationsPage();
 
   return (
-    <YStack className="lms-organizations-page" gap="$5" style={{ width: "100%" }}>
+    <YStack
+      className="lms-organizations-page"
+      gap="$5"
+      style={{ width: "100%" }}
+    >
       <OrganizationHeader
         isFetching={page.organizations.isFetching}
         onAdd={page.form.openAddOrganization}
@@ -60,16 +59,11 @@ function OrganizationsPageContent() {
       />
 
       <OrganizationToolbar
-        activeFilterCount={page.filters.activeChips.length}
         filters={page.filters.filters}
-        isAdvancedOpen={page.isAdvancedFiltersOpen}
         onClearFilters={page.filters.clearFilters}
         onExport={page.organizationExport.exportOrganizations}
         onFilterChange={page.filters.updateFilters}
         onRefresh={() => page.organizations.refetch()}
-        onToggleAdvanced={() =>
-          page.setAdvancedFiltersOpen((current) => !current)
-        }
       />
 
       <OrganizationOverlays actions={page.actions} form={page.form} />
@@ -136,9 +130,7 @@ function OrganizationsPageContent() {
             Boolean(page.selection.selectedRowIds.length)
           }
           organization={
-            page.isSidePanelOpen
-              ? page.selection.selectedOrganization
-              : null
+            page.isSidePanelOpen ? page.selection.selectedOrganization : null
           }
         />
       </XStack>

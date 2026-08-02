@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import { Text, XStack, YStack } from "@repo/ui";
 
 import { OrganizationHeaderAction } from "./OrganizationHeaderAction";
@@ -12,24 +12,23 @@ interface OrganizationHeaderProps {
   onRefresh: () => void;
 }
 
-export function OrganizationHeader({
+export const OrganizationHeader = ({
   isFetching,
   onAdd,
-  onExport,
   onRefresh,
-}: OrganizationHeaderProps) {
+}: OrganizationHeaderProps) => {
   return (
     <XStack
       className="lms-organizations-header"
+      width="100%"
       gap="$4"
+      justify="space-between"
       style={{
         alignItems: "flex-start",
-        justifyContent: "space-between",
-        width: "100%",
       }}
     >
-      <YStack gap="$2" style={{ maxWidth: 720, minWidth: 0 }}>
-        <XStack gap="$3" style={{ alignItems: "center", flexWrap: "wrap" }}>
+      <YStack gap="$2" minW={0} maxW={720}>
+        <XStack gap="$3" flexWrap="wrap" style={{ alignItems: "center" }}>
           <Text color="#0F1D3A" fontSize={30} fontWeight="$heading">
             Organizations
           </Text>
@@ -37,11 +36,11 @@ export function OrganizationHeader({
             px="$3"
             py="$1"
             rounded="$6"
+            background={isFetching ? "#EFF6FF" : "#DDF4E7"}
+            borderWidth={1}
+            borderColor={isFetching ? "#BFDBFE" : "#B7E4CB"}
             style={{
               alignItems: "center",
-              backgroundColor: isFetching ? "#EFF6FF" : "#DDF4E7",
-              borderColor: isFetching ? "#BFDBFE" : "#B7E4CB",
-              borderWidth: 1,
               transition: "background-color 180ms ease, border-color 180ms ease",
             }}
           >
@@ -63,19 +62,14 @@ export function OrganizationHeader({
       <XStack
         className="lms-organizations-actions"
         gap="$3"
-        style={{ alignItems: "center", flexWrap: "wrap" }}
+        flexWrap="wrap"
+        style={{ alignItems: "center", }}
       >
         <OrganizationHeaderAction
           icon={<RefreshCw aria-hidden="true" size={16} />}
           onPress={onRefresh}
         >
           Refresh
-        </OrganizationHeaderAction>
-        <OrganizationHeaderAction
-          icon={<Download aria-hidden="true" size={16} />}
-          onPress={onExport}
-        >
-          Export
         </OrganizationHeaderAction>
         <OrganizationHeaderAction
           icon={<Plus aria-hidden="true" color="#FFFFFF" size={16} />}
