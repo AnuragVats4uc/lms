@@ -80,6 +80,8 @@ export const CrudSelect = ({
     <div
       aria-busy={loading}
       className={[
+        "lms-crud-filter-control",
+        "lms-crud-select",
         "lms-organization-filter-control",
         "lms-organization-select",
         isOpen ? "is-open" : "",
@@ -93,7 +95,7 @@ export const CrudSelect = ({
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-label={ariaLabel}
-        className="lms-organization-select-trigger"
+        className="lms-crud-select-trigger lms-organization-select-trigger"
         disabled={disabled || loading || !options.length}
         onClick={() => {
           updateMenuPosition();
@@ -101,8 +103,10 @@ export const CrudSelect = ({
         }}
         type="button"
       >
-        <span className="lms-organization-select-label">{label}</span>
-        <span className="lms-organization-select-value">
+        <span className="lms-crud-select-label lms-organization-select-label">
+          {label}
+        </span>
+        <span className="lms-crud-select-value lms-organization-select-value">
           {loading ? "Loading..." : (selectedOption?.label ?? value)}
         </span>
         {loading ? (
@@ -110,7 +114,7 @@ export const CrudSelect = ({
         ) : (
           <ChevronDown
             aria-hidden="true"
-            className="lms-organization-select-chevron"
+            className="lms-crud-select-chevron lms-organization-select-chevron"
             size={13}
           />
         )}
@@ -119,7 +123,7 @@ export const CrudSelect = ({
       {isOpen && typeof document !== "undefined"
         ? createPortal(
             <div
-              className="lms-organization-select-menu"
+              className="lms-crud-select-menu lms-organization-select-menu"
               ref={menuRef}
               role="listbox"
               style={{
@@ -134,6 +138,7 @@ export const CrudSelect = ({
                   <button
                     aria-selected={isSelected}
                     className={[
+                      "lms-crud-select-option",
                       "lms-organization-select-option",
                       isSelected ? "is-selected" : "",
                     ]

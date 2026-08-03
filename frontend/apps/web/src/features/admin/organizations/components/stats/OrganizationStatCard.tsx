@@ -4,16 +4,11 @@ import { memo } from "react";
 import { Text, XStack, YStack } from "@repo/ui";
 import { AppCard } from "@repo/ui/primitives";
 
-import type { OrganizationStat } from "../../types";
+import type { CrudStat } from "../../../components/crud/types";
 import { useAnimatedNumber } from "./AnimatedNumber";
 
 export const OrganizationStatCard = memo(
-  ({
-    icon,
-    isLoading,
-    label,
-    value,
-  }: OrganizationStat & { isLoading: boolean }) => {
+  ({ icon, isLoading, label, value }: CrudStat & { isLoading: boolean }) => {
     const animatedValue = useAnimatedNumber(value, !isLoading);
 
     return (
@@ -22,7 +17,6 @@ export const OrganizationStatCard = memo(
         background="#FFFFFF"
         borderColor="#E1E7F0"
         p="$3"
-        boxShadow="0 10px 26px rgba(15, 23, 42, 0.035)"
         minH={88}
       >
         {isLoading ? (

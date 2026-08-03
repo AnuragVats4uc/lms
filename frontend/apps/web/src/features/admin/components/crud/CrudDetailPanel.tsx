@@ -32,7 +32,6 @@ export const CrudDetailPanel = <Item,>({
       p="$4"
       style={{
         borderRadius: 16,
-        boxShadow: "0 12px 34px rgba(15, 23, 42, 0.045)",
         minWidth: 300,
       }}
     >

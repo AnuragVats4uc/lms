@@ -43,11 +43,3 @@ export const getSyncStatus = (
 
   return "SYNCED";
 };
-
-export const normalizeWebsite = (value: string | null): string | null => {
-  if (!value) {
-    return null;
-  }
-
-  return /^https?:\/\//u.test(value) ? value : `https://${value}`;
-};

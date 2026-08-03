@@ -26,7 +26,7 @@ export const CrudSearch = ({
   value,
 }: CrudSearchProps) => (
   <XStack
-    className="lms-organization-search"
+    className="lms-crud-search lms-organization-search"
     gap="$3"
     px="$3"
     maxW={maxWidth}
@@ -52,7 +52,7 @@ export const CrudSearch = ({
       aria-label={ariaLabel}
       background="transparent"
       borderWidth={0}
-      className="lms-organization-search-input"
+      className="lms-crud-search-input lms-organization-search-input"
       disabled={disabled || loading}
       flex={1}
       height={30}

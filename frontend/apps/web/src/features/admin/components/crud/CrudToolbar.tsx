@@ -37,19 +37,18 @@ export const CrudToolbar = ({
   values,
 }: CrudToolbarProps) => (
   <AppCard
-    className="lms-organization-filters"
+    className="lms-crud-filters lms-organization-filters"
     background="#FFFFFF"
     borderColor="#E1E7F0"
     borderWidth={1}
     overflow="hidden"
-    p="$2"
+    p="$4"
     position="relative"
     width="100%"
-    boxShadow="0 12px 34px rgba(15, 23, 42, 0.04)"
   >
     <YStack gap="$3">
       <XStack
-        className="lms-organization-filter-row"
+        className="lms-crud-filter-row lms-organization-filter-row"
         gap="$2"
         maxW="100%"
         flexWrap="wrap"
@@ -82,7 +81,7 @@ export const CrudToolbar = ({
             background="#FFFFFF"
             borderColor="#D8E1EC"
             borderWidth={1}
-            className="lms-organization-toolbar-button lms-organization-toolbar-icon-button"
+            className="lms-crud-toolbar-button lms-crud-toolbar-icon-button lms-organization-toolbar-button lms-organization-toolbar-icon-button"
             disabled={loading}
             height={36}
             onPress={onRefresh}
@@ -97,7 +96,7 @@ export const CrudToolbar = ({
           background="#FFFFFF"
           borderColor="#D8E1EC"
           borderWidth={1}
-          className="lms-organization-toolbar-button"
+          className="lms-crud-toolbar-button lms-organization-toolbar-button"
           disabled={loading}
           height={36}
           onPress={onClear}

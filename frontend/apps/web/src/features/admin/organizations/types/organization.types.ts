@@ -24,22 +24,9 @@ export interface OrganizationTableRow extends Organization {
   syncStatus: OrganizationSyncStatus;
 }
 
-export type OrganizationConfirmAction =
-  | { kind: "delete"; organization: OrganizationTableRow }
-  | { kind: "toggle"; organization: OrganizationTableRow }
-  | { kind: "bulk-delete"; organizations: OrganizationTableRow[] }
-  | {
-      active: boolean;
-      kind: "bulk-toggle";
-      organizations: OrganizationTableRow[];
-    };
-
 export interface OrganizationToastState {
   id: number;
   message: string;
   title: string;
   tone: "error" | "success";
 }
-
-export type ConfirmAction = OrganizationConfirmAction;
-export type ToastState = OrganizationToastState;

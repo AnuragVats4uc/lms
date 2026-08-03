@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "../features/admin/components/crud/styles/crud-search.css";
+@import "../features/admin/components/crud/styles/crud-select.css";
+@import "../features/admin/components/crud/styles/crud-toolbar.css";
+@import "../features/admin/organizations/styles/organizations.css";
 
 :root {
   --background: #ffffff;

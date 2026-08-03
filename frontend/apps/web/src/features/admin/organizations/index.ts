@@ -1,3 +1,2 @@
-export { OrganizationsContent } from "./OrganizationsContent";
-export { default, OrganizationsPage } from "./page";
+export { default, OrganizationsPage } from "./page/OrganizationsPage";
 export * from "./types";
