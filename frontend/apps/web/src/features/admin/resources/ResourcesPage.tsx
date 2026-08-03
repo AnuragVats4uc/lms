@@ -17,7 +17,7 @@ import {
   DataTableTextCell,
   type DataTableColumn,
 } from "@/components/DataTable";
-import { OrganizationSelect } from "../organizations/components/filters";
+import { CrudSelect } from "../components/crud";
 import {
   CrudManagementPage,
   type ResourceFormContext,
@@ -487,7 +487,7 @@ export function ResourcesPage() {
     <YStack gap="$3">
       <XStack gap="$3" style={{ alignItems: "center", flexWrap: "wrap" }}>
         {academic.organizations.length ? (
-          <OrganizationSelect
+          <CrudSelect
             ariaLabel="Select organization"
             label="Organization"
             onChange={(value) => {
@@ -507,7 +507,7 @@ export function ResourcesPage() {
             }
           />
         ) : null}
-        <OrganizationSelect
+        <CrudSelect
           ariaLabel="Select session"
           label="Session"
           onChange={(value) => {
@@ -523,7 +523,7 @@ export function ResourcesPage() {
             academic.selectedSessionId ? String(academic.selectedSessionId) : ""
           }
         />
-        <OrganizationSelect
+        <CrudSelect
           ariaLabel="Select session course"
           label="Session course"
           onChange={(value) => {
@@ -538,7 +538,7 @@ export function ResourcesPage() {
             effectiveSessionCourseId ? String(effectiveSessionCourseId) : ""
           }
         />
-        <OrganizationSelect
+        <CrudSelect
           ariaLabel="Select folder"
           label="Folder"
           onChange={(value) => setSelectedFolderId(Number(value))}

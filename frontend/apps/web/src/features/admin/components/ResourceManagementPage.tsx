@@ -8,7 +8,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Database, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button, XStack, YStack } from "@repo/ui";
@@ -27,7 +27,7 @@ import {
   CrudActionMenu,
   CrudActiveFilterChips,
   CrudConfirmationDialog,
-  CrudFilterToolbar,
+  CrudToolbar,
   CrudPageHeader,
   CrudStats,
   CrudToast,
@@ -176,6 +176,7 @@ export function ResourceManagementPage<
   const { currentUser } = useAuthSession();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const canCreate =
     Boolean(create) &&
     userHasPermission(currentUser, permissionPrefix + ".create");
@@ -242,6 +243,8 @@ export function ResourceManagementPage<
     });
 
     const queryString = params.toString();
+    if (searchParams.toString() === queryString) return;
+
     router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
       scroll: false,
     });
@@ -253,6 +256,7 @@ export function ResourceManagementPage<
     publishedFilter,
     router,
     search,
+    searchParams,
     status,
     syncUrl,
     typeFilter,
@@ -569,10 +573,11 @@ export function ResourceManagementPage<
       />
       <CrudStats isLoading={query.isLoading} stats={stats} />
       {context}
-      <CrudFilterToolbar
+      <CrudToolbar
         actions={filterActions}
         entityLabel={entityLabel}
         filters={filterDefinitions}
+        loading={query.isFetching}
         onClear={clearFilters}
         onFilterChange={handleFilterChange}
         onRefresh={() => void query.refetch()}

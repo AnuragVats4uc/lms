@@ -2,28 +2,34 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, LoaderCircle } from "lucide-react";
 
-export interface OrganizationSelectOption {
+export interface CrudSelectOption {
   label: string;
   value: string;
 }
 
-export interface OrganizationSelectProps {
+export interface CrudSelectProps {
   ariaLabel: string;
+  disabled?: boolean;
   label: string;
+  loading?: boolean;
   onChange: (value: string) => void;
-  options: OrganizationSelectOption[];
+  options: CrudSelectOption[];
   value: string;
+  width?: number | string;
 }
 
-export const OrganizationSelect = ({
+export const CrudSelect = ({
   ariaLabel,
+  disabled = false,
   label,
+  loading = false,
   onChange,
   options,
   value,
-}: OrganizationSelectProps) => {
+  width,
+}: CrudSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({
     left: 0,
@@ -37,13 +43,8 @@ export const OrganizationSelect = ({
 
   const updateMenuPosition = useCallback(() => {
     const root = rootRef.current;
-
-    if (!root) {
-      return;
-    }
-
+    if (!root) return;
     const rect = root.getBoundingClientRect();
-
     setMenuPosition({
       left: rect.left,
       top: rect.bottom + 6,
@@ -52,15 +53,10 @@ export const OrganizationSelect = ({
   }, []);
 
   useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
+    if (!isOpen) return;
     updateMenuPosition();
-
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target;
-
       if (
         target instanceof Node &&
         !rootRef.current?.contains(target) &&
@@ -70,11 +66,9 @@ export const OrganizationSelect = ({
       }
     };
     const handleViewportChange = () => updateMenuPosition();
-
     document.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("resize", handleViewportChange);
     window.addEventListener("scroll", handleViewportChange, true);
-
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("resize", handleViewportChange);
@@ -84,6 +78,7 @@ export const OrganizationSelect = ({
 
   return (
     <div
+      aria-busy={loading}
       className={[
         "lms-organization-filter-control",
         "lms-organization-select",
@@ -92,12 +87,14 @@ export const OrganizationSelect = ({
         .filter(Boolean)
         .join(" ")}
       ref={rootRef}
+      style={{ width }}
     >
       <button
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-label={ariaLabel}
         className="lms-organization-select-trigger"
+        disabled={disabled || loading || !options.length}
         onClick={() => {
           updateMenuPosition();
           setIsOpen((current) => !current);
@@ -106,13 +103,17 @@ export const OrganizationSelect = ({
       >
         <span className="lms-organization-select-label">{label}</span>
         <span className="lms-organization-select-value">
-          {selectedOption?.label ?? value}
+          {loading ? "Loading..." : (selectedOption?.label ?? value)}
         </span>
-        <ChevronDown
-          aria-hidden="true"
-          className="lms-organization-select-chevron"
-          size={13}
-        />
+        {loading ? (
+          <LoaderCircle aria-hidden="true" className="animate-spin" size={13} />
+        ) : (
+          <ChevronDown
+            aria-hidden="true"
+            className="lms-organization-select-chevron"
+            size={13}
+          />
+        )}
       </button>
 
       {isOpen && typeof document !== "undefined"
@@ -129,7 +130,6 @@ export const OrganizationSelect = ({
             >
               {options.map((option) => {
                 const isSelected = option.value === value;
-
                 return (
                   <button
                     aria-selected={isSelected}

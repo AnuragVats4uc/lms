@@ -138,15 +138,17 @@
 }
 
 .lms-organization-filters {
-  border-radius: 16px;
+  border-radius: 12px;
 }
 
 .lms-organization-filter-row {
   display: grid !important;
   grid-template-columns:
-    minmax(220px, 1fr) repeat(4, minmax(92px, 104px)) minmax(84px, 92px) minmax(62px, 72px) 40px minmax(74px, 82px);
+    minmax(220px, 1fr) repeat(4, minmax(72px, 104px)) minmax(72px, 92px) minmax(62px, 72px) 36px minmax(68px, 82px);
   max-width: 100%;
   align-items: center;
+  column-gap: 8px;
+  row-gap: 8px;
 }
 
 .lms-organization-filter-control {
@@ -160,7 +162,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 42px;
+  min-height: 36px;
   min-width: 0;
   overflow: hidden;
   padding: 0;
@@ -189,7 +191,7 @@
 
 .lms-organization-select-label {
   color: #52627a;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   line-height: 12px;
 }
@@ -207,7 +209,7 @@
   justify-content: center;
   margin: 0;
   outline: 0;
-  padding: 6px 24px 6px 10px;
+  padding: 4px 22px 4px 8px;
   position: relative;
   text-align: left;
   width: 100%;
@@ -229,7 +231,7 @@
   color: #52627a;
   position: absolute;
   right: 8px;
-  top: 14px;
+  top: 11px;
   transition: transform 160ms ease;
 }
 
@@ -290,7 +292,8 @@
 .lms-organization-search {
   align-items: center !important;
   border-radius: 12px;
-  flex: 1 1 360px;
+  flex: 1 1 280px;
+  min-height: 36px !important;
 }
 
 .lms-organization-search input,
@@ -310,7 +313,7 @@
 }
 
 .lms-organization-toolbar-button {
-  height: 42px !important;
+  height: 36px !important;
   justify-content: center !important;
   min-width: 0 !important;
   overflow: hidden !important;
