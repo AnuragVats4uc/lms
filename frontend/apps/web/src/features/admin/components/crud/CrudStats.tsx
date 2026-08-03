@@ -2,7 +2,7 @@
 
 import { XStack } from "@repo/ui";
 
-import { OrganizationStatCard } from "../../organizations/components/stats/OrganizationStatCard";
+import { CrudStatCard } from "./CrudStatCard";
 import type { CrudStat } from "./types";
 
 export interface CrudStatsProps {
@@ -13,7 +13,7 @@ export interface CrudStatsProps {
 export const CrudStats = ({ isLoading, stats }: CrudStatsProps) => (
   <XStack className="lms-organization-stats-grid" gap="$3">
     {stats.map((stat) => (
-      <OrganizationStatCard
+      <CrudStatCard
         icon={stat.icon}
         isLoading={isLoading}
         key={stat.label}

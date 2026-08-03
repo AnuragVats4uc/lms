@@ -32,14 +32,16 @@ export const CrudConfirmationDialog = ({
 }: CrudConfirmationDialogProps) => (
   <AppModal
     className={
-      destructive ? "lms-confirm-modal is-danger" : "lms-confirm-modal"
+      destructive
+        ? "lms-crud-confirm-modal lms-confirm-modal is-danger"
+        : "lms-crud-confirm-modal lms-confirm-modal"
     }
     description={description}
     isOpen={isOpen}
     onClose={onClose}
     title={title}
   >
-    <YStack className="lms-confirm-content" gap="$4">
+    <YStack className="lms-confirm-content" gap="$3">
       <XStack
         gap="$3"
         style={{ alignItems: "center", minWidth: 0, width: "100%" }}
@@ -49,13 +51,13 @@ export const CrudConfirmationDialog = ({
           justify="center"
           style={{ alignItems: "center", flexShrink: 0 }}
         >
-          <AlertTriangle aria-hidden="true" size={22} />
+          <AlertTriangle aria-hidden="true" size={18} />
         </XStack>
         <YStack style={{ minWidth: 0 }}>
-          <Text color="#0F1D3A" fontSize="$label" fontWeight="$button">
+          <Text color="#0F1D3A" fontSize="$caption" fontWeight="$button">
             {subject}
           </Text>
-          <Text color="#52627A" fontSize="$caption" lineHeight="$caption">
+          <Text color="#52627A" fontSize={12} lineHeight={16}>
             {detail}
           </Text>
         </YStack>
@@ -71,7 +73,7 @@ export const CrudConfirmationDialog = ({
           borderColor="#D8E1EC"
           borderWidth={1}
           disabled={isSubmitting}
-          height={38}
+          height={34}
           onPress={onClose}
           rounded="$3"
         >
@@ -84,7 +86,7 @@ export const CrudConfirmationDialog = ({
           borderColor={destructive ? "#DC2626" : "#059669"}
           borderWidth={1}
           disabled={isSubmitting}
-          height={38}
+          height={34}
           onPress={onConfirm}
           rounded="$3"
         >

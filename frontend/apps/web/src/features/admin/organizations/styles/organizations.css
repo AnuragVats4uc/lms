@@ -21,7 +21,7 @@
   align-items: flex-start;
 }
 
-.lms-organizations-header> :first-child {
+.lms-organizations-header > :first-child {
   flex: 1 1 520px;
 }
 
@@ -30,7 +30,7 @@
   align-items: center;
 }
 
-.lms-organizations-actions>* {
+.lms-organizations-actions > * {
   flex-shrink: 0;
 }
 
@@ -287,7 +287,7 @@
   border-bottom-color: #c8ead7;
 }
 
-.lms-organization-create-modal .lms-modal-header>div:first-child {
+.lms-organization-create-modal .lms-modal-header > div:first-child {
   border-left: 4px solid #059669;
   padding-left: 12px;
 }
@@ -323,7 +323,7 @@
   line-height: 22px !important;
 }
 
-.lms-organization-create-modal .lms-modal-header span+span {
+.lms-organization-create-modal .lms-modal-header span + span {
   font-size: 12px !important;
   line-height: 16px !important;
 }
@@ -415,7 +415,28 @@
 
 .lms-confirm-modal {
   border-color: #93c5fd;
-  max-width: 520px;
+  max-width: 460px;
+  width: min(460px, 100%);
+}
+
+.lms-crud-confirm-modal .lms-modal-header {
+  padding: 12px 16px;
+}
+
+.lms-crud-confirm-modal .lms-modal-header > div:first-child span:first-child {
+  font-size: 16px !important;
+  line-height: 20px !important;
+}
+
+.lms-crud-confirm-modal .lms-modal-header > div:first-child span + span {
+  font-size: 12px !important;
+  line-height: 16px !important;
+}
+
+.lms-crud-confirm-modal .lms-modal-body,
+.lms-crud-confirm-modal .lms-modal-footer {
+  padding-left: 16px;
+  padding-right: 16px;
 }
 
 .lms-confirm-modal .lms-modal-header {
@@ -436,8 +457,8 @@
   background: #dbeafe;
   border-radius: 14px;
   color: #2563eb;
-  height: 46px;
-  width: 46px;
+  height: 38px;
+  width: 38px;
 }
 
 .lms-confirm-modal.is-danger .lms-confirm-icon {
@@ -667,7 +688,7 @@
     flex-wrap: wrap;
   }
 
-  .lms-modal-footer>* {
+  .lms-modal-footer > * {
     flex: 1 1 100%;
   }
 
@@ -687,11 +708,11 @@
     width: 100% !important;
   }
 
-  .lms-organizations-actions>* {
+  .lms-organizations-actions > * {
     flex: 1 1 100% !important;
   }
 
-  .lms-organizations-summary>* {
+  .lms-organizations-summary > * {
     flex: 1 1 100% !important;
   }
 

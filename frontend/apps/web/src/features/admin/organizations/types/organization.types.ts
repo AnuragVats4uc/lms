@@ -23,10 +23,3 @@ export interface OrganizationTableRow extends Organization {
   primaryAdministrator: OrganizationAdministrator | null;
   syncStatus: OrganizationSyncStatus;
 }
-
-export interface OrganizationToastState {
-  id: number;
-  message: string;
-  title: string;
-  tone: "error" | "success";
-}

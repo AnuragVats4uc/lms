@@ -3,7 +3,7 @@
 import { Plus, RefreshCw } from "lucide-react";
 import { Text, XStack, YStack } from "@repo/ui";
 
-import { OrganizationHeaderAction } from "../../organizations/components/header/OrganizationHeaderAction";
+import { CrudHeaderAction } from "./CrudHeaderAction";
 
 export interface CrudPageHeaderProps {
   canCreate: boolean;
@@ -69,20 +69,20 @@ export const CrudPageHeader = ({
       minW={0}
       style={{ alignItems: "center", flexWrap: "wrap" }}
     >
-      <OrganizationHeaderAction
+      <CrudHeaderAction
         icon={<RefreshCw aria-hidden="true" size={16} />}
         onPress={onRefresh}
       >
         Refresh
-      </OrganizationHeaderAction>
+      </CrudHeaderAction>
       {canCreate ? (
-        <OrganizationHeaderAction
+        <CrudHeaderAction
           icon={<Plus aria-hidden="true" color="#FFFFFF" size={16} />}
           onPress={onCreate}
           primary
         >
           {createLabel}
-        </OrganizationHeaderAction>
+        </CrudHeaderAction>
       ) : null}
     </XStack>
   </XStack>

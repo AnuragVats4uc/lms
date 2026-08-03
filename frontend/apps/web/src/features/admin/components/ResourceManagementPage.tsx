@@ -113,6 +113,7 @@ export interface ResourceManagementPageProps<
   searchPlaceholder?: string;
   createLabel?: string;
   context?: ReactNode;
+  additionalDialogs?: ReactNode;
   enabled?: boolean;
   emptyDescription?: string;
 }
@@ -170,6 +171,7 @@ export function ResourceManagementPage<
   searchPlaceholder,
   createLabel,
   context,
+  additionalDialogs,
   enabled = true,
   emptyDescription,
 }: ResourceManagementPageProps<Item, Form, CreatePayload, UpdatePayload>) {
@@ -580,7 +582,6 @@ export function ResourceManagementPage<
         loading={query.isFetching}
         onClear={clearFilters}
         onFilterChange={handleFilterChange}
-        onRefresh={() => void query.refetch()}
         onSearch={setSearch}
         searchPlaceholder={searchPlaceholder}
         searchValue={search}
@@ -748,6 +749,7 @@ export function ResourceManagementPage<
         subject={confirmItem ? getDisplayName(confirmItem) : ""}
         title={"Delete " + entityLabel}
       />
+      {additionalDialogs}
       <CrudToast onDismiss={() => setToast(null)} toast={toast} />
     </YStack>
   );

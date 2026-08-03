@@ -16,7 +16,6 @@ export interface CrudToolbarProps {
   loading?: boolean;
   onClear: () => void;
   onFilterChange: (id: string, value: string) => void;
-  onRefresh?: () => void;
   onSearch: (value: string) => void;
   searchPlaceholder?: string;
   searchValue: string;
@@ -30,7 +29,6 @@ export const CrudToolbar = ({
   loading = false,
   onClear,
   onFilterChange,
-  onRefresh,
   onSearch,
   searchPlaceholder,
   searchValue,
@@ -75,7 +73,7 @@ export const CrudToolbar = ({
           />
         ))}
         {actions}
-        {onRefresh ? (
+        {/* {onRefresh ? (
           <Button
             aria-label={`Refresh ${entityLabel.toLowerCase()}`}
             background="#FFFFFF"
@@ -90,7 +88,7 @@ export const CrudToolbar = ({
           >
             <RefreshCw aria-hidden="true" color="#0F1D3A" size={16} />
           </Button>
-        ) : null}
+        ) : null} */}
         <Button
           aria-label={`Clear ${entityLabel.toLowerCase()} filters`}
           background="#FFFFFF"

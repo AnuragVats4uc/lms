@@ -1,20 +1,42 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { useMutation } from "@tanstack/react-query";
-import { Database, Power } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Activity,
+  AtSign,
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Database,
+  ExternalLink,
+  Globe2,
+  Mail,
+  MapPin,
+  Phone,
+  Power,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import { organizationsApi } from "@repo/api";
 import type {
   CreateOrganizationRequest,
   UpdateOrganizationRequest,
 } from "@repo/types";
-import { Text, YStack } from "@repo/ui";
+import { Text, XStack, YStack } from "@repo/ui";
+import { AppCard } from "@repo/ui/primitives";
 
+import {
+  CrudBulkActionBar,
+  CrudBadge,
+  CrudStatusConfirmationDialog,
+} from "../../components/crud";
 import {
   CrudManagementPage,
   type CrudFormContext,
 } from "../../components/crud/CrudManagementPage";
-import { CrudBulkActionBar } from "../../components/crud";
 import { getOrganizations, toOrganizationRow } from "../services";
 import { OrganizationFormFields } from "../forms/OrganizationFormFields";
 import { DEFAULT_FORM } from "../forms/defaults";
@@ -53,8 +75,103 @@ const parsePositiveInteger = (value: string | null, fallback: number) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+const formatOrganizationDate = (value: string) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "-"
+    : new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(date);
+};
+
+const OrganizationTableValue = ({
+  children,
+  muted = true,
+}: {
+  children: ReactNode;
+  muted?: boolean;
+}) => (
+  <Text
+    color={muted ? "#52627A" : "#0F1D3A"}
+    fontSize="$caption"
+    numberOfLines={2}
+  >
+    {children || "-"}
+  </Text>
+);
+
+const OrganizationDetailRow = ({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: ReactNode;
+}) => (
+  <XStack gap="$2" style={{ alignItems: "flex-start", minWidth: 0 }}>
+    <XStack
+      background="#EAF7F3"
+      height={30}
+      justify="center"
+      rounded="$3"
+      width={30}
+      style={{ alignItems: "center", flexShrink: 0 }}
+    >
+      {icon}
+    </XStack>
+    <YStack gap="$1" minW={0} style={{ flex: 1 }}>
+      <Text color="#7A879B" fontSize={10} fontWeight="$button">
+        {label}
+      </Text>
+      <Text color="#0F1D3A" fontSize="$caption" numberOfLines={3}>
+        {value || "-"}
+      </Text>
+    </YStack>
+  </XStack>
+);
+
+const OrganizationDetailSection = ({
+  children,
+  icon,
+  title,
+}: {
+  children: ReactNode;
+  icon: ReactNode;
+  title: string;
+}) => (
+  <YStack
+    gap="$3"
+    p="$3"
+    background="#F8FBFD"
+    borderColor="#E6EDF3"
+    borderWidth={1}
+    rounded="$4"
+  >
+    <XStack gap="$2" style={{ alignItems: "center" }}>
+      {icon}
+      <Text color="#0F1D3A" fontSize="$caption" fontWeight="$button">
+        {title}
+      </Text>
+    </XStack>
+    <YStack gap="$3">{children}</YStack>
+  </YStack>
+);
+
+interface OrganizationStatusConfirmation {
+  active: boolean;
+  clearSelection?: () => void;
+  items: OrganizationTableRow[];
+}
+
 export const OrganizationsPage = () => {
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+  const [statusConfirmation, setStatusConfirmation] =
+    useState<OrganizationStatusConfirmation | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
+
   const bulkStatusMutation = useMutation({
     mutationFn: async (input: {
       active: boolean;
@@ -75,6 +192,35 @@ export const OrganizationsPage = () => {
         items.map((organization) => organizationsApi.remove(organization.id)),
       ),
   });
+
+  const requestStatusChange = (
+    items: OrganizationTableRow[],
+    active: boolean,
+    clearSelection?: () => void,
+  ) => {
+    setStatusError(null);
+    setStatusConfirmation({ active, clearSelection, items });
+  };
+
+  const confirmStatusChange = async () => {
+    if (!statusConfirmation) return;
+
+    try {
+      await bulkStatusMutation.mutateAsync({
+        active: statusConfirmation.active,
+        items: statusConfirmation.items,
+      });
+      statusConfirmation.clearSelection?.();
+      await queryClient.invalidateQueries({
+        queryKey: ["admin", "organizations"],
+      });
+      setStatusConfirmation(null);
+      setStatusError(null);
+    } catch {
+      setStatusError("The organization status could not be updated.");
+    }
+  };
+
   const params = new URLSearchParams(searchParams.toString());
   const initialFilters = {
     createdDate: params.get("createdDate") ?? "all",
@@ -91,6 +237,33 @@ export const OrganizationsPage = () => {
       CreateOrganizationRequest,
       UpdateOrganizationRequest
     >
+      additionalDialogs={
+        <CrudStatusConfirmationDialog
+          active={statusConfirmation?.active ?? true}
+          count={statusConfirmation?.items.length ?? 0}
+          entityLabel="Organization"
+          error={statusError ?? undefined}
+          isOpen={Boolean(statusConfirmation)}
+          isSubmitting={bulkStatusMutation.isPending}
+          onClose={() => {
+            if (!bulkStatusMutation.isPending) {
+              setStatusConfirmation(null);
+              setStatusError(null);
+            }
+          }}
+          onConfirm={() => void confirmStatusChange()}
+        />
+      }
+      additionalRowActions={[
+        {
+          icon: Power,
+          id: "toggle",
+          label: "Activate / Deactivate",
+          permission: "organizations.update",
+          onAction: async (organization) =>
+            requestStatusChange([organization], !organization.isActive),
+        },
+      ]}
       clientFilterRows={(rows, filters) => {
         const syncStatus = filters.syncStatus ?? "ALL";
         const createdDate = (filters.createdDate ?? "all") as CreatedDateFilter;
@@ -101,23 +274,6 @@ export const OrganizationsPage = () => {
         );
         return sortRows(filtered, (filters.sort ?? "newest") as SortOption);
       }}
-      additionalRowActions={[
-        {
-          icon: Power,
-          id: "toggle",
-          label: "Activate / Deactivate",
-          permission: "organizations.update",
-          onAction: async (organization) => {
-            if (!window.confirm(`Change the status of ${organization.name}?`))
-              return;
-            const active = !organization.isActive;
-            await organizationsApi.update(organization.id, {
-              isActive: active,
-              status: active ? "ACTIVE" : "INACTIVE",
-            });
-          },
-        },
-      ]}
       columns={[
         {
           cell: ({ row }) => (
@@ -137,19 +293,31 @@ export const OrganizationsPage = () => {
         },
         {
           cell: ({ row }) => (
-            <Text color="#52627A" fontSize="$caption">
-              {row.primaryAdministrator?.name ?? "Not assigned"}
-            </Text>
+            <OrganizationTableValue>{row.description}</OrganizationTableValue>
           ),
-          header: "Primary Administrator",
-          id: "administrator",
-          width: 240,
+          header: "Description",
+          id: "description",
+          width: 260,
         },
         {
           cell: ({ row }) => (
-            <Text color="#52627A" fontSize="$caption">
-              {row.email ?? "-"}
-            </Text>
+            <OrganizationTableValue>{row.logo}</OrganizationTableValue>
+          ),
+          header: "Logo",
+          id: "logo",
+          width: 220,
+        },
+        {
+          cell: ({ row }) => (
+            <OrganizationTableValue>{row.website}</OrganizationTableValue>
+          ),
+          header: "Website",
+          id: "website",
+          width: 220,
+        },
+        {
+          cell: ({ row }) => (
+            <OrganizationTableValue>{row.email}</OrganizationTableValue>
           ),
           header: "Email",
           id: "email",
@@ -157,16 +325,49 @@ export const OrganizationsPage = () => {
         },
         {
           cell: ({ row }) => (
-            <Text
-              color={row.isActive ? "#047857" : "#64748B"}
-              fontSize="$caption"
-            >
-              {row.isActive ? "Active" : "Inactive"}
-            </Text>
+            <OrganizationTableValue>{row.phone}</OrganizationTableValue>
+          ),
+          header: "Phone",
+          id: "phone",
+          width: 160,
+        },
+        {
+          cell: ({ row }) => (
+            <OrganizationTableValue>{row.address}</OrganizationTableValue>
+          ),
+          header: "Address",
+          id: "address",
+          width: 240,
+        },
+        {
+          cell: ({ row }) => (
+            <CrudBadge tone={row.status === "ACTIVE" ? "success" : "danger"}>
+              {row.status}
+            </CrudBadge>
           ),
           header: "Status",
           id: "status",
-          width: 120,
+          width: 110,
+        },
+        {
+          cell: ({ row }) => (
+            <OrganizationTableValue>
+              {formatOrganizationDate(row.createdAt)}
+            </OrganizationTableValue>
+          ),
+          header: "Created",
+          id: "createdAt",
+          width: 170,
+        },
+        {
+          cell: ({ row }) => (
+            <OrganizationTableValue>
+              {formatOrganizationDate(row.updatedAt)}
+            </OrganizationTableValue>
+          ),
+          header: "Updated",
+          id: "updatedAt",
+          width: 170,
         },
       ]}
       create={async (payload) =>
@@ -221,16 +422,119 @@ export const OrganizationsPage = () => {
       queryKey={["admin", "organizations"]}
       renderForm={(context) => <OrganizationForm {...context} />}
       renderDetails={(organization) => (
-        <YStack gap="$2">
-          <Text color="#52627A" fontSize="$caption">
-            Website: {organization.website ?? "-"}
-          </Text>
-          <Text color="#52627A" fontSize="$caption">
-            Created: {organization.createdAt}
-          </Text>
-          <Text color="#52627A" fontSize="$caption">
-            Updated: {organization.updatedAt}
-          </Text>
+        <YStack gap="$3">
+          <AppCard
+            background="#EAF7F3"
+            borderColor="#B7E4CB"
+            borderWidth={1}
+            p="$3"
+            rounded="$4"
+          >
+            <XStack gap="$3" style={{ alignItems: "center" }}>
+              <XStack
+                background="#FFFFFF"
+                height={48}
+                justify="center"
+                rounded="$4"
+                width={48}
+                style={{ alignItems: "center" }}
+              >
+                <Building2 color="#059669" size={24} />
+              </XStack>
+              <YStack gap="$1" minW={0} style={{ flex: 1 }}>
+                <Text
+                  color="#047857"
+                  fontSize="$label"
+                  fontWeight="$heading"
+                  numberOfLines={2}
+                >
+                  {organization.name}
+                </Text>
+                <Text color="#52627A" fontSize="$caption">
+                  {organization.code} · {organization.domain ?? "No domain"}
+                </Text>
+              </YStack>
+            </XStack>
+          </AppCard>
+          <OrganizationDetailSection
+            icon={<ShieldCheck color="#059669" size={15} />}
+            title="Status"
+          >
+            <OrganizationDetailRow
+              icon={
+                <CheckCircle2
+                  color={organization.isActive ? "#059669" : "#DC2626"}
+                  size={15}
+                />
+              }
+              label="Status"
+              value={`${organization.status} · ${organization.isActive ? "Active" : "Inactive"}`}
+            />
+          </OrganizationDetailSection>
+          <OrganizationDetailSection
+            icon={<AtSign color="#059669" size={15} />}
+            title="Contact information"
+          >
+            <OrganizationDetailRow
+              icon={<Mail color="#059669" size={15} />}
+              label="Email"
+              value={organization.email}
+            />
+            <OrganizationDetailRow
+              icon={<Phone color="#059669" size={15} />}
+              label="Phone"
+              value={organization.phone}
+            />
+            <OrganizationDetailRow
+              icon={<Globe2 color="#059669" size={15} />}
+              label="Website"
+              value={organization.website}
+            />
+            <OrganizationDetailRow
+              icon={<MapPin color="#059669" size={15} />}
+              label="Address"
+              value={organization.address}
+            />
+          </OrganizationDetailSection>
+          <OrganizationDetailSection
+            icon={<UserRound color="#059669" size={15} />}
+            title="Administration"
+          >
+            <OrganizationDetailRow
+              icon={<UserRound color="#059669" size={15} />}
+              label="Primary administrator"
+              value={
+                organization.primaryAdministrator
+                  ? `${organization.primaryAdministrator.name} · ${organization.primaryAdministrator.email}`
+                  : "Not assigned"
+              }
+            />
+            <OrganizationDetailRow
+              icon={<ExternalLink color="#059669" size={15} />}
+              label="Logo URL"
+              value={organization.logo}
+            />
+            <OrganizationDetailRow
+              icon={<Activity color="#059669" size={15} />}
+              label="Description"
+              value={organization.description}
+            />
+          </OrganizationDetailSection>
+          <OrganizationDetailSection
+            icon={<CalendarDays color="#059669" size={15} />}
+            title="Record history"
+          >
+            <OrganizationDetailRow
+              icon={<CalendarDays color="#059669" size={15} />}
+              label="Created"
+              value={formatOrganizationDate(organization.createdAt)}
+            />
+            <OrganizationDetailRow
+              icon={<Clock3 color="#059669" size={15} />}
+              label="Last updated"
+              value={formatOrganizationDate(organization.updatedAt)}
+            />
+          </OrganizationDetailSection>
         </YStack>
       )}
       searchPlaceholder="Search name, code, email, phone, website..."
@@ -241,19 +545,15 @@ export const OrganizationsPage = () => {
           onDelete={() => {
             if (
               !window.confirm(`Delete ${items.length} selected organizations?`)
-            )
+            ) {
               return;
+            }
             void bulkDeleteMutation.mutateAsync(items).then(() => {
               clear();
               return refresh();
             });
           }}
-          onSetActive={(active) => {
-            void bulkStatusMutation.mutateAsync({ active, items }).then(() => {
-              clear();
-              return refresh();
-            });
-          }}
+          onSetActive={(active) => requestStatusChange(items, active, clear)}
         />
       )}
       remove={async (id) =>
