@@ -18,11 +18,16 @@ const toneStyles: Record<
 };
 
 export interface CrudBadgeProps {
+  align?: "center" | "start";
   children: ReactNode;
   tone?: CrudBadgeTone;
 }
 
-export const CrudBadge = ({ children, tone = "neutral" }: CrudBadgeProps) => {
+export const CrudBadge = ({
+  align = "center",
+  children,
+  tone = "neutral",
+}: CrudBadgeProps) => {
   const styles = toneStyles[tone];
 
   return (
@@ -33,7 +38,12 @@ export const CrudBadge = ({ children, tone = "neutral" }: CrudBadgeProps) => {
       px="$2"
       py="$1"
       rounded="$6"
-      style={{ alignItems: "center", alignSelf: "flex-start" }}
+      style={{
+        alignItems: "center",
+        alignSelf: align === "start" ? "flex-start" : "center",
+        maxWidth: "100%",
+        width: "fit-content",
+      }}
     >
       <Text color={styles.color as never} fontSize={10} fontWeight="$button">
         {children}

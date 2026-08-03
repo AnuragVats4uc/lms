@@ -3,6 +3,7 @@ export * from "./CrudActiveFilterChips";
 export * from "./CrudBadge";
 export * from "./CrudBulkActionBar";
 export * from "./CrudDetailPanel";
+export * from "./CrudDetailPrimitives";
 export * from "./CrudHeaderAction";
 export * from "./CrudSearch";
 export * from "./CrudSelect";

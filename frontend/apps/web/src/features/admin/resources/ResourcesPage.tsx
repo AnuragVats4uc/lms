@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { foldersApi, resourcesApi, sessionCoursesApi } from "@repo/api";
+import { CalendarDays, Clock3, FileText, FolderOpen, Image, ShieldCheck, Video } from "lucide-react";
 import type {
   CreateResourceRequest,
   FolderTreeNode,
@@ -12,12 +13,12 @@ import type {
   UpdateResourceRequest,
 } from "@repo/types";
 import {
-  DataTableBadgeCell,
   DataTableDateCell,
   DataTableTextCell,
+  DataTableWebsiteCell,
   type DataTableColumn,
 } from "@/components/DataTable";
-import { CrudSelect } from "../components/crud";
+import { CrudBadge, CrudDetailField, CrudDetailSection, CrudSelect } from "../components/crud";
 import {
   CrudManagementPage,
   type ResourceFormContext,
@@ -119,8 +120,12 @@ function validate(form: ResourceForm) {
     return "Sort order must be a non-negative whole number.";
   if (form.type === "DOCUMENT" && !form.documentUrl.trim())
     return "Document URL is required.";
+  if (form.type === "DOCUMENT" && !isValidUrl(form.documentUrl))
+    return "Enter a valid document URL.";
   if (form.type === "VIDEO" && !form.videoUrl.trim())
     return "Video URL is required.";
+  if (form.type === "VIDEO" && !isValidUrl(form.videoUrl))
+    return "Enter a valid video URL.";
   if (form.type === "EXAM" && (!form.examId || Number(form.examId) < 1))
     return "A valid exam ID is required.";
   if (
@@ -135,6 +140,15 @@ function validate(form: ResourceForm) {
   )
     return "Duration must be a non-negative whole number.";
   return null;
+}
+
+function isValidUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function ResourceForm({
@@ -336,18 +350,18 @@ function ResourceForm({
 
 function resourceTone(type: ResourceType) {
   return type === "VIDEO"
-    ? ("blue" as const)
+    ? ("info" as const)
     : type === "EXAM"
-      ? ("orange" as const)
-      : ("green" as const);
+      ? ("warning" as const)
+      : ("success" as const);
 }
 
 function statusTone(status: ResourceStatus) {
   return status === "PUBLISHED"
-    ? ("green" as const)
+    ? ("success" as const)
     : status === "ARCHIVED"
-      ? ("gray" as const)
-      : ("orange" as const);
+      ? ("neutral" as const)
+      : ("warning" as const);
 }
 
 const columns: DataTableColumn<Resource>[] = [
@@ -365,7 +379,7 @@ const columns: DataTableColumn<Resource>[] = [
   },
   {
     cell: ({ row }) => (
-      <DataTableBadgeCell label={row.type} tone={resourceTone(row.type)} />
+      <CrudBadge tone={resourceTone(row.type)}>{row.type}</CrudBadge>
     ),
     header: "Type",
     id: "type",
@@ -373,7 +387,7 @@ const columns: DataTableColumn<Resource>[] = [
   },
   {
     cell: ({ row }) => (
-      <DataTableBadgeCell label={row.status} tone={statusTone(row.status)} />
+      <CrudBadge tone={statusTone(row.status)}>{row.status}</CrudBadge>
     ),
     header: "Status",
     id: "status",
@@ -414,32 +428,81 @@ const columns: DataTableColumn<Resource>[] = [
     id: "updatedAt",
     width: 150,
   },
+  {
+    cell: ({ row }) => (
+      row.type === "DOCUMENT" && row.documentUrl ? (
+        <DataTableWebsiteCell href={row.documentUrl} label="Open document" />
+      ) : row.type === "VIDEO" && row.videoUrl ? (
+        <DataTableWebsiteCell href={row.videoUrl} label="Open video" />
+      ) : (
+        <DataTableTextCell primary={row.type === "EXAM" ? `Exam #${row.examId ?? "-"}` : "-"} />
+      )
+    ),
+    header: "Source",
+    id: "source",
+    width: 160,
+  },
+  {
+    cell: ({ row }) => <DataTableTextCell primary={row.mimeType ?? "-"} />,
+    header: "MIME type",
+    id: "mimeType",
+    width: 150,
+  },
+  {
+    cell: ({ row }) => <DataTableTextCell primary={row.thumbnail ?? "-"} />,
+    header: "Thumbnail",
+    id: "thumbnail",
+    width: 180,
+  },
+  {
+    cell: ({ row }) => <DataTableTextCell primary={String(row.sortOrder)} />,
+    header: "Order",
+    id: "sortOrder",
+    width: 90,
+  },
+  {
+    cell: ({ row }) => (
+      <CrudBadge tone={row.isActive ? "success" : "danger"}>
+        {row.isActive ? "Active" : "Inactive"}
+      </CrudBadge>
+    ),
+    header: "Lifecycle",
+    id: "isActive",
+    width: 120,
+  },
+  {
+    cell: ({ row }) => <DataTableDateCell value={row.createdAt} />,
+    header: "Created",
+    id: "createdAt",
+    width: 150,
+  },
 ];
 
 function details(resource: Resource) {
   const url =
     resource.type === "DOCUMENT" ? resource.documentUrl : resource.videoUrl;
   return (
-    <YStack gap="$2">
-      <Text color="#52627A" fontSize="$caption">
-        Type: {resource.type}
-      </Text>
-      <Text color="#52627A" fontSize="$caption">
-        Status: {resource.status}
-      </Text>
-      <Text color="#52627A" fontSize="$caption">
-        Published: {resource.isPublished ? "Yes" : "No"}
-      </Text>
-      {url ? (
-        <a href={url} rel="noreferrer" target="_blank">
-          {url}
-        </a>
-      ) : (
-        <Text color="#52627A" fontSize="$caption">
-          Exam ID: {resource.examId ?? "Not assigned"}
-        </Text>
-      )}
-      <Text color="#52627A" fontSize="$caption">
+    <YStack gap="$3">
+      <CrudDetailSection icon={<FolderOpen color="#059669" size={15} />} title="Resource">
+        <CrudDetailField icon={<FileText color="#059669" size={15} />} label="Type" value={<CrudBadge tone={resourceTone(resource.type)}>{resource.type}</CrudBadge>} />
+        <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Status" value={<CrudBadge tone={statusTone(resource.status)}>{resource.status}</CrudBadge>} />
+        <CrudDetailField icon={<FolderOpen color="#059669" size={15} />} label="Folder ID" value={resource.folderId} />
+        <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Sort order" value={resource.sortOrder} />
+      </CrudDetailSection>
+      <CrudDetailSection icon={<Video color="#059669" size={15} />} title="Access and source">
+        <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Published" value={resource.isPublished ? "Yes" : "No"} />
+        <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Downloadable" value={resource.isDownloadable ? "Yes" : "No"} />
+        <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Active record" value={resource.isActive ? "Yes" : "No"} />
+        <CrudDetailField icon={<FileText color="#059669" size={15} />} label="MIME type" value={resource.mimeType} />
+        <CrudDetailField icon={<Image color="#059669" size={15} />} label="Thumbnail" value={resource.thumbnail} />
+        <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="File size" value={resource.fileSize ? `${resource.fileSize} bytes` : "Not set"} />
+        <CrudDetailField icon={<Video color="#059669" size={15} />} label="Duration" value={resource.durationInSeconds !== null ? `${resource.durationInSeconds} seconds` : "Not set"} />
+      </CrudDetailSection>
+      <CrudDetailSection icon={<CalendarDays color="#059669" size={15} />} title="Record history">
+        <CrudDetailField icon={<CalendarDays color="#059669" size={15} />} label="Created" value={new Date(resource.createdAt).toLocaleString()} />
+        <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Last updated" value={new Date(resource.updatedAt).toLocaleString()} />
+      </CrudDetailSection>
+      <Text color="#52627A" fontSize="$caption" style={{ display: "none" }}>
         Description: {resource.description ?? "—"}
       </Text>
     </YStack>
@@ -578,7 +641,14 @@ export function ResourcesPage() {
       }
       enabled={effectiveFolderId !== null}
       entityLabel="Resource"
+      getStats={({ rows, total }) => [
+        { icon: <FolderOpen color="#059669" size={20} />, label: "Total Resources", value: total },
+        { icon: <FileText color="#059669" size={20} />, label: "Documents", value: rows.filter((row) => row.type === "DOCUMENT").length },
+        { icon: <Video color="#2563EB" size={20} />, label: "Videos", value: rows.filter((row) => row.type === "VIDEO").length },
+        { icon: <ShieldCheck color="#059669" size={20} />, label: "Published", value: rows.filter((row) => row.isPublished).length },
+      ]}
       getDisplayName={(resource) => resource.title}
+      getIsActive={(resource) => resource.isActive}
       getRowId={(resource) => resource.id}
       initialForm={initialForm}
       permissionPrefix="resource"
@@ -600,6 +670,11 @@ export function ResourcesPage() {
         effectiveFolderId === null
           ? Promise.reject(new Error("Select a folder first."))
           : resourcesApi.remove(effectiveFolderId, id)
+      }
+      setActive={(id, active) =>
+        effectiveFolderId === null
+          ? Promise.reject(new Error("Select a folder first."))
+          : resourcesApi.update(effectiveFolderId, id, { isActive: active })
       }
       renderDetails={details}
       renderForm={(formContext) => <ResourceForm {...formContext} />}

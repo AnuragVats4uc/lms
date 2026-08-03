@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Database, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { Database, ExternalLink, Pencil, Power, Trash2 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button, XStack, YStack } from "@repo/ui";
 import type { PaginatedData } from "@repo/types";
@@ -30,6 +30,7 @@ import {
   CrudToolbar,
   CrudPageHeader,
   CrudStats,
+  CrudStatusConfirmationDialog,
   CrudToast,
   type CrudMenuAction,
   type CrudToastState,
@@ -79,6 +80,8 @@ export interface ResourceManagementPageProps<
   create?: (payload: CreatePayload) => Promise<Item>;
   update?: (id: number, payload: UpdatePayload) => Promise<Item>;
   remove?: (id: number) => Promise<Item>;
+  getIsActive?: (item: Item) => boolean;
+  setActive?: (id: number, active: boolean) => Promise<Item>;
   statusOptions?: Array<{ label: string; value: string }>;
   typeOptions?: Array<{ label: string; value: string }>;
   publishedOptions?: Array<{ label: string; value: string }>;
@@ -145,6 +148,8 @@ export function ResourceManagementPage<
   create,
   update,
   remove,
+  getIsActive,
+  setActive,
   statusOptions,
   typeOptions,
   publishedOptions,
@@ -218,6 +223,8 @@ export function ResourceManagementPage<
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [confirmItem, setConfirmItem] = useState<Item | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [statusItem, setStatusItem] = useState<Item | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [toast, setToast] = useState<CrudToastState | null>(null);
 
   useEffect(() => {
@@ -300,6 +307,10 @@ export function ResourceManagementPage<
   const deleteMutation = useMutation({
     mutationFn: (id: number) => remove?.(id) as Promise<Item>,
   });
+  const statusMutation = useMutation({
+    mutationFn: (input: { active: boolean; id: number }) =>
+      setActive?.(input.id, input.active) as Promise<Item>,
+  });
   const rawRows = query.data?.items ?? [];
   const filterValues = {
     ...customFilters,
@@ -314,7 +325,8 @@ export function ResourceManagementPage<
   const isSubmitting =
     createMutation.isPending ||
     updateMutation.isPending ||
-    deleteMutation.isPending;
+    deleteMutation.isPending ||
+    statusMutation.isPending;
 
   const filterDefinitions = useMemo<CrudFilterDefinition[]>(
     () => [
@@ -465,6 +477,32 @@ export function ResourceManagementPage<
       showToast("Delete failed", message, "error");
     }
   };
+  const confirmStatus = async () => {
+    if (!statusItem || !setActive || !getIsActive) return;
+    const active = !getIsActive(statusItem);
+    try {
+      const item = await statusMutation.mutateAsync({
+        active,
+        id: statusItem.id,
+      });
+      setStatusItem(null);
+      setStatusError(null);
+      setSelectedItem(item);
+      showToast(
+        entityLabel + " status updated",
+        getDisplayName(item) + (active ? " was activated." : " was deactivated."),
+        "success",
+      );
+      await query.refetch();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "The status request could not be completed.";
+      setStatusError(message);
+      showToast("Status update failed", message, "error");
+    }
+  };
   const permittedActions = useMemo(
     () =>
       (
@@ -503,6 +541,19 @@ export function ResourceManagementPage<
                 },
               ]
             : []),
+          ...(canUpdate && getIsActive && setActive
+            ? [
+                {
+                  id: "toggle-status",
+                  label: "Activate / Deactivate",
+                  icon: Power,
+                  onAction: (item: Item) => {
+                    setStatusError(null);
+                    setStatusItem(item);
+                  },
+                },
+              ]
+            : []),
         ]
       )
         .concat(additionalRowActions ?? [])
@@ -522,12 +573,14 @@ export function ResourceManagementPage<
       canDelete,
       canUpdate,
       currentUser,
+      getIsActive,
       openEdit,
       query,
       renderDetails,
       rowActions,
       additionalRowActions,
       setSelectedItem,
+      setActive,
     ],
   );
 
@@ -748,6 +801,21 @@ export function ResourceManagementPage<
         onConfirm={() => void confirmDelete()}
         subject={confirmItem ? getDisplayName(confirmItem) : ""}
         title={"Delete " + entityLabel}
+      />
+      <CrudStatusConfirmationDialog
+        active={statusItem ? !getIsActive?.(statusItem) : true}
+        count={statusItem ? 1 : 0}
+        entityLabel={entityLabel}
+        error={statusError ?? undefined}
+        isOpen={Boolean(statusItem)}
+        isSubmitting={statusMutation.isPending}
+        onClose={() => {
+          if (!statusMutation.isPending) {
+            setStatusItem(null);
+            setStatusError(null);
+          }
+        }}
+        onConfirm={() => void confirmStatus()}
       />
       {additionalDialogs}
       <CrudToast onDismiss={() => setToast(null)} toast={toast} />

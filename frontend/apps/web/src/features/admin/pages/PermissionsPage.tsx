@@ -2,10 +2,15 @@
 
 import { permissionsApi } from "@repo/api";
 import type { CreatePermissionRequest, Permission } from "@repo/types";
+import { CalendarDays, Clock3, FileText, KeyRound, ShieldCheck } from "lucide-react";
 import {
   DataTableTextCell,
   type DataTableColumn,
 } from "@/components/DataTable";
+import {
+  CrudDetailField,
+  CrudDetailSection,
+} from "../components/crud";
 import {
   CrudManagementPage,
   type ResourceFormContext,
@@ -80,6 +85,18 @@ const columns: DataTableColumn<Permission>[] = [
     id: "action",
     width: 160,
   },
+  {
+    cell: ({ row }) => <DataTableTextCell primary={row.description ?? "-"} />,
+    header: "Description",
+    id: "description",
+    width: 260,
+  },
+  {
+    cell: ({ row }) => <DataTableTextCell primary={new Date(row.updatedAt).toLocaleDateString()} />,
+    header: "Updated",
+    id: "updatedAt",
+    width: 140,
+  },
 ];
 
 export function PermissionsPage() {
@@ -94,6 +111,12 @@ export function PermissionsPage() {
       create={(payload) => permissionsApi.create(payload)}
       description="Manage module-action permission keys enforced by RBAC guards."
       entityLabel="Permission"
+      getStats={({ rows, total }) => [
+        { icon: <KeyRound color="#059669" size={20} />, label: "Total Permissions", value: total },
+        { icon: <ShieldCheck color="#2563EB" size={20} />, label: "Modules", value: new Set(rows.map((row) => row.module)).size },
+        { icon: <KeyRound color="#059669" size={20} />, label: "Actions", value: new Set(rows.map((row) => row.action)).size },
+        { icon: <FileText color="#64748B" size={20} />, label: "With Description", value: rows.filter((row) => Boolean(row.description)).length },
+      ]}
       getDisplayName={(permission) => permission.key}
       getRowId={(permission) => permission.id}
       initialForm={initialForm}
@@ -107,9 +130,19 @@ export function PermissionsPage() {
       }
       queryKey={["admin", "permissions"]}
       renderDetails={(permission) => (
-        <YStack gap="$2">
+        <YStack gap="$3">
+          <CrudDetailSection icon={<ShieldCheck color="#059669" size={15} />} title="Permission">
+            <CrudDetailField icon={<KeyRound color="#059669" size={15} />} label="Key" value={permission.key} />
+            <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Module" value={permission.module} />
+            <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Action" value={permission.action} />
+            <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Description" value={permission.description} />
+          </CrudDetailSection>
+          <CrudDetailSection icon={<CalendarDays color="#059669" size={15} />} title="Record history">
+            <CrudDetailField icon={<CalendarDays color="#059669" size={15} />} label="Created" value={new Date(permission.createdAt).toLocaleString()} />
+            <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Last updated" value={new Date(permission.updatedAt).toLocaleString()} />
+          </CrudDetailSection>
           <Text color="#52627A">Key: {permission.key}</Text>
-          <Text color="#52627A">
+          <Text color="#52627A" style={{ display: "none" }}>
             Description: {permission.description ?? "—"}
           </Text>
         </YStack>
@@ -126,6 +159,9 @@ export function PermissionsPage() {
       validate={(form) =>
         !form.module.trim() || !form.action.trim()
           ? "Module and action are required."
+          : !/^[a-z0-9._-]+$/iu.test(form.module.trim()) ||
+              !/^[a-z0-9._-]+$/iu.test(form.action.trim())
+            ? "Module and action may contain only letters, numbers, dots, hyphens, and underscores."
           : null
       }
     />

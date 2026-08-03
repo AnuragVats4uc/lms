@@ -32,7 +32,12 @@ export const CrudActiveFilterChips = ({
   if (!active.length) return null;
 
   return (
-    <XStack gap="$2" flexWrap="wrap" style={{ alignItems: "center" }}>
+    <XStack
+      className="lms-crud-active-filter-chips"
+      gap="$2"
+      flexWrap="wrap"
+      style={{ alignItems: "center" }}
+    >
       <Text color="#52627A" fontSize="$caption" fontWeight="$button">
         {active.length} active filters
       </Text>

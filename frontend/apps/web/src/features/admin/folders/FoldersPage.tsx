@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { foldersApi, sessionCoursesApi } from "@repo/api";
+import { CalendarDays, Clock3, FolderTree, Palette, ShieldCheck } from "lucide-react";
 import type {
   CreateFolderRequest,
   Folder,
@@ -11,12 +12,11 @@ import type {
 } from "@repo/types";
 import { useQuery } from "@tanstack/react-query";
 import {
-  DataTableBadgeCell,
   DataTableDateCell,
   DataTableTextCell,
   type DataTableColumn,
 } from "@/components/DataTable";
-import { CrudSelect } from "../components/crud";
+import { CrudBadge, CrudDetailField, CrudDetailSection, CrudSelect } from "../components/crud";
 import {
   CrudManagementPage,
   type ResourceFormContext,
@@ -74,6 +74,8 @@ function validate(form: FolderForm) {
   if (!form.name.trim()) return "Folder name is required.";
   if (!Number.isInteger(Number(form.sortOrder)) || Number(form.sortOrder) < 0)
     return "Sort order must be a non-negative whole number.";
+  if (form.color.trim() && !/^#?[0-9a-f]{3,8}$/iu.test(form.color.trim()))
+    return "Color must be a valid hex color.";
   return null;
 }
 
@@ -176,7 +178,7 @@ function Form({
 }
 
 function statusTone(status: FolderStatus) {
-  return status === "ACTIVE" ? ("green" as const) : ("gray" as const);
+  return status === "ACTIVE" ? ("success" as const) : ("neutral" as const);
 }
 const columns: DataTableColumn<Folder>[] = [
   {
@@ -193,7 +195,7 @@ const columns: DataTableColumn<Folder>[] = [
   },
   {
     cell: ({ row }) => (
-      <DataTableBadgeCell label={row.status} tone={statusTone(row.status)} />
+      <CrudBadge tone={statusTone(row.status)}>{row.status}</CrudBadge>
     ),
     header: "Status",
     id: "status",
@@ -220,6 +222,34 @@ const columns: DataTableColumn<Folder>[] = [
     cell: ({ row }) => <DataTableDateCell value={row.updatedAt} />,
     header: "Updated",
     id: "updatedAt",
+    width: 150,
+  },
+  {
+    cell: ({ row }) => <DataTableTextCell primary={row.icon ?? "-"} />,
+    header: "Icon",
+    id: "icon",
+    width: 130,
+  },
+  {
+    cell: ({ row }) => <DataTableTextCell primary={row.color ?? "Default"} />,
+    header: "Color",
+    id: "color",
+    width: 130,
+  },
+  {
+    cell: ({ row }) => (
+      <CrudBadge tone={row.isActive ? "success" : "danger"}>
+        {row.isActive ? "Active" : "Inactive"}
+      </CrudBadge>
+    ),
+    header: "Lifecycle",
+    id: "isActive",
+    width: 120,
+  },
+  {
+    cell: ({ row }) => <DataTableDateCell value={row.createdAt} />,
+    header: "Created",
+    id: "createdAt",
     width: 150,
   },
 ];
@@ -344,7 +374,7 @@ export function FoldersPage() {
         {tree.length ? (
           <Tree nodes={tree} />
         ) : (
-          <Text color="#52627A" fontSize="$caption">
+      <Text color="#52627A" fontSize="$caption" style={{ display: "none" }}>
             No folders exist for the selected session course.
           </Text>
         )}
@@ -373,7 +403,14 @@ export function FoldersPage() {
       }
       enabled={effectiveSessionCourseId !== null}
       entityLabel="Folder"
+      getStats={({ rows, total }) => [
+        { icon: <FolderTree color="#059669" size={20} />, label: "Total Folders", value: total },
+        { icon: <ShieldCheck color="#059669" size={20} />, label: "Active Folders", value: rows.filter((row) => row.status === "ACTIVE").length },
+        { icon: <FolderTree color="#2563EB" size={20} />, label: "Nested Folders", value: rows.filter((row) => row.parentFolderId !== null).length },
+        { icon: <Clock3 color="#64748B" size={20} />, label: "Archived Folders", value: rows.filter((row) => row.status === "ARCHIVED").length },
+      ]}
       getDisplayName={(folder) => folder.name}
+      getIsActive={(folder) => folder.isActive}
       getRowId={(folder) => folder.id}
       initialForm={initialForm}
       permissionPrefix="folder"
@@ -393,16 +430,28 @@ export function FoldersPage() {
           ? Promise.reject(new Error("Select a session course first."))
           : foldersApi.remove(effectiveSessionCourseId, id)
       }
+      setActive={(id, active) =>
+        effectiveSessionCourseId === null
+          ? Promise.reject(new Error("Select a session course first."))
+          : foldersApi.update(effectiveSessionCourseId, id, { isActive: active })
+      }
       renderDetails={(folder) => (
-        <YStack gap="$2">
-          <Text color="#52627A" fontSize="$caption">
-            Parent:{" "}
-            {folder.parentFolderId ? "Nested folder" : "Session-course root"}
-          </Text>
-          <Text color="#52627A" fontSize="$caption">
-            Status: {folder.status}
-          </Text>
-          <Text color="#52627A" fontSize="$caption">
+        <YStack gap="$3">
+          <CrudDetailSection icon={<FolderTree color="#059669" size={15} />} title="Folder hierarchy">
+            <CrudDetailField icon={<FolderTree color="#059669" size={15} />} label="Parent folder" value={folder.parentFolderId ?? "Session-course root"} />
+            <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Sort order" value={folder.sortOrder} />
+            <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Status" value={<CrudBadge tone={statusTone(folder.status)}>{folder.status}</CrudBadge>} />
+          </CrudDetailSection>
+          <CrudDetailSection icon={<Palette color="#059669" size={15} />} title="Appearance">
+            <CrudDetailField icon={<FolderTree color="#059669" size={15} />} label="Icon" value={folder.icon} />
+            <CrudDetailField icon={<Palette color="#059669" size={15} />} label="Color" value={folder.color} />
+            <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Active record" value={folder.isActive ? "Yes" : "No"} />
+          </CrudDetailSection>
+          <CrudDetailSection icon={<CalendarDays color="#059669" size={15} />} title="Record history">
+            <CrudDetailField icon={<CalendarDays color="#059669" size={15} />} label="Created" value={new Date(folder.createdAt).toLocaleString()} />
+            <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Last updated" value={new Date(folder.updatedAt).toLocaleString()} />
+          </CrudDetailSection>
+          <Text color="#52627A" fontSize="$caption" style={{ display: "none" }}>
             Description: {folder.description ?? "—"}
           </Text>
         </YStack>

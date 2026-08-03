@@ -1,6 +1,7 @@
 "use client";
 
 import { coursesApi } from "@repo/api";
+import { BookOpen, CalendarDays, Clock3, FileText, Image, ShieldCheck } from "lucide-react";
 import type {
   Course,
   CourseStatus,
@@ -8,11 +9,16 @@ import type {
   UpdateCourseRequest,
 } from "@repo/types";
 import {
-  DataTableBadgeCell,
   DataTableDateCell,
   DataTableTextCell,
+  DataTableWebsiteCell,
   type DataTableColumn,
 } from "@/components/DataTable";
+import {
+  CrudBadge,
+  CrudDetailField,
+  CrudDetailSection,
+} from "../components/crud";
 import {
   CrudManagementPage,
   type ResourceFormContext,
@@ -71,7 +77,18 @@ function validate(form: CourseForm) {
       Number(form.durationInDays) < 1)
   )
     return "Duration must be a positive whole number.";
+  if (form.thumbnail.trim() && !isValidUrl(form.thumbnail))
+    return "Enter a valid thumbnail URL.";
   return null;
+}
+
+function isValidUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function Form({ error, form, onChange }: ResourceFormContext<CourseForm>) {
@@ -161,10 +178,12 @@ function Form({ error, form, onChange }: ResourceFormContext<CourseForm>) {
 
 function statusTone(status: CourseStatus) {
   return status === "ACTIVE"
-    ? ("green" as const)
-    : status === "ARCHIVED" || status === "INACTIVE"
-      ? ("gray" as const)
-      : ("orange" as const);
+    ? ("success" as const)
+    : status === "INACTIVE"
+      ? ("danger" as const)
+      : status === "ARCHIVED"
+        ? ("neutral" as const)
+        : ("warning" as const);
 }
 
 const columns: DataTableColumn<Course>[] = [
@@ -180,7 +199,7 @@ const columns: DataTableColumn<Course>[] = [
   },
   {
     cell: ({ row }) => (
-      <DataTableBadgeCell label={row.status} tone={statusTone(row.status)} />
+      <CrudBadge tone={statusTone(row.status)}>{row.status}</CrudBadge>
     ),
     header: "Status",
     id: "status",
@@ -204,6 +223,33 @@ const columns: DataTableColumn<Course>[] = [
     width: 280,
   },
   {
+    cell: ({ row }) =>
+      row.thumbnail ? (
+        <DataTableWebsiteCell href={row.thumbnail} label="Open thumbnail" />
+      ) : (
+        <DataTableTextCell primary="-" />
+      ),
+    header: "Thumbnail",
+    id: "thumbnail",
+    width: 150,
+  },
+  {
+    cell: ({ row }) => (
+      <CrudBadge tone={row.isActive ? "success" : "danger"}>
+        {row.isActive ? "Active" : "Inactive"}
+      </CrudBadge>
+    ),
+    header: "Lifecycle",
+    id: "isActive",
+    width: 120,
+  },
+  {
+    cell: ({ row }) => <DataTableDateCell value={row.createdAt} />,
+    header: "Created",
+    id: "createdAt",
+    width: 150,
+  },
+  {
     cell: ({ row }) => <DataTableDateCell value={row.updatedAt} />,
     header: "Updated",
     id: "updatedAt",
@@ -214,19 +260,26 @@ const columns: DataTableColumn<Course>[] = [
 
 function details(course: Course) {
   return (
-    <YStack gap="$2">
-      <Text color="#52627A" fontSize="$caption">
-        Code: {course.code}
-      </Text>
-      <Text color="#52627A" fontSize="$caption">
-        Status: {course.status}
-      </Text>
-      <Text color="#52627A" fontSize="$caption">
-        Created: {new Date(course.createdAt).toLocaleString()}
-      </Text>
-      <Text color="#52627A" fontSize="$caption">
+    <YStack gap="$3">
+      <CrudDetailSection icon={<BookOpen color="#059669" size={15} />} title="Course">
+        <CrudDetailField icon={<BookOpen color="#059669" size={15} />} label="Code" value={course.code} />
+        <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Status" value={<CrudBadge align="start" tone={statusTone(course.status)}>{course.status}</CrudBadge>} />
+        <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Duration" value={course.durationInDays ? `${course.durationInDays} days` : "Not set"} />
+        <CrudDetailField icon={<FileText color="#059669" size={15} />} label="Description" value={course.description} />
+      </CrudDetailSection>
+      <YStack style={{ display: "none" }}>
+      <Text color="#52627A" fontSize="$caption" style={{ display: "none" }}>
         Description: {course.description ?? "—"}
       </Text>
+      </YStack>
+      <CrudDetailSection icon={<Image color="#059669" size={15} />} title="Availability">
+        <CrudDetailField icon={<Image color="#059669" size={15} />} label="Thumbnail" value={course.thumbnail ?? "Not provided"} />
+        <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Active record" value={course.isActive ? "Yes" : "No"} />
+      </CrudDetailSection>
+      <CrudDetailSection icon={<CalendarDays color="#059669" size={15} />} title="Record history">
+        <CrudDetailField icon={<CalendarDays color="#059669" size={15} />} label="Created" value={new Date(course.createdAt).toLocaleString()} />
+        <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Last updated" value={new Date(course.updatedAt).toLocaleString()} />
+      </CrudDetailSection>
     </YStack>
   );
 }
@@ -244,7 +297,14 @@ export function CoursesPage() {
       description="Manage reusable courses that can be assigned to academic sessions."
       emptyDescription="Create the first course to make it available for session assignments."
       entityLabel="Course"
+      getStats={({ rows, total }) => [
+        { icon: <BookOpen color="#059669" size={20} />, label: "Total Courses", value: total },
+        { icon: <ShieldCheck color="#059669" size={20} />, label: "Active Courses", value: rows.filter((row) => row.status === "ACTIVE").length },
+        { icon: <FileText color="#C2410C" size={20} />, label: "Draft Courses", value: rows.filter((row) => row.status === "DRAFT").length },
+        { icon: <Clock3 color="#64748B" size={20} />, label: "Archived Courses", value: rows.filter((row) => row.status === "ARCHIVED").length },
+      ]}
       getDisplayName={(course) => course.name}
+      getIsActive={(course) => course.isActive}
       getRowId={(course) => course.id}
       initialForm={initialForm}
       permissionPrefix="course"
@@ -260,6 +320,7 @@ export function CoursesPage() {
       renderDetails={details}
       renderForm={(context) => <Form {...context} />}
       remove={(id) => coursesApi.remove(id)}
+      setActive={(id, active) => coursesApi.update(id, { isActive: active })}
       statusOptions={statusOptions}
       title="Courses"
       toCreatePayload={toPayload}

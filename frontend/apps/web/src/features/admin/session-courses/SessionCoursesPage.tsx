@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { BookOpen, CalendarDays, Clock3, FileText, ShieldCheck } from "lucide-react";
 import { coursesApi, sessionCoursesApi } from "@repo/api";
 import type {
   Course,
@@ -11,12 +12,11 @@ import type {
   UpdateSessionCourseRequest,
 } from "@repo/types";
 import {
-  DataTableBadgeCell,
   DataTableDateCell,
   DataTableTextCell,
   type DataTableColumn,
 } from "@/components/DataTable";
-import { CrudSelect } from "../components/crud";
+import { CrudBadge, CrudDetailField, CrudDetailSection, CrudSelect } from "../components/crud";
 import {
   CrudManagementPage,
   type ResourceFormContext,
@@ -172,10 +172,12 @@ function Form({
 
 function statusTone(status: SessionCourseStatus) {
   return status === "ACTIVE"
-    ? ("green" as const)
-    : status === "ARCHIVED" || status === "INACTIVE"
-      ? ("gray" as const)
-      : ("orange" as const);
+    ? ("success" as const)
+    : status === "INACTIVE"
+      ? ("danger" as const)
+      : status === "ARCHIVED"
+        ? ("neutral" as const)
+        : ("warning" as const);
 }
 const columns: DataTableColumn<SessionCourse>[] = [
   {
@@ -192,7 +194,7 @@ const columns: DataTableColumn<SessionCourse>[] = [
   },
   {
     cell: ({ row }) => (
-      <DataTableBadgeCell label={row.status} tone={statusTone(row.status)} />
+      <CrudBadge tone={statusTone(row.status)}>{row.status}</CrudBadge>
     ),
     header: "Status",
     id: "status",
@@ -220,6 +222,22 @@ const columns: DataTableColumn<SessionCourse>[] = [
     header: "Updated",
     id: "updatedAt",
     width: 150,
+  },
+  {
+    cell: ({ row }) => <DataTableTextCell primary={String(row.sessionId)} />,
+    header: "Session ID",
+    id: "sessionId",
+    width: 110,
+  },
+  {
+    cell: ({ row }) => (
+      <CrudBadge tone={row.isActive ? "success" : "danger"}>
+        {row.isActive ? "Active" : "Inactive"}
+      </CrudBadge>
+    ),
+    header: "Lifecycle",
+    id: "isActive",
+    width: 120,
   },
 ];
 
@@ -295,7 +313,14 @@ export function SessionCoursesPage() {
       }
       enabled={academic.selectedSessionId !== null}
       entityLabel="Session Course"
+      getStats={({ rows, total }) => [
+        { icon: <BookOpen color="#059669" size={20} />, label: "Total Assignments", value: total },
+        { icon: <ShieldCheck color="#059669" size={20} />, label: "Active Assignments", value: rows.filter((row) => row.status === "ACTIVE").length },
+        { icon: <CalendarDays color="#2563EB" size={20} />, label: "Published", value: rows.filter((row) => row.isPublished).length },
+        { icon: <Clock3 color="#64748B" size={20} />, label: "Archived", value: rows.filter((row) => row.status === "ARCHIVED").length },
+      ]}
       getDisplayName={(item) => item.displayName ?? item.course.name}
+      getIsActive={(item) => item.isActive}
       getRowId={(item) => item.id}
       initialForm={initialForm}
       permissionPrefix="session-course"
@@ -311,17 +336,21 @@ export function SessionCoursesPage() {
       }
       queryKey={["admin", "session-courses", academic.selectedSessionId]}
       renderDetails={(item) => (
-        <YStack gap="$2">
-          <Text color="#52627A" fontSize="$caption">
-            Course: {item.course.name}
-          </Text>
-          <Text color="#52627A" fontSize="$caption">
-            Session course status: {item.status}
-          </Text>
-          <Text color="#52627A" fontSize="$caption">
-            Published: {item.isPublished ? "Yes" : "No"}
-          </Text>
-          <Text color="#52627A" fontSize="$caption">
+        <YStack gap="$3">
+          <CrudDetailSection icon={<BookOpen color="#059669" size={15} />} title="Assignment">
+            <CrudDetailField icon={<BookOpen color="#059669" size={15} />} label="Course" value={`${item.course.name} (${item.course.code})`} />
+            <CrudDetailField icon={<CalendarDays color="#059669" size={15} />} label="Session ID" value={item.sessionId} />
+            <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Sort order" value={item.sortOrder} />
+          </CrudDetailSection>
+          <CrudDetailSection icon={<ShieldCheck color="#059669" size={15} />} title="Publishing">
+            <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Status" value={<CrudBadge align="start" tone={statusTone(item.status)}>{item.status}</CrudBadge>} />
+            <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Published" value={item.isPublished ? "Yes" : "No"} />
+            <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Active record" value={item.isActive ? "Yes" : "No"} />
+          </CrudDetailSection>
+          <CrudDetailSection icon={<FileText color="#059669" size={15} />} title="Description">
+            <CrudDetailField icon={<FileText color="#059669" size={15} />} label="Description" value={item.description} />
+          </CrudDetailSection>
+      <Text color="#52627A" fontSize="$caption" style={{ display: "none" }}>
             Description: {item.description ?? "—"}
           </Text>
         </YStack>
@@ -333,6 +362,11 @@ export function SessionCoursesPage() {
         academic.selectedSessionId === null
           ? Promise.reject(new Error("Select a session first."))
           : sessionCoursesApi.remove(academic.selectedSessionId, id)
+      }
+      setActive={(id, active) =>
+        academic.selectedSessionId === null
+          ? Promise.reject(new Error("Select a session first."))
+          : sessionCoursesApi.update(academic.selectedSessionId, id, { isActive: active })
       }
       statusOptions={statusOptions}
       title="Session Courses"

@@ -112,7 +112,24 @@
 
 .lms-organization-stats-grid {
   display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  width: 100%;
+}
+
+.lms-crud-stat-card {
+  min-width: 0;
+  width: 100%;
+}
+
+.lms-crud-active-filter-chips {
+  margin: 2px 0 4px;
+  min-height: 32px;
+  padding-left: 4px;
+}
+
+.lms-crud-select-option {
+  gap: 12px;
+  line-height: 16px;
 }
 
 .lms-organization-stat-card,
