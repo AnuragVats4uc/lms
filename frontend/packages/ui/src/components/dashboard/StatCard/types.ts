@@ -6,6 +6,7 @@ export interface StatCardProps extends AppCardProps {
   icon: ReactNode;
   link?: string;
   loading?: boolean;
+  onPress?: () => void;
   subtitle: string;
   title: string;
   trend?: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CreateSessionRequest,
   SessionQuery,
@@ -29,6 +29,7 @@ export function useSessions({
   page: number;
   pageSize: number;
 }) {
+  const queryClient = useQueryClient();
   const params: SessionListParams = {
     limit: pageSize,
     page,
@@ -49,14 +50,23 @@ export function useSessions({
   const createMutation = useMutation({
     mutationFn: (payload: CreateSessionRequest) =>
       createSession(organizationId as number, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
   });
   const updateMutation = useMutation({
     mutationFn: (input: { sessionId: number; payload: UpdateSessionRequest }) =>
       updateSession({ ...input, organizationId: organizationId as number }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
   });
   const deleteMutation = useMutation({
     mutationFn: (sessionId: number) =>
       deleteSession(organizationId as number, sessionId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
   });
 
   const rows = useMemo(() => query.data?.items ?? [], [query.data?.items]);

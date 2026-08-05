@@ -1,6 +1,7 @@
 export * from "./api";
 export * from "./auth";
 export * from "./course";
+export * from "./dashboard";
 export * from "./folder";
 export * from "./organization";
 export * from "./rbac";

@@ -1,14 +1,16 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { Menu } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Bell, Building2, CalendarDays, CircleHelp, Menu } from "lucide-react";
 import { Button, DashboardHeader, ScrollView, XStack, YStack } from "@repo/ui";
 import { useAuthSession } from "@repo/auth";
+import { organizationsApi } from "@repo/api";
 
 import { userHasPermission } from "@/features/shared/access";
 import type { NavigationItem } from "./navigation";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
-import { dashboardHeader } from "@/mocks/dashboard";
 
 interface WorkspaceLayoutProps {
   children: ReactNode;
@@ -22,11 +24,37 @@ const WorkspaceLayout = ({
   title,
 }: WorkspaceLayoutProps) => {
   const { currentUser } = useAuthSession();
+  const router = useRouter();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const visibleNavigation = navigation.filter(
     (item) =>
       !item.permission || userHasPermission(currentUser, item.permission),
   );
+  const organizationQuery = useQuery({
+    enabled: currentUser?.organizationId != null,
+    queryFn: () => organizationsApi.findOne(currentUser?.organizationId as number),
+    queryKey: ["workspace-organization", currentUser?.organizationId],
+    staleTime: 60_000,
+  });
+  const profileName = currentUser
+    ? `${currentUser.firstName} ${currentUser.lastName ?? ""}`.trim()
+    : "User";
+  const profileRole = currentUser?.role ?? currentUser?.roles?.[0] ?? "Admin";
+  const headerActions = [
+    {
+      icon: <CalendarDays color="#059669" size={20} strokeWidth={2.1} />,
+      label: "Open calendar",
+    },
+    {
+      icon: <Bell color="#0F1D3A" size={20} strokeWidth={2.1} />,
+      label: "View notifications",
+      notificationCount: 0,
+    },
+    {
+      icon: <CircleHelp color="#0F1D3A" size={20} strokeWidth={2.1} />,
+      label: "Open help",
+    },
+  ];
 
   return (
     <XStack
@@ -59,7 +87,13 @@ const WorkspaceLayout = ({
         }}
       >
         <DashboardHeader
-          {...dashboardHeader}
+          actions={headerActions.map((action) => ({
+            ...action,
+            onPress: () => {
+              if (action.label === "Open calendar") router.push("/admin/sessions");
+              else router.push("/admin/settings");
+            },
+          }))}
           leadingAction={
             <Button
               aria-label="Open navigation"
@@ -74,6 +108,24 @@ const WorkspaceLayout = ({
               <Menu aria-hidden="true" color="#0F1D3A" size={20} />
             </Button>
           }
+          onSearchSubmit={(value) => {
+            const search = value.trim();
+            router.push(
+              search
+                ? `/admin/organizations?search=${encodeURIComponent(search)}`
+                : "/admin/organizations",
+            );
+          }}
+          organizationIcon={<Building2 color="#52627A" size={20} strokeWidth={2} />}
+          organizationLabel={
+            organizationQuery.data?.name ??
+            (currentUser?.organizationId ? "Organization" : "All organizations")
+          }
+          organizationOnPress={() => router.push("/admin/organizations")}
+          profile={{ name: profileName, role: profileRole }}
+          profileOnPress={() => router.push("/admin/settings")}
+          searchPlaceholder="Search organizations, courses, resources, users..."
+          shortcutLabel="⌘ K"
         />
 
         <ScrollView className="lms-workspace-scroll" flex={1}>

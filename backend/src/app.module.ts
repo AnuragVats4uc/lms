@@ -22,6 +22,7 @@ import { CourseModule } from './modules/course/course.module';
 import { SessionCourseModule } from './modules/session-course/session-course.module';
 import { FolderModule } from './modules/folder/folder.module';
 import { ResourceModule } from './modules/resource/resource.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { ResourceModule } from './modules/resource/resource.module';
     SessionCourseModule,
     FolderModule,
     ResourceModule,
+    DashboardModule,
     StudentsModule,
   ],
   controllers: [AppController],

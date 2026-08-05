@@ -38,6 +38,7 @@ const permissionModules = [
   'session-course',
   'folder',
   'resource',
+  'dashboard',
 ] as const;
 
 const crudActions = ['create', 'read', 'update', 'delete'] as const;

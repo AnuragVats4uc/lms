@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button, Text, XStack, YStack } from "@repo/ui";
 import { DataTableSort } from "@/components/DataTable";
@@ -38,7 +38,20 @@ export function SessionsPage() {
 }
 
 function SessionsPageContent() {
+  const searchParams = useSearchParams();
+  const handledCreateAction = useRef(false);
   const page = useSessionsPage();
+  useEffect(() => {
+    if (
+      searchParams.get("action") === "create" &&
+      page.canCreate &&
+      page.organizationId !== null &&
+      !handledCreateAction.current
+    ) {
+      page.form.openAddSession();
+      handledCreateAction.current = true;
+    }
+  }, [page.canCreate, page.form, page.organizationId, searchParams]);
   const sorting: DataTableSort[] = [{ id: page.filters.filters.sort, direction: page.filters.filters.order }];
   const hasOrganization = page.organizationId !== null;
   return <YStack className="lms-organizations-page" gap="$5" style={{ width: "100%" }}>

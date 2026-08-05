@@ -7,3 +7,4 @@ export * from "./courses.api";
 export * from "./session-courses.api";
 export * from "./folders.api";
 export * from "./resources.api";
+export * from "./dashboard.api";

@@ -7,7 +7,7 @@ import {
   type ReactElement,
 } from "react";
 import { ArrowRight } from "lucide-react";
-import { Text, XStack, YStack, styled } from "tamagui";
+import { Button, Text, XStack, YStack, styled } from "tamagui";
 
 import { AppCard, AppText } from "../../primitives";
 import type { StatCardProps } from "./types";
@@ -41,6 +41,7 @@ export const StatCard = memo(function StatCard({
   icon,
   link,
   loading = false,
+  onPress,
   subtitle,
   title,
   trend,
@@ -107,7 +108,14 @@ export const StatCard = memo(function StatCard({
           </YStack>
         </XStack>
         {link ? (
-          <XStack gap="$2" style={{ alignItems: "center" }}>
+          <Button
+            aria-label={link}
+            background="transparent"
+            chromeless
+            height={24}
+            onPress={onPress}
+            p={0}
+          >
             <AppText
               tone="success"
               fontSize="$caption"
@@ -117,7 +125,7 @@ export const StatCard = memo(function StatCard({
               {link}
             </AppText>
             <ArrowRight aria-hidden="true" color="#087F5B" size={14} />
-          </XStack>
+          </Button>
         ) : null}
         {trend ? <AppText tone="muted">{trend}</AppText> : null}
       </YStack>

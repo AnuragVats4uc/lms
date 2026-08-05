@@ -4,13 +4,14 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
   type ReactNode,
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Database, ExternalLink, Pencil, Power, Trash2 } from "lucide-react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, XStack, YStack } from "@repo/ui";
 import type { PaginatedData } from "@repo/types";
 
@@ -187,6 +188,7 @@ export function ResourceManagementPage<
   emptyDescription,
 }: ResourceManagementPageProps<Item, Form, CreatePayload, UpdatePayload>) {
   const { currentUser } = useAuthSession();
+  const queryClient = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -232,6 +234,7 @@ export function ResourceManagementPage<
   const [statusItem, setStatusItem] = useState<Item | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [toast, setToast] = useState<CrudToastState | null>(null);
+  const handledUrlAction = useRef<string | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -244,7 +247,11 @@ export function ResourceManagementPage<
   useEffect(() => {
     if (!syncUrl) return;
 
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(searchParams.toString());
+    ["page", "limit", "search", "status", "type", "published"].forEach(
+      (key) => params.delete(key),
+    );
+    Object.keys(customFilters).forEach((key) => params.delete(key));
     if (page > 1) params.set("page", String(page));
     if (pageSize !== 10) params.set("limit", String(pageSize));
     if (search.trim()) params.set("search", search.trim());
@@ -305,17 +312,29 @@ export function ResourceManagementPage<
   });
   const createMutation = useMutation({
     mutationFn: (payload: CreatePayload) => create?.(payload) as Promise<Item>,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
   });
   const updateMutation = useMutation({
     mutationFn: (input: { id: number; payload: UpdatePayload }) =>
       update?.(input.id, input.payload) as Promise<Item>,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
   });
   const deleteMutation = useMutation({
     mutationFn: (id: number) => remove?.(id) as Promise<Item>,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
   });
   const statusMutation = useMutation({
     mutationFn: (input: { active: boolean; id: number }) =>
       setActive?.(input.id, input.active) as Promise<Item>,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
   });
   const rawRows = query.data?.items ?? [];
   const filterValues = {
@@ -386,11 +405,11 @@ export function ResourceManagementPage<
       setFormError(null);
     }
   };
-  const openCreate = () => {
+  const openCreate = useCallback(() => {
     setForm(getCreateForm?.() ?? initialForm);
     setFormError(null);
     setCreateOpen(true);
-  };
+  }, [getCreateForm, initialForm]);
   const openEdit = useCallback(
     (item: Item) => {
       setForm(toForm(item));
@@ -399,6 +418,55 @@ export function ResourceManagementPage<
     },
     [toForm],
   );
+
+  useEffect(() => {
+    if (!enabled || !query.isSuccess) return;
+
+    const action = searchParams.get("action");
+    const requestedId = Number(searchParams.get("id"));
+    const actionKey = `${action ?? ""}:${requestedId || ""}`;
+    if (!action || handledUrlAction.current === actionKey) return;
+
+    if (action === "create" && canCreate) {
+      openCreate();
+      handledUrlAction.current = actionKey;
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("action");
+      params.delete("id");
+      const queryString = params.toString();
+      router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
+        scroll: false,
+      });
+      return;
+    }
+
+    if (action === "edit" && canUpdate && Number.isInteger(requestedId)) {
+      const item = rows.find((row) => getRowId(row) === requestedId);
+      if (item) {
+        openEdit(item);
+        handledUrlAction.current = actionKey;
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("action");
+        params.delete("id");
+        const queryString = params.toString();
+        router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
+          scroll: false,
+        });
+      }
+    }
+  }, [
+    canCreate,
+    canUpdate,
+    enabled,
+    getRowId,
+    openEdit,
+    openCreate,
+    pathname,
+    query.isSuccess,
+    rows,
+    router,
+    searchParams,
+  ]);
   const onChange = <K extends keyof Form>(key: K, value: Form[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
     setFormError(null);

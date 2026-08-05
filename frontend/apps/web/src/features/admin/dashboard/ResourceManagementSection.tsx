@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreHorizontal, Network, Plus } from "lucide-react";
+import { MoreHorizontal, Network, Plus, RefreshCw } from "lucide-react";
 import {
   AppCard,
   AppHeading,
@@ -24,20 +24,52 @@ import type {
 interface ResourceManagementSectionProps {
   breadcrumbs: BreadcrumbItem[];
   folders: FolderCardProps[];
+  onAddFolder?: () => void;
+  onMore?: () => void;
+  onSelectTree?: (id: string) => void;
+  onToggleTree?: (id: string) => void;
+  onViewTree?: () => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
   tree: TreeNodeItem[];
+  treeOnly?: boolean;
   upload: UploadDropzoneProps;
 }
 
 export function ResourceManagementSection({
   breadcrumbs,
   folders,
+  onAddFolder,
+  onMore,
+  onSelectTree,
+  onToggleTree,
+  onViewTree,
+  onRefresh,
+  refreshing = false,
   tree,
+  treeOnly = false,
   upload,
 }: ResourceManagementSectionProps) {
   return (
     <DashboardSection
       action={
         <XStack gap="$3" style={{ alignItems: "center" }}>
+          <Button
+            aria-label="Refresh dashboard content"
+            background="#FFFFFF"
+            borderColor="#E1E7F0"
+            borderWidth={1}
+            disabled={refreshing}
+            height={40}
+            onPress={onRefresh}
+            px="$3"
+            rounded="$3"
+          >
+            <RefreshCw aria-hidden="true" color="#047857" size={16} />
+            <Button.Text color="#047857" fontSize="$caption" fontWeight="$button">
+              {refreshing ? "Refreshing..." : "Refresh"}
+            </Button.Text>
+          </Button>
           <Button
             aria-label="View as Tree"
             background="#FFFFFF"
@@ -46,10 +78,11 @@ export function ResourceManagementSection({
             height={40}
             px="$4"
             rounded="$3"
+            onPress={onViewTree}
           >
             <Network aria-hidden="true" color="#059669" size={16} />
             <Button.Text color="#047857" fontSize="$caption" fontWeight="$button">
-              View as Tree
+              {treeOnly ? "View folders" : "View as Tree"}
             </Button.Text>
           </Button>
           <Button
@@ -60,6 +93,7 @@ export function ResourceManagementSection({
             height={40}
             px="$3"
             rounded="$3"
+            onPress={onMore}
           >
             <MoreHorizontal aria-hidden="true" color="#0F1D3A" size={18} />
           </Button>
@@ -75,7 +109,7 @@ export function ResourceManagementSection({
           gap="$4"
           style={{
             display: "grid",
-            gridTemplateColumns: "minmax(240px, 280px) minmax(0, 1fr)",
+            gridTemplateColumns: treeOnly ? "minmax(0, 1fr)" : "minmax(240px, 280px) minmax(0, 1fr)",
             minWidth: 0,
           }}
         >
@@ -90,7 +124,13 @@ export function ResourceManagementSection({
               <AppHeading level={3} fontSize="$caption" lineHeight="$caption">
                 Content Hierarchy
               </AppHeading>
-              <TreeView items={tree} />
+              {tree.length ? (
+                <TreeView items={tree} onSelect={onSelectTree} onToggle={onToggleTree} />
+              ) : (
+                <AppText color="#52627A" fontSize="$caption">
+                  No content hierarchy is available yet.
+                </AppText>
+              )}
               <Button
                 aria-label="Add New Folder"
                 background="#FFFFFF"
@@ -98,6 +138,7 @@ export function ResourceManagementSection({
                 borderWidth={1}
                 height={42}
                 mt="$3"
+                onPress={onAddFolder}
                 rounded="$3"
               >
                 <Plus aria-hidden="true" color="#059669" size={15} />
@@ -107,7 +148,7 @@ export function ResourceManagementSection({
               </Button>
             </YStack>
           </AppCard>
-          <AppCard
+          {!treeOnly ? <AppCard
             className="lms-resource-folders-panel"
             background="#FFFFFF"
             borderColor="#E1E7F0"
@@ -146,10 +187,16 @@ export function ResourceManagementSection({
                   </Button.Text>
                 </Button>
               </XStack>
-              <ResourceFolderGrid folders={folders} />
+              {folders.length ? (
+                <ResourceFolderGrid folders={folders} />
+              ) : (
+                <AppText color="#52627A" fontSize="$caption">
+                  No root folders are available for the selected course.
+                </AppText>
+              )}
               <UploadDropzone {...upload} />
             </YStack>
-          </AppCard>
+          </AppCard> : null}
         </XStack>
       </YStack>
     </DashboardSection>

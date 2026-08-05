@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { foldersApi, sessionCoursesApi } from "@repo/api";
 import {
   Building2,
@@ -273,13 +274,45 @@ const columns: DataTableColumn<Folder>[] = [
 ];
 
 export function FoldersPage() {
+  const searchParams = useSearchParams();
   const academic = useAcademicSessions();
+  const {
+    selectedOrganizationId,
+    selectedSessionId,
+    setSelectedOrganizationId,
+    setSelectedSessionId,
+  } = academic;
+  const requestedOrganizationId = Number(searchParams.get("organizationId")) || null;
+  const requestedSessionId = Number(searchParams.get("sessionId")) || null;
+  const requestedSessionCourseId = Number(searchParams.get("sessionCourseId")) || null;
   const [selectedSessionCourseId, setSelectedSessionCourseId] = useState<
     number | null
-  >(null);
+  >(requestedSessionCourseId);
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(
     null,
   );
+
+  useEffect(() => {
+    if (
+      requestedOrganizationId !== null &&
+      selectedOrganizationId !== requestedOrganizationId
+    ) {
+      setSelectedOrganizationId(requestedOrganizationId);
+    }
+    if (
+      requestedSessionId !== null &&
+      selectedSessionId !== requestedSessionId
+    ) {
+      setSelectedSessionId(requestedSessionId);
+    }
+  }, [
+    requestedOrganizationId,
+    requestedSessionId,
+    selectedOrganizationId,
+    selectedSessionId,
+    setSelectedOrganizationId,
+    setSelectedSessionId,
+  ]);
   const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<number> | null>(
     null,

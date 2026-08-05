@@ -252,7 +252,10 @@ export const DashboardHeader = memo(function DashboardHeader({
   leadingAction,
   organizationIcon,
   organizationLabel,
+  organizationOnPress,
+  onSearchSubmit,
   profile,
+  profileOnPress,
   searchPlaceholder,
   shortcutLabel = "\u2318 K",
 }: DashboardHeaderProps) {
@@ -287,6 +290,11 @@ export const DashboardHeader = memo(function DashboardHeader({
           placeholderTextColor={"#8C9AAF" as never}
           onBlur={() => setIsSearchFocused(false)}
           onFocus={() => setIsSearchFocused(true)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              onSearchSubmit?.((event.currentTarget as HTMLInputElement).value);
+            }
+          }}
           style={searchInputStyle}
         />
         <ShortcutBadge className="lms-dashboard-header-shortcut">
@@ -306,6 +314,7 @@ export const DashboardHeader = memo(function DashboardHeader({
             <IconButton
               aria-label={action.label}
               key={action.label}
+              onPress={action.onPress}
               style={centerStyle}
             >
               {action.icon}
@@ -326,6 +335,8 @@ export const DashboardHeader = memo(function DashboardHeader({
 
         <SelectorFrame
           className="lms-dashboard-header-selector"
+          onPress={organizationOnPress}
+          role={organizationOnPress ? "button" : undefined}
           style={selectorStyle}
         >
           {organizationIcon}
@@ -348,6 +359,8 @@ export const DashboardHeader = memo(function DashboardHeader({
 
         <ProfileFrame
           className="lms-dashboard-header-profile"
+          onPress={profileOnPress}
+          role={profileOnPress ? "button" : undefined}
           style={profileStyle}
         >
           <AvatarFrame style={centerStyle}>

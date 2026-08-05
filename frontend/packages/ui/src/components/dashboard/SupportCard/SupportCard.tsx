@@ -10,6 +10,7 @@ import type { SupportCardProps } from "./types";
 export const HelpCard = memo(function HelpCard({
   actionLabel,
   description,
+  onPress,
   title,
 }: SupportCardProps) {
   return (
@@ -22,7 +23,7 @@ export const HelpCard = memo(function HelpCard({
           </AppText>
         </XStack>
         <AppText tone="muted">{description}</AppText>
-        <Button aria-label={actionLabel}>
+        <Button aria-label={actionLabel} onPress={onPress}>
           <Button.Text>{actionLabel}</Button.Text>
         </Button>
       </YStack>

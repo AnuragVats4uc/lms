@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { foldersApi, resourcesApi, sessionCoursesApi } from "@repo/api";
 import { CalendarDays, Clock3, FileText, FolderOpen, Image, ShieldCheck, Video } from "lucide-react";
@@ -510,11 +511,46 @@ function details(resource: Resource) {
 }
 
 export function ResourcesPage() {
+  const searchParams = useSearchParams();
   const academic = useAcademicSessions();
+  const {
+    selectedOrganizationId,
+    selectedSessionId,
+    setSelectedOrganizationId,
+    setSelectedSessionId,
+  } = academic;
+  const requestedOrganizationId = Number(searchParams.get("organizationId")) || null;
+  const requestedSessionId = Number(searchParams.get("sessionId")) || null;
+  const requestedSessionCourseId = Number(searchParams.get("sessionCourseId")) || null;
+  const requestedFolderId = Number(searchParams.get("folderId")) || null;
   const [selectedSessionCourseId, setSelectedSessionCourseId] = useState<
     number | null
-  >(null);
-  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
+  >(requestedSessionCourseId);
+  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(
+    requestedFolderId,
+  );
+
+  useEffect(() => {
+    if (
+      requestedOrganizationId !== null &&
+      selectedOrganizationId !== requestedOrganizationId
+    ) {
+      setSelectedOrganizationId(requestedOrganizationId);
+    }
+    if (
+      requestedSessionId !== null &&
+      selectedSessionId !== requestedSessionId
+    ) {
+      setSelectedSessionId(requestedSessionId);
+    }
+  }, [
+    requestedOrganizationId,
+    requestedSessionId,
+    selectedOrganizationId,
+    selectedSessionId,
+    setSelectedOrganizationId,
+    setSelectedSessionId,
+  ]);
   const sessionCoursesQuery = useQuery({
     enabled: academic.selectedSessionId !== null,
     queryFn: () =>

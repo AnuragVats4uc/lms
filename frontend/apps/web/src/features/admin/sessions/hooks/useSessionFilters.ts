@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { SessionSortField, SessionStatus } from "@repo/types";
 
 import { useSessionStore, DEFAULT_SESSION_FILTERS } from "../store";
@@ -10,6 +10,7 @@ import type { SessionFiltersState } from "../types";
 export function useSessionFilters() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { filters, page, pageSize, setFilters, setPage, setPageSize, setSelectedRowIds } = useSessionStore();
   const [debouncedSearch, setDebouncedSearch] = useState(filters.search);
 
@@ -19,7 +20,10 @@ export function useSessionFilters() {
   }, [filters.search]);
 
   useEffect(() => {
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(searchParams.toString());
+    ["organizationId", "search", "status", "sort", "order", "page", "limit"].forEach(
+      (key) => params.delete(key),
+    );
     if (filters.organizationId !== null) {
       params.set("organizationId", String(filters.organizationId));
     }
@@ -31,7 +35,7 @@ export function useSessionFilters() {
     if (pageSize !== 10) params.set("limit", String(pageSize));
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-  }, [filters, page, pageSize, pathname, router]);
+  }, [filters, page, pageSize, pathname, router, searchParams]);
 
   const updateFilters = useCallback(
     (next: SessionFiltersState) => {

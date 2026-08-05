@@ -158,6 +158,9 @@ export const OrganizationsPage = () => {
       await queryClient.invalidateQueries({
         queryKey: ["admin", "organizations"],
       });
+      await queryClient.invalidateQueries({
+        queryKey: ["admin-dashboard"],
+      });
       setStatusConfirmation(null);
       setStatusError(null);
     } catch {
@@ -503,7 +506,12 @@ export const OrganizationsPage = () => {
             }
             void bulkDeleteMutation.mutateAsync(items).then(() => {
               clear();
-              return refresh();
+              return Promise.all([
+                refresh(),
+                queryClient.invalidateQueries({
+                  queryKey: ["admin-dashboard"],
+                }),
+              ]);
             });
           }}
           onSetActive={(active) => requestStatusChange(items, active, clear)}

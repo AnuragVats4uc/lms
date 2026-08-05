@@ -1,16 +1,18 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
-import { AppCard } from "@repo/ui/primitives";
+import { AppCard, AppText } from "@repo/ui/primitives";
 import { RoleGrid } from "@repo/ui/dashboard";
-import { Text, XStack, YStack } from "@repo/ui";
+import { Button, Text, XStack, YStack } from "@repo/ui";
 import type { RoleCardProps } from "@repo/ui/dashboard";
 
 interface RolesPermissionSectionProps {
+  onViewAllRoles?: () => void;
   roles: RoleCardProps[];
 }
 
 export function RolesPermissionSection({
+  onViewAllRoles,
   roles,
 }: RolesPermissionSectionProps) {
   return (
@@ -43,7 +45,17 @@ export function RolesPermissionSection({
               Manage roles and their access permissions.
             </Text>
           </XStack>
-          <XStack gap="$2" style={{ alignItems: "center", flexShrink: 0 }}>
+          <Button
+            aria-label="View all roles"
+            background="transparent"
+            chromeless
+            disabled={!onViewAllRoles}
+            height={28}
+            onPress={onViewAllRoles}
+            px={0}
+            rounded="$2"
+            style={{ alignItems: "center", flexShrink: 0 }}
+          >
             <Text
               color="#047857"
               fontSize="$caption"
@@ -53,9 +65,15 @@ export function RolesPermissionSection({
               View All Roles
             </Text>
             <ArrowRight aria-hidden="true" color="#047857" size={14} />
-          </XStack>
+          </Button>
         </XStack>
-        <RoleGrid roles={roles} />
+        {roles.length ? (
+          <RoleGrid roles={roles} />
+        ) : (
+          <AppText color="#52627A" fontSize="$caption">
+            No active roles are available.
+          </AppText>
+        )}
       </YStack>
     </AppCard>
   );

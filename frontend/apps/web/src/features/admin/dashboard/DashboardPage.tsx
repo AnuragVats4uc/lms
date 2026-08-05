@@ -27,6 +27,15 @@ interface DashboardPageProps {
   statistics: StatCardProps[];
   support: SupportCardProps;
   tree: TreeNodeItem[];
+  onAddFolder?: () => void;
+  onMore?: () => void;
+  onRefresh?: () => void;
+  onSelectTree?: (id: string) => void;
+  onToggleTree?: (id: string) => void;
+  onViewAllRoles?: () => void;
+  onViewTree?: () => void;
+  treeOnly?: boolean;
+  refreshing?: boolean;
   upload: UploadDropzoneProps;
 }
 
@@ -38,6 +47,15 @@ export function DashboardPage({
   statistics,
   support,
   tree,
+  onAddFolder,
+  onMore,
+  onRefresh,
+  onSelectTree,
+  onToggleTree,
+  onViewAllRoles,
+  onViewTree,
+  treeOnly,
+  refreshing,
   upload,
 }: DashboardPageProps) {
   return (
@@ -49,10 +67,18 @@ export function DashboardPage({
       <ResourceManagementSection
         breadcrumbs={breadcrumbs}
         folders={folders}
+        onAddFolder={onAddFolder}
+        onMore={onMore}
+        onRefresh={onRefresh}
+        onSelectTree={onSelectTree}
+        onToggleTree={onToggleTree}
+        onViewTree={onViewTree}
         tree={tree}
+        treeOnly={treeOnly}
+        refreshing={refreshing}
         upload={upload}
       />
-      <RolesPermissionSection roles={roles} />
+      <RolesPermissionSection onViewAllRoles={onViewAllRoles} roles={roles} />
       <HelpCard {...support} />
     </PageContainer>
   );

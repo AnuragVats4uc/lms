@@ -21,6 +21,7 @@ export const UploadDropzone = memo(function UploadDropzone({
   actionLabel,
   description,
   icon,
+  onPress,
   title,
 }: UploadDropzoneProps) {
   return (
@@ -59,6 +60,7 @@ export const UploadDropzone = memo(function UploadDropzone({
         px="$4"
         rounded="$3"
         aria-label={actionLabel}
+        onPress={onPress}
         style={{ flexShrink: 0 }}
       >
         <Button.Text color="#FFFFFF" fontSize="$caption" fontWeight="$button">
