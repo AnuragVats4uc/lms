@@ -1,113 +1,131 @@
-import type { AddOrganizationFormState } from "../types";
+import {
+  AppInput,
+  FormInput,
+  FormSelect,
+  FormTextArea,
+} from "@repo/ui";
+import type { OrganizationFormValues } from "@repo/validation";
 
-export type OrganizationFormChangeHandler = <
-  K extends keyof AddOrganizationFormState,
->(
-  key: K,
-  value: AddOrganizationFormState[K],
-) => void;
+const ORGANIZATION_STATUS_OPTIONS = [
+  { label: "Active", value: "ACTIVE" },
+  { label: "Inactive", value: "INACTIVE" },
+] as const;
 
-export const OrganizationFormFields = ({
-  form,
-  onChange,
-}: {
-  form: AddOrganizationFormState;
-  onChange: OrganizationFormChangeHandler;
-}) => {
+const inputStyleProps = {
+  background: "#FCFCFD",
+  borderColor: "#D8E1EC",
+  fontSize: "$caption",
+  fontWeight: "$body",
+  rounded: "$3",
+} as const;
+
+export const OrganizationFormFields = () => {
   return (
     <div className="lms-organization-form-grid">
-      <label className="lms-form-field">
-        <span>Name</span>
-        <input
+      <div className="lms-form-field">
+        <FormInput<OrganizationFormValues, "name">
           autoFocus
-          minLength={3}
-          onChange={(event) => onChange("name", event.currentTarget.value)}
+          label="Name"
+          maxLength={120}
+          name="name"
           placeholder="Acme Learning Institute"
-          required
-          value={form.name}
+          {...inputStyleProps}
         />
-      </label>
+      </div>
 
-      <label className="lms-form-field">
-        <span>Code</span>
-        <input
+      <div className="lms-form-field">
+        <FormInput<OrganizationFormValues, "code">
+          label="Code"
           maxLength={20}
-          onChange={(event) =>
-            onChange("code", event.currentTarget.value.toUpperCase())
-          }
+          name="code"
           pattern="[A-Z0-9_-]+"
           placeholder="ACME"
-          required
-          value={form.code}
-        />
-      </label>
+          {...inputStyleProps}
+        >
+          {({ field, fieldState, errorId, inputId }) => (
+            <AppInput
+              {...inputStyleProps}
+              ref={field.ref}
+              id={inputId}
+              aria-describedby={fieldState.error ? errorId : undefined}
+              aria-invalid={fieldState.invalid}
+              maxLength={20}
+              name={inputId}
+              placeholder="ACME"
+              value={field.value == null ? "" : String(field.value)}
+              onBlur={field.onBlur}
+              onChangeText={(value) => field.onChange(value.toUpperCase())}
+            />
+          )}
+        </FormInput>
+      </div>
 
-      <label className="lms-form-field">
-        <span>Email</span>
-        <input
-          onChange={(event) => onChange("email", event.currentTarget.value)}
+      <div className="lms-form-field">
+        <FormInput<OrganizationFormValues, "email">
+          autoCapitalize="none"
+          autoComplete="email"
+          label="Email"
+          name="email"
           placeholder="admin@acme-learning.example.com"
           type="email"
-          value={form.email}
+          {...inputStyleProps}
         />
-      </label>
+      </div>
 
-      <label className="lms-form-field">
-        <span>Phone</span>
-        <input
-          onChange={(event) => onChange("phone", event.currentTarget.value)}
+      <div className="lms-form-field">
+        <FormInput<OrganizationFormValues, "phone">
+          label="Phone"
+          name="phone"
           placeholder="+919999999999"
-          value={form.phone}
+          {...inputStyleProps}
         />
-      </label>
+      </div>
 
-      <label className="lms-form-field">
-        <span>Website</span>
-        <input
-          onChange={(event) => onChange("website", event.currentTarget.value)}
+      <div className="lms-form-field">
+        <FormInput<OrganizationFormValues, "website">
+          autoCapitalize="none"
+          autoComplete="url"
+          label="Website"
+          name="website"
           placeholder="https://acme-learning.example.com"
           type="url"
-          value={form.website}
+          {...inputStyleProps}
         />
-      </label>
+      </div>
 
-      <label className="lms-form-field">
-        <span>Status</span>
-        <select
-          onChange={(event) =>
-            onChange(
-              "status",
-              event.currentTarget.value === "INACTIVE" ? "INACTIVE" : "ACTIVE",
-            )
-          }
-          value={form.status}
-        >
-          <option value="ACTIVE">Active</option>
-          <option value="INACTIVE">Inactive</option>
-        </select>
-      </label>
+      <div className="lms-form-field">
+        <FormSelect<OrganizationFormValues, "status">
+          label="Status"
+          name="status"
+          options={ORGANIZATION_STATUS_OPTIONS}
+          placeholder="Select status"
+          triggerProps={{
+            background: "#FCFCFD",
+            borderColor: "#D8E1EC",
+            rounded: "$3",
+          }}
+        />
+      </div>
 
-      <label className="lms-form-field">
-        <span>Description</span>
-        <textarea
-          onChange={(event) =>
-            onChange("description", event.currentTarget.value)
-          }
+      <div className="lms-form-field lms-form-field-wide">
+        <FormTextArea<OrganizationFormValues, "description">
+          label="Description"
+          name="description"
           placeholder="Online learning programs."
           rows={3}
-          value={form.description}
+          {...inputStyleProps}
         />
-      </label>
+      </div>
 
-      <label className="lms-form-field">
-        <span>Address</span>
-        <textarea
-          onChange={(event) => onChange("address", event.currentTarget.value)}
+      <div className="lms-form-field lms-form-field-wide">
+        <FormTextArea<OrganizationFormValues, "address">
+          label="Address"
+          name="address"
           placeholder="Sector 12, New Delhi"
           rows={2}
-          value={form.address}
+          {...inputStyleProps}
         />
-      </label>
+      </div>
     </div>
   );
 };

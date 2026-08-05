@@ -3,8 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { foldersApi, resourcesApi, sessionCoursesApi } from "@repo/api";
-import { CalendarDays, Clock3, FileText, FolderOpen, Image, ShieldCheck, Video } from "lucide-react";
+import {
+  CalendarDays,
+  Clock3,
+  FileText,
+  FolderOpen,
+  Image,
+  ShieldCheck,
+  Video,
+} from "lucide-react";
 import type {
   CreateResourceRequest,
   FolderTreeNode,
@@ -13,36 +23,35 @@ import type {
   ResourceType,
   UpdateResourceRequest,
 } from "@repo/types";
+import { resourceSchema, type ResourceFormValues } from "@repo/validation";
 import {
   DataTableDateCell,
   DataTableTextCell,
   DataTableWebsiteCell,
   type DataTableColumn,
 } from "@/components/DataTable";
-import { CrudBadge, CrudDetailField, CrudDetailSection, CrudSelect } from "../components/crud";
+import {
+  CrudBadge,
+  CrudDetailField,
+  CrudDetailSection,
+  CrudSelect,
+} from "../components/crud";
 import {
   CrudManagementPage,
   type ResourceFormContext,
 } from "../components/crud/CrudManagementPage";
 import { useAcademicSessions } from "../academic/useAcademicSessions";
-import { Text, XStack, YStack } from "@repo/ui";
+import {
+  FormCheckbox,
+  FormInput,
+  FormSelect,
+  FormTextArea,
+  Text,
+  XStack,
+  YStack,
+} from "@repo/ui";
 
-type ResourceForm = {
-  description: string;
-  documentUrl: string;
-  durationInSeconds: string;
-  examId: string;
-  fileSize: string;
-  isDownloadable: boolean;
-  isPublished: boolean;
-  mimeType: string;
-  sortOrder: string;
-  status: ResourceStatus;
-  thumbnail: string;
-  title: string;
-  type: ResourceType;
-  videoUrl: string;
-};
+type ResourceForm = ResourceFormValues;
 
 type FolderOption = { id: number; label: string };
 
@@ -115,48 +124,8 @@ function toPayload(form: ResourceForm): CreateResourceRequest {
   return payload;
 }
 
-function validate(form: ResourceForm) {
-  if (!form.title.trim()) return "Resource title is required.";
-  if (!Number.isInteger(Number(form.sortOrder)) || Number(form.sortOrder) < 0)
-    return "Sort order must be a non-negative whole number.";
-  if (form.type === "DOCUMENT" && !form.documentUrl.trim())
-    return "Document URL is required.";
-  if (form.type === "DOCUMENT" && !isValidUrl(form.documentUrl))
-    return "Enter a valid document URL.";
-  if (form.type === "VIDEO" && !form.videoUrl.trim())
-    return "Video URL is required.";
-  if (form.type === "VIDEO" && !isValidUrl(form.videoUrl))
-    return "Enter a valid video URL.";
-  if (form.type === "EXAM" && (!form.examId || Number(form.examId) < 1))
-    return "A valid exam ID is required.";
-  if (
-    form.fileSize &&
-    (!/^\d+$/.test(form.fileSize) || Number(form.fileSize) < 0)
-  )
-    return "File size must be a non-negative integer.";
-  if (
-    form.durationInSeconds &&
-    (!Number.isInteger(Number(form.durationInSeconds)) ||
-      Number(form.durationInSeconds) < 0)
-  )
-    return "Duration must be a non-negative whole number.";
-  return null;
-}
-
-function isValidUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-function ResourceForm({
-  error,
-  form,
-  onChange,
-}: ResourceFormContext<ResourceForm>) {
+function ResourceForm({ error }: ResourceFormContext<ResourceForm>) {
+  const type = useWatch<ResourceForm, "type">({ name: "type" });
   return (
     <YStack className="lms-organization-form" gap="$3">
       {error ? (
@@ -165,98 +134,74 @@ function ResourceForm({
         </Text>
       ) : null}
       <XStack gap="$3" style={{ flexWrap: "wrap" }}>
-        <label className="lms-form-field">
-          <span>Title</span>
-          <input
+        <div className="lms-form-field">
+          <FormInput
             autoFocus
-            onChange={(event) => onChange("title", event.currentTarget.value)}
+            label="Title"
+            name="title"
             placeholder="Motion Notes"
-            required
-            value={form.title}
           />
-        </label>
-        <label className="lms-form-field">
-          <span>Type</span>
-          <select
-            onChange={(event) =>
-              onChange("type", event.currentTarget.value as ResourceType)
-            }
-            value={form.type}
-          >
-            <option value="DOCUMENT">Document</option>
-            <option value="VIDEO">Video</option>
-            <option value="EXAM">Exam</option>
-          </select>
-        </label>
+        </div>
+        <div className="lms-form-field">
+          <FormSelect
+            label="Type"
+            name="type"
+            options={[
+              { label: "Document", value: "DOCUMENT" },
+              { label: "Video", value: "VIDEO" },
+              { label: "Exam", value: "EXAM" },
+            ]}
+          />
+        </div>
       </XStack>
-      {form.type === "DOCUMENT" ? (
+      {type === "DOCUMENT" ? (
         <XStack gap="$3" style={{ flexWrap: "wrap" }}>
-          <label className="lms-form-field">
-            <span>Document URL</span>
-            <input
-              onChange={(event) =>
-                onChange("documentUrl", event.currentTarget.value)
-              }
+          <div className="lms-form-field">
+            <FormInput
+              label="Document URL"
+              name="documentUrl"
               placeholder="https://cdn.example.com/notes.pdf"
-              required
               type="url"
-              value={form.documentUrl}
             />
-          </label>
-          <label className="lms-form-field">
-            <span>MIME type</span>
-            <input
-              onChange={(event) =>
-                onChange("mimeType", event.currentTarget.value)
-              }
+          </div>
+          <div className="lms-form-field">
+            <FormInput
+              label="MIME type"
+              name="mimeType"
               placeholder="application/pdf"
-              value={form.mimeType}
             />
-          </label>
+          </div>
         </XStack>
       ) : null}
-      {form.type === "VIDEO" ? (
+      {type === "VIDEO" ? (
         <XStack gap="$3" style={{ flexWrap: "wrap" }}>
-          <label className="lms-form-field">
-            <span>Video URL</span>
-            <input
-              onChange={(event) =>
-                onChange("videoUrl", event.currentTarget.value)
-              }
+          <div className="lms-form-field">
+            <FormInput
+              label="Video URL"
+              name="videoUrl"
               placeholder="https://cdn.example.com/lecture.mp4"
-              required
               type="url"
-              value={form.videoUrl}
             />
-          </label>
-          <label className="lms-form-field">
-            <span>Duration (seconds)</span>
-            <input
-              min={0}
-              onChange={(event) =>
-                onChange("durationInSeconds", event.currentTarget.value)
-              }
+          </div>
+          <div className="lms-form-field">
+            <FormInput
+              label="Duration (seconds)"
+              name="durationInSeconds"
               type="number"
-              value={form.durationInSeconds}
             />
-          </label>
+          </div>
         </XStack>
       ) : null}
-      {form.type === "EXAM" ? (
+      {type === "EXAM" ? (
         <YStack gap="$2">
-          <label className="lms-form-field">
-            <span>Exam ID</span>
-            <input
-              min={1}
-              onChange={(event) =>
-                onChange("examId", event.currentTarget.value)
-              }
+          <div className="lms-form-field">
+            <FormInput
+              label="Exam ID"
+              name="examId"
               placeholder="Exam module ID"
-              required
               type="number"
-              value={form.examId}
             />
-          </label>
+          </div>
           <Text color="#9A3412" fontSize="$caption">
             The Exam module is not present in this backend yet. Enter the future
             Exam record ID.
@@ -264,87 +209,41 @@ function ResourceForm({
         </YStack>
       ) : null}
       <XStack gap="$3" style={{ flexWrap: "wrap" }}>
-        <label className="lms-form-field">
-          <span>File size (bytes)</span>
-          <input
-            min={0}
-            onChange={(event) =>
-              onChange("fileSize", event.currentTarget.value)
-            }
+        <div className="lms-form-field">
+          <FormInput
+            label="File size (bytes)"
+            name="fileSize"
             placeholder="204800"
             type="number"
-            value={form.fileSize}
           />
-        </label>
-        <label className="lms-form-field">
-          <span>Sort order</span>
-          <input
-            min={0}
-            onChange={(event) =>
-              onChange("sortOrder", event.currentTarget.value)
-            }
-            type="number"
-            value={form.sortOrder}
-          />
-        </label>
+        </div>
+        <div className="lms-form-field">
+          <FormInput label="Sort order" name="sortOrder" type="number" />
+        </div>
       </XStack>
       <XStack gap="$3" style={{ flexWrap: "wrap" }}>
-        <label className="lms-form-field">
-          <span>Status</span>
-          <select
-            onChange={(event) =>
-              onChange("status", event.currentTarget.value as ResourceStatus)
-            }
-            value={form.status}
-          >
-            <option value="DRAFT">Draft</option>
-            <option value="PUBLISHED">Published</option>
-            <option value="ARCHIVED">Archived</option>
-          </select>
-        </label>
-        <label className="lms-form-field">
-          <span>Thumbnail URL</span>
-          <input
-            onChange={(event) =>
-              onChange("thumbnail", event.currentTarget.value)
-            }
-            type="url"
-            value={form.thumbnail}
+        <div className="lms-form-field">
+          <FormSelect
+            label="Status"
+            name="status"
+            options={[
+              { label: "Draft", value: "DRAFT" },
+              { label: "Published", value: "PUBLISHED" },
+              { label: "Archived", value: "ARCHIVED" },
+            ]}
           />
-        </label>
+        </div>
+        <div className="lms-form-field">
+          <FormInput label="Thumbnail URL" name="thumbnail" type="url" />
+        </div>
       </XStack>
       <XStack gap="$4" style={{ flexWrap: "wrap" }}>
-        <label className="lms-form-checkbox">
-          <input
-            checked={form.isPublished}
-            onChange={(event) =>
-              onChange("isPublished", event.currentTarget.checked)
-            }
-            type="checkbox"
-          />
-          <span>Published</span>
-        </label>
-        <label className="lms-form-checkbox">
-          <input
-            checked={form.isDownloadable}
-            onChange={(event) =>
-              onChange("isDownloadable", event.currentTarget.checked)
-            }
-            type="checkbox"
-          />
-          <span>Downloadable</span>
-        </label>
+        <FormCheckbox checkboxLabel="Published" name="isPublished" />
+        <FormCheckbox checkboxLabel="Downloadable" name="isDownloadable" />
       </XStack>
-      <label className="lms-form-field lms-form-field-wide">
-        <span>Description</span>
-        <textarea
-          onChange={(event) =>
-            onChange("description", event.currentTarget.value)
-          }
-          rows={4}
-          value={form.description}
-        />
-      </label>
+      <div className="lms-form-field lms-form-field-wide">
+        <FormTextArea label="Description" name="description" rows={4} />
+      </div>
     </YStack>
   );
 }
@@ -430,15 +329,16 @@ const columns: DataTableColumn<Resource>[] = [
     width: 150,
   },
   {
-    cell: ({ row }) => (
+    cell: ({ row }) =>
       row.type === "DOCUMENT" && row.documentUrl ? (
         <DataTableWebsiteCell href={row.documentUrl} label="Open document" />
       ) : row.type === "VIDEO" && row.videoUrl ? (
         <DataTableWebsiteCell href={row.videoUrl} label="Open video" />
       ) : (
-        <DataTableTextCell primary={row.type === "EXAM" ? `Exam #${row.examId ?? "-"}` : "-"} />
-      )
-    ),
+        <DataTableTextCell
+          primary={row.type === "EXAM" ? `Exam #${row.examId ?? "-"}` : "-"}
+        />
+      ),
     header: "Source",
     id: "source",
     width: 160,
@@ -480,28 +380,99 @@ const columns: DataTableColumn<Resource>[] = [
 ];
 
 function details(resource: Resource) {
-  const url =
-    resource.type === "DOCUMENT" ? resource.documentUrl : resource.videoUrl;
   return (
     <YStack gap="$3">
-      <CrudDetailSection icon={<FolderOpen color="#059669" size={15} />} title="Resource">
-        <CrudDetailField icon={<FileText color="#059669" size={15} />} label="Type" value={<CrudBadge tone={resourceTone(resource.type)}>{resource.type}</CrudBadge>} />
-        <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Status" value={<CrudBadge tone={statusTone(resource.status)}>{resource.status}</CrudBadge>} />
-        <CrudDetailField icon={<FolderOpen color="#059669" size={15} />} label="Folder ID" value={resource.folderId} />
-        <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Sort order" value={resource.sortOrder} />
+      <CrudDetailSection
+        icon={<FolderOpen color="#059669" size={15} />}
+        title="Resource"
+      >
+        <CrudDetailField
+          icon={<FileText color="#059669" size={15} />}
+          label="Type"
+          value={
+            <CrudBadge tone={resourceTone(resource.type)}>
+              {resource.type}
+            </CrudBadge>
+          }
+        />
+        <CrudDetailField
+          icon={<ShieldCheck color="#059669" size={15} />}
+          label="Status"
+          value={
+            <CrudBadge tone={statusTone(resource.status)}>
+              {resource.status}
+            </CrudBadge>
+          }
+        />
+        <CrudDetailField
+          icon={<FolderOpen color="#059669" size={15} />}
+          label="Folder ID"
+          value={resource.folderId}
+        />
+        <CrudDetailField
+          icon={<Clock3 color="#059669" size={15} />}
+          label="Sort order"
+          value={resource.sortOrder}
+        />
       </CrudDetailSection>
-      <CrudDetailSection icon={<Video color="#059669" size={15} />} title="Access and source">
-        <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Published" value={resource.isPublished ? "Yes" : "No"} />
-        <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Downloadable" value={resource.isDownloadable ? "Yes" : "No"} />
-        <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Active record" value={resource.isActive ? "Yes" : "No"} />
-        <CrudDetailField icon={<FileText color="#059669" size={15} />} label="MIME type" value={resource.mimeType} />
-        <CrudDetailField icon={<Image color="#059669" size={15} />} label="Thumbnail" value={resource.thumbnail} />
-        <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="File size" value={resource.fileSize ? `${resource.fileSize} bytes` : "Not set"} />
-        <CrudDetailField icon={<Video color="#059669" size={15} />} label="Duration" value={resource.durationInSeconds !== null ? `${resource.durationInSeconds} seconds` : "Not set"} />
+      <CrudDetailSection
+        icon={<Video color="#059669" size={15} />}
+        title="Access and source"
+      >
+        <CrudDetailField
+          icon={<ShieldCheck color="#059669" size={15} />}
+          label="Published"
+          value={resource.isPublished ? "Yes" : "No"}
+        />
+        <CrudDetailField
+          icon={<ShieldCheck color="#059669" size={15} />}
+          label="Downloadable"
+          value={resource.isDownloadable ? "Yes" : "No"}
+        />
+        <CrudDetailField
+          icon={<ShieldCheck color="#059669" size={15} />}
+          label="Active record"
+          value={resource.isActive ? "Yes" : "No"}
+        />
+        <CrudDetailField
+          icon={<FileText color="#059669" size={15} />}
+          label="MIME type"
+          value={resource.mimeType}
+        />
+        <CrudDetailField
+          icon={<Image color="#059669" size={15} />}
+          label="Thumbnail"
+          value={resource.thumbnail}
+        />
+        <CrudDetailField
+          icon={<Clock3 color="#059669" size={15} />}
+          label="File size"
+          value={resource.fileSize ? `${resource.fileSize} bytes` : "Not set"}
+        />
+        <CrudDetailField
+          icon={<Video color="#059669" size={15} />}
+          label="Duration"
+          value={
+            resource.durationInSeconds !== null
+              ? `${resource.durationInSeconds} seconds`
+              : "Not set"
+          }
+        />
       </CrudDetailSection>
-      <CrudDetailSection icon={<CalendarDays color="#059669" size={15} />} title="Record history">
-        <CrudDetailField icon={<CalendarDays color="#059669" size={15} />} label="Created" value={new Date(resource.createdAt).toLocaleString()} />
-        <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Last updated" value={new Date(resource.updatedAt).toLocaleString()} />
+      <CrudDetailSection
+        icon={<CalendarDays color="#059669" size={15} />}
+        title="Record history"
+      >
+        <CrudDetailField
+          icon={<CalendarDays color="#059669" size={15} />}
+          label="Created"
+          value={new Date(resource.createdAt).toLocaleString()}
+        />
+        <CrudDetailField
+          icon={<Clock3 color="#059669" size={15} />}
+          label="Last updated"
+          value={new Date(resource.updatedAt).toLocaleString()}
+        />
       </CrudDetailSection>
       <Text color="#52627A" fontSize="$caption" style={{ display: "none" }}>
         Description: {resource.description ?? "—"}
@@ -519,9 +490,11 @@ export function ResourcesPage() {
     setSelectedOrganizationId,
     setSelectedSessionId,
   } = academic;
-  const requestedOrganizationId = Number(searchParams.get("organizationId")) || null;
+  const requestedOrganizationId =
+    Number(searchParams.get("organizationId")) || null;
   const requestedSessionId = Number(searchParams.get("sessionId")) || null;
-  const requestedSessionCourseId = Number(searchParams.get("sessionCourseId")) || null;
+  const requestedSessionCourseId =
+    Number(searchParams.get("sessionCourseId")) || null;
   const requestedFolderId = Number(searchParams.get("folderId")) || null;
   const [selectedSessionCourseId, setSelectedSessionCourseId] = useState<
     number | null
@@ -678,10 +651,26 @@ export function ResourcesPage() {
       enabled={effectiveFolderId !== null}
       entityLabel="Resource"
       getStats={({ rows, total }) => [
-        { icon: <FolderOpen color="#059669" size={20} />, label: "Total Resources", value: total },
-        { icon: <FileText color="#059669" size={20} />, label: "Documents", value: rows.filter((row) => row.type === "DOCUMENT").length },
-        { icon: <Video color="#2563EB" size={20} />, label: "Videos", value: rows.filter((row) => row.type === "VIDEO").length },
-        { icon: <ShieldCheck color="#059669" size={20} />, label: "Published", value: rows.filter((row) => row.isPublished).length },
+        {
+          icon: <FolderOpen color="#059669" size={20} />,
+          label: "Total Resources",
+          value: total,
+        },
+        {
+          icon: <FileText color="#059669" size={20} />,
+          label: "Documents",
+          value: rows.filter((row) => row.type === "DOCUMENT").length,
+        },
+        {
+          icon: <Video color="#2563EB" size={20} />,
+          label: "Videos",
+          value: rows.filter((row) => row.type === "VIDEO").length,
+        },
+        {
+          icon: <ShieldCheck color="#059669" size={20} />,
+          label: "Published",
+          value: rows.filter((row) => row.isPublished).length,
+        },
       ]}
       getDisplayName={(resource) => resource.title}
       getIsActive={(resource) => resource.isActive}
@@ -740,7 +729,7 @@ export function ResourcesPage() {
           ? Promise.reject(new Error("Select a folder first."))
           : resourcesApi.update(effectiveFolderId, id, payload)
       }
-      validate={validate}
+      formResolver={zodResolver(resourceSchema)}
     />
   );
 }

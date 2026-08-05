@@ -1,14 +1,23 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { organizationsApi, studentsApi } from "@repo/api";
-import { CalendarDays, Clock3, Mail, Phone, ShieldCheck, UserRound } from "lucide-react";
+import {
+  CalendarDays,
+  Clock3,
+  Mail,
+  Phone,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import type {
   CreateStudentRequest,
   Student,
   UpdateStudentRequest,
   UserStatus,
 } from "@repo/types";
+import { type UserFormValues, userSchema } from "@repo/validation";
 import {
   DataTableDateCell,
   DataTableEmailCell,
@@ -25,16 +34,9 @@ import {
   CrudManagementPage,
   type ResourceFormContext,
 } from "../components/crud/CrudManagementPage";
-import { Text, XStack, YStack } from "@repo/ui";
+import { FormInput, FormSelect, Text, XStack, YStack } from "@repo/ui";
 
-type UserForm = {
-  email: string;
-  firstName: string;
-  lastName: string;
-  organizationId: string;
-  password: string;
-  phone: string;
-};
+type UserForm = UserFormValues;
 const initialForm: UserForm = {
   email: "",
   firstName: "",
@@ -78,8 +80,6 @@ function validate(form: UserForm, isEdit = false) {
 }
 function Form({
   error,
-  form,
-  onChange,
   organizations,
   isEdit,
 }: ResourceFormContext<UserForm> & {
@@ -93,71 +93,39 @@ function Form({
         </Text>
       ) : null}
       <XStack gap="$3" style={{ flexWrap: "wrap" }}>
-        <label className="lms-form-field">
-          <span>First name</span>
-          <input
-            autoFocus
-            onChange={(event) =>
-              onChange("firstName", event.currentTarget.value)
-            }
-            required
-            value={form.firstName}
-          />
-        </label>
-        <label className="lms-form-field">
-          <span>Last name</span>
-          <input
-            onChange={(event) =>
-              onChange("lastName", event.currentTarget.value)
-            }
-            value={form.lastName}
-          />
-        </label>
+        <div className="lms-form-field">
+          <FormInput autoFocus label="First name" name="firstName" />
+        </div>
+        <div className="lms-form-field">
+          <FormInput label="Last name" name="lastName" />
+        </div>
       </XStack>
       <XStack gap="$3" style={{ flexWrap: "wrap" }}>
-        <label className="lms-form-field">
-          <span>Email</span>
-          <input
-            onChange={(event) => onChange("email", event.currentTarget.value)}
-            required
-            type="email"
-            value={form.email}
-          />
-        </label>
-        <label className="lms-form-field">
-          <span>Phone</span>
-          <input
-            onChange={(event) => onChange("phone", event.currentTarget.value)}
-            value={form.phone}
-          />
-        </label>
+        <div className="lms-form-field">
+          <FormInput label="Email" name="email" type="email" />
+        </div>
+        <div className="lms-form-field">
+          <FormInput label="Phone" name="phone" />
+        </div>
       </XStack>
-      <label className="lms-form-field">
-        <span>Organization</span>
-        <select
-          onChange={(event) =>
-            onChange("organizationId", event.currentTarget.value)
-          }
-          value={form.organizationId}
-        >
-          <option value="">No organization</option>
-          {organizations.map((organization) => (
-            <option key={organization.id} value={organization.id}>
-              {organization.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="lms-form-field">
-        <span>{isEdit ? "New password (optional)" : "Password"}</span>
-        <input
-          minLength={8}
-          onChange={(event) => onChange("password", event.currentTarget.value)}
-          required={!isEdit}
-          type="password"
-          value={form.password}
+      <div className="lms-form-field">
+        <FormSelect
+          label="Organization"
+          name="organizationId"
+          options={organizations.map((organization) => ({
+            label: organization.name,
+            value: String(organization.id),
+          }))}
+          placeholder="No organization"
         />
-      </label>
+      </div>
+      <div className="lms-form-field">
+        <FormInput
+          label={isEdit ? "New password (optional)" : "Password"}
+          name="password"
+          type="password"
+        />
+      </div>
     </YStack>
   );
 }
@@ -270,10 +238,26 @@ export function UsersPage() {
       description="Manage student and user records, organization membership, and account status."
       entityLabel="User"
       getStats={({ rows, total }) => [
-        { icon: <UserRound color="#059669" size={20} />, label: "Total Users", value: total },
-        { icon: <ShieldCheck color="#059669" size={20} />, label: "Active Users", value: rows.filter((row) => row.status === "ACTIVE").length },
-        { icon: <ShieldCheck color="#2563EB" size={20} />, label: "Verified Users", value: rows.filter((row) => row.isVerified).length },
-        { icon: <UserRound color="#64748B" size={20} />, label: "Assigned Organization", value: rows.filter((row) => row.organizationId !== null).length },
+        {
+          icon: <UserRound color="#059669" size={20} />,
+          label: "Total Users",
+          value: total,
+        },
+        {
+          icon: <ShieldCheck color="#059669" size={20} />,
+          label: "Active Users",
+          value: rows.filter((row) => row.status === "ACTIVE").length,
+        },
+        {
+          icon: <ShieldCheck color="#2563EB" size={20} />,
+          label: "Verified Users",
+          value: rows.filter((row) => row.isVerified).length,
+        },
+        {
+          icon: <UserRound color="#64748B" size={20} />,
+          label: "Assigned Organization",
+          value: rows.filter((row) => row.organizationId !== null).length,
+        },
       ]}
       getDisplayName={(user) =>
         [user.firstName, user.lastName].filter(Boolean).join(" ")
@@ -293,22 +277,81 @@ export function UsersPage() {
       remove={(id) => studentsApi.remove(id)}
       renderDetails={(user) => (
         <YStack gap="$3">
-          <CrudDetailSection icon={<UserRound color="#059669" size={15} />} title="Profile">
-            <CrudDetailField icon={<UserRound color="#059669" size={15} />} label="Name" value={[user.firstName, user.lastName].filter(Boolean).join(" ")} />
-            <CrudDetailField icon={<Mail color="#059669" size={15} />} label="Email" value={user.email} />
-            <CrudDetailField icon={<Phone color="#059669" size={15} />} label="Phone" value={user.phone} />
-            <CrudDetailField icon={<UserRound color="#059669" size={15} />} label="Organization" value={user.organization?.name ?? "Unassigned"} />
+          <CrudDetailSection
+            icon={<UserRound color="#059669" size={15} />}
+            title="Profile"
+          >
+            <CrudDetailField
+              icon={<UserRound color="#059669" size={15} />}
+              label="Name"
+              value={[user.firstName, user.lastName].filter(Boolean).join(" ")}
+            />
+            <CrudDetailField
+              icon={<Mail color="#059669" size={15} />}
+              label="Email"
+              value={user.email}
+            />
+            <CrudDetailField
+              icon={<Phone color="#059669" size={15} />}
+              label="Phone"
+              value={user.phone}
+            />
+            <CrudDetailField
+              icon={<UserRound color="#059669" size={15} />}
+              label="Organization"
+              value={user.organization?.name ?? "Unassigned"}
+            />
           </CrudDetailSection>
-          <CrudDetailSection icon={<ShieldCheck color="#059669" size={15} />} title="Access">
-            <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Status" value={user.status} />
-            <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Verified" value={user.isVerified ? "Yes" : "No"} />
-            <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Active record" value={user.isActive ? "Yes" : "No"} />
-            <CrudDetailField icon={<UserRound color="#059669" size={15} />} label="Roles" value={user.roles?.map((role) => role.code).join(", ") || "No roles"} />
+          <CrudDetailSection
+            icon={<ShieldCheck color="#059669" size={15} />}
+            title="Access"
+          >
+            <CrudDetailField
+              icon={<ShieldCheck color="#059669" size={15} />}
+              label="Status"
+              value={user.status}
+            />
+            <CrudDetailField
+              icon={<ShieldCheck color="#059669" size={15} />}
+              label="Verified"
+              value={user.isVerified ? "Yes" : "No"}
+            />
+            <CrudDetailField
+              icon={<ShieldCheck color="#059669" size={15} />}
+              label="Active record"
+              value={user.isActive ? "Yes" : "No"}
+            />
+            <CrudDetailField
+              icon={<UserRound color="#059669" size={15} />}
+              label="Roles"
+              value={
+                user.roles?.map((role) => role.code).join(", ") || "No roles"
+              }
+            />
           </CrudDetailSection>
-          <CrudDetailSection icon={<CalendarDays color="#059669" size={15} />} title="Activity">
-            <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Last login" value={user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : "Never"} />
-            <CrudDetailField icon={<CalendarDays color="#059669" size={15} />} label="Created" value={new Date(user.createdAt).toLocaleString()} />
-            <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Last updated" value={new Date(user.updatedAt).toLocaleString()} />
+          <CrudDetailSection
+            icon={<CalendarDays color="#059669" size={15} />}
+            title="Activity"
+          >
+            <CrudDetailField
+              icon={<Clock3 color="#059669" size={15} />}
+              label="Last login"
+              value={
+                user.lastLoginAt
+                  ? new Date(user.lastLoginAt).toLocaleString()
+                  : "Never"
+              }
+            />
+            <CrudDetailField
+              icon={<CalendarDays color="#059669" size={15} />}
+              label="Created"
+              value={new Date(user.createdAt).toLocaleString()}
+            />
+            <CrudDetailField
+              icon={<Clock3 color="#059669" size={15} />}
+              label="Last updated"
+              value={new Date(user.updatedAt).toLocaleString()}
+            />
           </CrudDetailSection>
         </YStack>
       )}
@@ -337,6 +380,7 @@ export function UsersPage() {
       })}
       toUpdatePayload={toUpdate}
       update={(id, payload) => studentsApi.update(id, payload)}
+      formResolver={zodResolver(userSchema)}
       validate={(form, isEdit) => validate(form, isEdit)}
     />
   );

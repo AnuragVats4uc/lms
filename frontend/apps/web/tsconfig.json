@@ -22,6 +22,7 @@
       "@/*": ["./src/*"],
       "@repo/api": ["../../packages/api/src"],
       "@repo/auth": ["../../packages/auth/src"],
+      "@repo/validation": ["../../packages/validation/src"],
       "@repo/types": ["../../packages/types/src"],
       "@repo/ui": ["../../packages/ui/src"],
       "@repo/ui/dashboard": [

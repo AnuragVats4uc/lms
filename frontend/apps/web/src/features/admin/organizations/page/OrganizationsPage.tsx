@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Activity,
   AtSign,
@@ -21,6 +22,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { organizationsApi } from "@repo/api";
+import { organizationSchema } from "@repo/validation";
 import type {
   CreateOrganizationRequest,
   UpdateOrganizationRequest,
@@ -59,11 +61,9 @@ import { isWithinCreatedDate, sortRows } from "../utils";
 
 const OrganizationForm = ({
   error,
-  form,
-  onChange,
 }: CrudFormContext<AddOrganizationFormState>) => (
   <YStack className="lms-organization-form" gap="$3">
-    <OrganizationFormFields form={form} onChange={onChange} />
+    <OrganizationFormFields />
     {error ? (
       <Text color="#DC2626" fontSize="$caption" lineHeight="$caption">
         {error}
@@ -362,6 +362,7 @@ export const OrganizationsPage = () => {
       initialPage={parsePositiveInteger(params.get("page"), 1)}
       initialPageSize={parsePositiveInteger(params.get("limit"), 10)}
       initialForm={DEFAULT_FORM}
+      formResolver={zodResolver(organizationSchema)}
       permissionPrefix="organizations"
       queryFn={async (query) => {
         const result = await getOrganizations({
@@ -536,11 +537,6 @@ export const OrganizationsPage = () => {
         sort: "newest",
         syncStatus: "ALL",
       }}
-      validate={(form) =>
-        form.name.trim() && form.code.trim()
-          ? null
-          : "Organization name and code are required."
-      }
     />
   );
 };

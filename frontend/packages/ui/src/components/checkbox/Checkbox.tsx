@@ -9,7 +9,7 @@ import {
   XStack,
 } from "tamagui";
 
-interface AppCheckboxProps
+export interface AppCheckboxProps
   extends Omit<CheckboxProps, "children"> {
   label?: string;
 }

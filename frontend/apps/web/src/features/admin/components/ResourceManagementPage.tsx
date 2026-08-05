@@ -12,6 +12,14 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Database, ExternalLink, Pencil, Power, Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  FormProvider,
+  useForm,
+  type DefaultValues,
+  type FieldValues,
+  type Resolver,
+  type UseFormReturn,
+} from "react-hook-form";
 import { Button, XStack, YStack } from "@repo/ui";
 import type { PaginatedData } from "@repo/types";
 
@@ -52,13 +60,14 @@ export interface ResourceQuery {
 export interface ResourceFormContext<Form> {
   error: string | null;
   form: Form;
+  formMethods: UseFormReturn<Form & FieldValues>;
   isEdit: boolean;
   onChange: <K extends keyof Form>(key: K, value: Form[K]) => void;
 }
 
 export interface ResourceManagementPageProps<
   Item,
-  Form,
+  Form extends FieldValues,
   CreatePayload,
   UpdatePayload,
 > {
@@ -72,6 +81,7 @@ export interface ResourceManagementPageProps<
   getRowId: (item: Item) => DataTableRowId;
   getDisplayName: (item: Item) => string;
   initialForm: Form;
+  formResolver?: Resolver<Form>;
   getCreateForm?: () => Form;
   toForm: (item: Item) => Form;
   toCreatePayload: (form: Form) => CreatePayload;
@@ -129,7 +139,7 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 export function ResourceManagementPage<
   Item extends { id: number },
-  Form,
+  Form extends FieldValues,
   CreatePayload,
   UpdatePayload,
 >({
@@ -143,6 +153,7 @@ export function ResourceManagementPage<
   getRowId,
   getDisplayName,
   initialForm,
+  formResolver,
   getCreateForm,
   toForm,
   toCreatePayload,
@@ -228,6 +239,16 @@ export function ResourceManagementPage<
   const [editing, setEditing] = useState<Item | null>(null);
   const [form, setForm] = useState<Form>(initialForm);
   const [formError, setFormError] = useState<string | null>(null);
+  const formMethods = useForm<Form>({
+    defaultValues: initialForm as DefaultValues<Form>,
+    mode: "onBlur",
+    resolver: formResolver,
+  });
+  const {
+    getValues: getFormValues,
+    reset: resetForm,
+    trigger: triggerForm,
+  } = formMethods;
   const [isCreateOpen, setCreateOpen] = useState(false);
   const [confirmItem, setConfirmItem] = useState<Item | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
@@ -406,17 +427,21 @@ export function ResourceManagementPage<
     }
   };
   const openCreate = useCallback(() => {
-    setForm(getCreateForm?.() ?? initialForm);
+    const nextForm = getCreateForm?.() ?? initialForm;
+    setForm(nextForm);
+    resetForm(nextForm);
     setFormError(null);
     setCreateOpen(true);
-  }, [getCreateForm, initialForm]);
+  }, [getCreateForm, initialForm, resetForm]);
   const openEdit = useCallback(
     (item: Item) => {
-      setForm(toForm(item));
+      const nextForm = toForm(item);
+      setForm(nextForm);
+      resetForm(nextForm);
       setFormError(null);
       setEditing(item);
     },
-    [toForm],
+    [resetForm, toForm],
   );
 
   useEffect(() => {
@@ -491,7 +516,22 @@ export function ResourceManagementPage<
   };
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const validationError = validate?.(form, Boolean(editing));
+    let currentForm = form;
+
+    if (formResolver) {
+      const isValid = await triggerForm();
+      if (!isValid) {
+        const validationError = "Please correct the highlighted fields.";
+        setFormError(validationError);
+        showToast("Invalid form", validationError, "error");
+        return;
+      }
+
+      currentForm = getFormValues();
+      setForm(currentForm);
+    }
+
+    const validationError = validate?.(currentForm, Boolean(editing));
     if (validationError) {
       setFormError(validationError);
       showToast("Invalid form", validationError, "error");
@@ -501,7 +541,7 @@ export function ResourceManagementPage<
       if (editing && update) {
         const item = await updateMutation.mutateAsync({
           id: editing.id,
-          payload: toUpdatePayload(form),
+          payload: toUpdatePayload(currentForm),
         });
         setSelectedItem(item);
         showToast(
@@ -510,7 +550,9 @@ export function ResourceManagementPage<
           "success",
         );
       } else if (!editing && create) {
-        const item = await createMutation.mutateAsync(toCreatePayload(form));
+        const item = await createMutation.mutateAsync(
+          toCreatePayload(currentForm),
+        );
         setSelectedItem(item);
         showToast(
           entityLabel + " created",
@@ -860,14 +902,17 @@ export function ResourceManagementPage<
           </XStack>
         }
       >
-        <form id="resource-management-form" onSubmit={submit}>
-          {renderForm({
-            error: formError,
-            form,
-            isEdit: Boolean(editing),
-            onChange,
-          })}
-        </form>
+        <FormProvider {...formMethods}>
+          <form id="resource-management-form" onSubmit={submit}>
+            {renderForm({
+              error: formError,
+              form,
+              formMethods,
+              isEdit: Boolean(editing),
+              onChange,
+            })}
+          </form>
+        </FormProvider>
       </AppModal>
       <CrudConfirmationDialog
         confirmLabel="Delete"

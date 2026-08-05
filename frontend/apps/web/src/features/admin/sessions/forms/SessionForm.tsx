@@ -1,23 +1,92 @@
-import type { FormEvent } from "react";
-import { Text } from "@repo/ui";
+import { useEffect } from "react";
+import { FormProvider, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { FormInput, FormSelect, FormTextArea, Text } from "@repo/ui";
+import { sessionSchema } from "@repo/validation";
 import type { SessionFormState } from "../types";
 
-export function SessionForm({ error, form, formId, onChange, onSubmit }: {
+export function SessionForm({
+  error,
+  form,
+  formId,
+  onSubmit,
+}: {
   error?: string;
   form: SessionFormState;
   formId: string;
-  onChange: <K extends keyof SessionFormState>(key: K, value: SessionFormState[K]) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (values: SessionFormState) => void | Promise<void>;
 }) {
-  return <form className="lms-organization-form" id={formId} onSubmit={onSubmit}>
-    <div className="lms-organization-form-grid">
-      <label className="lms-form-field"><span>Name</span><input autoFocus minLength={3} onChange={(event) => onChange("name", event.currentTarget.value)} placeholder="2025-2026" required value={form.name} /></label>
-      <label className="lms-form-field"><span>Code</span><input maxLength={20} onChange={(event) => onChange("code", event.currentTarget.value.toUpperCase())} placeholder="AY2526" value={form.code} /></label>
-      <label className="lms-form-field"><span>Start date</span><input onChange={(event) => onChange("startDate", event.currentTarget.value)} required type="datetime-local" value={form.startDate} /></label>
-      <label className="lms-form-field"><span>End date</span><input onChange={(event) => onChange("endDate", event.currentTarget.value)} required type="datetime-local" value={form.endDate} /></label>
-      <label className="lms-form-field"><span>Status</span><select onChange={(event) => onChange("status", event.currentTarget.value as SessionFormState["status"])} value={form.status}><option value="UPCOMING">Upcoming</option><option value="ACTIVE">Active</option><option value="COMPLETED">Completed</option><option value="ARCHIVED">Archived</option></select></label>
-      <label className="lms-form-field lms-form-field-wide"><span>Description</span><textarea onChange={(event) => onChange("description", event.currentTarget.value)} placeholder="Academic year session description." rows={4} value={form.description} /></label>
-    </div>
-    {error ? <Text color="#DC2626" fontSize="$caption" lineHeight="$caption">{error}</Text> : null}
-  </form>;
+  const methods = useForm<SessionFormState>({
+    defaultValues: form,
+    mode: "onBlur",
+    resolver: zodResolver(sessionSchema),
+  });
+
+  useEffect(() => {
+    methods.reset(form);
+  }, [form, methods]);
+
+  return (
+    <FormProvider {...methods}>
+      <form
+        className="lms-organization-form"
+        id={formId}
+        onSubmit={methods.handleSubmit((values) => onSubmit(values))}
+      >
+        <div className="lms-organization-form-grid">
+          <div className="lms-form-field">
+            <FormInput
+              autoFocus
+              label="Name"
+              name="name"
+              placeholder="2025-2026"
+            />
+          </div>
+          <div className="lms-form-field">
+            <FormInput
+              label="Code"
+              name="code"
+              placeholder="AY2526"
+              transform={(value) => value.toUpperCase()}
+            />
+          </div>
+          <div className="lms-form-field">
+            <FormInput
+              label="Start date"
+              name="startDate"
+              type="datetime-local"
+            />
+          </div>
+          <div className="lms-form-field">
+            <FormInput label="End date" name="endDate" type="datetime-local" />
+          </div>
+          <div className="lms-form-field">
+            <FormSelect
+              label="Status"
+              name="status"
+              options={[
+                { label: "Upcoming", value: "UPCOMING" },
+                { label: "Active", value: "ACTIVE" },
+                { label: "Completed", value: "COMPLETED" },
+                { label: "Archived", value: "ARCHIVED" },
+              ]}
+            />
+          </div>
+          <div className="lms-form-field lms-form-field-wide">
+            <FormTextArea
+              label="Description"
+              name="description"
+              placeholder="Academic year session description."
+              rows={4}
+            />
+          </div>
+        </div>
+        {error ? (
+          <Text color="#DC2626" fontSize="$caption" lineHeight="$caption">
+            {error}
+          </Text>
+        ) : null}
+      </form>
+    </FormProvider>
+  );
 }

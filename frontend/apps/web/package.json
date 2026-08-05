@@ -10,8 +10,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@repo/api": "workspace:*",
     "@repo/auth": "workspace:*",
+    "@repo/validation": "workspace:*",
     "@repo/ui": "workspace:*",
     "@tanstack/react-query": "^5.101.2",
     "lucide-react": "^1.23.0",

@@ -1,10 +1,15 @@
 "use client";
 
-import { useCallback, useState, type FormEvent } from "react";
-import type { CreateSessionRequest, Session, UpdateSessionRequest } from "@repo/types";
+import { useCallback, useState } from "react";
+import type {
+  CreateSessionRequest,
+  Session,
+  UpdateSessionRequest,
+} from "@repo/types";
 
 import { useSessionStore } from "../store";
 import type { SessionFormState, SessionToastState } from "../types";
+import { sessionSchema } from "@repo/validation";
 
 export const DEFAULT_SESSION_FORM: SessionFormState = {
   code: "",
@@ -45,17 +50,6 @@ function toPayload(form: SessionFormState): CreateSessionRequest {
   return payload;
 }
 
-function validate(form: SessionFormState) {
-  if (!form.name.trim() || form.name.trim().length < 3) {
-    return "Session name must be at least 3 characters.";
-  }
-  if (!form.startDate || !form.endDate) return "Start and end dates are required.";
-  if (new Date(form.startDate) >= new Date(form.endDate)) {
-    return "The start date must be before the end date.";
-  }
-  return null;
-}
-
 export function useSessionForm({
   createSession,
   isCreating,
@@ -69,7 +63,10 @@ export function useSessionForm({
   isUpdating: boolean;
   refetch: () => Promise<unknown>;
   showToast: (toast: Omit<SessionToastState, "id">) => void;
-  updateSession: (input: { sessionId: number; payload: UpdateSessionRequest }) => Promise<Session>;
+  updateSession: (input: {
+    sessionId: number;
+    payload: UpdateSessionRequest;
+  }) => Promise<Session>;
 }) {
   const {
     editingSession,
@@ -94,67 +91,94 @@ export function useSessionForm({
       setAddFormError(null);
     }
   }, [isCreating, setAddModalOpen]);
-  const updateAddForm = useCallback(<K extends keyof SessionFormState>(key: K, value: SessionFormState[K]) => {
-    setAddForm((current) => ({ ...current, [key]: value }));
-    setAddFormError(null);
-  }, []);
-  const submitAddSession = useCallback(async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const error = validate(addForm);
-    if (error) {
-      setAddFormError(error);
-      showToast({ message: error, title: "Invalid session", tone: "error" });
-      return;
-    }
-    try {
-      const session = await createSession(toPayload(addForm));
-      setAddModalOpen(false);
-      setSelectedSession(session);
-      showToast({ message: `${session.name} has been created successfully.`, title: "Session created", tone: "success" });
-      await refetch();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "The session could not be created.";
-      setAddFormError(message);
-      showToast({ message, title: "Create failed", tone: "error" });
-    }
-  }, [addForm, createSession, refetch, setAddModalOpen, setSelectedSession, showToast]);
+  const submitAddSession = useCallback(
+    async (values: SessionFormState) => {
+      const parsed = sessionSchema.safeParse(values);
+      if (!parsed.success) {
+        const error =
+          parsed.error.issues[0]?.message ?? "Enter valid session details.";
+        setAddFormError(error);
+        showToast({ message: error, title: "Invalid session", tone: "error" });
+        return;
+      }
+      try {
+        const session = await createSession(toPayload(values));
+        setAddModalOpen(false);
+        setSelectedSession(session);
+        showToast({
+          message: `${session.name} has been created successfully.`,
+          title: "Session created",
+          tone: "success",
+        });
+        await refetch();
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "The session could not be created.";
+        setAddFormError(message);
+        showToast({ message, title: "Create failed", tone: "error" });
+      }
+    },
+    [createSession, refetch, setAddModalOpen, setSelectedSession, showToast],
+  );
 
-  const openEditSession = useCallback((session: Session) => {
-    setEditingSession(session);
-    setEditForm(toForm(session));
-    setEditFormError(null);
-  }, [setEditingSession]);
+  const openEditSession = useCallback(
+    (session: Session) => {
+      setEditingSession(session);
+      setEditForm(toForm(session));
+      setEditFormError(null);
+    },
+    [setEditingSession],
+  );
   const closeEditSession = useCallback(() => {
     if (!isUpdating) {
       setEditingSession(null);
       setEditFormError(null);
     }
   }, [isUpdating, setEditingSession]);
-  const updateEditForm = useCallback(<K extends keyof SessionFormState>(key: K, value: SessionFormState[K]) => {
-    setEditForm((current) => ({ ...current, [key]: value }));
-    setEditFormError(null);
-  }, []);
-  const submitEditSession = useCallback(async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!editingSession) return;
-    const error = validate(editForm);
-    if (error) {
-      setEditFormError(error);
-      showToast({ message: error, title: "Invalid session", tone: "error" });
-      return;
-    }
-    try {
-      const session = await updateSession({ sessionId: editingSession.id, payload: toPayload(editForm) });
-      setEditingSession(null);
-      setSelectedSession(session);
-      showToast({ message: `${session.name} has been updated successfully.`, title: "Session updated", tone: "success" });
-      await refetch();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "The session could not be updated.";
-      setEditFormError(message);
-      showToast({ message, title: "Update failed", tone: "error" });
-    }
-  }, [editForm, editingSession, refetch, setEditingSession, setSelectedSession, showToast, updateSession]);
+  const submitEditSession = useCallback(
+    async (values: SessionFormState) => {
+      if (!editingSession) return;
+      const parsed = sessionSchema.safeParse(values);
+      if (!parsed.success) {
+        const error =
+          parsed.error.issues[0]?.message ?? "Enter valid session details.";
+        setEditFormError(error);
+        showToast({ message: error, title: "Invalid session", tone: "error" });
+        return;
+      }
+      try {
+        const session = await updateSession({
+          sessionId: editingSession.id,
+          payload: toPayload(values),
+        });
+        setEditingSession(null);
+        setSelectedSession(session);
+        showToast({
+          message: `${session.name} has been updated successfully.`,
+          title: "Session updated",
+          tone: "success",
+        });
+        await refetch();
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "The session could not be updated.";
+        setEditFormError(message);
+        showToast({ message, title: "Update failed", tone: "error" });
+      }
+    },
+    [
+      editingSession,
+      refetch,
+      setEditingSession,
+      setSelectedSession,
+      showToast,
+      updateSession,
+    ],
+  );
 
   return {
     addForm,
@@ -171,7 +195,5 @@ export function useSessionForm({
     openEditSession,
     submitAddSession,
     submitEditSession,
-    updateAddForm,
-    updateEditForm,
   };
 }

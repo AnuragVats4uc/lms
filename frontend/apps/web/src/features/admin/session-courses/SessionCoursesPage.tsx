@@ -1,7 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, CalendarDays, Clock3, FileText, ShieldCheck } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  BookOpen,
+  CalendarDays,
+  Clock3,
+  FileText,
+  ShieldCheck,
+} from "lucide-react";
 import { coursesApi, sessionCoursesApi } from "@repo/api";
 import type {
   Course,
@@ -12,26 +19,36 @@ import type {
   UpdateSessionCourseRequest,
 } from "@repo/types";
 import {
+  sessionCourseSchema,
+  type SessionCourseFormValues,
+} from "@repo/validation";
+import {
   DataTableDateCell,
   DataTableTextCell,
   type DataTableColumn,
 } from "@/components/DataTable";
-import { CrudBadge, CrudDetailField, CrudDetailSection, CrudSelect } from "../components/crud";
+import {
+  CrudBadge,
+  CrudDetailField,
+  CrudDetailSection,
+  CrudSelect,
+} from "../components/crud";
 import {
   CrudManagementPage,
   type ResourceFormContext,
 } from "../components/crud/CrudManagementPage";
 import { useAcademicSessions } from "../academic/useAcademicSessions";
-import { Text, XStack, YStack } from "@repo/ui";
+import {
+  FormCheckbox,
+  FormInput,
+  FormSelect,
+  FormTextArea,
+  Text,
+  XStack,
+  YStack,
+} from "@repo/ui";
 
-type SessionCourseForm = {
-  courseId: string;
-  description: string;
-  displayName: string;
-  isPublished: boolean;
-  sortOrder: string;
-  status: SessionCourseStatus;
-};
+type SessionCourseForm = SessionCourseFormValues;
 
 const initialForm: SessionCourseForm = {
   courseId: "",
@@ -68,17 +85,8 @@ function toUpdate(form: SessionCourseForm): UpdateSessionCourseRequest {
     status: form.status,
   };
 }
-function validate(form: SessionCourseForm) {
-  if (!Number(form.courseId)) return "Select a course.";
-  if (!Number.isInteger(Number(form.sortOrder)) || Number(form.sortOrder) < 0)
-    return "Sort order must be a non-negative whole number.";
-  return null;
-}
-
 function Form({
   error,
-  form,
-  onChange,
   courses,
 }: ResourceFormContext<SessionCourseForm> & { courses: Course[] }) {
   return (
@@ -88,84 +96,47 @@ function Form({
           {error}
         </Text>
       ) : null}
-      <label className="lms-form-field">
-        <span>Course</span>
-        <select
-          autoFocus
-          onChange={(event) => onChange("courseId", event.currentTarget.value)}
-          required
-          value={form.courseId}
-        >
-          <option value="">Select course</option>
-          {courses.map((course) => (
-            <option key={course.id} value={course.id}>
-              {course.name} ({course.code})
-            </option>
-          ))}
-        </select>
-      </label>
-      <XStack gap="$3" style={{ flexWrap: "wrap" }}>
-        <label className="lms-form-field">
-          <span>Display name</span>
-          <input
-            onChange={(event) =>
-              onChange("displayName", event.currentTarget.value)
-            }
-            placeholder="JEE Foundation - Morning"
-            value={form.displayName}
-          />
-        </label>
-        <label className="lms-form-field">
-          <span>Sort order</span>
-          <input
-            min={0}
-            onChange={(event) =>
-              onChange("sortOrder", event.currentTarget.value)
-            }
-            type="number"
-            value={form.sortOrder}
-          />
-        </label>
-      </XStack>
-      <XStack gap="$3" style={{ flexWrap: "wrap" }}>
-        <label className="lms-form-field">
-          <span>Status</span>
-          <select
-            onChange={(event) =>
-              onChange(
-                "status",
-                event.currentTarget.value as SessionCourseStatus,
-              )
-            }
-            value={form.status}
-          >
-            <option value="DRAFT">Draft</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
-            <option value="ARCHIVED">Archived</option>
-          </select>
-        </label>
-        <label className="lms-form-checkbox">
-          <input
-            checked={form.isPublished}
-            onChange={(event) =>
-              onChange("isPublished", event.currentTarget.checked)
-            }
-            type="checkbox"
-          />
-          <span>Published in session</span>
-        </label>
-      </XStack>
-      <label className="lms-form-field lms-form-field-wide">
-        <span>Description</span>
-        <textarea
-          onChange={(event) =>
-            onChange("description", event.currentTarget.value)
-          }
-          rows={4}
-          value={form.description}
+      <div className="lms-form-field">
+        <FormSelect
+          label="Course"
+          name="courseId"
+          options={courses.map((course) => ({
+            label: `${course.name} (${course.code})`,
+            value: String(course.id),
+          }))}
+          placeholder="Select course"
         />
-      </label>
+      </div>
+      <XStack gap="$3" style={{ flexWrap: "wrap" }}>
+        <div className="lms-form-field">
+          <FormInput
+            label="Display name"
+            name="displayName"
+            placeholder="JEE Foundation - Morning"
+          />
+        </div>
+        <div className="lms-form-field">
+          <FormInput label="Sort order" name="sortOrder" type="number" />
+        </div>
+      </XStack>
+      <XStack gap="$3" style={{ flexWrap: "wrap" }}>
+        <div className="lms-form-field">
+          <FormSelect
+            label="Status"
+            name="status"
+            options={[
+              { label: "Draft", value: "DRAFT" },
+              { label: "Active", value: "ACTIVE" },
+              { label: "Inactive", value: "INACTIVE" },
+              { label: "Archived", value: "ARCHIVED" },
+            ]}
+          />
+        </div>
+        <FormCheckbox checkboxLabel="Published in session" name="isPublished" />
+      </XStack>
+      <div className="lms-form-field lms-form-field-wide">
+        <FormTextArea label="Description" name="description" rows={4} />
+      </div>
     </YStack>
   );
 }
@@ -314,10 +285,26 @@ export function SessionCoursesPage() {
       enabled={academic.selectedSessionId !== null}
       entityLabel="Session Course"
       getStats={({ rows, total }) => [
-        { icon: <BookOpen color="#059669" size={20} />, label: "Total Assignments", value: total },
-        { icon: <ShieldCheck color="#059669" size={20} />, label: "Active Assignments", value: rows.filter((row) => row.status === "ACTIVE").length },
-        { icon: <CalendarDays color="#2563EB" size={20} />, label: "Published", value: rows.filter((row) => row.isPublished).length },
-        { icon: <Clock3 color="#64748B" size={20} />, label: "Archived", value: rows.filter((row) => row.status === "ARCHIVED").length },
+        {
+          icon: <BookOpen color="#059669" size={20} />,
+          label: "Total Assignments",
+          value: total,
+        },
+        {
+          icon: <ShieldCheck color="#059669" size={20} />,
+          label: "Active Assignments",
+          value: rows.filter((row) => row.status === "ACTIVE").length,
+        },
+        {
+          icon: <CalendarDays color="#2563EB" size={20} />,
+          label: "Published",
+          value: rows.filter((row) => row.isPublished).length,
+        },
+        {
+          icon: <Clock3 color="#64748B" size={20} />,
+          label: "Archived",
+          value: rows.filter((row) => row.status === "ARCHIVED").length,
+        },
       ]}
       getDisplayName={(item) => item.displayName ?? item.course.name}
       getIsActive={(item) => item.isActive}
@@ -337,20 +324,61 @@ export function SessionCoursesPage() {
       queryKey={["admin", "session-courses", academic.selectedSessionId]}
       renderDetails={(item) => (
         <YStack gap="$3">
-          <CrudDetailSection icon={<BookOpen color="#059669" size={15} />} title="Assignment">
-            <CrudDetailField icon={<BookOpen color="#059669" size={15} />} label="Course" value={`${item.course.name} (${item.course.code})`} />
-            <CrudDetailField icon={<CalendarDays color="#059669" size={15} />} label="Session ID" value={item.sessionId} />
-            <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Sort order" value={item.sortOrder} />
+          <CrudDetailSection
+            icon={<BookOpen color="#059669" size={15} />}
+            title="Assignment"
+          >
+            <CrudDetailField
+              icon={<BookOpen color="#059669" size={15} />}
+              label="Course"
+              value={`${item.course.name} (${item.course.code})`}
+            />
+            <CrudDetailField
+              icon={<CalendarDays color="#059669" size={15} />}
+              label="Session ID"
+              value={item.sessionId}
+            />
+            <CrudDetailField
+              icon={<Clock3 color="#059669" size={15} />}
+              label="Sort order"
+              value={item.sortOrder}
+            />
           </CrudDetailSection>
-          <CrudDetailSection icon={<ShieldCheck color="#059669" size={15} />} title="Publishing">
-            <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Status" value={<CrudBadge align="start" tone={statusTone(item.status)}>{item.status}</CrudBadge>} />
-            <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Published" value={item.isPublished ? "Yes" : "No"} />
-            <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Active record" value={item.isActive ? "Yes" : "No"} />
+          <CrudDetailSection
+            icon={<ShieldCheck color="#059669" size={15} />}
+            title="Publishing"
+          >
+            <CrudDetailField
+              icon={<ShieldCheck color="#059669" size={15} />}
+              label="Status"
+              value={
+                <CrudBadge align="start" tone={statusTone(item.status)}>
+                  {item.status}
+                </CrudBadge>
+              }
+            />
+            <CrudDetailField
+              icon={<ShieldCheck color="#059669" size={15} />}
+              label="Published"
+              value={item.isPublished ? "Yes" : "No"}
+            />
+            <CrudDetailField
+              icon={<ShieldCheck color="#059669" size={15} />}
+              label="Active record"
+              value={item.isActive ? "Yes" : "No"}
+            />
           </CrudDetailSection>
-          <CrudDetailSection icon={<FileText color="#059669" size={15} />} title="Description">
-            <CrudDetailField icon={<FileText color="#059669" size={15} />} label="Description" value={item.description} />
+          <CrudDetailSection
+            icon={<FileText color="#059669" size={15} />}
+            title="Description"
+          >
+            <CrudDetailField
+              icon={<FileText color="#059669" size={15} />}
+              label="Description"
+              value={item.description}
+            />
           </CrudDetailSection>
-      <Text color="#52627A" fontSize="$caption" style={{ display: "none" }}>
+          <Text color="#52627A" fontSize="$caption" style={{ display: "none" }}>
             Description: {item.description ?? "—"}
           </Text>
         </YStack>
@@ -366,7 +394,9 @@ export function SessionCoursesPage() {
       setActive={(id, active) =>
         academic.selectedSessionId === null
           ? Promise.reject(new Error("Select a session first."))
-          : sessionCoursesApi.update(academic.selectedSessionId, id, { isActive: active })
+          : sessionCoursesApi.update(academic.selectedSessionId, id, {
+              isActive: active,
+            })
       }
       statusOptions={statusOptions}
       title="Session Courses"
@@ -385,7 +415,7 @@ export function SessionCoursesPage() {
           ? Promise.reject(new Error("Select a session first."))
           : sessionCoursesApi.update(academic.selectedSessionId, id, payload)
       }
-      validate={validate}
+      formResolver={zodResolver(sessionCourseSchema)}
     />
   );
 }

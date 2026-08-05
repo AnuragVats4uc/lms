@@ -17,7 +17,6 @@ export function SessionOverlays({
         form={form.addForm}
         isOpen={form.isAddModalOpen}
         isSubmitting={form.isCreating}
-        onChange={form.updateAddForm}
         onClose={form.closeAddSession}
         onSubmit={form.submitAddSession}
       />
@@ -26,7 +25,6 @@ export function SessionOverlays({
         form={form.editForm}
         isOpen={Boolean(form.editingSession)}
         isSubmitting={form.isUpdating}
-        onChange={form.updateEditForm}
         onClose={form.closeEditSession}
         onSubmit={form.submitEditSession}
       />

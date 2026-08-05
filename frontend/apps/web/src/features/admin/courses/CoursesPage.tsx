@@ -1,13 +1,22 @@
 "use client";
 
 import { coursesApi } from "@repo/api";
-import { BookOpen, CalendarDays, Clock3, FileText, Image, ShieldCheck } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  BookOpen,
+  CalendarDays,
+  Clock3,
+  FileText,
+  Image,
+  ShieldCheck,
+} from "lucide-react";
 import type {
   Course,
   CourseStatus,
   CreateCourseRequest,
   UpdateCourseRequest,
 } from "@repo/types";
+import { courseSchema, type CourseFormValues } from "@repo/validation";
 import {
   DataTableDateCell,
   DataTableTextCell,
@@ -23,16 +32,16 @@ import {
   CrudManagementPage,
   type ResourceFormContext,
 } from "../components/crud/CrudManagementPage";
-import { Text, XStack, YStack } from "@repo/ui";
+import {
+  FormInput,
+  FormSelect,
+  FormTextArea,
+  Text,
+  XStack,
+  YStack,
+} from "@repo/ui";
 
-type CourseForm = {
-  code: string;
-  description: string;
-  durationInDays: string;
-  name: string;
-  status: CourseStatus;
-  thumbnail: string;
-};
+type CourseForm = CourseFormValues;
 
 const initialForm: CourseForm = {
   code: "",
@@ -67,31 +76,7 @@ function toUpdatePayload(form: CourseForm): UpdateCourseRequest {
   return toPayload(form);
 }
 
-function validate(form: CourseForm) {
-  if (form.name.trim().length < 3)
-    return "Course name must be at least 3 characters.";
-  if (!form.code.trim()) return "Course code is required.";
-  if (
-    form.durationInDays &&
-    (!Number.isInteger(Number(form.durationInDays)) ||
-      Number(form.durationInDays) < 1)
-  )
-    return "Duration must be a positive whole number.";
-  if (form.thumbnail.trim() && !isValidUrl(form.thumbnail))
-    return "Enter a valid thumbnail URL.";
-  return null;
-}
-
-function isValidUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-function Form({ error, form, onChange }: ResourceFormContext<CourseForm>) {
+function Form({ error }: ResourceFormContext<CourseForm>) {
   return (
     <YStack className="lms-organization-form" gap="$3">
       {error ? (
@@ -100,78 +85,61 @@ function Form({ error, form, onChange }: ResourceFormContext<CourseForm>) {
         </Text>
       ) : null}
       <XStack gap="$3" style={{ flexWrap: "wrap" }}>
-        <label className="lms-form-field">
-          <span>Name</span>
-          <input
+        <div className="lms-form-field">
+          <FormInput
             autoFocus
-            minLength={3}
-            onChange={(event) => onChange("name", event.currentTarget.value)}
+            label="Name"
+            name="name"
             placeholder="JEE Foundation"
-            required
-            value={form.name}
           />
-        </label>
-        <label className="lms-form-field">
-          <span>Code</span>
-          <input
-            maxLength={30}
-            onChange={(event) =>
-              onChange("code", event.currentTarget.value.toUpperCase())
-            }
+        </div>
+        <div className="lms-form-field">
+          <FormInput
+            label="Code"
+            name="code"
             placeholder="JEE-FDN"
-            required
-            value={form.code}
+            transform={(value) => value.toUpperCase()}
           />
-        </label>
+        </div>
       </XStack>
       <XStack gap="$3" style={{ flexWrap: "wrap" }}>
-        <label className="lms-form-field">
-          <span>Duration (days)</span>
-          <input
-            min={1}
-            onChange={(event) =>
-              onChange("durationInDays", event.currentTarget.value)
-            }
+        <div className="lms-form-field">
+          <FormInput
+            label="Duration (days)"
+            name="durationInDays"
             placeholder="365"
             type="number"
-            value={form.durationInDays}
           />
-        </label>
-        <label className="lms-form-field">
-          <span>Status</span>
-          <select
-            onChange={(event) =>
-              onChange("status", event.currentTarget.value as CourseStatus)
-            }
-            value={form.status}
-          >
-            <option value="DRAFT">Draft</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
-            <option value="ARCHIVED">Archived</option>
-          </select>
-        </label>
+        </div>
+        <div className="lms-form-field">
+          <FormSelect
+            label="Status"
+            name="status"
+            options={[
+              { label: "Draft", value: "DRAFT" },
+              { label: "Active", value: "ACTIVE" },
+              { label: "Inactive", value: "INACTIVE" },
+              { label: "Archived", value: "ARCHIVED" },
+            ]}
+          />
+        </div>
       </XStack>
-      <label className="lms-form-field">
-        <span>Thumbnail URL</span>
-        <input
-          onChange={(event) => onChange("thumbnail", event.currentTarget.value)}
+      <div className="lms-form-field">
+        <FormInput
+          label="Thumbnail URL"
+          name="thumbnail"
           placeholder="https://cdn.example.com/course.png"
           type="url"
-          value={form.thumbnail}
         />
-      </label>
-      <label className="lms-form-field lms-form-field-wide">
-        <span>Description</span>
-        <textarea
-          onChange={(event) =>
-            onChange("description", event.currentTarget.value)
-          }
+      </div>
+      <div className="lms-form-field lms-form-field-wide">
+        <FormTextArea
+          label="Description"
+          name="description"
           placeholder="Course description."
           rows={4}
-          value={form.description}
         />
-      </label>
+      </div>
     </YStack>
   );
 }
@@ -261,24 +229,71 @@ const columns: DataTableColumn<Course>[] = [
 function details(course: Course) {
   return (
     <YStack gap="$3">
-      <CrudDetailSection icon={<BookOpen color="#059669" size={15} />} title="Course">
-        <CrudDetailField icon={<BookOpen color="#059669" size={15} />} label="Code" value={course.code} />
-        <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Status" value={<CrudBadge align="start" tone={statusTone(course.status)}>{course.status}</CrudBadge>} />
-        <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Duration" value={course.durationInDays ? `${course.durationInDays} days` : "Not set"} />
-        <CrudDetailField icon={<FileText color="#059669" size={15} />} label="Description" value={course.description} />
+      <CrudDetailSection
+        icon={<BookOpen color="#059669" size={15} />}
+        title="Course"
+      >
+        <CrudDetailField
+          icon={<BookOpen color="#059669" size={15} />}
+          label="Code"
+          value={course.code}
+        />
+        <CrudDetailField
+          icon={<ShieldCheck color="#059669" size={15} />}
+          label="Status"
+          value={
+            <CrudBadge align="start" tone={statusTone(course.status)}>
+              {course.status}
+            </CrudBadge>
+          }
+        />
+        <CrudDetailField
+          icon={<Clock3 color="#059669" size={15} />}
+          label="Duration"
+          value={
+            course.durationInDays ? `${course.durationInDays} days` : "Not set"
+          }
+        />
+        <CrudDetailField
+          icon={<FileText color="#059669" size={15} />}
+          label="Description"
+          value={course.description}
+        />
       </CrudDetailSection>
       <YStack style={{ display: "none" }}>
-      <Text color="#52627A" fontSize="$caption" style={{ display: "none" }}>
-        Description: {course.description ?? "—"}
-      </Text>
+        <Text color="#52627A" fontSize="$caption" style={{ display: "none" }}>
+          Description: {course.description ?? "—"}
+        </Text>
       </YStack>
-      <CrudDetailSection icon={<Image color="#059669" size={15} />} title="Availability">
-        <CrudDetailField icon={<Image color="#059669" size={15} />} label="Thumbnail" value={course.thumbnail ?? "Not provided"} />
-        <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Active record" value={course.isActive ? "Yes" : "No"} />
+      <CrudDetailSection
+        icon={<Image color="#059669" size={15} />}
+        title="Availability"
+      >
+        <CrudDetailField
+          icon={<Image color="#059669" size={15} />}
+          label="Thumbnail"
+          value={course.thumbnail ?? "Not provided"}
+        />
+        <CrudDetailField
+          icon={<ShieldCheck color="#059669" size={15} />}
+          label="Active record"
+          value={course.isActive ? "Yes" : "No"}
+        />
       </CrudDetailSection>
-      <CrudDetailSection icon={<CalendarDays color="#059669" size={15} />} title="Record history">
-        <CrudDetailField icon={<CalendarDays color="#059669" size={15} />} label="Created" value={new Date(course.createdAt).toLocaleString()} />
-        <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Last updated" value={new Date(course.updatedAt).toLocaleString()} />
+      <CrudDetailSection
+        icon={<CalendarDays color="#059669" size={15} />}
+        title="Record history"
+      >
+        <CrudDetailField
+          icon={<CalendarDays color="#059669" size={15} />}
+          label="Created"
+          value={new Date(course.createdAt).toLocaleString()}
+        />
+        <CrudDetailField
+          icon={<Clock3 color="#059669" size={15} />}
+          label="Last updated"
+          value={new Date(course.updatedAt).toLocaleString()}
+        />
       </CrudDetailSection>
     </YStack>
   );
@@ -298,10 +313,26 @@ export function CoursesPage() {
       emptyDescription="Create the first course to make it available for session assignments."
       entityLabel="Course"
       getStats={({ rows, total }) => [
-        { icon: <BookOpen color="#059669" size={20} />, label: "Total Courses", value: total },
-        { icon: <ShieldCheck color="#059669" size={20} />, label: "Active Courses", value: rows.filter((row) => row.status === "ACTIVE").length },
-        { icon: <FileText color="#C2410C" size={20} />, label: "Draft Courses", value: rows.filter((row) => row.status === "DRAFT").length },
-        { icon: <Clock3 color="#64748B" size={20} />, label: "Archived Courses", value: rows.filter((row) => row.status === "ARCHIVED").length },
+        {
+          icon: <BookOpen color="#059669" size={20} />,
+          label: "Total Courses",
+          value: total,
+        },
+        {
+          icon: <ShieldCheck color="#059669" size={20} />,
+          label: "Active Courses",
+          value: rows.filter((row) => row.status === "ACTIVE").length,
+        },
+        {
+          icon: <FileText color="#C2410C" size={20} />,
+          label: "Draft Courses",
+          value: rows.filter((row) => row.status === "DRAFT").length,
+        },
+        {
+          icon: <Clock3 color="#64748B" size={20} />,
+          label: "Archived Courses",
+          value: rows.filter((row) => row.status === "ARCHIVED").length,
+        },
       ]}
       getDisplayName={(course) => course.name}
       getIsActive={(course) => course.isActive}
@@ -334,7 +365,7 @@ export function CoursesPage() {
       })}
       toUpdatePayload={toUpdatePayload}
       update={(id, payload) => coursesApi.update(id, payload)}
-      validate={validate}
+      formResolver={zodResolver(courseSchema)}
     />
   );
 }

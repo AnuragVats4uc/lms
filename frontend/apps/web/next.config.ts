@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
     '@repo/ui',
     '@repo/api',
     '@repo/auth',
+    '@repo/validation',
     '@repo/types',
   ],
 }

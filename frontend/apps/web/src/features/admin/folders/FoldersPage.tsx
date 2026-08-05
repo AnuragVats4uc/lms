@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { foldersApi, sessionCoursesApi } from "@repo/api";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Building2,
   CalendarDays,
@@ -20,13 +21,19 @@ import type {
   FolderTreeNode,
   UpdateFolderRequest,
 } from "@repo/types";
+import { folderSchema, type FolderFormValues } from "@repo/validation";
 import { useQuery } from "@tanstack/react-query";
 import {
   DataTableDateCell,
   DataTableTextCell,
   type DataTableColumn,
 } from "@/components/DataTable";
-import { CrudBadge, CrudDetailField, CrudDetailSection, CrudSelect } from "../components/crud";
+import {
+  CrudBadge,
+  CrudDetailField,
+  CrudDetailSection,
+  CrudSelect,
+} from "../components/crud";
 import {
   CrudManagementPage,
   type ResourceFormContext,
@@ -34,17 +41,17 @@ import {
 import { useAcademicSessions } from "../academic/useAcademicSessions";
 import { TreeView, type TreeNodeItem } from "@repo/ui/dashboard";
 import { AppCard } from "@repo/ui/primitives";
-import { Button, Text, XStack, YStack } from "@repo/ui";
+import {
+  Button,
+  FormInput,
+  FormSelect,
+  FormTextArea,
+  Text,
+  XStack,
+  YStack,
+} from "@repo/ui";
 
-type FolderForm = {
-  color: string;
-  description: string;
-  icon: string;
-  name: string;
-  parentFolderId: string;
-  sortOrder: string;
-  status: FolderStatus;
-};
+type FolderForm = FolderFormValues;
 
 const initialForm: FolderForm = {
   color: "",
@@ -89,19 +96,8 @@ function toUpdate(form: FolderForm): UpdateFolderRequest {
     parentFolderId: form.parentFolderId ? Number(form.parentFolderId) : null,
   };
 }
-function validate(form: FolderForm) {
-  if (!form.name.trim()) return "Folder name is required.";
-  if (!Number.isInteger(Number(form.sortOrder)) || Number(form.sortOrder) < 0)
-    return "Sort order must be a non-negative whole number.";
-  if (form.color.trim() && !/^#?[0-9a-f]{3,8}$/iu.test(form.color.trim()))
-    return "Color must be a valid hex color.";
-  return null;
-}
-
 function Form({
   error,
-  form,
-  onChange,
   folders,
 }: ResourceFormContext<FolderForm> & { folders: Folder[] }) {
   return (
@@ -112,86 +108,47 @@ function Form({
         </Text>
       ) : null}
       <XStack gap="$3" style={{ flexWrap: "wrap" }}>
-        <label className="lms-form-field">
-          <span>Name</span>
-          <input
-            autoFocus
-            onChange={(event) => onChange("name", event.currentTarget.value)}
-            placeholder="Physics"
-            required
-            value={form.name}
+        <div className="lms-form-field">
+          <FormInput autoFocus label="Name" name="name" placeholder="Physics" />
+        </div>
+        <div className="lms-form-field">
+          <FormSelect
+            label="Parent folder"
+            name="parentFolderId"
+            options={folders.map((folder) => ({
+              label: folder.name,
+              value: String(folder.id),
+            }))}
+            placeholder="Session-course root"
           />
-        </label>
-        <label className="lms-form-field">
-          <span>Parent folder</span>
-          <select
-            onChange={(event) =>
-              onChange("parentFolderId", event.currentTarget.value)
-            }
-            value={form.parentFolderId}
-          >
-            <option value="">Session-course root</option>
-            {folders.map((folder) => (
-              <option key={folder.id} value={folder.id}>
-                {folder.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        </div>
       </XStack>
       <XStack gap="$3" style={{ flexWrap: "wrap" }}>
-        <label className="lms-form-field">
-          <span>Sort order</span>
-          <input
-            min={0}
-            onChange={(event) =>
-              onChange("sortOrder", event.currentTarget.value)
-            }
-            type="number"
-            value={form.sortOrder}
+        <div className="lms-form-field">
+          <FormInput label="Sort order" name="sortOrder" type="number" />
+        </div>
+        <div className="lms-form-field">
+          <FormSelect
+            label="Status"
+            name="status"
+            options={[
+              { label: "Active", value: "ACTIVE" },
+              { label: "Archived", value: "ARCHIVED" },
+            ]}
           />
-        </label>
-        <label className="lms-form-field">
-          <span>Status</span>
-          <select
-            onChange={(event) =>
-              onChange("status", event.currentTarget.value as FolderStatus)
-            }
-            value={form.status}
-          >
-            <option value="ACTIVE">Active</option>
-            <option value="ARCHIVED">Archived</option>
-          </select>
-        </label>
+        </div>
       </XStack>
       <XStack gap="$3" style={{ flexWrap: "wrap" }}>
-        <label className="lms-form-field">
-          <span>Icon</span>
-          <input
-            onChange={(event) => onChange("icon", event.currentTarget.value)}
-            placeholder="book-open"
-            value={form.icon}
-          />
-        </label>
-        <label className="lms-form-field">
-          <span>Color</span>
-          <input
-            onChange={(event) => onChange("color", event.currentTarget.value)}
-            placeholder="#2563EB"
-            value={form.color}
-          />
-        </label>
+        <div className="lms-form-field">
+          <FormInput label="Icon" name="icon" placeholder="book-open" />
+        </div>
+        <div className="lms-form-field">
+          <FormInput label="Color" name="color" placeholder="#2563EB" />
+        </div>
       </XStack>
-      <label className="lms-form-field lms-form-field-wide">
-        <span>Description</span>
-        <textarea
-          onChange={(event) =>
-            onChange("description", event.currentTarget.value)
-          }
-          rows={4}
-          value={form.description}
-        />
-      </label>
+      <div className="lms-form-field lms-form-field-wide">
+        <FormTextArea label="Description" name="description" rows={4} />
+      </div>
     </YStack>
   );
 }
@@ -282,15 +239,15 @@ export function FoldersPage() {
     setSelectedOrganizationId,
     setSelectedSessionId,
   } = academic;
-  const requestedOrganizationId = Number(searchParams.get("organizationId")) || null;
+  const requestedOrganizationId =
+    Number(searchParams.get("organizationId")) || null;
   const requestedSessionId = Number(searchParams.get("sessionId")) || null;
-  const requestedSessionCourseId = Number(searchParams.get("sessionCourseId")) || null;
+  const requestedSessionCourseId =
+    Number(searchParams.get("sessionCourseId")) || null;
   const [selectedSessionCourseId, setSelectedSessionCourseId] = useState<
     number | null
   >(requestedSessionCourseId);
-  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(
-    null,
-  );
+  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
 
   useEffect(() => {
     if (
@@ -314,9 +271,8 @@ export function FoldersPage() {
     setSelectedSessionId,
   ]);
   const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
-  const [expandedFolderIds, setExpandedFolderIds] = useState<Set<number> | null>(
-    null,
-  );
+  const [expandedFolderIds, setExpandedFolderIds] =
+    useState<Set<number> | null>(null);
   const sessionCoursesQuery = useQuery({
     enabled: academic.selectedSessionId !== null,
     queryFn: () =>
@@ -348,9 +304,7 @@ export function FoldersPage() {
     (item) => item.id === effectiveSessionCourseId,
   );
   const expandedIds = useMemo(
-    () =>
-      expandedFolderIds ??
-      new Set(getExpandableFolderIds(tree)),
+    () => expandedFolderIds ?? new Set(getExpandableFolderIds(tree)),
     [expandedFolderIds, tree],
   );
   const folderTreeItems = useMemo<TreeNodeItem[]>(() => {
@@ -393,7 +347,8 @@ export function FoldersPage() {
         id: `organization-${academic.selectedOrganizationId ?? "current"}`,
         label:
           academic.organizations.find(
-            (organization) => organization.id === academic.selectedOrganizationId,
+            (organization) =>
+              organization.id === academic.selectedOrganizationId,
           )?.name ?? "Organization",
       },
     ];
@@ -406,7 +361,7 @@ export function FoldersPage() {
     selectedSessionCourse,
     tree,
   ]);
-  const renderContext = ({ openCreate }: { openCreate: () => void }) => (
+  const renderContext = () => (
     <YStack gap="$3">
       <XStack gap="$3" style={{ alignItems: "center", flexWrap: "wrap" }}>
         {academic.organizations.length ? (
@@ -463,7 +418,9 @@ export function FoldersPage() {
             label: item.displayName ?? item.course.name,
             value: String(item.id),
           }))}
-          value={effectiveSessionCourseId ? String(effectiveSessionCourseId) : ""}
+          value={
+            effectiveSessionCourseId ? String(effectiveSessionCourseId) : ""
+          }
         />
       </XStack>
     </YStack>
@@ -554,10 +511,26 @@ export function FoldersPage() {
       enabled={effectiveSessionCourseId !== null}
       entityLabel="Folder"
       getStats={({ rows, total }) => [
-        { icon: <FolderTree color="#059669" size={20} />, label: "Total Folders", value: total },
-        { icon: <ShieldCheck color="#059669" size={20} />, label: "Active Folders", value: rows.filter((row) => row.status === "ACTIVE").length },
-        { icon: <FolderTree color="#2563EB" size={20} />, label: "Nested Folders", value: rows.filter((row) => row.parentFolderId !== null).length },
-        { icon: <Clock3 color="#64748B" size={20} />, label: "Archived Folders", value: rows.filter((row) => row.status === "ARCHIVED").length },
+        {
+          icon: <FolderTree color="#059669" size={20} />,
+          label: "Total Folders",
+          value: total,
+        },
+        {
+          icon: <ShieldCheck color="#059669" size={20} />,
+          label: "Active Folders",
+          value: rows.filter((row) => row.status === "ACTIVE").length,
+        },
+        {
+          icon: <FolderTree color="#2563EB" size={20} />,
+          label: "Nested Folders",
+          value: rows.filter((row) => row.parentFolderId !== null).length,
+        },
+        {
+          icon: <Clock3 color="#64748B" size={20} />,
+          label: "Archived Folders",
+          value: rows.filter((row) => row.status === "ARCHIVED").length,
+        },
       ]}
       getDisplayName={(folder) => folder.name}
       getIsActive={(folder) => folder.isActive}
@@ -588,23 +561,70 @@ export function FoldersPage() {
       setActive={(id, active) =>
         effectiveSessionCourseId === null
           ? Promise.reject(new Error("Select a session course first."))
-          : foldersApi.update(effectiveSessionCourseId, id, { isActive: active })
+          : foldersApi.update(effectiveSessionCourseId, id, {
+              isActive: active,
+            })
       }
       renderDetails={(folder) => (
         <YStack gap="$3">
-          <CrudDetailSection icon={<FolderTree color="#059669" size={15} />} title="Folder hierarchy">
-            <CrudDetailField icon={<FolderTree color="#059669" size={15} />} label="Parent folder" value={folder.parentFolderId ?? "Session-course root"} />
-            <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Sort order" value={folder.sortOrder} />
-            <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Status" value={<CrudBadge tone={statusTone(folder.status)}>{folder.status}</CrudBadge>} />
+          <CrudDetailSection
+            icon={<FolderTree color="#059669" size={15} />}
+            title="Folder hierarchy"
+          >
+            <CrudDetailField
+              icon={<FolderTree color="#059669" size={15} />}
+              label="Parent folder"
+              value={folder.parentFolderId ?? "Session-course root"}
+            />
+            <CrudDetailField
+              icon={<Clock3 color="#059669" size={15} />}
+              label="Sort order"
+              value={folder.sortOrder}
+            />
+            <CrudDetailField
+              icon={<ShieldCheck color="#059669" size={15} />}
+              label="Status"
+              value={
+                <CrudBadge tone={statusTone(folder.status)}>
+                  {folder.status}
+                </CrudBadge>
+              }
+            />
           </CrudDetailSection>
-          <CrudDetailSection icon={<Palette color="#059669" size={15} />} title="Appearance">
-            <CrudDetailField icon={<FolderTree color="#059669" size={15} />} label="Icon" value={folder.icon} />
-            <CrudDetailField icon={<Palette color="#059669" size={15} />} label="Color" value={folder.color} />
-            <CrudDetailField icon={<ShieldCheck color="#059669" size={15} />} label="Active record" value={folder.isActive ? "Yes" : "No"} />
+          <CrudDetailSection
+            icon={<Palette color="#059669" size={15} />}
+            title="Appearance"
+          >
+            <CrudDetailField
+              icon={<FolderTree color="#059669" size={15} />}
+              label="Icon"
+              value={folder.icon}
+            />
+            <CrudDetailField
+              icon={<Palette color="#059669" size={15} />}
+              label="Color"
+              value={folder.color}
+            />
+            <CrudDetailField
+              icon={<ShieldCheck color="#059669" size={15} />}
+              label="Active record"
+              value={folder.isActive ? "Yes" : "No"}
+            />
           </CrudDetailSection>
-          <CrudDetailSection icon={<CalendarDays color="#059669" size={15} />} title="Record history">
-            <CrudDetailField icon={<CalendarDays color="#059669" size={15} />} label="Created" value={new Date(folder.createdAt).toLocaleString()} />
-            <CrudDetailField icon={<Clock3 color="#059669" size={15} />} label="Last updated" value={new Date(folder.updatedAt).toLocaleString()} />
+          <CrudDetailSection
+            icon={<CalendarDays color="#059669" size={15} />}
+            title="Record history"
+          >
+            <CrudDetailField
+              icon={<CalendarDays color="#059669" size={15} />}
+              label="Created"
+              value={new Date(folder.createdAt).toLocaleString()}
+            />
+            <CrudDetailField
+              icon={<Clock3 color="#059669" size={15} />}
+              label="Last updated"
+              value={new Date(folder.updatedAt).toLocaleString()}
+            />
           </CrudDetailSection>
           <Text color="#52627A" fontSize="$caption" style={{ display: "none" }}>
             Description: {folder.description ?? "—"}
@@ -639,7 +659,7 @@ export function FoldersPage() {
           ? Promise.reject(new Error("Select a session course first."))
           : foldersApi.update(effectiveSessionCourseId, id, payload)
       }
-      validate={validate}
+      formResolver={zodResolver(folderSchema)}
     />
   );
 }
