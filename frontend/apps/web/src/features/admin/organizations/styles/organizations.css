@@ -44,6 +44,18 @@
   grid-template-columns: minmax(0, 1fr) 336px;
 }
 
+.lms-organization-management-grid.has-content-aside {
+  grid-template-columns: 280px minmax(0, 1fr);
+}
+
+.lms-organization-management-grid.has-content-aside.is-side-panel-open {
+  grid-template-columns: 280px minmax(0, 1fr) 336px;
+}
+
+.lms-crud-table-aside {
+  min-width: 0;
+}
+
 /* .lms-organization-stat-card,
 .lms-organizations-page .lms-data-table-card {
   background:

@@ -2,7 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { foldersApi, sessionCoursesApi } from "@repo/api";
-import { CalendarDays, Clock3, FolderTree, Palette, ShieldCheck } from "lucide-react";
+import {
+  Building2,
+  CalendarDays,
+  Clock3,
+  Folder as FolderIcon,
+  FolderTree,
+  Palette,
+  Plus,
+  ShieldCheck,
+} from "lucide-react";
 import type {
   CreateFolderRequest,
   Folder,
@@ -22,7 +31,9 @@ import {
   type ResourceFormContext,
 } from "../components/crud/CrudManagementPage";
 import { useAcademicSessions } from "../academic/useAcademicSessions";
-import { Text, XStack, YStack } from "@repo/ui";
+import { TreeView, type TreeNodeItem } from "@repo/ui/dashboard";
+import { AppCard } from "@repo/ui/primitives";
+import { Button, Text, XStack, YStack } from "@repo/ui";
 
 type FolderForm = {
   color: string;
@@ -51,6 +62,13 @@ const statusOptions = [
 
 function flatten(nodes: FolderTreeNode[]): FolderTreeNode[] {
   return nodes.flatMap((node) => [node, ...flatten(node.children)]);
+}
+
+function getExpandableFolderIds(nodes: FolderTreeNode[]): number[] {
+  return nodes.flatMap((node) => [
+    ...(node.children.length ? [node.id] : []),
+    ...getExpandableFolderIds(node.children),
+  ]);
 }
 function toCreate(form: FolderForm): CreateFolderRequest {
   const payload: CreateFolderRequest = {
@@ -254,34 +272,18 @@ const columns: DataTableColumn<Folder>[] = [
   },
 ];
 
-function Tree({
-  nodes,
-  depth = 0,
-}: {
-  nodes: FolderTreeNode[];
-  depth?: number;
-}) {
-  return (
-    <YStack gap="$2">
-      {nodes.map((node) => (
-        <YStack key={node.id} gap="$1" style={{ marginLeft: depth * 18 }}>
-          <Text color="#0F1D3A" fontSize="$label" fontWeight="$button">
-            {node.name}
-          </Text>
-          {node.children.length ? (
-            <Tree depth={depth + 1} nodes={node.children} />
-          ) : null}
-        </YStack>
-      ))}
-    </YStack>
-  );
-}
-
 export function FoldersPage() {
   const academic = useAcademicSessions();
   const [selectedSessionCourseId, setSelectedSessionCourseId] = useState<
     number | null
   >(null);
+  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(
+    null,
+  );
+  const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
+  const [expandedFolderIds, setExpandedFolderIds] = useState<Set<number> | null>(
+    null,
+  );
   const sessionCoursesQuery = useQuery({
     enabled: academic.selectedSessionId !== null,
     queryFn: () =>
@@ -309,7 +311,69 @@ export function FoldersPage() {
     [folderTreeQuery.data],
   );
   const folders = useMemo(() => flatten(tree), [tree]);
-  const context = (
+  const selectedSessionCourse = sessionCourses.find(
+    (item) => item.id === effectiveSessionCourseId,
+  );
+  const expandedIds = useMemo(
+    () =>
+      expandedFolderIds ??
+      new Set(getExpandableFolderIds(tree)),
+    [expandedFolderIds, tree],
+  );
+  const folderTreeItems = useMemo<TreeNodeItem[]>(() => {
+    const toItems = (nodes: FolderTreeNode[]): TreeNodeItem[] =>
+      nodes.map((node) => ({
+        children: toItems(node.children),
+        expanded: expandedIds.has(node.id),
+        icon: <FolderIcon aria-hidden="true" color="#64748B" size={15} />,
+        id: `folder-${node.id}`,
+        label: node.name,
+        selected: selectedFolderId === node.id,
+      }));
+    const folderItems = toItems(tree);
+    if (!selectedSessionCourse) return folderItems;
+    const sessionItem: TreeNodeItem = {
+      children: [
+        {
+          children: folderItems,
+          expanded: true,
+          icon: <FolderTree aria-hidden="true" color="#059669" size={15} />,
+          id: `session-course-${selectedSessionCourse.id}`,
+          label:
+            selectedSessionCourse.displayName ??
+            selectedSessionCourse.course.name,
+        },
+      ],
+      expanded: true,
+      icon: <CalendarDays aria-hidden="true" color="#64748B" size={15} />,
+      id: `session-${selectedSessionCourse.sessionId}`,
+      label:
+        academic.sessions.find(
+          (session) => session.id === selectedSessionCourse.sessionId,
+        )?.name ?? "Session",
+    };
+    return [
+      {
+        children: [sessionItem],
+        expanded: true,
+        icon: <Building2 aria-hidden="true" color="#64748B" size={15} />,
+        id: `organization-${academic.selectedOrganizationId ?? "current"}`,
+        label:
+          academic.organizations.find(
+            (organization) => organization.id === academic.selectedOrganizationId,
+          )?.name ?? "Organization",
+      },
+    ];
+  }, [
+    academic.organizations,
+    academic.selectedOrganizationId,
+    academic.sessions,
+    expandedIds,
+    selectedFolderId,
+    selectedSessionCourse,
+    tree,
+  ]);
+  const renderContext = ({ openCreate }: { openCreate: () => void }) => (
     <YStack gap="$3">
       <XStack gap="$3" style={{ alignItems: "center", flexWrap: "wrap" }}>
         {academic.organizations.length ? (
@@ -320,6 +384,9 @@ export function FoldersPage() {
               academic.setSelectedOrganizationId(Number(value));
               academic.setSelectedSessionId(null);
               setSelectedSessionCourseId(null);
+              setSelectedFolderId(null);
+              setSelectedFolder(null);
+              setExpandedFolderIds(null);
             }}
             options={academic.organizations.map((organization) => ({
               label: organization.name,
@@ -338,6 +405,9 @@ export function FoldersPage() {
           onChange={(value) => {
             academic.setSelectedSessionId(Number(value));
             setSelectedSessionCourseId(null);
+            setSelectedFolderId(null);
+            setSelectedFolder(null);
+            setExpandedFolderIds(null);
           }}
           options={academic.sessions.map((session) => ({
             label: session.name,
@@ -350,36 +420,78 @@ export function FoldersPage() {
         <CrudSelect
           ariaLabel="Select session course"
           label="Session course"
-          onChange={(value) => setSelectedSessionCourseId(Number(value))}
+          onChange={(value) => {
+            setSelectedSessionCourseId(Number(value));
+            setSelectedFolderId(null);
+            setSelectedFolder(null);
+            setExpandedFolderIds(null);
+          }}
           options={sessionCourses.map((item) => ({
             label: item.displayName ?? item.course.name,
             value: String(item.id),
           }))}
-          value={selectedSessionCourseId ? String(selectedSessionCourseId) : ""}
+          value={effectiveSessionCourseId ? String(effectiveSessionCourseId) : ""}
         />
       </XStack>
-      <YStack
-        gap="$2"
-        p="$4"
-        style={{
-          backgroundColor: "#F8FBFD",
-          borderColor: "#E1E7F0",
-          borderRadius: 12,
-          borderWidth: 1,
-        }}
-      >
-        <Text color="#0F1D3A" fontSize="$label" fontWeight="$button">
-          Folder tree
+    </YStack>
+  );
+  const renderTableAside = ({ openCreate }: { openCreate: () => void }) => (
+    <AppCard
+      className="lms-folder-hierarchy-card"
+      background="#FFFFFF"
+      borderColor="#E1E7F0"
+      p="$4"
+      style={{ borderRadius: 12, minHeight: 420, width: 280 }}
+    >
+      <YStack gap="$3">
+        <Text color="#0F1D3A" fontSize="$caption" fontWeight="$button">
+          Content Hierarchy
         </Text>
-        {tree.length ? (
-          <Tree nodes={tree} />
+        {folderTreeItems.length ? (
+          <TreeView
+            items={folderTreeItems}
+            onSelect={(id) => {
+              if (!id.startsWith("folder-")) return;
+              const idNumber = Number(id.replace("folder-", ""));
+              setSelectedFolderId(idNumber);
+              setSelectedFolder(
+                folders.find((folder) => folder.id === idNumber) ?? null,
+              );
+            }}
+            onToggle={(id) => {
+              if (!id.startsWith("folder-")) return;
+              const idNumber = Number(id.replace("folder-", ""));
+              setExpandedFolderIds((current) => {
+                const next = new Set(current ?? expandedIds);
+                if (next.has(idNumber)) next.delete(idNumber);
+                else next.add(idNumber);
+                return next;
+              });
+            }}
+          />
         ) : (
-      <Text color="#52627A" fontSize="$caption" style={{ display: "none" }}>
+          <Text color="#52627A" fontSize="$caption">
             No folders exist for the selected session course.
           </Text>
         )}
+        <Button
+          aria-label="Add New Folder"
+          background="#FFFFFF"
+          borderColor="#10B981"
+          borderWidth={1}
+          height={42}
+          mt="$3"
+          onPress={openCreate}
+          rounded="$3"
+          width="100%"
+        >
+          <Plus aria-hidden="true" color="#059669" size={15} />
+          <Button.Text color="#047857" fontSize="$caption" fontWeight="$button">
+            Add New Folder
+          </Button.Text>
+        </Button>
       </YStack>
-    </YStack>
+    </AppCard>
   );
   return (
     <CrudManagementPage<
@@ -389,15 +501,20 @@ export function FoldersPage() {
       UpdateFolderRequest
     >
       columns={columns}
-      context={context}
+      onSelectedItemChange={(folder) => {
+        setSelectedFolder(folder);
+        setSelectedFolderId(folder?.id ?? null);
+      }}
+      renderContext={renderContext}
+      renderTableAside={renderTableAside}
       create={(payload) =>
-        selectedSessionCourseId === null
+        effectiveSessionCourseId === null
           ? Promise.reject(new Error("Select a session course first."))
-          : foldersApi.create(selectedSessionCourseId, payload)
+          : foldersApi.create(effectiveSessionCourseId, payload)
       }
       description="Organize session-course content with unlimited nested folders."
       emptyDescription={
-        selectedSessionCourseId === null
+        effectiveSessionCourseId === null
           ? "Select a session course to manage folders."
           : "Create the first folder for this session course."
       }
@@ -412,7 +529,12 @@ export function FoldersPage() {
       getDisplayName={(folder) => folder.name}
       getIsActive={(folder) => folder.isActive}
       getRowId={(folder) => folder.id}
+      getCreateForm={() => ({
+        ...initialForm,
+        parentFolderId: selectedFolderId ? String(selectedFolderId) : "",
+      })}
       initialForm={initialForm}
+      selectedItem={selectedFolder}
       permissionPrefix="folder"
       queryFn={(query) =>
         effectiveSessionCourseId === null

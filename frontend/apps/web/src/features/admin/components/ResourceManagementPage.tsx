@@ -71,6 +71,7 @@ export interface ResourceManagementPageProps<
   getRowId: (item: Item) => DataTableRowId;
   getDisplayName: (item: Item) => string;
   initialForm: Form;
+  getCreateForm?: () => Form;
   toForm: (item: Item) => Form;
   toCreatePayload: (form: Form) => CreatePayload;
   toUpdatePayload: (form: Form) => UpdatePayload;
@@ -116,6 +117,8 @@ export interface ResourceManagementPageProps<
   searchPlaceholder?: string;
   createLabel?: string;
   context?: ReactNode;
+  renderContext?: (actions: { openCreate: () => void }) => ReactNode;
+  renderTableAside?: (actions: { openCreate: () => void }) => ReactNode;
   additionalDialogs?: ReactNode;
   enabled?: boolean;
   emptyDescription?: string;
@@ -139,6 +142,7 @@ export function ResourceManagementPage<
   getRowId,
   getDisplayName,
   initialForm,
+  getCreateForm,
   toForm,
   toCreatePayload,
   toUpdatePayload,
@@ -176,6 +180,8 @@ export function ResourceManagementPage<
   searchPlaceholder,
   createLabel,
   context,
+  renderContext,
+  renderTableAside,
   additionalDialogs,
   enabled = true,
   emptyDescription,
@@ -381,7 +387,7 @@ export function ResourceManagementPage<
     }
   };
   const openCreate = () => {
-    setForm(initialForm);
+    setForm(getCreateForm?.() ?? initialForm);
     setFormError(null);
     setCreateOpen(true);
   };
@@ -627,7 +633,7 @@ export function ResourceManagementPage<
         title={title}
       />
       <CrudStats isLoading={query.isLoading} stats={stats} />
-      {context}
+      {renderContext ? renderContext({ openCreate }) : context}
       <CrudToolbar
         actions={filterActions}
         entityLabel={entityLabel}
@@ -657,6 +663,7 @@ export function ResourceManagementPage<
       <XStack
         className={[
           "lms-organization-management-grid",
+          renderTableAside ? "has-content-aside" : "",
           selectedItem && (renderDetails || renderDetailPanel)
             ? "is-side-panel-open"
             : "",
@@ -666,6 +673,15 @@ export function ResourceManagementPage<
         gap="$4"
         style={{ alignItems: "flex-start", width: "100%" }}
       >
+        {renderTableAside ? (
+          <YStack
+            className="lms-crud-table-aside"
+            gap="$3"
+            style={{ minWidth: 0 }}
+          >
+            {renderTableAside({ openCreate })}
+          </YStack>
+        ) : null}
         <YStack gap="$3" style={{ flex: 1, minWidth: 0 }}>
           {renderBulkActions?.(
             selectedItems,
