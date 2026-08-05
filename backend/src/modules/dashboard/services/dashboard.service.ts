@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { CurrentUser } from '../../auth/types/current-user.types';
 import { DashboardQueryDto } from '../dto/dashboard-query.dto';
@@ -18,11 +18,18 @@ export class DashboardService {
       this.dashboardRepository.findRoles(),
     ]);
 
+    if (this.hasRequestedContext(query) && !context) {
+      throw new NotFoundException('Dashboard context not found');
+    }
+
     const selectedSession = context?.sessions[0];
     const selectedSessionCourse = selectedSession?.sessionCourses[0];
     const folderRecords = selectedSessionCourse
       ? await this.dashboardRepository.findFolders(selectedSessionCourse.id)
       : [];
+    const selectedFolder = query.folderId
+      ? folderRecords.find((folder) => folder.id === query.folderId) ?? null
+      : null;
     const tree = context && selectedSession && selectedSessionCourse
       ? [this.buildContextTree(context, selectedSession, selectedSessionCourse, folderRecords)]
       : [];
@@ -54,6 +61,13 @@ export class DashboardService {
             }
           : null,
         sessionCourseId: selectedSessionCourse?.id ?? null,
+        folder: selectedFolder
+          ? {
+              id: selectedFolder.id,
+              name: selectedFolder.name,
+              parentFolderId: selectedFolder.parentFolderId,
+            }
+          : null,
       },
       folders: folderRecords
         .filter((folder) => folder.parentFolderId === null)
@@ -71,14 +85,35 @@ export class DashboardService {
     };
   }
 
+  async getContextOptions(user: CurrentUser, query: DashboardQueryDto) {
+    const scope = this.buildScope(user, query);
+    return this.dashboardRepository.findContextOptions(scope);
+  }
+
   private buildScope(user: CurrentUser, query: DashboardQueryDto): DashboardScope {
-    const organizationId = user.organizationId ?? query.organizationId;
+    if (
+      user.organizationId &&
+      query.organizationId &&
+      user.organizationId !== query.organizationId
+    ) {
+      throw new ForbiddenException('You cannot access another organization');
+    }
 
     return {
-      organizationId,
+      organizationId: user.organizationId ?? query.organizationId,
       sessionId: query.sessionId,
       sessionCourseId: query.sessionCourseId,
+      folderId: query.folderId,
     };
+  }
+
+  private hasRequestedContext(query: DashboardQueryDto) {
+    return Boolean(
+      query.organizationId ||
+        query.sessionId ||
+        query.sessionCourseId ||
+        query.folderId,
+    );
   }
 
   private toFolderResponse(

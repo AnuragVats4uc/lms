@@ -7,6 +7,7 @@ export interface DashboardScope {
   organizationId?: number;
   sessionId?: number;
   sessionCourseId?: number;
+  folderId?: number;
 }
 
 @Injectable()
@@ -14,26 +15,34 @@ export class DashboardRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   findContext(scope: DashboardScope) {
+    const sessionWhere: Prisma.SessionWhereInput = {
+      ...(scope.sessionId ? { id: scope.sessionId } : {}),
+      ...(scope.sessionCourseId
+        ? { sessionCourses: { some: { id: scope.sessionCourseId } } }
+        : {}),
+      isActive: true,
+    };
+    const sessionCourseWhere: Prisma.SessionCourseWhereInput = {
+      ...(scope.sessionCourseId ? { id: scope.sessionCourseId } : {}),
+      ...(scope.folderId ? { folders: { some: { id: scope.folderId } } } : {}),
+      isActive: true,
+    };
+
     return this.prisma.organization.findFirst({
       where: {
         ...(scope.organizationId ? { id: scope.organizationId } : {}),
         isActive: true,
+        sessions: { some: sessionWhere },
       },
       orderBy: { createdAt: 'asc' },
       include: {
         sessions: {
-          where: {
-            ...(scope.sessionId ? { id: scope.sessionId } : {}),
-            isActive: true,
-          },
+          where: sessionWhere,
           orderBy: { createdAt: 'asc' },
           take: 1,
           include: {
             sessionCourses: {
-              where: {
-                ...(scope.sessionCourseId ? { id: scope.sessionCourseId } : {}),
-                isActive: true,
-              },
+              where: sessionCourseWhere,
               orderBy: { sortOrder: 'asc' },
               take: 1,
               include: { course: true },
@@ -44,32 +53,86 @@ export class DashboardRepository {
     });
   }
 
+  findContextOptions(scope: DashboardScope) {
+    return Promise.all([
+      this.prisma.organization.findMany({
+        where: {
+          ...(scope.organizationId ? { id: scope.organizationId } : {}),
+          isActive: true,
+        },
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true, code: true },
+      }),
+      scope.organizationId
+        ? this.prisma.session.findMany({
+            where: { organizationId: scope.organizationId, isActive: true },
+            orderBy: [{ startDate: 'desc' }, { name: 'asc' }],
+            select: { id: true, organizationId: true, name: true, code: true },
+          })
+        : Promise.resolve([]),
+      scope.sessionId
+        ? this.prisma.sessionCourse.findMany({
+            where: { sessionId: scope.sessionId, isActive: true },
+            orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+            select: {
+              id: true,
+              sessionId: true,
+              courseId: true,
+              displayName: true,
+              course: { select: { id: true, name: true, code: true } },
+            },
+          })
+        : Promise.resolve([]),
+      scope.sessionCourseId
+        ? this.prisma.folder.findMany({
+            where: { sessionCourseId: scope.sessionCourseId, isActive: true },
+            orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+            select: { id: true, sessionCourseId: true, parentFolderId: true, name: true },
+          })
+        : Promise.resolve([]),
+    ]).then(([organizations, sessions, sessionCourses, folders]) => ({
+      organizations,
+      sessions,
+      sessionCourses,
+      folders,
+    }));
+  }
+
   countStatistics(scope: DashboardScope) {
     const organizationWhere: Prisma.OrganizationWhereInput = {
       ...(scope.organizationId ? { id: scope.organizationId } : {}),
     };
     const sessionWhere: Prisma.SessionWhereInput = {
       ...(scope.organizationId ? { organizationId: scope.organizationId } : {}),
+      ...(scope.sessionId ? { id: scope.sessionId } : {}),
     };
     const sessionCourseWhere: Prisma.SessionCourseWhereInput = {
       ...(scope.organizationId
         ? { session: { organizationId: scope.organizationId } }
         : {}),
+      ...(scope.sessionId ? { sessionId: scope.sessionId } : {}),
+      ...(scope.sessionCourseId ? { id: scope.sessionCourseId } : {}),
+    };
+    const folderSessionCourseWhere: Prisma.SessionCourseWhereInput = {
+      ...(scope.organizationId
+        ? { session: { organizationId: scope.organizationId } }
+        : {}),
+      ...(scope.sessionId ? { sessionId: scope.sessionId } : {}),
     };
     const folderWhere: Prisma.FolderWhereInput = {
-      ...(scope.organizationId
-        ? { sessionCourse: { session: { organizationId: scope.organizationId } } }
+      ...(Object.keys(folderSessionCourseWhere).length
+        ? { sessionCourse: folderSessionCourseWhere }
         : {}),
+      ...(scope.sessionCourseId ? { sessionCourseId: scope.sessionCourseId } : {}),
+      ...(scope.folderId ? { id: scope.folderId } : {}),
     };
     const resourceWhere: Prisma.ResourceWhereInput = {
-      ...(scope.organizationId
-        ? {
-            folder: {
-              sessionCourse: { session: { organizationId: scope.organizationId } },
-            },
-          }
-        : {}),
+      ...(Object.keys(folderWhere).length ? { folder: folderWhere } : {}),
     };
+    const courseWhere: Prisma.CourseWhereInput =
+      Object.keys(sessionCourseWhere).length
+        ? { sessionCourses: { some: sessionCourseWhere } }
+        : {};
     const userWhere: Prisma.UserWhereInput = {
       ...(scope.organizationId ? { organizationId: scope.organizationId } : {}),
     };
@@ -77,7 +140,7 @@ export class DashboardRepository {
     return Promise.all([
       this.countMetric('organization', organizationWhere, 'isActive'),
       this.countMetric('session', sessionWhere, 'isActive'),
-      this.countMetric('course', {}, 'isActive'),
+      this.countMetric('course', courseWhere, 'isActive'),
       this.countMetric('sessionCourse', sessionCourseWhere, 'isActive'),
       this.countMetric('folder', folderWhere, 'isActive'),
       this.countMetric('resource', resourceWhere, 'isActive'),

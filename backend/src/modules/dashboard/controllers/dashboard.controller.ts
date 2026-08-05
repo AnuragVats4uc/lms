@@ -5,7 +5,10 @@ import { Request } from 'express';
 import { Permissions } from '../../auth/permissions/permissions.decorator';
 import { CurrentUser } from '../../auth/types/current-user.types';
 import { DashboardQueryDto } from '../dto/dashboard-query.dto';
-import { DashboardResponseDto } from '../dto/dashboard-response.dto';
+import {
+  DashboardContextOptionsResponseDto,
+  DashboardResponseDto,
+} from '../dto/dashboard-response.dto';
 import { DashboardService } from '../services/dashboard.service';
 
 type AuthenticatedRequest = Request & { user: CurrentUser };
@@ -31,5 +34,23 @@ export class DashboardController {
     @Query() query: DashboardQueryDto,
   ) {
     return this.dashboardService.getSummary(request.user, query);
+  }
+
+  @Get('contexts')
+  @Permissions('dashboard.read')
+  @ApiOperation({ summary: 'Get dashboard context selector options' })
+  @ApiQuery({ name: 'organizationId', required: false, type: Number })
+  @ApiQuery({ name: 'sessionId', required: false, type: Number })
+  @ApiQuery({ name: 'sessionCourseId', required: false, type: Number })
+  @ApiQuery({ name: 'folderId', required: false, type: Number })
+  @ApiOkResponse({
+    description: 'Dashboard context options fetched successfully',
+    type: DashboardContextOptionsResponseDto,
+  })
+  getContextOptions(
+    @Req() request: AuthenticatedRequest,
+    @Query() query: DashboardQueryDto,
+  ) {
+    return this.dashboardService.getContextOptions(request.user, query);
   }
 }

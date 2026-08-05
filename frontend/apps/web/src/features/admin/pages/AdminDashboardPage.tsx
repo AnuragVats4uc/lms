@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
@@ -30,7 +30,12 @@ import type {
   UploadDropzoneProps,
 } from "@repo/ui/dashboard";
 import { dashboardApi } from "@repo/api";
-import type { DashboardData, DashboardRole, DashboardTreeNode } from "@repo/types";
+import type {
+  DashboardData,
+  DashboardQuery,
+  DashboardRole,
+  DashboardTreeNode,
+} from "@repo/types";
 
 import { DashboardPage } from "@/features/admin/dashboard";
 
@@ -205,7 +210,8 @@ const resourcePath = (
   if (data.context.organization) params.set("organizationId", String(data.context.organization.id));
   if (data.context.session) params.set("sessionId", String(data.context.session.id));
   if (data.context.sessionCourseId) params.set("sessionCourseId", String(data.context.sessionCourseId));
-  if (folderId) params.set("folderId", String(folderId));
+  const selectedFolderId = folderId ?? data.context.folder?.id;
+  if (selectedFolderId) params.set("folderId", String(selectedFolderId));
   if (action) params.set("action", action);
   if (itemId) params.set("id", String(itemId));
   return `/admin/resources?${params.toString()}`;
@@ -259,6 +265,14 @@ const buildBreadcrumbs = (data: DashboardData): BreadcrumbItem[] => {
     });
   }
 
+  if (data.context.folder) {
+    items.push({
+      icon: <Folder size={22} strokeWidth={2.2} />,
+      label: data.context.folder.name,
+      subtitle: "Folder",
+    });
+  }
+
   return [
     ...items,
     {
@@ -271,6 +285,7 @@ const buildBreadcrumbs = (data: DashboardData): BreadcrumbItem[] => {
 
 export function AdminDashboardPage() {
   const router = useRouter();
+  const [dashboardContext, setDashboardContext] = useState<DashboardQuery>({});
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const [collapsedTreeIds, setCollapsedTreeIds] = useState<Set<string>>(
     () => new Set(),
@@ -280,37 +295,102 @@ export function AdminDashboardPage() {
     queryKey: ["admin-dashboard"],
     queryFn: () => dashboardApi.findSummary(),
   });
+  const resourceQuery = useQuery({
+    enabled: Boolean(dashboardQuery.data && Object.keys(dashboardContext).length),
+    queryKey: [
+      "admin-dashboard",
+      "resources",
+      dashboardContext.organizationId ?? null,
+      dashboardContext.sessionId ?? null,
+      dashboardContext.sessionCourseId ?? null,
+      dashboardContext.folderId ?? null,
+    ],
+    queryFn: () => dashboardApi.findSummary(dashboardContext),
+  });
+  const contextOptionsQuery = useQuery({
+    enabled: Boolean(dashboardQuery.data),
+    queryKey: [
+      "admin-dashboard",
+      "contexts",
+      dashboardContext.organizationId ?? null,
+      dashboardContext.sessionId ?? null,
+      dashboardContext.sessionCourseId ?? null,
+      dashboardContext.folderId ?? null,
+    ],
+    queryFn: () => dashboardApi.findContextOptions(dashboardContext),
+  });
 
-  const viewModel = useMemo(() => {
+  useEffect(() => {
+    const data = dashboardQuery.data;
+    if (!data) return;
+
+    setDashboardContext((current) => {
+      const next = { ...current };
+      if (next.organizationId === undefined && data.context.organization) {
+        next.organizationId = data.context.organization.id;
+      }
+      if (next.sessionId === undefined && data.context.session) {
+        next.sessionId = data.context.session.id;
+      }
+      if (next.sessionCourseId === undefined && data.context.sessionCourseId) {
+        next.sessionCourseId = data.context.sessionCourseId;
+      }
+      return next.organizationId === current.organizationId &&
+        next.sessionId === current.sessionId &&
+        next.sessionCourseId === current.sessionCourseId &&
+        next.folderId === current.folderId
+        ? current
+        : next;
+    });
+  }, [dashboardQuery.data]);
+
+  const overviewViewModel = useMemo(() => {
     if (!dashboardQuery.data) return null;
 
     return {
-      breadcrumbs: buildBreadcrumbs(dashboardQuery.data),
-      folders: buildFolders(dashboardQuery.data, router.push),
       roles: buildRoles(dashboardQuery.data, router.push),
       statistics: buildStatistics(dashboardQuery.data, router.push),
-      tree: dashboardQuery.data.tree.map((node) =>
+    };
+  }, [dashboardQuery.data, router.push]);
+
+  const resourceData = resourceQuery.data ?? dashboardQuery.data;
+  const quickActions = useMemo(
+    () =>
+      dashboardQuery.data
+        ? buildQuickActions(dashboardQuery.data, router.push)
+        : null,
+    [dashboardQuery.data, router.push],
+  );
+  const support = useMemo(() => buildSupport(router.push), [router.push]);
+  const resourceViewModel = useMemo(() => {
+    if (!resourceData) return null;
+
+    return {
+      breadcrumbs: buildBreadcrumbs(resourceData),
+      folders: buildFolders(resourceData, router.push),
+      context: resourceData.context,
+      tree: resourceData.tree.map((node) =>
         toTreeItem(
           node,
           selectedTreeId ??
-            (dashboardQuery.data.context.sessionCourseId
-              ? `session-course-${dashboardQuery.data.context.sessionCourseId}`
+            (resourceData.context.sessionCourseId
+              ? `session-course-${resourceData.context.sessionCourseId}`
               : null),
           collapsedTreeIds,
         ),
       ),
     };
-  }, [collapsedTreeIds, dashboardQuery.data, router.push, selectedTreeId]);
+  }, [collapsedTreeIds, dashboardQuery.data, resourceData, router.push, selectedTreeId]);
 
   const navigateToTreeNode = (id: string) => {
     setSelectedTreeId(id);
     if (id.startsWith("folder-")) {
       const folderId = Number(id.replace("folder-", ""));
-      if (dashboardQuery.data) router.push(resourcePath(dashboardQuery.data, folderId));
+      if (resourceData) router.push(resourcePath(resourceData, folderId));
       return;
     }
-    if (id.startsWith("session-course-") && dashboardQuery.data?.context.sessionCourseId) {
-      router.push(resourcePath(dashboardQuery.data));
+    if (id.startsWith("session-course-") && resourceData?.context.sessionCourseId) {
+      router.push(resourcePath(resourceData));
     }
   };
 
@@ -333,7 +413,7 @@ export function AdminDashboardPage() {
     );
   }
 
-  if (dashboardQuery.isError || !viewModel) {
+  if (dashboardQuery.isError || !overviewViewModel || !resourceViewModel) {
     return (
       <PageContainer>
         <YStack gap="$3" py="$6" style={{ alignItems: "center" }}>
@@ -348,27 +428,37 @@ export function AdminDashboardPage() {
 
   return (
     <DashboardPage
-      breadcrumbs={viewModel.breadcrumbs}
-      folders={viewModel.folders}
-      roles={viewModel.roles}
-      statistics={viewModel.statistics}
-      support={buildSupport(router.push)}
-      tree={viewModel.tree}
-      upload={buildUpload(dashboardQuery.data, router.push)}
-      quickActions={buildQuickActions(dashboardQuery.data, router.push)}
+      breadcrumbs={resourceViewModel.breadcrumbs}
+      context={resourceViewModel.context}
+      selectedContext={dashboardContext}
+      contextOptions={contextOptionsQuery.data ?? {
+        organizations: [],
+        sessions: [],
+        sessionCourses: [],
+        folders: [],
+      }}
+      contextLoading={contextOptionsQuery.isFetching}
+      folders={resourceViewModel.folders}
+      roles={overviewViewModel.roles}
+      statistics={overviewViewModel.statistics}
+      support={support}
+      tree={resourceViewModel.tree}
+      upload={buildUpload(resourceData!, router.push)}
+      quickActions={quickActions!}
       onAddFolder={() =>
         router.push(
-          dashboardQuery.data
-            ? folderPath(dashboardQuery.data, "create")
+          resourceData
+            ? folderPath(resourceData, "create")
             : "/admin/folders",
         )
       }
       onMore={() => router.push("/admin/resources")}
-      onRefresh={() => void dashboardQuery.refetch()}
+      onRefresh={() => void resourceQuery.refetch()}
+      onContextChange={setDashboardContext}
       onSelectTree={navigateToTreeNode}
       onToggleTree={toggleTreeNode}
       onViewTree={() => setTreeOnly((current) => !current)}
-      refreshing={dashboardQuery.isFetching}
+      refreshing={resourceQuery.isFetching}
       treeOnly={treeOnly}
       onViewAllRoles={() => router.push("/admin/roles")}
     />

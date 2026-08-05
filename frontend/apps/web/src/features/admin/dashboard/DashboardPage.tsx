@@ -15,12 +15,17 @@ import type {
   TreeNodeItem,
   UploadDropzoneProps,
 } from "@repo/ui/dashboard";
+import type { DashboardContext, DashboardContextOptions, DashboardQuery } from "@repo/types";
 
 import { ResourceManagementSection } from "./ResourceManagementSection";
 import { RolesPermissionSection } from "./RolesPermissionSection";
 
 interface DashboardPageProps {
   breadcrumbs: BreadcrumbItem[];
+  context: DashboardContext;
+  selectedContext: DashboardQuery;
+  contextOptions: DashboardContextOptions;
+  contextLoading?: boolean;
   folders: FolderCardProps[];
   quickActions: QuickActionsProps;
   roles: RoleCardProps[];
@@ -30,6 +35,7 @@ interface DashboardPageProps {
   onAddFolder?: () => void;
   onMore?: () => void;
   onRefresh?: () => void;
+  onContextChange?: (context: DashboardQuery) => void;
   onSelectTree?: (id: string) => void;
   onToggleTree?: (id: string) => void;
   onViewAllRoles?: () => void;
@@ -41,6 +47,10 @@ interface DashboardPageProps {
 
 export function DashboardPage({
   breadcrumbs,
+  context,
+  selectedContext,
+  contextOptions,
+  contextLoading,
   folders,
   quickActions,
   roles,
@@ -50,6 +60,7 @@ export function DashboardPage({
   onAddFolder,
   onMore,
   onRefresh,
+  onContextChange,
   onSelectTree,
   onToggleTree,
   onViewAllRoles,
@@ -66,10 +77,15 @@ export function DashboardPage({
       />
       <ResourceManagementSection
         breadcrumbs={breadcrumbs}
+        context={context}
+        selectedContext={selectedContext}
+        contextOptions={contextOptions}
+        contextLoading={contextLoading}
         folders={folders}
         onAddFolder={onAddFolder}
         onMore={onMore}
         onRefresh={onRefresh}
+        onContextChange={onContextChange}
         onSelectTree={onSelectTree}
         onToggleTree={onToggleTree}
         onViewTree={onViewTree}

@@ -14,15 +14,22 @@ import {
   UploadDropzone,
 } from "@repo/ui/dashboard";
 import { Button, XStack, YStack } from "@repo/ui";
+import { useAuthSession } from "@repo/auth";
+import type { DashboardContext, DashboardContextOptions, DashboardQuery } from "@repo/types";
 import type {
   BreadcrumbItem,
   FolderCardProps,
   TreeNodeItem,
   UploadDropzoneProps,
 } from "@repo/ui/dashboard";
+import { CrudSelect } from "../components/crud";
 
 interface ResourceManagementSectionProps {
   breadcrumbs: BreadcrumbItem[];
+  context: DashboardContext;
+  selectedContext: DashboardQuery;
+  contextOptions: DashboardContextOptions;
+  contextLoading?: boolean;
   folders: FolderCardProps[];
   onAddFolder?: () => void;
   onMore?: () => void;
@@ -30,6 +37,7 @@ interface ResourceManagementSectionProps {
   onToggleTree?: (id: string) => void;
   onViewTree?: () => void;
   onRefresh?: () => void;
+  onContextChange?: (context: DashboardQuery) => void;
   refreshing?: boolean;
   tree: TreeNodeItem[];
   treeOnly?: boolean;
@@ -38,6 +46,10 @@ interface ResourceManagementSectionProps {
 
 export function ResourceManagementSection({
   breadcrumbs,
+  context,
+  selectedContext,
+  contextOptions,
+  contextLoading = false,
   folders,
   onAddFolder,
   onMore,
@@ -45,11 +57,40 @@ export function ResourceManagementSection({
   onToggleTree,
   onViewTree,
   onRefresh,
+  onContextChange,
   refreshing = false,
   tree,
   treeOnly = false,
   upload,
 }: ResourceManagementSectionProps) {
+  const { currentUser } = useAuthSession();
+  const showOrganizationSelector = !currentUser?.organizationId;
+  const changeContext = (key: keyof DashboardQuery, value: string) => {
+    if (!onContextChange) return;
+    const id = value ? Number(value) : undefined;
+    if (key === "organizationId") {
+      onContextChange({ organizationId: id });
+    } else if (key === "sessionId") {
+      onContextChange({
+        organizationId: selectedContext.organizationId,
+        sessionId: id,
+      });
+    } else if (key === "sessionCourseId") {
+      onContextChange({
+        organizationId: selectedContext.organizationId,
+        sessionId: selectedContext.sessionId,
+        sessionCourseId: id,
+      });
+    } else {
+      onContextChange({
+        organizationId: selectedContext.organizationId,
+        sessionId: selectedContext.sessionId,
+        sessionCourseId: selectedContext.sessionCourseId,
+        folderId: id,
+      });
+    }
+  };
+
   return (
     <DashboardSection
       action={
@@ -104,6 +145,66 @@ export function ResourceManagementSection({
     >
       <YStack gap="$4">
         <BreadcrumbNavigation items={breadcrumbs} />
+        <XStack
+          className="lms-dashboard-context-selectors"
+          gap="$3"
+          style={{ flexWrap: "wrap" }}
+        >
+          {showOrganizationSelector ? (
+            <CrudSelect
+              ariaLabel="Select organization"
+              disabled={!contextOptions.organizations.length}
+              label="Organization"
+              loading={contextLoading}
+              onChange={(value) => changeContext("organizationId", value)}
+              options={contextOptions.organizations.map((organization) => ({
+                label: organization.name,
+                value: String(organization.id),
+              }))}
+              value={selectedContext.organizationId ? String(selectedContext.organizationId) : ""}
+              width={220}
+            />
+          ) : null}
+          <CrudSelect
+            ariaLabel="Select academic session"
+            disabled={!contextOptions.sessions.length}
+            label="Session"
+            loading={contextLoading}
+            onChange={(value) => changeContext("sessionId", value)}
+            options={contextOptions.sessions.map((session) => ({
+              label: session.code ? `${session.name} · ${session.code}` : session.name,
+              value: String(session.id),
+            }))}
+            value={selectedContext.sessionId ? String(selectedContext.sessionId) : ""}
+            width={190}
+          />
+          <CrudSelect
+            ariaLabel="Select course"
+            disabled={!contextOptions.sessionCourses.length}
+            label="Course"
+            loading={contextLoading}
+            onChange={(value) => changeContext("sessionCourseId", value)}
+            options={contextOptions.sessionCourses.map((sessionCourse) => ({
+              label: sessionCourse.displayName ?? sessionCourse.course.name,
+              value: String(sessionCourse.id),
+            }))}
+            value={selectedContext.sessionCourseId ? String(selectedContext.sessionCourseId) : ""}
+            width={240}
+          />
+          <CrudSelect
+            ariaLabel="Select folder"
+            disabled={!contextOptions.folders.length}
+            label="Folder"
+            loading={contextLoading}
+            onChange={(value) => changeContext("folderId", value)}
+            options={contextOptions.folders.map((folder) => ({
+              label: folder.parentFolderId ? `↳ ${folder.name}` : folder.name,
+              value: String(folder.id),
+            }))}
+            value={selectedContext.folderId ? String(selectedContext.folderId) : ""}
+            width={210}
+          />
+        </XStack>
         <XStack
           className="lms-resource-management-grid"
           gap="$4"
@@ -167,7 +268,7 @@ export function ResourceManagementSection({
               >
                 <YStack gap="$1" style={{ flex: "1 1 auto", minWidth: 0 }}>
                   <AppHeading level={3} fontSize="$label" lineHeight="$label">
-                    Resource Folders in "Data Structures"
+                    Resource Folders in "{context.course?.name ?? "selected course"}"
                   </AppHeading>
                   <AppText color="#52627A" fontSize="$caption" lineHeight="$caption">
                     Select a folder to view and manage its resources.
@@ -179,6 +280,7 @@ export function ResourceManagementSection({
                   height={40}
                   px="$4"
                   rounded="$3"
+                  onPress={onAddFolder}
                   style={{ flexShrink: 0 }}
                 >
                   <Plus aria-hidden="true" color="#FFFFFF" size={16} />

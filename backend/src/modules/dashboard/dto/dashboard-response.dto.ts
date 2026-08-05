@@ -82,6 +82,79 @@ export class DashboardContextDto {
 
   @ApiPropertyOptional({ example: 1, nullable: true })
   sessionCourseId: number | null;
+
+  @ApiPropertyOptional({ type: () => DashboardFolderOptionDto, nullable: true })
+  folder: DashboardFolderOptionDto | null;
+}
+
+export class DashboardFolderOptionDto {
+  @ApiProperty({ example: 1 })
+  id: number;
+
+  @ApiProperty({ example: 'Physics' })
+  name: string;
+
+  @ApiPropertyOptional({ example: 1, nullable: true })
+  parentFolderId: number | null;
+}
+
+export class DashboardSessionOptionDto {
+  @ApiProperty({ example: 1 })
+  id: number;
+
+  @ApiProperty({ example: 1 })
+  organizationId: number;
+
+  @ApiProperty({ example: '2025-2026' })
+  name: string;
+
+  @ApiPropertyOptional({ example: 'ABC-2025', nullable: true })
+  code: string | null;
+}
+
+export class DashboardSessionCourseOptionDto {
+  @ApiProperty({ example: 1 })
+  id: number;
+
+  @ApiProperty({ example: 1 })
+  sessionId: number;
+
+  @ApiProperty({ example: 1 })
+  courseId: number;
+
+  @ApiPropertyOptional({ example: 'JEE Foundation · 2025-2026', nullable: true })
+  displayName: string | null;
+
+  @ApiProperty({ type: DashboardContextCourseDto })
+  course: DashboardContextCourseDto;
+}
+
+export class DashboardContextOptionsDataDto {
+  @ApiProperty({ type: [DashboardContextOrganizationDto] })
+  organizations: DashboardContextOrganizationDto[];
+
+  @ApiProperty({ type: [DashboardSessionOptionDto] })
+  sessions: DashboardSessionOptionDto[];
+
+  @ApiProperty({ type: [DashboardSessionCourseOptionDto] })
+  sessionCourses: DashboardSessionCourseOptionDto[];
+
+  @ApiProperty({ type: [DashboardFolderOptionDto] })
+  folders: DashboardFolderOptionDto[];
+}
+
+export class DashboardContextOptionsResponseDto {
+  @ApiProperty({ example: true })
+  success: boolean;
+
+  @ApiProperty({ example: 'Success' })
+  message: string;
+
+  @ApiProperty({ type: DashboardContextOptionsDataDto })
+  data: DashboardContextOptionsDataDto;
+
+  @ApiProperty({ example: '2026-08-05T10:00:00.000Z' })
+  timestamp: string;
 }
 
 export class DashboardFolderDto {
