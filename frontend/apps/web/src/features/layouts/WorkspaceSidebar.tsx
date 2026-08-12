@@ -215,11 +215,16 @@ function SidebarBrand({
   isCollapsed: boolean;
   title: string;
 }) {
+  const isStudent = title.toLowerCase() === "student";
+  const brandTitle = isStudent ? "The LMS" : `LMS ${title}`;
+  const brandSubtitle = isStudent ? "Student Learning Portal" : "Learning Management";
+  const href = isStudent ? "/student/dashboard" : `/${title.toLowerCase()}/dashboard`;
+
   return (
     <Link
-      aria-label={`LMS ${title} dashboard`}
+      aria-label={`${brandTitle} dashboard`}
       className="lms-sidebar-brand-link"
-      href={`/${title.toLowerCase()}/dashboard`}
+      href={href}
     >
       <XStack
         className={
@@ -252,10 +257,10 @@ function SidebarBrand({
             fontWeight="$heading"
             numberOfLines={1}
           >
-            LMS {title}
+            {brandTitle}
           </Text>
           <Text color="#647084" fontSize={11} numberOfLines={1}>
-            Learning Management
+            {brandSubtitle}
           </Text>
         </YStack>
       </XStack>

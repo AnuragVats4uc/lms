@@ -9,6 +9,7 @@ import {
   SessionCourseStatus,
   SessionStatus,
   CourseStatus,
+  StudentNotificationType,
 } from '@prisma/client';
 
 import { PasswordService } from '../../src/modules/auth/services/password.service';
@@ -128,6 +129,13 @@ type FolderRecord = Id & {
 
 async function main() {
   console.log('Starting LMS relational seed');
+
+  if (process.env.SEED_DASHBOARD === 'true') {
+    console.log('Dashboard seed mode enabled: preserving existing data');
+    await seedStudentDashboardDemo();
+    console.log('Dashboard seed completed successfully');
+    return;
+  }
 
   if (process.env.SEED_RESUME === 'true') {
     console.log('Resume mode enabled: preserving existing generated hierarchy');
@@ -250,6 +258,439 @@ async function cleanOrganizationData() {
   console.log(
     `Removed ${organizationIds.length} organizations and their dependent sample data; preserved roles, permissions, and unscoped system users`,
   );
+}
+
+async function seedStudentDashboardDemo() {
+  const rolesByCode = await seedRoles();
+  const password = await passwordService.hash('Admin@123');
+  const now = new Date();
+  const organization = await prisma.organization.upsert({
+    where: { code: 'IIFM-DEMO' },
+    update: {
+      name: 'IIFM Demo Organization',
+      description: 'Development organization for student dashboard validation.',
+      status: OrganizationStatus.ACTIVE,
+      isActive: true,
+    },
+    create: {
+      name: 'IIFM Demo Organization',
+      code: 'IIFM-DEMO',
+      description: 'Development organization for student dashboard validation.',
+      status: OrganizationStatus.ACTIVE,
+      isActive: true,
+    },
+    select: { id: true },
+  });
+  const session = await prisma.session.upsert({
+    where: {
+      organizationId_name: {
+        organizationId: organization.id,
+        name: 'IPMAT Foundation 2027',
+      },
+    },
+    update: {
+      code: 'IPMAT-2027',
+      description: 'IPMAT Foundation 2027 dashboard validation batch.',
+      status: SessionStatus.ACTIVE,
+      isActive: true,
+      startDate: new Date('2026-04-01T00:00:00.000Z'),
+      endDate: new Date('2027-03-31T23:59:59.999Z'),
+    },
+    create: {
+      organizationId: organization.id,
+      name: 'IPMAT Foundation 2027',
+      code: 'IPMAT-2027',
+      description: 'IPMAT Foundation 2027 dashboard validation batch.',
+      status: SessionStatus.ACTIVE,
+      isActive: true,
+      startDate: new Date('2026-04-01T00:00:00.000Z'),
+      endDate: new Date('2027-03-31T23:59:59.999Z'),
+    },
+    select: { id: true },
+  });
+  const student = await prisma.user.upsert({
+    where: { email: 'student.iifm-demo@pratham.test' },
+    update: {
+      organizationId: organization.id,
+      firstName: 'Demo',
+      lastName: 'Student',
+      password,
+      isActive: true,
+      isVerified: true,
+      status: 'ACTIVE',
+    },
+    create: {
+      organizationId: organization.id,
+      firstName: 'Demo',
+      lastName: 'Student',
+      email: 'student.iifm-demo@pratham.test',
+      password,
+      isActive: true,
+      isVerified: true,
+      status: 'ACTIVE',
+    },
+    select: { id: true },
+  });
+
+  await assignOrganizationRoleToUser(
+    student.id,
+    rolesByCode.get('STUDENT')!.id,
+    organization.id,
+  );
+
+  const enrollment = await prisma.studentEnrollment.upsert({
+    where: {
+      userId_sessionId: {
+        userId: student.id,
+        sessionId: session.id,
+      },
+    },
+    update: {
+      organizationId: organization.id,
+      status: 'ACTIVE',
+      isActive: true,
+    },
+    create: {
+      userId: student.id,
+      organizationId: organization.id,
+      sessionId: session.id,
+      status: 'ACTIVE',
+      isActive: true,
+    },
+    select: { id: true },
+  });
+
+  const dashboardCourses = [
+    {
+      name: 'Quantitative Aptitude',
+      code: 'QA',
+      instructor: ['Ritika', 'Mehra', 'ritika.mehra@pratham.test'],
+      completion: 68,
+      resource: ['Permutation & Combination Notes', ResourceType.DOCUMENT],
+      folder: 'Aptitude Notes',
+      sortOrder: 0,
+    },
+    {
+      name: 'Verbal Ability',
+      code: 'VA',
+      instructor: ['Nidhi', 'Arora', 'nidhi.arora@pratham.test'],
+      completion: 56,
+      resource: ['Linear Equations - Part 2', ResourceType.VIDEO],
+      folder: 'Verbal Lessons',
+      sortOrder: 1,
+    },
+    {
+      name: 'Logical Reasoning',
+      code: 'LR',
+      instructor: ['Aman', 'Verma', 'aman.verma@pratham.test'],
+      completion: 42,
+      resource: ['Reading Comprehension Strategies', ResourceType.NOTES],
+      folder: 'Reasoning Practice',
+      sortOrder: 2,
+    },
+    {
+      name: 'Mock Tests',
+      code: 'MT',
+      instructor: ['Test', 'Series', 'test.series@pratham.test'],
+      completion: 75,
+      resource: ['Logical Reasoning Practice Set 05', ResourceType.ASSIGNMENT],
+      folder: 'Mock Test Assignments',
+      sortOrder: 3,
+    },
+  ] as const;
+
+  for (const item of dashboardCourses) {
+    const course = await prisma.course.upsert({
+      where: { code: item.code },
+      update: {
+        name: item.name,
+        description: `${item.name} for the IPMAT Foundation 2027 batch.`,
+        status: CourseStatus.ACTIVE,
+        isActive: true,
+      },
+      create: {
+        name: item.name,
+        code: item.code,
+        description: `${item.name} for the IPMAT Foundation 2027 batch.`,
+        status: CourseStatus.ACTIVE,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+    const sessionCourse = await prisma.sessionCourse.upsert({
+      where: {
+        sessionId_courseId: {
+          sessionId: session.id,
+          courseId: course.id,
+        },
+      },
+      update: {
+        displayName: item.name,
+        sortOrder: item.sortOrder,
+        status: SessionCourseStatus.ACTIVE,
+        isPublished: true,
+        isActive: true,
+      },
+      create: {
+        sessionId: session.id,
+        courseId: course.id,
+        displayName: item.name,
+        sortOrder: item.sortOrder,
+        status: SessionCourseStatus.ACTIVE,
+        isPublished: true,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+    await prisma.studentCourseEnrollment.upsert({
+      where: {
+        enrollmentId_sessionCourseId: {
+          enrollmentId: enrollment.id,
+          sessionCourseId: sessionCourse.id,
+        },
+      },
+      update: { status: 'ACTIVE', isActive: true },
+      create: {
+        enrollmentId: enrollment.id,
+        sessionCourseId: sessionCourse.id,
+        status: 'ACTIVE',
+        isActive: true,
+      },
+    });
+    const instructor = await prisma.user.upsert({
+      where: { email: item.instructor[2] },
+      update: {
+        organizationId: organization.id,
+        firstName: item.instructor[0],
+        lastName: item.instructor[1],
+        password,
+        isActive: true,
+        isVerified: true,
+        status: 'ACTIVE',
+      },
+      create: {
+        organizationId: organization.id,
+        firstName: item.instructor[0],
+        lastName: item.instructor[1],
+        email: item.instructor[2],
+        password,
+        isActive: true,
+        isVerified: true,
+        status: 'ACTIVE',
+      },
+      select: { id: true },
+    });
+    await assignOrganizationRoleToUser(
+      instructor.id,
+      rolesByCode.get('ADMIN')!.id,
+      organization.id,
+    );
+    await prisma.courseInstructor.upsert({
+      where: {
+        sessionCourseId_instructorId: {
+          sessionCourseId: sessionCourse.id,
+          instructorId: instructor.id,
+        },
+      },
+      update: {},
+      create: {
+        sessionCourseId: sessionCourse.id,
+        instructorId: instructor.id,
+      },
+    });
+
+    const folder = await upsertDashboardFolder(
+      sessionCourse.id,
+      item.folder,
+      item.sortOrder,
+    );
+    const resource = await upsertDashboardResource(
+      folder.id,
+      item.resource[0],
+      item.resource[1],
+      item.sortOrder,
+      new Date(now.getTime() - (item.sortOrder + 1) * 24 * 60 * 60 * 1000),
+    );
+    await prisma.studentCourseProgress.upsert({
+      where: {
+        userId_sessionCourseId: {
+          userId: student.id,
+          sessionCourseId: sessionCourse.id,
+        },
+      },
+      update: {
+        completionPercentage: item.completion,
+        lastAccessedResourceId: resource.id,
+      },
+      create: {
+        userId: student.id,
+        sessionCourseId: sessionCourse.id,
+        completionPercentage: item.completion,
+        lastAccessedResourceId: resource.id,
+      },
+    });
+  }
+
+  await seedDashboardNotification(
+    student.id,
+    organization.id,
+    StudentNotificationType.ASSIGNMENT,
+    'Assignment Reminder',
+    'Logical Reasoning Set 04 is due tomorrow.',
+    new Date(now.getTime() - 2 * 60 * 60 * 1000),
+  );
+  await seedDashboardNotification(
+    student.id,
+    organization.id,
+    StudentNotificationType.ANNOUNCEMENT,
+    'Important Announcement',
+    'IPMAT Mock Test on Sunday at 11:00 AM.',
+    new Date(now.getTime() - 5 * 60 * 60 * 1000),
+  );
+  await seedDashboardNotification(
+    student.id,
+    organization.id,
+    StudentNotificationType.EVENT,
+    'Upcoming Event',
+    'Verbal Ability Live Class at 4:30 PM today.',
+    new Date(now.getTime() - 24 * 60 * 60 * 1000),
+  );
+
+  console.log('Dashboard student login: student.iifm-demo@pratham.test / Admin@123');
+}
+
+async function upsertDashboardFolder(
+  sessionCourseId: number,
+  name: string,
+  sortOrder: number,
+) {
+  const existingFolder = await prisma.folder.findFirst({
+    where: { sessionCourseId, parentFolderId: null, name },
+    select: { id: true },
+  });
+
+  if (existingFolder) {
+    return prisma.folder.update({
+      where: { id: existingFolder.id },
+      data: {
+        description: `${name} resources for dashboard validation.`,
+        sortOrder,
+        status: FolderStatus.ACTIVE,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+  }
+
+  return prisma.folder.create({
+    data: {
+      sessionCourseId,
+      name,
+      description: `${name} resources for dashboard validation.`,
+      sortOrder,
+      icon: 'folder',
+      color: folderColor(sortOrder),
+      status: FolderStatus.ACTIVE,
+      isActive: true,
+    },
+    select: { id: true },
+  });
+}
+
+async function upsertDashboardResource(
+  folderId: number,
+  title: string,
+  type: ResourceType,
+  sortOrder: number,
+  createdAt: Date,
+) {
+  const existingResource = await prisma.resource.findFirst({
+    where: { folderId, title },
+    select: { id: true },
+  });
+  const data = {
+    title,
+    description: `${title} dashboard validation content.`,
+    type,
+    documentUrl:
+      type === ResourceType.DOCUMENT || type === ResourceType.NOTES
+        ? `https://cdn.example.com/lms/demo/${folderId}-${sortOrder}.pdf`
+        : null,
+    videoUrl:
+      type === ResourceType.VIDEO
+        ? `https://cdn.example.com/lms/demo/${folderId}-${sortOrder}.mp4`
+        : null,
+    examId: type === ResourceType.EXAM ? 900_000 + sortOrder : null,
+    mimeType:
+      type === ResourceType.VIDEO
+        ? 'video/mp4'
+        : type === ResourceType.EXAM || type === ResourceType.ASSIGNMENT
+          ? 'application/json'
+          : 'application/pdf',
+    fileSize:
+      type === ResourceType.DOCUMENT || type === ResourceType.NOTES
+        ? BigInt(420_000 + sortOrder * 15_000)
+        : null,
+    durationInSeconds:
+      type === ResourceType.VIDEO ? 1_200 + sortOrder * 120 : null,
+    sortOrder,
+    status: ResourceStatus.PUBLISHED,
+    isPublished: true,
+    isDownloadable: type !== ResourceType.VIDEO,
+    isActive: true,
+    createdAt,
+  };
+
+  if (existingResource) {
+    return prisma.resource.update({
+      where: { id: existingResource.id },
+      data,
+      select: { id: true },
+    });
+  }
+
+  return prisma.resource.create({
+    data: { ...data, folderId },
+    select: { id: true },
+  });
+}
+
+async function seedDashboardNotification(
+  userId: number,
+  organizationId: number,
+  type: StudentNotificationType,
+  title: string,
+  description: string,
+  createdAt: Date,
+) {
+  const existingNotification = await prisma.studentNotification.findFirst({
+    where: { userId, organizationId, type, title },
+    select: { id: true },
+  });
+  const data = {
+    description,
+    isRead: false,
+    expiresAt: null,
+    createdAt,
+  };
+
+  if (existingNotification) {
+    await prisma.studentNotification.update({
+      where: { id: existingNotification.id },
+      data,
+    });
+    return;
+  }
+
+  await prisma.studentNotification.create({
+    data: {
+      userId,
+      organizationId,
+      type,
+      title,
+      ...data,
+    },
+  });
 }
 
 async function seedOrganizations() {
@@ -672,6 +1113,29 @@ async function assignRoleToUser(userId: number, roleId: number) {
 
   await prisma.userRole.create({
     data: { userId, roleId, isActive: true },
+  });
+}
+
+async function assignOrganizationRoleToUser(
+  userId: number,
+  roleId: number,
+  organizationId: number,
+) {
+  const existingAssignment = await prisma.userRole.findFirst({
+    where: { userId, roleId, organizationId },
+    select: { id: true },
+  });
+
+  if (existingAssignment) {
+    await prisma.userRole.update({
+      where: { id: existingAssignment.id },
+      data: { isActive: true },
+    });
+    return;
+  }
+
+  await prisma.userRole.create({
+    data: { userId, roleId, organizationId, isActive: true },
   });
 }
 

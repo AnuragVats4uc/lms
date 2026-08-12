@@ -10,6 +10,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -22,12 +23,18 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 
 import { Permissions } from '../../auth/permissions/permissions.decorator';
+import { Roles } from '../../auth/roles/roles.decorator';
+import { CurrentUser } from '../../auth/types/current-user.types';
 import { CreateStudentDto } from '../dto/create-student.dto';
+import { StudentDashboardResponseDto } from '../dto/student-dashboard-response.dto';
 import { StudentQueryDto } from '../dto/student-query.dto';
 import { UpdateStudentDto } from '../dto/update-student.dto';
 import { StudentsService } from '../services/students.service';
+
+type AuthenticatedRequest = Request & { user: CurrentUser };
 
 @ApiTags('Students')
 @ApiBearerAuth('access-token')
@@ -51,6 +58,17 @@ export class StudentsController {
   @ApiOkResponse({ description: 'Student list fetched successfully' })
   findAll(@Query() query: StudentQueryDto) {
     return this.studentsService.findAll(query);
+  }
+
+  @Get('me/dashboard')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Get authenticated student dashboard data' })
+  @ApiOkResponse({
+    description: 'Student dashboard fetched successfully',
+    type: StudentDashboardResponseDto,
+  })
+  getMyDashboard(@Req() request: AuthenticatedRequest) {
+    return this.studentsService.getMyDashboard(request.user);
   }
 
   @Get(':id')

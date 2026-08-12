@@ -8,4 +8,5 @@ export * from "./rbac";
 export * from "./resource";
 export * from "./session";
 export * from "./session-course";
+export * from "./student-dashboard";
 export * from "./user";

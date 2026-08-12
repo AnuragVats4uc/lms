@@ -19,6 +19,7 @@ model Session {
 
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   sessionCourses SessionCourse[]
+  studentEnrollments StudentEnrollment[]
 
   @@unique([organizationId, name], map: "sessions_organization_id_name_unique")
   @@index([organizationId], map: "sessions_organization_id_idx")

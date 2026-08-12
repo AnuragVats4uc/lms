@@ -21,11 +21,11 @@ export const resourceSchema = z
     status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]),
     thumbnail: optionalUrl,
     title: z.string().trim().min(1, "Resource title is required").max(200),
-    type: z.enum(["DOCUMENT", "VIDEO", "EXAM"]),
+    type: z.enum(["DOCUMENT", "NOTES", "VIDEO", "EXAM", "ASSIGNMENT"]),
     videoUrl: optionalUrl,
   })
   .superRefine((value, context) => {
-    if (value.type === "DOCUMENT" && !value.documentUrl) {
+    if ((value.type === "DOCUMENT" || value.type === "NOTES") && !value.documentUrl) {
       context.addIssue({ code: "custom", message: "Document URL is required", path: ["documentUrl"] });
     }
     if (value.type === "VIDEO" && !value.videoUrl) {

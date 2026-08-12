@@ -23,6 +23,8 @@ model Organization {
   users     User[]
   userRoles UserRole[]
   sessions  Session[]
+  studentEnrollments StudentEnrollment[]
+  studentNotifications StudentNotification[]
 
   @@map("organizations")
 }

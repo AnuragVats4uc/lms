@@ -31,8 +31,10 @@ enum FolderStatus {
 
 enum ResourceType {
   DOCUMENT
+  NOTES
   VIDEO
   EXAM
+  ASSIGNMENT
 }
 
 enum ResourceStatus {
@@ -50,4 +52,25 @@ enum UserStatus {
 enum RefreshTokenStatus {
   ACTIVE
   REVOKED
+}
+
+enum StudentEnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum StudentCourseEnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum StudentNotificationType {
+  ASSIGNMENT
+  ANNOUNCEMENT
+  EVENT
+  EXAM
+  RESOURCE
+  SYSTEM
 }

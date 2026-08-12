@@ -2,6 +2,7 @@ import type {
   ApiResponse,
   CreateStudentRequest,
   Student,
+  StudentDashboard,
   StudentList,
   StudentQuery,
   UpdateStudentRequest,
@@ -30,6 +31,12 @@ export const studentsApi = {
   findOne(id: number) {
     return api
       .get<ApiResponse<Student>>(`${STUDENTS_ENDPOINT}/${id}`)
+      .then(unwrapApiData);
+  },
+
+  findMyDashboard() {
+    return api
+      .get<ApiResponse<StudentDashboard>>(`${STUDENTS_ENDPOINT}/me/dashboard`)
       .then(unwrapApiData);
   },
 

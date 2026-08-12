@@ -48,6 +48,115 @@ export class StudentsRepository {
     });
   }
 
+  findDashboardStudent(userId: number) {
+    return this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        isActive: true,
+        userRoles: {
+          some: {
+            isActive: true,
+            role: { code: 'STUDENT' },
+          },
+        },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        organizationId: true,
+        organization: {
+          select: { id: true, name: true, code: true },
+        },
+      },
+    });
+  }
+
+  findActiveEnrollment(userId: number, organizationId?: number | null) {
+    return this.prisma.studentEnrollment.findFirst({
+      where: {
+        userId,
+        isActive: true,
+        status: 'ACTIVE',
+        ...(organizationId ? { organizationId } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        organization: { select: { id: true, name: true, code: true } },
+        session: { select: { id: true, name: true, code: true } },
+        courseEnrollments: {
+          where: { isActive: true, status: 'ACTIVE' },
+          orderBy: { createdAt: 'asc' },
+          include: {
+            sessionCourse: {
+              include: {
+                course: true,
+                instructors: {
+                  include: {
+                    instructor: {
+                      select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                      },
+                    },
+                  },
+                },
+                studentCourseProgress: {
+                  where: { userId },
+                  include: {
+                    lastAccessedResource: {
+                      select: { id: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  findNotifications(userId: number, organizationId: number) {
+    return this.prisma.studentNotification.findMany({
+      where: {
+        userId,
+        organizationId,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
+  }
+
+  findContentUpdates(sessionCourseIds: number[]) {
+    if (!sessionCourseIds.length) {
+      return Promise.resolve([]);
+    }
+
+    return this.prisma.resource.findMany({
+      where: {
+        isActive: true,
+        isPublished: true,
+        status: 'PUBLISHED',
+        folder: { sessionCourseId: { in: sessionCourseIds } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+      include: {
+        folder: {
+          select: {
+            id: true,
+            sessionCourseId: true,
+          },
+        },
+      },
+    });
+  }
+
   findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: { email },

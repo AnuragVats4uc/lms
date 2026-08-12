@@ -3,9 +3,6 @@ import {
   Bell,
   BookOpen,
   Building2,
-  CalendarDays,
-  ClipboardCheck,
-  FileBarChart,
   FileText,
   GraduationCap,
   KeyRound,
@@ -13,7 +10,6 @@ import {
   Settings,
   ShieldCheck,
   CalendarRange,
-  UserRound,
   UsersRound,
 } from "lucide-react";
 
@@ -119,9 +115,9 @@ export const studentNavigation: NavigationItem[] = [
     label: "My Courses",
   },
   {
-    href: "/student/assignments",
-    icon: FileText,
-    label: "Assignments",
+    href: "/student/notifications",
+    icon: Bell,
+    label: "Notifications",
   },
   {
     href: "/student/resources",
@@ -129,28 +125,8 @@ export const studentNavigation: NavigationItem[] = [
     label: "Resources",
   },
   {
-    href: "/student/attendance",
-    icon: ClipboardCheck,
-    label: "Attendance",
-  },
-  {
-    href: "/student/schedule",
-    icon: CalendarDays,
-    label: "Schedule",
-  },
-  {
-    href: "/student/exams",
-    icon: ShieldCheck,
-    label: "Exams",
-  },
-  {
-    href: "/student/notifications",
-    icon: Bell,
-    label: "Notifications",
-  },
-  {
-    href: "/student/profile",
-    icon: UserRound,
-    label: "Profile",
+    href: "/student/courses",
+    icon: GraduationCap,
+    label: "Courses",
   },
 ];

@@ -81,8 +81,10 @@ const statusOptions = [
 const typeOptions = [
   { label: "All", value: "ALL" },
   { label: "Documents", value: "DOCUMENT" },
+  { label: "Notes", value: "NOTES" },
   { label: "Videos", value: "VIDEO" },
   { label: "Exams", value: "EXAM" },
+  { label: "Assignments", value: "ASSIGNMENT" },
 ];
 const publishedOptions = [
   { label: "All", value: "ALL" },
@@ -118,7 +120,9 @@ function toPayload(form: ResourceForm): CreateResourceRequest {
   if (form.fileSize.trim()) payload.fileSize = form.fileSize.trim();
   if (form.durationInSeconds.trim())
     payload.durationInSeconds = Number(form.durationInSeconds);
-  if (form.type === "DOCUMENT") payload.documentUrl = form.documentUrl.trim();
+  if (form.type === "DOCUMENT" || form.type === "NOTES") {
+    payload.documentUrl = form.documentUrl.trim();
+  }
   if (form.type === "VIDEO") payload.videoUrl = form.videoUrl.trim();
   if (form.type === "EXAM") payload.examId = Number(form.examId);
   return payload;
@@ -148,17 +152,19 @@ function ResourceForm({ error }: ResourceFormContext<ResourceForm>) {
             name="type"
             options={[
               { label: "Document", value: "DOCUMENT" },
+              { label: "Notes", value: "NOTES" },
               { label: "Video", value: "VIDEO" },
               { label: "Exam", value: "EXAM" },
+              { label: "Assignment", value: "ASSIGNMENT" },
             ]}
           />
         </div>
       </XStack>
-      {type === "DOCUMENT" ? (
+      {type === "DOCUMENT" || type === "NOTES" ? (
         <XStack gap="$3" style={{ flexWrap: "wrap" }}>
           <div className="lms-form-field">
             <FormInput
-              label="Document URL"
+              label={type === "NOTES" ? "Notes URL" : "Document URL"}
               name="documentUrl"
               placeholder="https://cdn.example.com/notes.pdf"
               type="url"

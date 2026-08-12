@@ -1,0 +1,112 @@
+model StudentEnrollment {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  userId         Int @map("user_id")
+  organizationId Int @map("organization_id")
+  sessionId      Int @map("session_id")
+
+  status   StudentEnrollmentStatus @default(ACTIVE)
+  isActive Boolean                 @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  student      User         @relation("StudentEnrollments", fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  session      Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  courseEnrollments StudentCourseEnrollment[]
+
+  @@unique([userId, sessionId], map: "student_enrollments_user_id_session_id_unique")
+  @@index([organizationId], map: "student_enrollments_organization_id_idx")
+  @@index([sessionId], map: "student_enrollments_session_id_idx")
+  @@index([status, isActive], map: "student_enrollments_status_is_active_idx")
+  @@map("student_enrollments")
+}
+
+model StudentCourseEnrollment {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  enrollmentId    Int @map("enrollment_id")
+  sessionCourseId Int @map("session_course_id")
+
+  status   StudentCourseEnrollmentStatus @default(ACTIVE)
+  isActive Boolean                       @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  enrollment    StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  sessionCourse SessionCourse     @relation(fields: [sessionCourseId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, sessionCourseId], map: "student_course_enrollment_unique")
+  @@index([sessionCourseId], map: "student_course_enrollments_session_course_id_idx")
+  @@index([status, isActive], map: "student_course_enrollments_status_is_active_idx")
+  @@map("student_course_enrollments")
+}
+
+model CourseInstructor {
+  id Int @id @default(autoincrement())
+
+  sessionCourseId Int @map("session_course_id")
+  instructorId    Int @map("instructor_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  sessionCourse SessionCourse @relation(fields: [sessionCourseId], references: [id], onDelete: Cascade)
+  instructor    User          @relation("CourseInstructors", fields: [instructorId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionCourseId, instructorId], map: "course_instructors_session_course_id_instructor_id_unique")
+  @@index([instructorId], map: "course_instructors_instructor_id_idx")
+  @@map("course_instructors")
+}
+
+model StudentCourseProgress {
+  id Int @id @default(autoincrement())
+
+  userId                 Int  @map("user_id")
+  sessionCourseId        Int  @map("session_course_id")
+  completionPercentage   Int  @default(0) @map("completion_percentage")
+  lastAccessedResourceId Int? @map("last_accessed_resource_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  student              User          @relation("StudentCourseProgress", fields: [userId], references: [id], onDelete: Cascade)
+  sessionCourse        SessionCourse @relation(fields: [sessionCourseId], references: [id], onDelete: Cascade)
+  lastAccessedResource Resource?     @relation("LastAccessedResource", fields: [lastAccessedResourceId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, sessionCourseId], map: "student_course_progress_user_id_session_course_id_unique")
+  @@index([sessionCourseId], map: "student_course_progress_session_course_id_idx")
+  @@index([lastAccessedResourceId], map: "student_course_progress_last_accessed_resource_id_idx")
+  @@map("student_course_progress")
+}
+
+model StudentNotification {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  userId         Int @map("user_id")
+  organizationId Int @map("organization_id")
+
+  type            StudentNotificationType
+  title           String  @db.VarChar(180)
+  description     String  @db.Text
+  relatedEntity   String? @map("related_entity") @db.VarChar(80)
+  relatedEntityId Int?    @map("related_entity_id")
+  isRead          Boolean @default(false) @map("is_read")
+  expiresAt       DateTime? @map("expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  student      User         @relation("StudentNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead], map: "student_notifications_user_id_is_read_idx")
+  @@index([organizationId, type], map: "student_notifications_organization_id_type_idx")
+  @@index([createdAt], map: "student_notifications_created_at_idx")
+  @@map("student_notifications")
+}
