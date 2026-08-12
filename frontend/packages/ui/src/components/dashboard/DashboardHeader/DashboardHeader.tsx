@@ -333,29 +333,31 @@ export const DashboardHeader = memo(function DashboardHeader({
           ))}
         </HeaderIconGroup>
 
-        <SelectorFrame
-          className="lms-dashboard-header-selector"
-          onPress={organizationOnPress}
-          role={organizationOnPress ? "button" : undefined}
-          style={selectorStyle}
-        >
-          {organizationIcon}
-          <Text
-            color="#172033"
-            flex={1}
-            fontSize="$label"
-            fontWeight="$button"
-            numberOfLines={1}
+        {organizationLabel ? (
+          <SelectorFrame
+            className="lms-dashboard-header-selector"
+            onPress={organizationOnPress}
+            role={organizationOnPress ? "button" : undefined}
+            style={selectorStyle}
           >
-            {organizationLabel}
-          </Text>
-          <ChevronDown
-            aria-hidden="true"
-            color="#64748B"
-            size={16}
-            strokeWidth={2.2}
-          />
-        </SelectorFrame>
+            {organizationIcon}
+            <Text
+              color="#172033"
+              flex={1}
+              fontSize="$label"
+              fontWeight="$button"
+              numberOfLines={1}
+            >
+              {organizationLabel}
+            </Text>
+            <ChevronDown
+              aria-hidden="true"
+              color="#64748B"
+              size={16}
+              strokeWidth={2.2}
+            />
+          </SelectorFrame>
+        ) : null}
 
         <ProfileFrame
           className="lms-dashboard-header-profile"

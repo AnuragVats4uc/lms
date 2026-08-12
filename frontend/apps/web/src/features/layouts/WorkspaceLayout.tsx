@@ -26,6 +26,7 @@ const WorkspaceLayout = ({
   const { currentUser } = useAuthSession();
   const router = useRouter();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const isStudentWorkspace = title.toLowerCase() === "student";
   const visibleNavigation = navigation.filter(
     (item) =>
       !item.permission || userHasPermission(currentUser, item.permission),
@@ -39,7 +40,9 @@ const WorkspaceLayout = ({
   const profileName = currentUser
     ? `${currentUser.firstName} ${currentUser.lastName ?? ""}`.trim()
     : "User";
-  const profileRole = currentUser?.role ?? currentUser?.roles?.[0] ?? "Admin";
+  const profileRole = isStudentWorkspace
+    ? "IPMAT Foundation 2027"
+    : currentUser?.role ?? currentUser?.roles?.[0] ?? "Admin";
   const headerActions = [
     {
       icon: <CalendarDays color="#059669" size={20} strokeWidth={2.1} />,
@@ -48,12 +51,16 @@ const WorkspaceLayout = ({
     {
       icon: <Bell color="#0F1D3A" size={20} strokeWidth={2.1} />,
       label: "View notifications",
-      notificationCount: 0,
+      notificationCount: isStudentWorkspace ? 1 : 0,
     },
-    {
-      icon: <CircleHelp color="#0F1D3A" size={20} strokeWidth={2.1} />,
-      label: "Open help",
-    },
+    ...(isStudentWorkspace
+      ? []
+      : [
+          {
+            icon: <CircleHelp color="#0F1D3A" size={20} strokeWidth={2.1} />,
+            label: "Open help",
+          },
+        ]),
   ];
 
   return (
@@ -90,6 +97,12 @@ const WorkspaceLayout = ({
           actions={headerActions.map((action) => ({
             ...action,
             onPress: () => {
+              if (isStudentWorkspace) {
+                if (action.label === "Open calendar") router.push("/student/schedule");
+                else router.push("/student/notifications");
+                return;
+              }
+
               if (action.label === "Open calendar") router.push("/admin/sessions");
               else router.push("/admin/settings");
             },
@@ -110,6 +123,15 @@ const WorkspaceLayout = ({
           }
           onSearchSubmit={(value) => {
             const search = value.trim();
+            if (isStudentWorkspace) {
+              router.push(
+                search
+                  ? `/student/resources?search=${encodeURIComponent(search)}`
+                  : "/student/resources",
+              );
+              return;
+            }
+
             router.push(
               search
                 ? `/admin/organizations?search=${encodeURIComponent(search)}`
@@ -118,13 +140,23 @@ const WorkspaceLayout = ({
           }}
           organizationIcon={<Building2 color="#52627A" size={20} strokeWidth={2} />}
           organizationLabel={
-            organizationQuery.data?.name ??
-            (currentUser?.organizationId ? "Organization" : "All organizations")
+            isStudentWorkspace
+              ? undefined
+              : organizationQuery.data?.name ??
+                (currentUser?.organizationId ? "Organization" : "All organizations")
           }
-          organizationOnPress={() => router.push("/admin/organizations")}
+          organizationOnPress={
+            isStudentWorkspace ? undefined : () => router.push("/admin/organizations")
+          }
           profile={{ name: profileName, role: profileRole }}
-          profileOnPress={() => router.push("/admin/settings")}
-          searchPlaceholder="Search organizations, courses, resources, users..."
+          profileOnPress={() =>
+            router.push(isStudentWorkspace ? "/student/profile" : "/admin/settings")
+          }
+          searchPlaceholder={
+            isStudentWorkspace
+              ? "Search for courses, resources, or anything..."
+              : "Search organizations, courses, resources, users..."
+          }
           shortcutLabel="⌘ K"
         />
 

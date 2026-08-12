@@ -1,91 +1,52 @@
 "use client";
 
-import { BookOpen, CalendarDays, FileText } from "lucide-react";
-import { Card, Text, XStack, YStack } from "@repo/ui";
+import { AlertCircle, RefreshCw } from "lucide-react";
+import { Button, Spinner, Text, YStack } from "@repo/ui";
 import { useAuthSession } from "@repo/auth";
 
-import { getUserDisplayName } from "@/features/shared/access";
-
-const summaryCards = [
-  {
-    icon: BookOpen,
-    label: "My Courses",
-    value: "Coming soon",
-  },
-  {
-    icon: FileText,
-    label: "Assignments",
-    value: "Coming soon",
-  },
-  {
-    icon: CalendarDays,
-    label: "Schedule",
-    value: "Coming soon",
-  },
-];
+import {
+  StudentDashboard,
+  useStudentDashboard,
+} from "@/features/student/dashboard";
 
 export function StudentDashboardPage() {
   const { currentUser } = useAuthSession();
+  const dashboardQuery = useStudentDashboard(currentUser);
 
-  return (
-    <YStack gap="$4">
-      <YStack>
-        <Text
-          color="#172033"
-          fontSize={28}
-          fontWeight="700"
-        >
-          Welcome, {getUserDisplayName(currentUser)}
-        </Text>
-        <Text color="#647084" fontSize={14}>
-          Student learning workspace for courses,
-          assignments, exams, attendance, and schedule.
+  if (dashboardQuery.isPending) {
+    return (
+      <YStack className="student-dashboard-state">
+        <Spinner color="#059669" size="large" />
+        <Text color="#52627A" fontSize={14}>
+          Loading student dashboard...
         </Text>
       </YStack>
+    );
+  }
 
-      <XStack flexWrap="wrap" gap="$3">
-        {summaryCards.map((card) => {
-          const Icon = card.icon;
+  if (dashboardQuery.isError || !dashboardQuery.data) {
+    return (
+      <YStack className="student-dashboard-state">
+        <AlertCircle color="#B91C1C" size={30} strokeWidth={2.2} />
+        <Text color="#172033" fontSize={18} fontWeight="700">
+          Unable to load dashboard
+        </Text>
+        <Text color="#647084" fontSize={14}>
+          Please try refreshing the student dashboard.
+        </Text>
+        <Button
+          background="#059669"
+          onPress={() => void dashboardQuery.refetch()}
+          rounded="$3"
+        >
+          <RefreshCw aria-hidden="true" color="#FFFFFF" size={16} />
+          <Button.Text color="#FFFFFF" fontWeight="700">
+            Retry
+          </Button.Text>
+        </Button>
+      </YStack>
+    );
+  }
 
-          return (
-            <Card
-              key={card.label}
-              width={260}
-              borderColor="#DFE6EE"
-              borderRadius={8}
-              borderWidth={1}
-              backgroundColor="#FFFFFF"
-              padding="$4"
-            >
-              <YStack gap="$3">
-                <XStack
-                  style={{
-                    alignItems: "center",
-                    backgroundColor: "#E7F5F1",
-                    borderRadius: 8,
-                    height: 42,
-                    justifyContent: "center",
-                    width: 42,
-                  }}
-                >
-                  <Icon
-                    aria-hidden="true"
-                    size={21}
-                    strokeWidth={2.2}
-                    color="#0A7A5F"
-                  />
-                </XStack>
-                <Text color="#172033" fontWeight="700">
-                  {card.label}
-                </Text>
-                <Text color="#647084" fontSize={14}>
-                  {card.value}
-                </Text>
-              </YStack>
-            </Card>
-          );
-        })}
-      </XStack>
-    </YStack>
-  );
+  return <StudentDashboard data={dashboardQuery.data} />;
 }
