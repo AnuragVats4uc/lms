@@ -393,7 +393,7 @@ export function StudentDashboard() {
     return (
       <YStack className="student-dashboard-state">
         <Spinner color="#059669" size="large" />
-        <Text color="#52627A" fontSize={14}>
+        <Text color="#52627A" fontSize="$body" lineHeight="$body">
           Loading student dashboard...
         </Text>
       </YStack>
@@ -404,10 +404,15 @@ export function StudentDashboard() {
     return (
       <YStack className="student-dashboard-state">
         <AlertCircle color="#B91C1C" size={30} strokeWidth={2.2} />
-        <Text color="#172033" fontSize={18} fontWeight="700">
+        <Text
+          color="#172033"
+          fontSize="$h4"
+          fontWeight="$heading"
+          lineHeight="$h4"
+        >
           Unable to load dashboard
         </Text>
-        <Text color="#647084" fontSize={14}>
+        <Text color="#647084" fontSize="$body" lineHeight="$body">
           Please try refreshing the student dashboard.
         </Text>
         <Button
@@ -416,7 +421,7 @@ export function StudentDashboard() {
           rounded="$3"
         >
           <RefreshCw aria-hidden="true" color="#FFFFFF" size={16} />
-          <Button.Text color="#FFFFFF" fontWeight="700">
+          <Button.Text color="#FFFFFF" fontSize="$caption" fontWeight="$button">
             Retry
           </Button.Text>
         </Button>

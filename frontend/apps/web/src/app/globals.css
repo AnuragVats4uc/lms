@@ -721,9 +721,9 @@ body {
 .student-dashboard-page {
   display: grid !important;
   gap: 18px !important;
-  grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.95fr);
-  margin: 0 auto;
-  max-width: 1260px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
+  margin: 0;
+  max-width: none;
   width: 100%;
 }
 
@@ -737,16 +737,16 @@ body {
 .student-welcome-card {
   background: rgba(255, 255, 255, 0.94) !important;
   border: 1px solid rgba(216, 226, 235, 0.9) !important;
-  border-radius: 18px !important;
+  border-radius: 12px !important;
   box-shadow:
-    0 18px 44px rgba(15, 23, 42, 0.045),
+    0 10px 30px rgba(15, 23, 42, 0.04),
     inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
   overflow: hidden !important;
 }
 
 .student-welcome-card {
-  min-height: 278px !important;
-  padding: 34px !important;
+  min-height: 246px !important;
+  padding: 24px !important;
   position: relative !important;
 }
 
@@ -768,55 +768,55 @@ body {
 
 .student-welcome-decor.decor-one {
   background: rgba(168, 232, 205, 0.34) !important;
-  height: 150px !important;
-  right: 82px;
-  top: -48px;
-  width: 150px !important;
+  height: 132px !important;
+  right: 72px;
+  top: -42px;
+  width: 132px !important;
 }
 
 .student-welcome-decor.decor-two {
   background: rgba(216, 244, 235, 0.62) !important;
-  bottom: -40px;
-  height: 118px !important;
+  bottom: -36px;
+  height: 104px !important;
   left: 46%;
-  width: 118px !important;
+  width: 104px !important;
 }
 
 .student-welcome-decor.decor-three {
   background: rgba(221, 240, 252, 0.86) !important;
-  height: 82px !important;
-  right: 26px;
-  top: 132px;
-  width: 82px !important;
+  height: 74px !important;
+  right: 22px;
+  top: 118px;
+  width: 74px !important;
 }
 
 .student-welcome-copy {
-  max-width: 440px;
+  max-width: 420px;
   position: relative !important;
   z-index: 2;
 }
 
 .student-welcome-kicker {
   color: #4b556a !important;
-  font-size: 15px !important;
+  font-size: 13px !important;
   font-weight: 500 !important;
-  line-height: 22px !important;
+  line-height: 18px !important;
 }
 
 .student-welcome-title {
   color: #0f1d3a !important;
-  font-size: 38px !important;
+  font-size: 32px !important;
   font-weight: 800 !important;
   letter-spacing: 0 !important;
-  line-height: 48px !important;
-  margin-top: 10px !important;
+  line-height: 38px !important;
+  margin-top: 8px !important;
 }
 
 .student-welcome-subtitle {
   color: #52627a !important;
-  font-size: 15px !important;
-  line-height: 24px !important;
-  margin-top: 8px !important;
+  font-size: 14px !important;
+  line-height: 21px !important;
+  margin-top: 6px !important;
 }
 
 .student-batch-badge {
@@ -825,16 +825,16 @@ body {
   background: rgba(255, 255, 255, 0.72) !important;
   border: 1px solid rgba(210, 222, 232, 0.92) !important;
   border-radius: 12px !important;
-  gap: 9px !important;
-  margin-top: 24px !important;
-  padding: 10px 14px !important;
+  gap: 8px !important;
+  margin-top: 18px !important;
+  padding: 8px 12px !important;
 }
 
 .student-batch-text {
   color: #243047 !important;
   font-size: 13px !important;
   font-weight: 700 !important;
-  line-height: 16px !important;
+  line-height: 18px !important;
 }
 
 .student-primary-action {
@@ -842,48 +842,49 @@ body {
   appearance: none !important;
   background: linear-gradient(135deg, #12b981, #079669) !important;
   border: 0 !important;
-  border-radius: 12px !important;
-  box-shadow: 0 14px 26px rgba(5, 150, 105, 0.24) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 22px rgba(5, 150, 105, 0.2) !important;
   cursor: pointer !important;
   display: inline-flex !important;
   font-family: inherit !important;
-  gap: 10px !important;
-  height: 48px !important;
+  gap: 8px !important;
+  height: 40px !important;
   justify-content: center !important;
-  margin-top: 28px !important;
-  padding: 0 23px !important;
-  width: 188px !important;
+  margin-top: 22px !important;
+  padding: 0 18px !important;
+  width: 172px !important;
 }
 
 .student-primary-action-text {
   color: #ffffff !important;
-  font-size: 14px !important;
+  font-size: 13px !important;
   font-weight: 800 !important;
+  line-height: 18px !important;
 }
 
 .student-hero-visual {
-  bottom: 24px;
-  height: 220px !important;
+  bottom: 18px;
+  height: 198px !important;
   position: absolute !important;
-  right: 28px;
-  width: 360px !important;
+  right: 22px;
+  width: 324px !important;
   z-index: 2;
 }
 
 .student-hero-book-stack {
-  bottom: 24px;
-  height: 118px !important;
+  bottom: 22px;
+  height: 106px !important;
   position: absolute !important;
   right: 54px;
-  width: 178px !important;
+  width: 160px !important;
 }
 
 .student-hero-book {
   border-radius: 8px !important;
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.1) !important;
-  height: 31px !important;
+  height: 28px !important;
   position: absolute !important;
-  width: 178px !important;
+  width: 160px !important;
 }
 
 .student-hero-book::before {
@@ -896,13 +897,13 @@ body {
 
 .student-hero-book.book-one {
   background: linear-gradient(90deg, #33c78b, #8de0bc) !important;
-  bottom: 62px;
+  bottom: 56px;
   transform: rotate(3deg);
 }
 
 .student-hero-book.book-two {
   background: linear-gradient(90deg, #50d0a3, #b8e6d3) !important;
-  bottom: 32px;
+  bottom: 29px;
   transform: rotate(-2deg);
 }
 
@@ -913,41 +914,41 @@ body {
 }
 
 .student-hero-cap {
-  height: 82px !important;
+  height: 74px !important;
   left: 20px;
   position: absolute !important;
-  top: -48px;
-  width: 142px !important;
+  top: -42px;
+  width: 128px !important;
   z-index: 2;
 }
 
 .student-hero-cap-top {
   background: linear-gradient(145deg, #1f2937, #6b7280) !important;
   border-radius: 5px !important;
-  height: 36px !important;
+  height: 32px !important;
   left: 0;
   position: absolute !important;
   top: 4px;
   transform: skewX(-17deg) rotate(5deg);
-  width: 140px !important;
+  width: 126px !important;
 }
 
 .student-hero-cap-base {
   background: #111827 !important;
   border-radius: 8px 8px 14px 14px !important;
-  height: 30px !important;
-  left: 44px;
+  height: 27px !important;
+  left: 40px;
   position: absolute !important;
-  top: 34px;
-  width: 54px !important;
+  top: 31px;
+  width: 48px !important;
 }
 
 .student-hero-tassel {
   background: #7fcf8e !important;
-  height: 54px !important;
+  height: 48px !important;
   position: absolute !important;
-  right: 28px;
-  top: 26px;
+  right: 25px;
+  top: 24px;
   width: 3px !important;
 }
 
@@ -963,19 +964,19 @@ body {
 }
 
 .student-hero-plant {
-  bottom: 30px;
-  height: 94px !important;
+  bottom: 28px;
+  height: 84px !important;
   left: 50px;
   position: absolute !important;
-  width: 82px !important;
+  width: 74px !important;
 }
 
 .student-hero-leaf {
   background: #79c987 !important;
   border-radius: 999px 999px 0 999px !important;
-  height: 34px !important;
+  height: 30px !important;
   position: absolute !important;
-  width: 18px !important;
+  width: 16px !important;
 }
 
 .student-hero-leaf.leaf-one {
@@ -1000,22 +1001,22 @@ body {
   background: linear-gradient(#d6e8de, #c8d3ce) !important;
   border-radius: 4px 4px 14px 14px !important;
   bottom: 0;
-  height: 36px !important;
+  height: 32px !important;
   left: 24px;
   position: absolute !important;
-  width: 42px !important;
+  width: 38px !important;
 }
 
 .student-hero-mug {
   background: linear-gradient(90deg, #f8f3ee, #ffffff) !important;
   border: 1px solid rgba(190, 199, 207, 0.42) !important;
   border-radius: 8px 8px 18px 18px !important;
-  bottom: 30px;
+  bottom: 28px;
   box-shadow: 0 14px 24px rgba(15, 23, 42, 0.08) !important;
-  height: 58px !important;
+  height: 52px !important;
   position: absolute !important;
   right: 12px;
-  width: 52px !important;
+  width: 47px !important;
 }
 
 .student-hero-mug::after {
@@ -1023,30 +1024,30 @@ body {
   border-left: 0;
   border-radius: 0 999px 999px 0;
   content: "";
-  height: 28px;
+  height: 25px;
   position: absolute;
-  right: -17px;
-  top: 12px;
-  width: 18px;
+  right: -15px;
+  top: 11px;
+  width: 16px;
 }
 
 .student-hero-pen {
   background: linear-gradient(90deg, #a7dccb, #e4eee9) !important;
   border-radius: 999px !important;
-  bottom: 12px;
-  height: 8px !important;
-  left: 108px;
+  bottom: 10px;
+  height: 7px !important;
+  left: 98px;
   position: absolute !important;
   transform: rotate(-8deg);
-  width: 90px !important;
+  width: 82px !important;
 }
 
 .student-panel {
-  padding: 22px !important;
+  padding: 16px !important;
 }
 
 .student-courses-panel {
-  min-height: 380px !important;
+  min-height: 344px !important;
 }
 
 .student-dashboard-section-header {
@@ -1058,17 +1059,17 @@ body {
 
 .student-dashboard-section-title {
   color: #111a32 !important;
-  font-size: 20px !important;
+  font-size: 18px !important;
   font-weight: 800 !important;
-  line-height: 26px !important;
+  line-height: 22px !important;
   margin: 0 !important;
 }
 
 .student-dashboard-section-link {
   color: #00985f;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 800;
-  line-height: 18px;
+  line-height: 15px;
   text-decoration: none;
 }
 
@@ -1080,26 +1081,26 @@ body {
 
 .student-courses-grid {
   display: grid !important;
-  gap: 14px !important;
+  gap: 12px !important;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .student-course-card {
   background: rgba(255, 255, 255, 0.96) !important;
   border: 1px solid rgba(218, 226, 235, 0.94) !important;
-  border-radius: 13px !important;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.035) !important;
-  min-height: 151px !important;
-  padding: 16px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.035) !important;
+  min-height: 140px !important;
+  padding: 14px !important;
 }
 
 .student-course-icon {
   align-items: center !important;
   border-radius: 10px !important;
-  height: 46px !important;
+  height: 42px !important;
   justify-content: center !important;
   position: absolute !important;
-  width: 46px !important;
+  width: 42px !important;
 }
 
 .student-course-icon.green {
@@ -1120,14 +1121,14 @@ body {
 
 .student-course-code {
   color: #ffffff !important;
-  font-size: 18px !important;
+  font-size: 16px !important;
   font-weight: 800 !important;
-  line-height: 22px !important;
+  line-height: 20px !important;
 }
 
 .student-course-copy {
-  margin-left: 64px !important;
-  min-height: 48px !important;
+  margin-left: 56px !important;
+  min-height: 44px !important;
 }
 
 .student-course-title {
@@ -1140,25 +1141,25 @@ body {
 .student-course-instructor {
   align-items: center !important;
   gap: 5px !important;
-  margin-top: 7px !important;
+  margin-top: 5px !important;
 }
 
 .student-course-instructor-text,
 .student-course-progress-label {
   color: #667286 !important;
-  font-size: 12px !important;
-  line-height: 16px !important;
+  font-size: 11px !important;
+  line-height: 15px !important;
 }
 
 .student-course-progress-area {
-  margin-top: 20px !important;
+  margin-top: 16px !important;
 }
 
 .student-course-progress-track {
   background: #e8ecef !important;
   border-radius: 999px !important;
-  height: 7px !important;
-  margin-top: 8px !important;
+  height: 6px !important;
+  margin-top: 7px !important;
   overflow: hidden !important;
 }
 
@@ -1178,9 +1179,9 @@ body {
   cursor: pointer !important;
   display: flex !important;
   font-family: inherit !important;
-  height: 38px !important;
+  height: 36px !important;
   justify-content: center !important;
-  margin-top: 12px !important;
+  margin-top: 10px !important;
   position: relative !important;
   width: 100% !important;
 }
@@ -1192,41 +1193,42 @@ body {
 
 .student-course-button-text {
   color: #059669 !important;
-  font-size: 13px !important;
+  font-size: 11px !important;
   font-weight: 800 !important;
+  line-height: 15px !important;
 }
 
 .student-side-panel {
-  min-height: 276px !important;
+  min-height: 256px !important;
 }
 
 .student-feed-list {
-  gap: 12px !important;
+  gap: 10px !important;
 }
 
 .student-feed-item {
   align-items: center !important;
   background: rgba(255, 255, 255, 0.86) !important;
   border: 1px solid rgba(221, 228, 236, 0.92) !important;
-  border-radius: 14px !important;
-  box-shadow: 0 12px 25px rgba(15, 23, 42, 0.035) !important;
-  gap: 15px !important;
-  min-height: 77px !important;
-  padding: 14px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.03) !important;
+  gap: 12px !important;
+  min-height: 70px !important;
+  padding: 12px !important;
 }
 
 .student-update-item {
   cursor: pointer !important;
-  min-height: 78px !important;
+  min-height: 70px !important;
 }
 
 .student-feed-icon {
   align-items: center !important;
   border-radius: 999px !important;
   flex-shrink: 0 !important;
-  height: 48px !important;
+  height: 44px !important;
   justify-content: center !important;
-  width: 48px !important;
+  width: 44px !important;
 }
 
 .student-feed-copy {
@@ -1243,16 +1245,16 @@ body {
 
 .student-feed-description {
   color: #667286 !important;
-  font-size: 12px !important;
-  line-height: 17px !important;
-  margin-top: 4px !important;
+  font-size: 11px !important;
+  line-height: 15px !important;
+  margin-top: 3px !important;
 }
 
 .student-feed-meta {
   align-items: flex-end !important;
   flex-shrink: 0 !important;
-  gap: 15px !important;
-  min-width: 44px !important;
+  gap: 12px !important;
+  min-width: 42px !important;
 }
 
 .student-feed-time {
@@ -1285,7 +1287,7 @@ body {
 
   .student-dashboard-side-column {
     display: grid !important;
-    gap: 16px !important;
+    gap: 18px !important;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1301,29 +1303,27 @@ body {
   }
 
   .student-dashboard-page {
-    width: calc(100vw - 24px) !important;
+    width: 100% !important;
   }
 
   .student-welcome-card {
     min-height: auto !important;
-    padding: 24px !important;
+    padding: 16px !important;
   }
 
   .student-welcome-title {
-    font-size: 30px !important;
-    line-height: 38px !important;
+    font-size: 27px !important;
+    line-height: 32px !important;
   }
 
   .student-hero-visual {
     align-self: center;
-    height: 190px !important;
-    margin-top: 30px !important;
+    height: 182px !important;
+    margin-top: 24px !important;
     overflow: visible !important;
     position: relative !important;
     right: auto;
-    transform: scale(0.84);
-    transform-origin: top center;
-    width: 320px !important;
+    width: min(100%, 300px) !important;
   }
 
   .student-hero-book-stack {
@@ -1361,7 +1361,7 @@ body {
   }
 
   .student-panel {
-    padding: 18px !important;
+    padding: 16px !important;
   }
 
   .student-feed-item {
@@ -1377,7 +1377,7 @@ body {
 
 @media (max-width: 420px) {
   .student-course-copy {
-    margin-left: 58px !important;
+    margin-left: 54px !important;
   }
 
   .student-feed-icon {
