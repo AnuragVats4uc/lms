@@ -315,7 +315,7 @@ async function upsertInstructor(
   organizationId: number,
   password: string,
 ) {
-  const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.org${organizationId}@pratham.test`;
+  const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.org${organizationId}@lms.test`;
 
   return prisma.user.upsert({
     where: { email },

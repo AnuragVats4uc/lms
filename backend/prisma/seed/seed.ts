@@ -309,7 +309,7 @@ async function seedStudentDashboardDemo() {
     select: { id: true },
   });
   const student = await prisma.user.upsert({
-    where: { email: 'student.iifm-demo@pratham.test' },
+    where: { email: 'student.iifm-demo@lms.test' },
     update: {
       organizationId: organization.id,
       firstName: 'Demo',
@@ -323,7 +323,7 @@ async function seedStudentDashboardDemo() {
       organizationId: organization.id,
       firstName: 'Demo',
       lastName: 'Student',
-      email: 'student.iifm-demo@pratham.test',
+      email: 'student.iifm-demo@lms.test',
       password,
       isActive: true,
       isVerified: true,
@@ -364,7 +364,7 @@ async function seedStudentDashboardDemo() {
     {
       name: 'Quantitative Aptitude',
       code: 'QA',
-      instructor: ['Ritika', 'Mehra', 'ritika.mehra@pratham.test'],
+      instructor: ['Ritika', 'Mehra', 'ritika.mehra@lms.test'],
       completion: 68,
       resource: ['Permutation & Combination Notes', ResourceType.DOCUMENT],
       folder: 'Aptitude Notes',
@@ -373,7 +373,7 @@ async function seedStudentDashboardDemo() {
     {
       name: 'Verbal Ability',
       code: 'VA',
-      instructor: ['Nidhi', 'Arora', 'nidhi.arora@pratham.test'],
+      instructor: ['Nidhi', 'Arora', 'nidhi.arora@lms.test'],
       completion: 56,
       resource: ['Linear Equations - Part 2', ResourceType.VIDEO],
       folder: 'Verbal Lessons',
@@ -382,7 +382,7 @@ async function seedStudentDashboardDemo() {
     {
       name: 'Logical Reasoning',
       code: 'LR',
-      instructor: ['Aman', 'Verma', 'aman.verma@pratham.test'],
+      instructor: ['Aman', 'Verma', 'aman.verma@lms.test'],
       completion: 42,
       resource: ['Reading Comprehension Strategies', ResourceType.NOTES],
       folder: 'Reasoning Practice',
@@ -391,7 +391,7 @@ async function seedStudentDashboardDemo() {
     {
       name: 'Mock Tests',
       code: 'MT',
-      instructor: ['Test', 'Series', 'test.series@pratham.test'],
+      instructor: ['Test', 'Series', 'test.series@lms.test'],
       completion: 75,
       resource: ['Logical Reasoning Practice Set 05', ResourceType.ASSIGNMENT],
       folder: 'Mock Test Assignments',
@@ -556,7 +556,7 @@ async function seedStudentDashboardDemo() {
     new Date(now.getTime() - 24 * 60 * 60 * 1000),
   );
 
-  console.log('Dashboard student login: student.iifm-demo@pratham.test / Admin@123');
+  console.log('Dashboard student login: student.iifm-demo@lms.test / Admin@123');
 }
 
 async function upsertDashboardFolder(
