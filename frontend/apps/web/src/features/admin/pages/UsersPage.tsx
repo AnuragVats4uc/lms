@@ -14,8 +14,8 @@ import {
 import type {
   CreateStudentRequest,
   Student,
+  StudentStatus,
   UpdateStudentRequest,
-  UserStatus,
 } from "@repo/types";
 import { type UserFormValues, userSchema } from "@repo/validation";
 import {
@@ -156,7 +156,7 @@ const columns: DataTableColumn<Student>[] = [
         tone={
           row.status === "ACTIVE"
             ? "success"
-            : row.status === "BLOCKED"
+            : row.status === "SUSPENDED"
               ? "danger"
               : "neutral"
         }
@@ -270,7 +270,7 @@ export function UsersPage() {
           limit: query.limit,
           page: query.page,
           search: query.search,
-          status: query.status as UserStatus | undefined,
+          status: query.status as StudentStatus | undefined,
         })
       }
       queryKey={["admin", "users"]}
@@ -366,7 +366,8 @@ export function UsersPage() {
         { label: "All", value: "ALL" },
         { label: "Active", value: "ACTIVE" },
         { label: "Inactive", value: "INACTIVE" },
-        { label: "Blocked", value: "BLOCKED" },
+        { label: "Alumni", value: "ALUMNI" },
+        { label: "Suspended", value: "SUSPENDED" },
       ]}
       title="Users"
       toCreatePayload={toCreate}

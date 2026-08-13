@@ -39,12 +39,13 @@ export class StudentsService {
 
     const student = await this.studentsRepository.create({
       ...dto,
+      dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
       password: await this.passwordService.hash(dto.password),
       isVerified: true,
     });
 
     await this.rolesService.assignCodeToUser('STUDENT', {
-      userId: student.id,
+      userId: student.userId,
       organizationId: student.organizationId ?? undefined,
     });
 
@@ -74,6 +75,38 @@ export class StudentsService {
     const student = await this.findExisting(id);
 
     return this.toStudentResponse(student);
+  }
+
+  async getMe(user: CurrentUser) {
+    const isStudent = user.roles?.includes('STUDENT');
+
+    if (!isStudent) {
+      throw new ForbiddenException('Student profile is only available to students');
+    }
+
+    const student = await this.studentsRepository.findDashboardStudent(user.userId);
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    return {
+      user: {
+        id: student.user.id,
+        email: student.user.email,
+        firstName: student.user.firstName,
+        lastName: student.user.lastName,
+        roles: user.roles ?? [],
+      },
+      student: {
+        id: student.id,
+        uuid: student.uuid,
+        organizationId: student.organizationId,
+        studentCode: student.studentCode,
+        status: student.status,
+      },
+      profile: student.profile,
+    };
   }
 
   async update(id: number, dto: UpdateStudentDto) {
@@ -168,10 +201,10 @@ export class StudentsService {
       student: {
         id: student.id,
         name: this.displayName(student),
-        firstName: student.firstName,
-        lastName: student.lastName,
-        email: student.email,
-        avatar: null,
+        firstName: student.profile?.firstName ?? student.user.firstName,
+        lastName: student.profile?.lastName ?? student.user.lastName,
+        email: student.user.email,
+        avatar: student.profile?.avatar ?? null,
         batch: session?.name ?? null,
         organization,
         session,
@@ -270,6 +303,10 @@ export class StudentsService {
       ),
     ) as StudentUpdateData;
 
+    if (dto.dateOfBirth) {
+      data.dateOfBirth = new Date(dto.dateOfBirth);
+    }
+
     if (dto.password) {
       data.password = await this.passwordService.hash(dto.password);
     }
@@ -278,21 +315,64 @@ export class StudentsService {
   }
 
   private toStudentResponse(student: any) {
-    const { password, ...response } = student;
+    const roles =
+      student.user?.userRoles?.map((userRole) => userRole.role) ?? [];
+    const profile = student.profile ?? null;
+    const user = student.user ?? null;
 
     return {
-      ...response,
-      roles:
-        student.userRoles?.map((userRole) => userRole.role) ?? [],
+      id: student.id,
+      uuid: student.uuid,
+      userId: student.userId,
+      organizationId: student.organizationId,
+      studentCode: student.studentCode,
+      admissionNumber: student.admissionNumber,
+      rollNumber: student.rollNumber,
+      status: student.status,
+      isActive: student.isActive,
+      isVerified: user?.isVerified ?? false,
+      lastLoginAt: user?.lastLoginAt ?? null,
+      createdAt: student.createdAt,
+      updatedAt: student.updatedAt,
+      organization: student.organization,
+      profile,
+      user: user
+        ? {
+            id: user.id,
+            uuid: user.uuid,
+            organizationId: user.organizationId,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            phone: user.phone,
+            status: user.status,
+            isActive: user.isActive,
+            isVerified: user.isVerified,
+            lastLoginAt: user.lastLoginAt,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+          }
+        : null,
+      firstName: profile?.firstName ?? user?.firstName ?? '',
+      lastName: profile?.lastName ?? user?.lastName ?? null,
+      email: user?.email ?? '',
+      phone: profile?.phone ?? user?.phone ?? null,
+      roles,
     };
   }
 
   private displayName(user: {
-    firstName: string;
+    profile?: { firstName: string; lastName?: string | null } | null;
+    user?: { firstName: string; lastName?: string | null; email?: string };
+    firstName?: string;
     lastName?: string | null;
     email?: string;
   }) {
-    return [user.firstName, user.lastName].filter(Boolean).join(' ').trim()
+    return [
+      user.profile?.firstName ?? user.user?.firstName ?? user.firstName,
+      user.profile?.lastName ?? user.user?.lastName ?? user.lastName,
+    ].filter(Boolean).join(' ').trim()
+      || user.user?.email
       || user.email
       || 'Student';
   }

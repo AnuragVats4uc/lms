@@ -23,6 +23,7 @@ model Organization {
   users     User[]
   userRoles UserRole[]
   sessions  Session[]
+  students  Student[]
   studentEnrollments StudentEnrollment[]
   studentNotifications StudentNotification[]
 

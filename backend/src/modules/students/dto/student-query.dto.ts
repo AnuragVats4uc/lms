@@ -8,7 +8,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { UserStatus } from '@prisma/client';
+import { StudentStatus } from '@prisma/client';
 
 export class StudentQueryDto {
   @ApiPropertyOptional({ example: 1, default: 1 })
@@ -31,10 +31,10 @@ export class StudentQueryDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ enum: UserStatus })
+  @ApiPropertyOptional({ enum: StudentStatus })
   @IsOptional()
-  @IsEnum(UserStatus)
-  status?: UserStatus;
+  @IsEnum(StudentStatus)
+  status?: StudentStatus;
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()

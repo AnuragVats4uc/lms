@@ -71,6 +71,14 @@ export class StudentsController {
     return this.studentsService.getMyDashboard(request.user);
   }
 
+  @Get('me')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Get authenticated student account and profile' })
+  @ApiOkResponse({ description: 'Student account fetched successfully' })
+  getMe(@Req() request: AuthenticatedRequest) {
+    return this.studentsService.getMe(request.user);
+  }
+
   @Get(':id')
   @Permissions('students.read')
   @ApiOperation({ summary: 'Get student details' })

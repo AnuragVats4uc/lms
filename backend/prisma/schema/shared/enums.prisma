@@ -54,6 +54,13 @@ enum RefreshTokenStatus {
   REVOKED
 }
 
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+  ALUMNI
+  SUSPENDED
+}
+
 enum StudentEnrollmentStatus {
   ACTIVE
   COMPLETED

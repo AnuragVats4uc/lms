@@ -1,6 +1,7 @@
 import type {
   ApiResponse,
   CreateStudentRequest,
+  CurrentStudent,
   Student,
   StudentDashboard,
   StudentList,
@@ -37,6 +38,12 @@ export const studentsApi = {
   findMyDashboard() {
     return api
       .get<ApiResponse<StudentDashboard>>(`${STUDENTS_ENDPOINT}/me/dashboard`)
+      .then(unwrapApiData);
+  },
+
+  findMe() {
+    return api
+      .get<ApiResponse<CurrentStudent>>(`${STUDENTS_ENDPOINT}/me`)
       .then(unwrapApiData);
   },
 

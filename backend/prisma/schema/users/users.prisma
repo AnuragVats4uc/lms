@@ -16,9 +16,7 @@ model User {
   organization  Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   refreshTokens RefreshToken[]
   userRoles     UserRole[]
-  studentEnrollments StudentEnrollment[] @relation("StudentEnrollments")
-  studentCourseProgress StudentCourseProgress[] @relation("StudentCourseProgress")
-  studentNotifications StudentNotification[] @relation("StudentNotifications")
+  student       Student?
   instructorAssignments CourseInstructor[] @relation("CourseInstructors")
 
   createdAt DateTime @default(now()) @map("created_at")

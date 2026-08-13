@@ -97,7 +97,13 @@ async function main() {
   });
 
   for (const student of students) {
-    await seedForStudent(student.id, student.organizationId!, password, roleByCode);
+    await seedForStudent(
+      student.id,
+      student.email,
+      student.organizationId!,
+      password,
+      roleByCode,
+    );
   }
 
   console.log(
@@ -110,12 +116,45 @@ async function main() {
 }
 
 async function seedForStudent(
-  studentId: number,
+  userId: number,
+  email: string,
   organizationId: number,
   password: string,
   roleByCode: Map<string, number>,
 ) {
   const now = new Date();
+  const student = await prisma.student.upsert({
+    where: { userId },
+    update: {
+      isActive: true,
+      organizationId,
+      status: 'ACTIVE',
+      studentCode: `STU-${userId}`,
+      profile: {
+        upsert: {
+          create: {
+            firstName: email.split('@')[0]?.split('.')[0] ?? 'Student',
+            lastName: 'Learner',
+          },
+          update: {},
+        },
+      },
+    },
+    create: {
+      isActive: true,
+      organizationId,
+      status: 'ACTIVE',
+      studentCode: `STU-${userId}`,
+      userId,
+      profile: {
+        create: {
+          firstName: email.split('@')[0]?.split('.')[0] ?? 'Student',
+          lastName: 'Learner',
+        },
+      },
+    },
+    select: { id: true },
+  });
   const session = await prisma.session.upsert({
     where: {
       organizationId_name: {
@@ -144,9 +183,9 @@ async function seedForStudent(
   });
   const enrollment = await prisma.studentEnrollment.upsert({
     where: {
-      userId_sessionId: {
+      studentId_sessionId: {
         sessionId: session.id,
-        userId: studentId,
+        studentId: student.id,
       },
     },
     update: {
@@ -159,12 +198,12 @@ async function seedForStudent(
       organizationId,
       sessionId: session.id,
       status: 'ACTIVE',
-      userId: studentId,
+      studentId: student.id,
     },
     select: { id: true },
   });
 
-  await ensureRole(studentId, roleByCode.get('STUDENT'), organizationId);
+  await ensureRole(userId, roleByCode.get('STUDENT'), organizationId);
 
   for (const [sortOrder, item] of courses.entries()) {
     const course = await prisma.course.upsert({
@@ -261,9 +300,9 @@ async function seedForStudent(
 
     await prisma.studentCourseProgress.upsert({
       where: {
-        userId_sessionCourseId: {
+        studentId_sessionCourseId: {
           sessionCourseId: sessionCourse.id,
-          userId: studentId,
+          studentId: student.id,
         },
       },
       update: {
@@ -274,13 +313,13 @@ async function seedForStudent(
         completionPercentage: item.completion,
         lastAccessedResourceId: resource.id,
         sessionCourseId: sessionCourse.id,
-        userId: studentId,
+        studentId: student.id,
       },
     });
   }
 
   for (const notification of notifications) {
-    await upsertNotification(studentId, organizationId, notification, now);
+    await upsertNotification(student.id, organizationId, notification, now);
   }
 }
 
@@ -315,7 +354,7 @@ async function upsertInstructor(
   organizationId: number,
   password: string,
 ) {
-  const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.org${organizationId}@pratham.test`;
+  const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.org${organizationId}@lms.test`;
 
   return prisma.user.upsert({
     where: { email },
@@ -433,7 +472,7 @@ async function upsertResource(
 }
 
 async function upsertNotification(
-  userId: number,
+  studentId: number,
   organizationId: number,
   notification: (typeof notifications)[number],
   now: Date,
@@ -443,7 +482,7 @@ async function upsertNotification(
       organizationId,
       title: notification.title,
       type: notification.type,
-      userId,
+      studentId,
     },
     select: { id: true },
   });
@@ -468,7 +507,7 @@ async function upsertNotification(
       organizationId,
       title: notification.title,
       type: notification.type,
-      userId,
+      studentId,
     },
   });
 }
