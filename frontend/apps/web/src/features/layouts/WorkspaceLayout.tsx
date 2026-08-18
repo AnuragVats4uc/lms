@@ -3,9 +3,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Building2, CalendarDays, CircleHelp, Menu } from "lucide-react";
+import {
+  Bell,
+  Building2,
+  CalendarDays,
+  CircleHelp,
+  LogOut,
+  Menu,
+  UserRound,
+} from "lucide-react";
 import { Button, DashboardHeader, ScrollView, XStack, YStack } from "@repo/ui";
-import { useAuthSession } from "@repo/auth";
+import { useAuthSession, useLogout } from "@repo/auth";
 import { organizationsApi, studentsApi } from "@repo/api";
 
 import { userHasPermission } from "@/features/shared/access";
@@ -24,6 +32,7 @@ const WorkspaceLayout = ({
   title,
 }: WorkspaceLayoutProps) => {
   const { currentUser } = useAuthSession();
+  const logoutMutation = useLogout();
   const router = useRouter();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const isStudentWorkspace = title.toLowerCase() === "student";
@@ -71,6 +80,13 @@ const WorkspaceLayout = ({
       label: "Open help",
     },
   ].filter((action) => !isStudentWorkspace || action.label !== "Open help");
+  const handleLogout = () => {
+    if (logoutMutation.isPending) {
+      return;
+    }
+
+    void logoutMutation.mutateAsync();
+  };
 
   return (
     <XStack
@@ -150,6 +166,32 @@ const WorkspaceLayout = ({
             router.push(isStudentWorkspace ? "/student/profile" : "/admin/organizations")
           }
           profile={{ name: studentProfile?.name ?? profileName, role: profileRole }}
+          profileActions={[
+            {
+              icon: <UserRound aria-hidden="true" color="#435266" size={15} />,
+              id: "profile",
+              label: "Profile",
+              onPress: () =>
+                router.push(isStudentWorkspace ? "/student/profile" : "/admin/settings"),
+            },
+            {
+              closeOnPress: false,
+              destructive: true,
+              disabled: logoutMutation.isPending,
+              icon: (
+                <LogOut
+                  aria-hidden="true"
+                  color="#DC2626"
+                  size={15}
+                  strokeWidth={2.1}
+                />
+              ),
+              id: "logout",
+              label: logoutMutation.isPending ? "Logging out" : "Logout",
+              loading: logoutMutation.isPending,
+              onPress: handleLogout,
+            },
+          ]}
           profileOnPress={() =>
             router.push(isStudentWorkspace ? "/student/profile" : "/admin/settings")
           }

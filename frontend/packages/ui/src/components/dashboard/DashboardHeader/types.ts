@@ -13,6 +13,17 @@ export interface DashboardHeaderProfile {
   role: string;
 }
 
+export interface DashboardHeaderProfileAction {
+  closeOnPress?: boolean;
+  destructive?: boolean;
+  disabled?: boolean;
+  icon?: ReactNode;
+  id: string;
+  label: string;
+  loading?: boolean;
+  onPress: () => void;
+}
+
 export interface DashboardHeaderProps {
   actions?: DashboardHeaderAction[];
   leadingAction?: ReactNode;
@@ -20,6 +31,7 @@ export interface DashboardHeaderProps {
   organizationIcon?: ReactNode;
   organizationOnPress?: () => void;
   profile: DashboardHeaderProfile;
+  profileActions?: DashboardHeaderProfileAction[];
   profileOnPress?: () => void;
   searchPlaceholder: string;
   onSearchSubmit?: (value: string) => void;

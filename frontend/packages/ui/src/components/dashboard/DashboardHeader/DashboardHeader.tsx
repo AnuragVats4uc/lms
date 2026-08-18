@@ -1,6 +1,14 @@
 "use client";
 
-import { memo, useState, type CSSProperties } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Search } from "lucide-react";
 import { Input, Text, XStack, YStack, styled } from "tamagui";
 
@@ -247,6 +255,21 @@ const profileStyle = {
   width: "clamp(174px, 19vw, 216px)",
 } satisfies CSSProperties;
 
+const profileMenuStyle = {
+  background: "linear-gradient(180deg, #FFFFFF 0%, #FBFDFD 100%)",
+  border: "1px solid #D8E1EC",
+  borderRadius: 12,
+  boxShadow:
+    "0 20px 44px rgba(15, 23, 42, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.92)",
+  display: "flex",
+  flexDirection: "column",
+  gap: 2,
+  minWidth: 206,
+  padding: 8,
+  position: "fixed",
+  zIndex: 5000,
+} satisfies CSSProperties;
+
 export const DashboardHeader = memo(function DashboardHeader({
   actions = [],
   leadingAction,
@@ -255,11 +278,85 @@ export const DashboardHeader = memo(function DashboardHeader({
   organizationOnPress,
   onSearchSubmit,
   profile,
+  profileActions = [],
   profileOnPress,
   searchPlaceholder,
   shortcutLabel = "\u2318 K",
 }: DashboardHeaderProps) {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [profileMenuPosition, setProfileMenuPosition] = useState({
+    left: 0,
+    top: 0,
+  });
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  const profileTriggerRef = useRef<HTMLDivElement | null>(null);
+  const hasProfileActions = profileActions.length > 0;
+
+  const updateProfileMenuPosition = useCallback(() => {
+    const trigger = profileTriggerRef.current;
+
+    if (!trigger) {
+      return;
+    }
+
+    const rect = trigger.getBoundingClientRect();
+    const menuRect = profileMenuRef.current?.getBoundingClientRect();
+    const menuWidth = menuRect?.width ?? 206;
+    const menuHeight =
+      menuRect?.height ??
+      profileActions.length * 36 +
+        Math.max(profileActions.length - 1, 0) * 2 +
+        18;
+    const viewportPadding = 12;
+    const left = Math.max(
+      viewportPadding,
+      Math.min(
+        window.innerWidth - menuWidth - viewportPadding,
+        rect.right - menuWidth
+      )
+    );
+    const hasBottomSpace =
+      rect.bottom + menuHeight + viewportPadding <= window.innerHeight;
+
+    setProfileMenuPosition({
+      left,
+      top: hasBottomSpace
+        ? rect.bottom + 8
+        : Math.max(viewportPadding, rect.top - menuHeight - 8),
+    });
+  }, [profileActions.length]);
+
+  useEffect(() => {
+    if (!isProfileMenuOpen) {
+      return;
+    }
+
+    updateProfileMenuPosition();
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+
+      if (
+        target instanceof Node &&
+        !profileTriggerRef.current?.contains(target) &&
+        !profileMenuRef.current?.contains(target)
+      ) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    const handleViewportChange = () => updateProfileMenuPosition();
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [isProfileMenuOpen, updateProfileMenuPosition]);
 
   return (
     <HeaderFrame className="lms-dashboard-header" style={headerStyle}>
@@ -359,12 +456,28 @@ export const DashboardHeader = memo(function DashboardHeader({
           </SelectorFrame>
         ) : null}
 
-        <ProfileFrame
-          className="lms-dashboard-header-profile"
-          onPress={profileOnPress}
-          role={profileOnPress ? "button" : undefined}
-          style={profileStyle}
-        >
+        <div ref={profileTriggerRef} style={profileStyle}>
+          <ProfileFrame
+            aria-expanded={hasProfileActions ? isProfileMenuOpen : undefined}
+            aria-haspopup={hasProfileActions ? "menu" : undefined}
+            className="lms-dashboard-header-profile"
+            onPress={() => {
+              if (hasProfileActions) {
+                updateProfileMenuPosition();
+                setIsProfileMenuOpen((current) => !current);
+                return;
+              }
+
+              profileOnPress?.();
+            }}
+            role={hasProfileActions || profileOnPress ? "button" : undefined}
+            style={{
+              ...profileStyle,
+              flexShrink: 0,
+              minWidth: 0,
+              width: "100%",
+            }}
+          >
           <AvatarFrame style={centerStyle}>
             {profile.imageSrc ? (
               <img
@@ -408,7 +521,71 @@ export const DashboardHeader = memo(function DashboardHeader({
             size={16}
             strokeWidth={2.2}
           />
-        </ProfileFrame>
+          </ProfileFrame>
+        </div>
+
+        {isProfileMenuOpen && typeof document !== "undefined"
+          ? createPortal(
+              <div
+                className="lms-dashboard-header-profile-menu"
+                ref={profileMenuRef}
+                role="menu"
+                style={{
+                  ...profileMenuStyle,
+                  left: profileMenuPosition.left,
+                  top: profileMenuPosition.top,
+                }}
+              >
+                {profileActions.map((action) => (
+                  <button
+                    aria-label={action.label}
+                    className="lms-dashboard-header-profile-menu-item"
+                    disabled={action.disabled || action.loading}
+                    key={action.id}
+                    onClick={() => {
+                      if (action.disabled || action.loading) {
+                        return;
+                      }
+
+                      if (action.closeOnPress !== false) {
+                        setIsProfileMenuOpen(false);
+                      }
+
+                      action.onPress();
+                    }}
+                    role="menuitem"
+                    style={{
+                      alignItems: "center",
+                      background: "transparent",
+                      border: 0,
+                      borderRadius: 8,
+                      color: action.destructive ? "#DC2626" : "#0F1D3A",
+                      cursor:
+                        action.disabled || action.loading
+                          ? "not-allowed"
+                          : "pointer",
+                      display: "flex",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      gap: 9,
+                      height: 36,
+                      justifyContent: "flex-start",
+                      opacity: action.disabled || action.loading ? 0.6 : 1,
+                      padding: "0 10px",
+                      width: "100%",
+                    }}
+                    type="button"
+                  >
+                    {action.icon}
+                    <span>
+                      {action.loading ? `${action.label}...` : action.label}
+                    </span>
+                  </button>
+                ))}
+              </div>,
+              document.body
+            )
+          : null}
       </HeaderActionsFrame>
     </HeaderFrame>
   );

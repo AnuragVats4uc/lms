@@ -10,6 +10,7 @@ import { refreshQueue } from "./refresh.queue";
 const PUBLIC_AUTH_PATHS = [
   "/auth/login",
   "/auth/refresh",
+  "/auth/logout",
 ] as const;
 
 export function setupResponseInterceptor(

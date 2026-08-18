@@ -4,7 +4,6 @@ import { AuthUser } from "../types/auth.types";
 import { storedSession } from "../utils/session-storage";
 import {
   logout as revokeSession,
-  refreshToken as refreshSessionToken,
 } from "../services/auth.service";
 
 interface SessionManagerOptions {
@@ -86,15 +85,7 @@ class SessionManager {
 
     if (refreshToken) {
       try {
-        const tokens =
-          await refreshSessionToken(refreshToken);
-
-        await token.save(
-          tokens.accessToken,
-          tokens.refreshToken
-        );
-
-        await revokeSession(tokens.refreshToken);
+        await revokeSession(refreshToken);
       } catch {
         // Local logout must still complete when the server session is already invalid.
       }
