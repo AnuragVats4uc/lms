@@ -29,12 +29,13 @@ import {
   CrudBadge,
   CrudDetailField,
   CrudDetailSection,
+  CrudFormSelect,
 } from "../components/crud";
 import {
   CrudManagementPage,
   type ResourceFormContext,
 } from "../components/crud/CrudManagementPage";
-import { FormInput, FormSelect, Text, XStack, YStack } from "@repo/ui";
+import { FormInput, Text, XStack, YStack } from "@repo/ui";
 
 type UserForm = UserFormValues;
 const initialForm: UserForm = {
@@ -109,7 +110,7 @@ function Form({
         </div>
       </XStack>
       <div className="lms-form-field">
-        <FormSelect
+        <CrudFormSelect
           label="Organization"
           name="organizationId"
           options={organizations.map((organization) => ({

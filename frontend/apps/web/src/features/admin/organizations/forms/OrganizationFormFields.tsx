@@ -1,10 +1,6 @@
-import {
-  AppInput,
-  FormInput,
-  FormSelect,
-  FormTextArea,
-} from "@repo/ui";
+import { AppInput, FormInput, FormTextArea } from "@repo/ui";
 import type { OrganizationFormValues } from "@repo/validation";
+import { CrudFormSelect } from "../../components/crud";
 
 const ORGANIZATION_STATUS_OPTIONS = [
   { label: "Active", value: "ACTIVE" },
@@ -94,16 +90,11 @@ export const OrganizationFormFields = () => {
       </div>
 
       <div className="lms-form-field">
-        <FormSelect<OrganizationFormValues, "status">
+        <CrudFormSelect<OrganizationFormValues, "status">
           label="Status"
           name="status"
           options={ORGANIZATION_STATUS_OPTIONS}
           placeholder="Select status"
-          triggerProps={{
-            background: "#FCFCFD",
-            borderColor: "#D8E1EC",
-            rounded: "$3",
-          }}
         />
       </div>
 

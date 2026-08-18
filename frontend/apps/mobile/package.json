@@ -5,6 +5,9 @@
   "dependencies": {
     "@expo/ui": "~57.0.1",
     "@tamagui/babel-plugin": "^2.4.1",
+    "@repo/hooks": "workspace:*",
+    "@repo/types": "workspace:*",
+    "@repo/validation": "workspace:*",
     "expo": "~57.0.0",
     "expo-constants": "~57.0.2",
     "expo-device": "~57.0.0",
@@ -37,6 +40,7 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "check-types": "tsc --noEmit",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",

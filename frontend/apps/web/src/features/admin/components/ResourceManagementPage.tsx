@@ -22,6 +22,7 @@ import {
 } from "react-hook-form";
 import { Button, XStack, YStack } from "@repo/ui";
 import type { PaginatedData } from "@repo/types";
+import { DEFAULT_CRUD_UI_PAGE_STATE, useCrudUiStore } from "@repo/hooks";
 
 import { AppModal } from "@/components/AppModal";
 import {
@@ -212,36 +213,101 @@ export function ResourceManagementPage<
   const canDelete =
     Boolean(remove) &&
     userHasPermission(currentUser, permissionPrefix + ".delete");
-  const [page, setPage] = useState(initialPage);
-  const [pageSize, setPageSize] = useState(initialPageSize);
-  const [search, setSearch] = useState(initialFilters?.search ?? "");
+  const crudScope = useMemo(
+    () => `admin-crud:${JSON.stringify(queryKey)}`,
+    [queryKey],
+  );
+  const initialCustomFilters = useMemo(() => {
+    const values = { ...(initialFilters ?? {}) };
+    delete values.status;
+    delete values.type;
+    delete values.published;
+    return values;
+  }, [initialFilters]);
+  const initialCrudState = useMemo(
+    () => ({
+      customFilters: initialCustomFilters,
+      page: initialPage,
+      pageSize: initialPageSize,
+      publishedFilter: initialFilters?.published ?? "",
+      search: initialFilters?.search ?? "",
+      statusFilter: initialFilters?.status ?? "",
+      typeFilter: initialFilters?.type ?? "",
+    }),
+    [initialCustomFilters, initialFilters, initialPage, initialPageSize],
+  );
+  const initialCrudStateRef = useRef(initialCrudState);
+  const crudPage = useCrudUiStore(
+    (state) => state.pages[crudScope] ?? DEFAULT_CRUD_UI_PAGE_STATE,
+  );
+  const initializeCrudPage = useCrudUiStore((state) => state.initializePage);
+  const resetCrudPage = useCrudUiStore((state) => state.resetPage);
+  const updateCrudPage = useCrudUiStore((state) => state.updatePage);
+  useEffect(() => {
+    initializeCrudPage(crudScope, initialCrudStateRef.current);
+    return () => resetCrudPage(crudScope);
+  }, [crudScope, initializeCrudPage, resetCrudPage]);
+  const page = crudPage.page;
+  const pageSize = crudPage.pageSize;
+  const search = crudPage.search;
+  const status = crudPage.statusFilter;
+  const typeFilter = crudPage.typeFilter;
+  const publishedFilter = crudPage.publishedFilter;
+  const customFilters = crudPage.customFilters;
+  const selectedRowState = crudPage.selectedRowIds;
+  const editingId = crudPage.editingId;
+  const isCreateOpen = crudPage.isCreateOpen;
+  const confirmId = crudPage.confirmId;
+  const statusId = crudPage.statusId;
+  const setPage = useCallback(
+    (value: number) => updateCrudPage(crudScope, { page: value }),
+    [crudScope, updateCrudPage],
+  );
+  const setPageSize = useCallback(
+    (value: number) => updateCrudPage(crudScope, { pageSize: value }),
+    [crudScope, updateCrudPage],
+  );
+  const setSearch = useCallback(
+    (value: string) => updateCrudPage(crudScope, { search: value }),
+    [crudScope, updateCrudPage],
+  );
   const [debouncedSearch, setDebouncedSearch] = useState(
     initialFilters?.search ?? "",
   );
-  const [status, setStatus] = useState(initialFilters?.status ?? "");
-  const [typeFilter, setTypeFilter] = useState(initialFilters?.type ?? "");
-  const [publishedFilter, setPublishedFilter] = useState(
-    initialFilters?.published ?? "",
+  const setStatus = useCallback(
+    (value: string) => updateCrudPage(crudScope, { statusFilter: value }),
+    [crudScope, updateCrudPage],
   );
-  const [customFilters, setCustomFilters] = useState<Record<string, string>>(
-    () => {
-      const values = { ...(initialFilters ?? {}) };
-      delete values.status;
-      delete values.type;
-      delete values.published;
-      return values;
-    },
+  const setTypeFilter = useCallback(
+    (value: string) => updateCrudPage(crudScope, { typeFilter: value }),
+    [crudScope, updateCrudPage],
+  );
+  const setPublishedFilter = useCallback(
+    (value: string) => updateCrudPage(crudScope, { publishedFilter: value }),
+    [crudScope, updateCrudPage],
+  );
+  const setCustomFilters = useCallback(
+    (
+      value:
+        | Record<string, string>
+        | ((current: Record<string, string>) => Record<string, string>),
+    ) =>
+      updateCrudPage(crudScope, (current) => ({
+        customFilters:
+          typeof value === "function" ? value(current.customFilters) : value,
+      })),
+    [crudScope, updateCrudPage],
   );
   const [selected, setSelected] = useState<Item | null>(null);
-  const [internalSelectedRowIds, setInternalSelectedRowIds] = useState<
-    DataTableRowId[]
-  >([]);
-  const [editing, setEditing] = useState<Item | null>(null);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [confirmItem, setConfirmItem] = useState<Item | null>(null);
+  const [statusItem, setStatusItem] = useState<Item | null>(null);
   const [form, setForm] = useState<Form>(initialForm);
   const [formError, setFormError] = useState<string | null>(null);
   const formMethods = useForm<Form>({
     defaultValues: initialForm as DefaultValues<Form>,
-    mode: "onBlur",
+    mode: "onTouched",
+    reValidateMode: "onChange",
     resolver: formResolver,
   });
   const {
@@ -249,10 +315,7 @@ export function ResourceManagementPage<
     reset: resetForm,
     trigger: triggerForm,
   } = formMethods;
-  const [isCreateOpen, setCreateOpen] = useState(false);
-  const [confirmItem, setConfirmItem] = useState<Item | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
-  const [statusItem, setStatusItem] = useState<Item | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [toast, setToast] = useState<CrudToastState | null>(null);
   const handledUrlAction = useRef<string | null>(null);
@@ -263,14 +326,14 @@ export function ResourceManagementPage<
       setPage(1);
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [search]);
+  }, [search, setPage]);
 
   useEffect(() => {
     if (!syncUrl) return;
 
     const params = new URLSearchParams(searchParams.toString());
-    ["page", "limit", "search", "status", "type", "published"].forEach(
-      (key) => params.delete(key),
+    ["page", "limit", "search", "status", "type", "published"].forEach((key) =>
+      params.delete(key),
     );
     Object.keys(customFilters).forEach((key) => params.delete(key));
     if (page > 1) params.set("page", String(page));
@@ -368,6 +431,7 @@ export function ResourceManagementPage<
     ? clientFilterRows(rawRows, filterValues)
     : rawRows;
   const total = query.data?.meta.total ?? 0;
+  const editing = editingId === null ? null : editingItem;
   const isSubmitting =
     createMutation.isPending ||
     updateMutation.isPending ||
@@ -392,7 +456,7 @@ export function ResourceManagementPage<
 
   const selectedItem =
     controlledSelectedItem !== undefined ? controlledSelectedItem : selected;
-  const selectedRowIds = controlledSelectedRowIds ?? internalSelectedRowIds;
+  const selectedRowIds = controlledSelectedRowIds ?? selectedRowState;
   const selectedItems =
     controlledSelectedItems ??
     rows.filter((row) => selectedRowIds.includes(getRowId(row)));
@@ -421,8 +485,8 @@ export function ResourceManagementPage<
   };
   const closeForm = () => {
     if (!isSubmitting) {
-      setCreateOpen(false);
-      setEditing(null);
+      updateCrudPage(crudScope, { editingId: null, isCreateOpen: false });
+      setEditingItem(null);
       setFormError(null);
     }
   };
@@ -431,17 +495,19 @@ export function ResourceManagementPage<
     setForm(nextForm);
     resetForm(nextForm);
     setFormError(null);
-    setCreateOpen(true);
-  }, [getCreateForm, initialForm, resetForm]);
+    setEditingItem(null);
+    updateCrudPage(crudScope, { editingId: null, isCreateOpen: true });
+  }, [crudScope, getCreateForm, initialForm, resetForm, updateCrudPage]);
   const openEdit = useCallback(
     (item: Item) => {
       const nextForm = toForm(item);
       setForm(nextForm);
       resetForm(nextForm);
       setFormError(null);
-      setEditing(item);
+      setEditingItem(item);
+      updateCrudPage(crudScope, { editingId: item.id, isCreateOpen: false });
     },
-    [resetForm, toForm],
+    [crudScope, resetForm, toForm, updateCrudPage],
   );
 
   useEffect(() => {
@@ -453,10 +519,8 @@ export function ResourceManagementPage<
     if (!action || handledUrlAction.current === actionKey) return;
 
     if (action === "create" && canCreate) {
-      // URL actions intentionally synchronize the local form state.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      openCreate();
       handledUrlAction.current = actionKey;
+      const timer = window.setTimeout(() => openCreate(), 0);
       const params = new URLSearchParams(searchParams.toString());
       params.delete("action");
       params.delete("id");
@@ -464,14 +528,14 @@ export function ResourceManagementPage<
       router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
         scroll: false,
       });
-      return;
+      return () => window.clearTimeout(timer);
     }
 
     if (action === "edit" && canUpdate && Number.isInteger(requestedId)) {
       const item = rows.find((row) => getRowId(row) === requestedId);
       if (item) {
-        openEdit(item);
         handledUrlAction.current = actionKey;
+        const timer = window.setTimeout(() => openEdit(item), 0);
         const params = new URLSearchParams(searchParams.toString());
         params.delete("action");
         params.delete("id");
@@ -479,6 +543,7 @@ export function ResourceManagementPage<
         router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
           scroll: false,
         });
+        return () => window.clearTimeout(timer);
       }
     }
   }, [
@@ -577,6 +642,7 @@ export function ResourceManagementPage<
     if (!confirmItem || !remove) return;
     try {
       await deleteMutation.mutateAsync(confirmItem.id);
+      updateCrudPage(crudScope, { confirmId: null });
       setConfirmItem(null);
       setConfirmError(null);
       setSelectedItem(null);
@@ -603,12 +669,14 @@ export function ResourceManagementPage<
         active,
         id: statusItem.id,
       });
+      updateCrudPage(crudScope, { statusId: null });
       setStatusItem(null);
       setStatusError(null);
       setSelectedItem(item);
       showToast(
         entityLabel + " status updated",
-        getDisplayName(item) + (active ? " was activated." : " was deactivated."),
+        getDisplayName(item) +
+          (active ? " was activated." : " was deactivated."),
         "success",
       );
       await query.refetch();
@@ -654,6 +722,7 @@ export function ResourceManagementPage<
                   destructive: true,
                   onAction: (item: Item) => {
                     setConfirmItem(item);
+                    updateCrudPage(crudScope, { confirmId: item.id });
                     setConfirmError(null);
                   },
                 },
@@ -668,6 +737,7 @@ export function ResourceManagementPage<
                   onAction: (item: Item) => {
                     setStatusError(null);
                     setStatusItem(item);
+                    updateCrudPage(crudScope, { statusId: item.id });
                   },
                 },
               ]
@@ -690,6 +760,7 @@ export function ResourceManagementPage<
     [
       canDelete,
       canUpdate,
+      crudScope,
       currentUser,
       getIsActive,
       openEdit,
@@ -699,6 +770,7 @@ export function ResourceManagementPage<
       additionalRowActions,
       setSelectedItem,
       setActive,
+      updateCrudPage,
     ],
   );
 
@@ -798,7 +870,7 @@ export function ResourceManagementPage<
           {renderBulkActions?.(
             selectedItems,
             () => {
-              setInternalSelectedRowIds([]);
+              updateCrudPage(crudScope, { selectedRowIds: [] });
               onSelectionChange?.([], []);
             },
             query.refetch,
@@ -836,7 +908,7 @@ export function ResourceManagementPage<
             }}
             onRowClick={setSelectedItem}
             onSelectionChange={(ids, selectedRows) => {
-              setInternalSelectedRowIds(ids);
+              updateCrudPage(crudScope, { selectedRowIds: ids });
               onSelectionChange?.(ids, selectedRows);
             }}
             pagination={{
@@ -924,10 +996,13 @@ export function ResourceManagementPage<
           confirmItem ? "Delete " + getDisplayName(confirmItem) + "?" : ""
         }
         error={confirmError ?? undefined}
-        isOpen={Boolean(confirmItem)}
+        isOpen={confirmId !== null && Boolean(confirmItem)}
         isSubmitting={deleteMutation.isPending}
         onClose={() => {
-          if (!deleteMutation.isPending) setConfirmItem(null);
+          if (!deleteMutation.isPending) {
+            setConfirmItem(null);
+            updateCrudPage(crudScope, { confirmId: null });
+          }
         }}
         onConfirm={() => void confirmDelete()}
         subject={confirmItem ? getDisplayName(confirmItem) : ""}
@@ -938,11 +1013,12 @@ export function ResourceManagementPage<
         count={statusItem ? 1 : 0}
         entityLabel={entityLabel}
         error={statusError ?? undefined}
-        isOpen={Boolean(statusItem)}
+        isOpen={statusId !== null && Boolean(statusItem)}
         isSubmitting={statusMutation.isPending}
         onClose={() => {
           if (!statusMutation.isPending) {
             setStatusItem(null);
+            updateCrudPage(crudScope, { statusId: null });
             setStatusError(null);
           }
         }}

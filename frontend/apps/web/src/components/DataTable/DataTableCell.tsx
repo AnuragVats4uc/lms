@@ -52,6 +52,7 @@ export const DataTableCell = memo(
           alignItems: "center",
           justifyContent: alignmentMap[align],
           left: sticky && stickySide === "left" ? stickyOffset : undefined,
+          minWidth: 0,
           right: sticky && stickySide === "right" ? stickyOffset : undefined,
           width,
         }}
@@ -61,7 +62,12 @@ export const DataTableCell = memo(
             color={DATA_TABLE_COLORS.text}
             fontSize={11}
             lineHeight={15}
-            numberOfLines={1}
+            width="100%"
+            style={{
+              overflowWrap: "anywhere",
+              whiteSpace: "normal",
+              wordBreak: "break-word",
+            }}
           >
             {children}
           </Text>

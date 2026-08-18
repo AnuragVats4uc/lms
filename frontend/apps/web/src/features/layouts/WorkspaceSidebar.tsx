@@ -82,11 +82,9 @@ function SidebarNavItem({
   const [isExpanded, setIsExpanded] = useState(hasActiveChild);
 
   useEffect(() => {
-    if (hasActiveChild) {
-      // Active navigation should always reveal its parent item.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsExpanded(true);
-    }
+    if (!hasActiveChild) return;
+    const timeout = window.setTimeout(() => setIsExpanded(true), 0);
+    return () => window.clearTimeout(timeout);
   }, [hasActiveChild]);
 
   const handleToggleChildren = useCallback(() => {
@@ -303,7 +301,10 @@ export function WorkspaceSidebar({
   variant = "desktop",
 }: WorkspaceSidebarProps) {
   const pathname = usePathname();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
+  });
   const [isHovering, setIsHovering] = useState(false);
   const groupedNavigation = useMemo(
     () => groupNavigationItems(navigation),
@@ -312,16 +313,6 @@ export function WorkspaceSidebar({
   const isDesktop = variant === "desktop";
   const isVisuallyExpanded =
     variant === "mobile" || !isCollapsed || (isDesktop && isHovering);
-
-  useEffect(() => {
-    const savedValue = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
-
-    if (savedValue === "true" || savedValue === "false") {
-      // Restore the user's persisted sidebar preference after hydration.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsCollapsed(savedValue === "true");
-    }
-  }, []);
 
   const handleToggle = useCallback(() => {
     setIsCollapsed((current) => {

@@ -30,6 +30,8 @@ import type {
 import { Text, XStack, YStack } from "@repo/ui";
 import { AppCard } from "@repo/ui/primitives";
 
+import { DataTableExpandableText } from "@/components/DataTable";
+
 import {
   CrudBulkActionBar,
   CrudBadge,
@@ -94,13 +96,13 @@ const OrganizationTableValue = ({
   children: ReactNode;
   muted?: boolean;
 }) => (
-  <Text
+  <DataTableExpandableText
     color={muted ? "#52627A" : "#0F1D3A"}
-    fontSize="$caption"
-    numberOfLines={2}
+    fontSize={11}
+    lineHeight={15}
   >
     {children || "-"}
-  </Text>
+  </DataTableExpandableText>
 );
 
 interface OrganizationStatusConfirmation {

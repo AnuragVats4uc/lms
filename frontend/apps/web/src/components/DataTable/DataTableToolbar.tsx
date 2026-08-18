@@ -40,17 +40,12 @@ const DataTableToolbarComponent = <TData,>({
   setSearchValue,
   toolbarActions = [],
 }: DataTableToolbarProps<TData>) => {
-  const [draftSearchState, setDraftSearchState] = useState(() => ({
-    source: searchValue,
-    value: searchValue,
-  }));
-  const draftSearch =
-    draftSearchState.source === searchValue
-      ? draftSearchState.value
-      : searchValue;
-  const setDraftSearch = (value: string) => {
-    setDraftSearchState({ source: searchValue, value });
-  };
+  const [draftSearch, setDraftSearch] = useState(searchValue);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDraftSearch(searchValue), 0);
+    return () => window.clearTimeout(timeout);
+  }, [searchValue]);
 
   useEffect(() => {
     const timeout = window.setTimeout(
@@ -113,35 +108,35 @@ const DataTableToolbarComponent = <TData,>({
         >
           {hasBulkSelection
             ? bulkActions.map((action) => (
-              <Button
-                aria-label={action.label}
-                background={
-                  action.destructive ? "#FFFFFF" : DATA_TABLE_COLORS.green
-                }
-                borderColor={
-                  action.destructive
-                    ? DATA_TABLE_COLORS.red
-                    : DATA_TABLE_COLORS.green
-                }
-                borderWidth={1}
-                disabled={loading || action.disabled}
-                height={40}
-                key={action.id}
-                onPress={() => action.onAction(selectedRows)}
-                rounded="$3"
-              >
-                {action.icon}
-                <Button.Text
-                  color={
-                    action.destructive ? DATA_TABLE_COLORS.red : "#FFFFFF"
+                <Button
+                  aria-label={action.label}
+                  background={
+                    action.destructive ? "#FFFFFF" : DATA_TABLE_COLORS.green
                   }
-                  fontSize="$caption"
-                  fontWeight="$button"
+                  borderColor={
+                    action.destructive
+                      ? DATA_TABLE_COLORS.red
+                      : DATA_TABLE_COLORS.green
+                  }
+                  borderWidth={1}
+                  disabled={loading || action.disabled}
+                  height={40}
+                  key={action.id}
+                  onPress={() => action.onAction(selectedRows)}
+                  rounded="$3"
                 >
-                  {action.label}
-                </Button.Text>
-              </Button>
-            ))
+                  {action.icon}
+                  <Button.Text
+                    color={
+                      action.destructive ? DATA_TABLE_COLORS.red : "#FFFFFF"
+                    }
+                    fontSize="$caption"
+                    fontWeight="$button"
+                  >
+                    {action.label}
+                  </Button.Text>
+                </Button>
+              ))
             : null}
 
           {filters.length ? (

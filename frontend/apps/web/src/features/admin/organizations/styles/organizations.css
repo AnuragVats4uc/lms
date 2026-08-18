@@ -323,6 +323,7 @@
 
 .lms-organization-create-modal .lms-modal-body {
   background: linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
+  flex: 0 1 auto;
   max-height: calc(100vh - 154px);
   padding-top: 10px;
 }
@@ -372,7 +373,7 @@
 .lms-organization-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   min-height: 0;
   padding-bottom: 0;
 }
@@ -500,9 +501,10 @@
 }
 
 .lms-organization-form-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  display: grid !important;
+  gap: 10px 12px !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
 }
 
 .lms-form-field {
@@ -511,9 +513,10 @@
   flex-direction: column;
   font-size: 11px;
   font-weight: 700;
-  gap: 6px;
+  gap: 4px;
   line-height: 14px;
   min-width: 0;
+  width: 100%;
 }
 
 .lms-form-field-wide {

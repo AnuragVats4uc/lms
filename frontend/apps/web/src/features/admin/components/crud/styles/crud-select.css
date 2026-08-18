@@ -64,6 +64,17 @@
   width: 100%;
 }
 
+.lms-crud-select.is-form .lms-crud-select-trigger {
+  align-items: center;
+  flex-direction: row;
+  gap: 0;
+  padding: 4px 28px 4px 12px;
+}
+
+.lms-crud-select.is-form {
+  border-radius: 10px;
+}
+
 .lms-crud-select-value {
   color: #0f1d3a;
   display: block;
@@ -76,6 +87,13 @@
   white-space: nowrap;
 }
 
+.lms-crud-select.is-form .lms-crud-select-value {
+  color: #0f1d3a;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
 .lms-crud-select-chevron {
   color: #52627a;
   position: absolute;
@@ -86,6 +104,15 @@
 
 .lms-crud-select.is-open .lms-crud-select-chevron {
   transform: rotate(180deg);
+}
+
+.lms-crud-select.is-form .lms-crud-select-chevron {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.lms-crud-select.is-form.is-open .lms-crud-select-chevron {
+  transform: translateY(-50%) rotate(180deg);
 }
 
 .lms-crud-select-menu {
@@ -103,7 +130,7 @@
   overflow-y: auto;
   padding: 5px;
   position: fixed;
-  z-index: 5200;
+  z-index: 7000;
 }
 
 .lms-crud-select-option {
@@ -125,6 +152,10 @@
 }
 
 .lms-crud-select-option:hover {
+  background: #f0fbf6;
+}
+
+.lms-crud-select-option.is-active {
   background: #f0fbf6;
 }
 

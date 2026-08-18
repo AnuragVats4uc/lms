@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
@@ -17,7 +17,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import { Button, Text, XStack, YStack } from "@repo/ui";
+import { Button, Text, YStack } from "@repo/ui";
 import { PageContainer } from "@repo/ui/dashboard";
 import type {
   BreadcrumbItem,
@@ -52,8 +52,10 @@ const roleIcon = (role: DashboardRole) => {
 };
 
 const treeIcon = (node: DashboardTreeNode) => {
-  if (node.type === "organization") return <Building2 size={15} strokeWidth={2.2} />;
-  if (node.type === "session") return <CalendarDays size={15} strokeWidth={2.2} />;
+  if (node.type === "organization")
+    return <Building2 size={15} strokeWidth={2.2} />;
+  if (node.type === "session")
+    return <CalendarDays size={15} strokeWidth={2.2} />;
   if (node.type === "course") return <BookOpen size={15} strokeWidth={2.2} />;
   return <Folder size={14} strokeWidth={2.2} />;
 };
@@ -73,7 +75,10 @@ const toTreeItem = (
   ),
 });
 
-const buildStatistics = (data: DashboardData, navigate: (path: string) => void): StatCardProps[] => [
+const buildStatistics = (
+  data: DashboardData,
+  navigate: (path: string) => void,
+): StatCardProps[] => [
   {
     color: "green",
     icon: <Building2 aria-hidden="true" size={24} strokeWidth={2.2} />,
@@ -103,7 +108,10 @@ const buildStatistics = (data: DashboardData, navigate: (path: string) => void):
   },
 ];
 
-const buildFolders = (data: DashboardData, navigate: (path: string) => void): FolderCardProps[] =>
+const buildFolders = (
+  data: DashboardData,
+  navigate: (path: string) => void,
+): FolderCardProps[] =>
   data.folders.map((folder) => ({
     actions: [
       {
@@ -131,7 +139,10 @@ const buildFolders = (data: DashboardData, navigate: (path: string) => void): Fo
     updatedAt: formatUpdatedAt(folder.updatedAt),
   }));
 
-const buildRoles = (data: DashboardData, navigate: (path: string) => void): RoleCardProps[] =>
+const buildRoles = (
+  data: DashboardData,
+  navigate: (path: string) => void,
+): RoleCardProps[] =>
   data.roles.map((role) => ({
     actions: [
       {
@@ -194,7 +205,8 @@ const buildUpload = (
   navigate: (path: string) => void,
 ): UploadDropzoneProps => ({
   actionLabel: "Upload Files",
-  description: "Drag and drop files here, or click to browse. Supports: PDF, DOCX, PPTX, MP4, MOV, ZIP and more.",
+  description:
+    "Drag and drop files here, or click to browse. Supports: PDF, DOCX, PPTX, MP4, MOV, ZIP and more.",
   icon: <UploadCloud aria-hidden="true" size={42} strokeWidth={2.2} />,
   onPress: () => navigate(resourcePath(data, undefined, "create")),
   title: "Upload resources to this course",
@@ -207,9 +219,12 @@ const resourcePath = (
   itemId?: number,
 ) => {
   const params = new URLSearchParams();
-  if (data.context.organization) params.set("organizationId", String(data.context.organization.id));
-  if (data.context.session) params.set("sessionId", String(data.context.session.id));
-  if (data.context.sessionCourseId) params.set("sessionCourseId", String(data.context.sessionCourseId));
+  if (data.context.organization)
+    params.set("organizationId", String(data.context.organization.id));
+  if (data.context.session)
+    params.set("sessionId", String(data.context.session.id));
+  if (data.context.sessionCourseId)
+    params.set("sessionCourseId", String(data.context.sessionCourseId));
   const selectedFolderId = folderId ?? data.context.folder?.id;
   if (selectedFolderId) params.set("folderId", String(selectedFolderId));
   if (action) params.set("action", action);
@@ -223,9 +238,12 @@ const folderPath = (
   itemId?: number,
 ) => {
   const params = new URLSearchParams();
-  if (data.context.organization) params.set("organizationId", String(data.context.organization.id));
-  if (data.context.session) params.set("sessionId", String(data.context.session.id));
-  if (data.context.sessionCourseId) params.set("sessionCourseId", String(data.context.sessionCourseId));
+  if (data.context.organization)
+    params.set("organizationId", String(data.context.organization.id));
+  if (data.context.session)
+    params.set("sessionId", String(data.context.session.id));
+  if (data.context.sessionCourseId)
+    params.set("sessionCourseId", String(data.context.sessionCourseId));
   if (action) params.set("action", action);
   if (itemId) params.set("id", String(itemId));
   return `/admin/folders?${params.toString()}`;
@@ -233,7 +251,8 @@ const folderPath = (
 
 const sessionPath = (data: DashboardData, action?: "create") => {
   const params = new URLSearchParams();
-  if (data.context.organization) params.set("organizationId", String(data.context.organization.id));
+  if (data.context.organization)
+    params.set("organizationId", String(data.context.organization.id));
   if (action) params.set("action", action);
   return `/admin/sessions?${params.toString()}`;
 };
@@ -295,56 +314,48 @@ export function AdminDashboardPage() {
     queryKey: ["admin-dashboard"],
     queryFn: () => dashboardApi.findSummary(),
   });
+  const effectiveDashboardContext = useMemo(() => {
+    const data = dashboardQuery.data;
+    const next = { ...dashboardContext };
+
+    if (next.organizationId === undefined && data?.context.organization) {
+      next.organizationId = data.context.organization.id;
+    }
+    if (next.sessionId === undefined && data?.context.session) {
+      next.sessionId = data.context.session.id;
+    }
+    if (next.sessionCourseId === undefined && data?.context.sessionCourseId) {
+      next.sessionCourseId = data.context.sessionCourseId;
+    }
+
+    return next;
+  }, [dashboardContext, dashboardQuery.data]);
   const resourceQuery = useQuery({
-    enabled: Boolean(dashboardQuery.data && Object.keys(dashboardContext).length),
+    enabled: Boolean(
+      dashboardQuery.data && Object.keys(effectiveDashboardContext).length,
+    ),
     queryKey: [
       "admin-dashboard",
       "resources",
-      dashboardContext.organizationId ?? null,
-      dashboardContext.sessionId ?? null,
-      dashboardContext.sessionCourseId ?? null,
-      dashboardContext.folderId ?? null,
+      effectiveDashboardContext.organizationId ?? null,
+      effectiveDashboardContext.sessionId ?? null,
+      effectiveDashboardContext.sessionCourseId ?? null,
+      effectiveDashboardContext.folderId ?? null,
     ],
-    queryFn: () => dashboardApi.findSummary(dashboardContext),
+    queryFn: () => dashboardApi.findSummary(effectiveDashboardContext),
   });
   const contextOptionsQuery = useQuery({
     enabled: Boolean(dashboardQuery.data),
     queryKey: [
       "admin-dashboard",
       "contexts",
-      dashboardContext.organizationId ?? null,
-      dashboardContext.sessionId ?? null,
-      dashboardContext.sessionCourseId ?? null,
-      dashboardContext.folderId ?? null,
+      effectiveDashboardContext.organizationId ?? null,
+      effectiveDashboardContext.sessionId ?? null,
+      effectiveDashboardContext.sessionCourseId ?? null,
+      effectiveDashboardContext.folderId ?? null,
     ],
-    queryFn: () => dashboardApi.findContextOptions(dashboardContext),
+    queryFn: () => dashboardApi.findContextOptions(effectiveDashboardContext),
   });
-
-  useEffect(() => {
-    const data = dashboardQuery.data;
-    if (!data) return;
-
-    // The initial dashboard response supplies defaults for the query context.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDashboardContext((current) => {
-      const next = { ...current };
-      if (next.organizationId === undefined && data.context.organization) {
-        next.organizationId = data.context.organization.id;
-      }
-      if (next.sessionId === undefined && data.context.session) {
-        next.sessionId = data.context.session.id;
-      }
-      if (next.sessionCourseId === undefined && data.context.sessionCourseId) {
-        next.sessionCourseId = data.context.sessionCourseId;
-      }
-      return next.organizationId === current.organizationId &&
-        next.sessionId === current.sessionId &&
-        next.sessionCourseId === current.sessionCourseId &&
-        next.folderId === current.folderId
-        ? current
-        : next;
-    });
-  }, [dashboardQuery.data]);
 
   const overviewViewModel = useMemo(() => {
     if (!dashboardQuery.data) return null;
@@ -382,7 +393,7 @@ export function AdminDashboardPage() {
         ),
       ),
     };
-  }, [collapsedTreeIds, dashboardQuery.data, resourceData, router.push, selectedTreeId]);
+  }, [collapsedTreeIds, resourceData, router.push, selectedTreeId]);
 
   const navigateToTreeNode = (id: string) => {
     setSelectedTreeId(id);
@@ -391,7 +402,10 @@ export function AdminDashboardPage() {
       if (resourceData) router.push(resourcePath(resourceData, folderId));
       return;
     }
-    if (id.startsWith("session-course-") && resourceData?.context.sessionCourseId) {
+    if (
+      id.startsWith("session-course-") &&
+      resourceData?.context.sessionCourseId
+    ) {
       router.push(resourcePath(resourceData));
     }
   };
@@ -409,7 +423,9 @@ export function AdminDashboardPage() {
     return (
       <PageContainer>
         <YStack gap="$2" py="$6">
-          <Text color="#52627A" fontSize="$body">Loading dashboard data...</Text>
+          <Text color="#52627A" fontSize="$body">
+            Loading dashboard data...
+          </Text>
         </YStack>
       </PageContainer>
     );
@@ -419,8 +435,14 @@ export function AdminDashboardPage() {
     return (
       <PageContainer>
         <YStack gap="$3" py="$6" style={{ alignItems: "center" }}>
-          <Text color="#B91C1C" fontSize="$body">Unable to load dashboard data.</Text>
-          <Button onPress={() => void dashboardQuery.refetch()} background="#059669" rounded="$3">
+          <Text color="#B91C1C" fontSize="$body">
+            Unable to load dashboard data.
+          </Text>
+          <Button
+            onPress={() => void dashboardQuery.refetch()}
+            background="#059669"
+            rounded="$3"
+          >
             <Button.Text color="#FFFFFF">Retry</Button.Text>
           </Button>
         </YStack>
@@ -432,13 +454,15 @@ export function AdminDashboardPage() {
     <DashboardPage
       breadcrumbs={resourceViewModel.breadcrumbs}
       context={resourceViewModel.context}
-      selectedContext={dashboardContext}
-      contextOptions={contextOptionsQuery.data ?? {
-        organizations: [],
-        sessions: [],
-        sessionCourses: [],
-        folders: [],
-      }}
+      selectedContext={effectiveDashboardContext}
+      contextOptions={
+        contextOptionsQuery.data ?? {
+          organizations: [],
+          sessions: [],
+          sessionCourses: [],
+          folders: [],
+        }
+      }
       contextLoading={contextOptionsQuery.isFetching}
       folders={resourceViewModel.folders}
       roles={overviewViewModel.roles}
@@ -449,9 +473,7 @@ export function AdminDashboardPage() {
       quickActions={quickActions!}
       onAddFolder={() =>
         router.push(
-          resourceData
-            ? folderPath(resourceData, "create")
-            : "/admin/folders",
+          resourceData ? folderPath(resourceData, "create") : "/admin/folders",
         )
       }
       onMore={() => router.push("/admin/resources")}

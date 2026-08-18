@@ -7,6 +7,7 @@ export * from "./CrudDetailPrimitives";
 export * from "./CrudHeaderAction";
 export * from "./CrudSearch";
 export * from "./CrudSelect";
+export * from "./CrudFormSelect";
 export * from "./CrudToolbar";
 export * from "./CrudFilterToolbar";
 export * from "./CrudConfirmationDialog";

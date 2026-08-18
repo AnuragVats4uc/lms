@@ -6,15 +6,12 @@ interface FormLabelProps extends LabelProps {
   children: React.ReactNode;
 }
 
-export function FormLabel({
-  children,
-  ...props
-}: FormLabelProps) {
+export function FormLabel({ children, ...props }: FormLabelProps) {
   return (
     <Label
-      mb="$2"
-      fontSize="$label"
-      fontWeight="$label"
+      mb="$0"
+      fontSize="$caption"
+      fontWeight="$button"
       letterSpacing="$body"
       {...props}
     >
