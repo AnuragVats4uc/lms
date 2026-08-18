@@ -3,6 +3,8 @@ import type {
   CreateStudentRequest,
   CurrentStudent,
   Student,
+  StudentCourseList,
+  StudentCoursesQuery,
   StudentDashboard,
   StudentList,
   StudentQuery,
@@ -38,6 +40,14 @@ export const studentsApi = {
   findMyDashboard() {
     return api
       .get<ApiResponse<StudentDashboard>>(`${STUDENTS_ENDPOINT}/me/dashboard`)
+      .then(unwrapApiData);
+  },
+
+  findMyCourses(query?: StudentCoursesQuery) {
+    return api
+      .get<ApiResponse<StudentCourseList>>(`${STUDENTS_ENDPOINT}/me/courses`, {
+        params: query,
+      })
       .then(unwrapApiData);
   },
 

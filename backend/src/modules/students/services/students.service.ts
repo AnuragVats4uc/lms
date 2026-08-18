@@ -11,9 +11,11 @@ import { PasswordService } from '../../auth/services/password.service';
 import { CurrentUser } from '../../auth/types/current-user.types';
 import { RolesService } from '../../roles/services/roles.service';
 import { CreateStudentDto } from '../dto/create-student.dto';
+import { StudentCoursesQueryDto } from '../dto/student-courses-query.dto';
 import { StudentQueryDto } from '../dto/student-query.dto';
 import { UpdateStudentDto } from '../dto/update-student.dto';
 import {
+  NormalizedStudentCoursesQuery,
   NormalizedStudentQuery,
   StudentUpdateData,
   StudentsRepository,
@@ -240,6 +242,46 @@ export class StudentsService {
     };
   }
 
+  async getMyCourses(user: CurrentUser, query: StudentCoursesQueryDto) {
+    const isStudent = user.roles?.includes('STUDENT');
+
+    if (!isStudent) {
+      throw new ForbiddenException('Student courses are only available to students');
+    }
+
+    const student = await this.studentsRepository.findDashboardStudent(user.userId);
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const normalized = this.normalizeStudentCoursesQuery(query);
+    const [result, categories] = await Promise.all([
+      this.studentsRepository.findStudentCourseEnrollments(
+        student.id,
+        student.organizationId,
+        normalized,
+      ),
+      this.studentsRepository.findStudentCourseCategories(
+        student.id,
+        student.organizationId,
+      ),
+    ]);
+
+    return {
+      items: result.items.map((courseEnrollment) =>
+        this.toStudentCourseResponse(courseEnrollment),
+      ),
+      meta: {
+        page: normalized.page,
+        limit: normalized.limit,
+        total: result.total,
+        totalPages: Math.ceil(result.total / normalized.limit),
+      },
+      categories,
+    };
+  }
+
   private async findExisting(id: number) {
     const student = await this.studentsRepository.findById(id);
 
@@ -291,6 +333,17 @@ export class StudentsService {
       search: query.search ?? '',
       status: query.status,
       organizationId: query.organizationId,
+    };
+  }
+
+  private normalizeStudentCoursesQuery(
+    query: StudentCoursesQueryDto,
+  ): NormalizedStudentCoursesQuery {
+    return {
+      page: query.page ?? 1,
+      limit: query.limit ?? 10,
+      search: query.search?.trim() ?? '',
+      category: query.category?.trim() || undefined,
     };
   }
 
@@ -359,6 +412,85 @@ export class StudentsService {
       phone: profile?.phone ?? user?.phone ?? null,
       roles,
     };
+  }
+
+  private toStudentCourseResponse(courseEnrollment: any) {
+    const sessionCourse = courseEnrollment.sessionCourse;
+    const course = sessionCourse.course;
+    const progress = sessionCourse.studentCourseProgress[0];
+    const completionPercentage = progress?.completionPercentage ?? 0;
+    const instructor = sessionCourse.instructors[0]?.instructor;
+    const resources = sessionCourse.folders.flatMap(
+      (folder) => folder.resources,
+    );
+    const counts = resources.reduce(
+      (totals, resource) => {
+        if (resource.type === ResourceType.VIDEO) totals.videos += 1;
+        if (
+          resource.type === ResourceType.DOCUMENT ||
+          resource.type === ResourceType.NOTES
+        ) {
+          totals.documents += 1;
+        }
+        if (resource.type === ResourceType.EXAM) totals.exams += 1;
+        return totals;
+      },
+      { documents: 0, exams: 0, videos: 0 },
+    );
+    const lastAccessedResource = progress?.lastAccessedResource;
+
+    return {
+      id: courseEnrollment.id,
+      enrollmentId: courseEnrollment.enrollmentId,
+      sessionCourseId: sessionCourse.id,
+      courseId: sessionCourse.courseId,
+      title: sessionCourse.displayName ?? course.name,
+      shortCode: this.shortCode(course.code, course.name),
+      program: courseEnrollment.enrollment.session.name,
+      description: sessionCourse.description ?? course.description,
+      instructor: instructor
+        ? this.displayName(instructor)
+        : 'Instructor not assigned',
+      completionPercentage,
+      status: this.toStudentCourseStatus(
+        courseEnrollment.status,
+        completionPercentage,
+      ),
+      image: course.thumbnail,
+      resourceCounts: counts,
+      lastAccessed: lastAccessedResource
+        ? {
+            resourceId: lastAccessedResource.id,
+            title: lastAccessedResource.title,
+            type: lastAccessedResource.type,
+            timestamp: progress.updatedAt,
+            path: this.buildResourcePath(
+              sessionCourse.id,
+              lastAccessedResource.id,
+            ),
+          }
+        : null,
+      continuePath: this.buildCoursePath(
+        sessionCourse.id,
+        progress?.lastAccessedResourceId,
+      ),
+      actionLabel: completionPercentage > 0 ? 'Continue Learning' : 'Start Course',
+    };
+  }
+
+  private toStudentCourseStatus(
+    enrollmentStatus: string,
+    completionPercentage: number,
+  ) {
+    if (enrollmentStatus === 'COMPLETED' || completionPercentage >= 100) {
+      return 'COMPLETED';
+    }
+
+    if (completionPercentage > 0) {
+      return 'IN_PROGRESS';
+    }
+
+    return 'NOT_STARTED';
   }
 
   private displayName(user: {

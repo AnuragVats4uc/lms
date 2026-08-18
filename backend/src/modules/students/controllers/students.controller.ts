@@ -30,6 +30,8 @@ import { Roles } from '../../auth/roles/roles.decorator';
 import { CurrentUser } from '../../auth/types/current-user.types';
 import { CreateStudentDto } from '../dto/create-student.dto';
 import { StudentDashboardResponseDto } from '../dto/student-dashboard-response.dto';
+import { StudentCoursesQueryDto } from '../dto/student-courses-query.dto';
+import { StudentCoursesResponseDto } from '../dto/student-courses-response.dto';
 import { StudentQueryDto } from '../dto/student-query.dto';
 import { UpdateStudentDto } from '../dto/update-student.dto';
 import { StudentsService } from '../services/students.service';
@@ -69,6 +71,20 @@ export class StudentsController {
   })
   getMyDashboard(@Req() request: AuthenticatedRequest) {
     return this.studentsService.getMyDashboard(request.user);
+  }
+
+  @Get('me/courses')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Get authenticated student assigned courses' })
+  @ApiOkResponse({
+    description: 'Student courses fetched successfully',
+    type: StudentCoursesResponseDto,
+  })
+  getMyCourses(
+    @Req() request: AuthenticatedRequest,
+    @Query() query: StudentCoursesQueryDto,
+  ) {
+    return this.studentsService.getMyCourses(request.user, query);
   }
 
   @Get('me')

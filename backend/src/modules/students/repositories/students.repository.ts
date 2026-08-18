@@ -42,6 +42,13 @@ export interface NormalizedStudentQuery
   organizationId?: number;
 }
 
+export interface NormalizedStudentCoursesQuery {
+  page: number;
+  limit: number;
+  search: string;
+  category?: string;
+}
+
 @Injectable()
 export class StudentsRepository {
   constructor(
@@ -205,6 +212,121 @@ export class StudentsRepository {
         },
       },
     });
+  }
+
+  async findStudentCourseEnrollments(
+    studentId: number,
+    organizationId: number | null | undefined,
+    query: NormalizedStudentCoursesQuery,
+  ) {
+    const where = this.buildStudentCoursesWhere(studentId, organizationId, query);
+    const skip = (query.page - 1) * query.limit;
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.studentCourseEnrollment.findMany({
+        where,
+        orderBy: { createdAt: 'asc' },
+        skip,
+        take: query.limit,
+        include: {
+          enrollment: {
+            select: {
+              id: true,
+              organization: { select: { id: true, name: true, code: true } },
+              session: {
+                select: {
+                  id: true,
+                  name: true,
+                  code: true,
+                  description: true,
+                },
+              },
+            },
+          },
+          sessionCourse: {
+            include: {
+              course: true,
+              folders: {
+                where: { isActive: true, status: 'ACTIVE' },
+                include: {
+                  resources: {
+                    where: {
+                      isActive: true,
+                      isPublished: true,
+                      status: 'PUBLISHED',
+                    },
+                    select: {
+                      id: true,
+                      title: true,
+                      type: true,
+                      createdAt: true,
+                      updatedAt: true,
+                    },
+                  },
+                },
+              },
+              instructors: {
+                include: {
+                  instructor: {
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true,
+                      email: true,
+                    },
+                  },
+                },
+              },
+              studentCourseProgress: {
+                where: { studentId },
+                include: {
+                  lastAccessedResource: {
+                    select: {
+                      id: true,
+                      title: true,
+                      type: true,
+                      updatedAt: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.studentCourseEnrollment.count({ where }),
+    ]);
+
+    return { items, total };
+  }
+
+  async findStudentCourseCategories(
+    studentId: number,
+    organizationId?: number | null,
+  ) {
+    const enrollments = await this.prisma.studentCourseEnrollment.findMany({
+      where: this.buildStudentCoursesWhere(studentId, organizationId, {
+        search: '',
+      }),
+      select: {
+        enrollment: {
+          select: {
+            session: {
+              select: { name: true },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return [
+      ...new Set(
+        enrollments
+          .map((enrollment) => enrollment.enrollment.session.name)
+          .filter(Boolean),
+      ),
+    ];
   }
 
   findByEmail(email: string) {
@@ -385,6 +507,43 @@ export class StudentsRepository {
     }
 
     return where;
+  }
+
+  private buildStudentCoursesWhere(
+    studentId: number,
+    organizationId: number | null | undefined,
+    query: Pick<NormalizedStudentCoursesQuery, 'search' | 'category'>,
+  ): Prisma.StudentCourseEnrollmentWhereInput {
+    const search = query.search.trim();
+
+    return {
+      isActive: true,
+      status: { in: ['ACTIVE', 'COMPLETED'] },
+      enrollment: {
+        studentId,
+        isActive: true,
+        status: 'ACTIVE',
+        ...(organizationId ? { organizationId } : {}),
+        ...(query.category ? { session: { name: query.category } } : {}),
+      },
+      sessionCourse: {
+        isActive: true,
+        isPublished: true,
+        status: 'ACTIVE',
+        ...(search
+          ? {
+              OR: [
+                { displayName: { contains: search } },
+                { description: { contains: search } },
+                { course: { name: { contains: search } } },
+                { course: { code: { contains: search } } },
+                { course: { description: { contains: search } } },
+                { session: { name: { contains: search } } },
+              ],
+            }
+          : {}),
+      },
+    };
   }
 
   private defaultStudentCode(userId: number) {
