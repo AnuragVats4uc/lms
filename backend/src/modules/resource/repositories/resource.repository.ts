@@ -53,6 +53,17 @@ export class ResourceRepository {
     });
   }
 
+  findByDocumentFilename(folderId: number, filename: string) {
+    return this.prisma.resource.findFirst({
+      where: {
+        folderId,
+        type: ResourceType.DOCUMENT,
+        isActive: true,
+        documentUrl: { endsWith: filename },
+      },
+    });
+  }
+
   async findMany(folderId: number, query: NormalizedResourceQuery) {
     const where = this.buildWhere(folderId, query);
     const skip = (query.page - 1) * query.limit;
@@ -91,10 +102,17 @@ export class ResourceRepository {
     folderId: number,
     query: NormalizedResourceQuery,
   ): Prisma.ResourceWhereInput {
-    const where: Prisma.ResourceWhereInput = { folderId };
+    const where: Prisma.ResourceWhereInput = {
+      folderId,
+      ...(query.status === ResourceStatus.ARCHIVED
+        ? { status: ResourceStatus.ARCHIVED }
+        : { isActive: true }),
+    };
 
     if (query.type) where.type = query.type;
-    if (query.status) where.status = query.status;
+    if (query.status && query.status !== ResourceStatus.ARCHIVED) {
+      where.status = query.status;
+    }
     if (query.published !== undefined) where.isPublished = query.published;
 
     const search = query.search.trim();

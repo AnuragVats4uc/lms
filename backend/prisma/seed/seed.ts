@@ -419,7 +419,7 @@ async function seedStudentDashboardDemo() {
       code: 'LR',
       instructor: ['Aman', 'Verma', 'aman.verma@lms.test'],
       completion: 42,
-      resource: ['Reading Comprehension Strategies', ResourceType.NOTES],
+      resource: ['Reading Comprehension Strategies', ResourceType.DOCUMENT],
       folder: 'Reasoning Practice',
       sortOrder: 2,
     },
@@ -428,7 +428,7 @@ async function seedStudentDashboardDemo() {
       code: 'MT',
       instructor: ['Test', 'Series', 'test.series@lms.test'],
       completion: 75,
-      resource: ['Logical Reasoning Practice Set 05', ResourceType.ASSIGNMENT],
+      resource: ['Logical Reasoning Practice Set 05', ResourceType.DOCUMENT],
       folder: 'Mock Test Assignments',
       sortOrder: 3,
     },
@@ -648,7 +648,7 @@ async function upsertDashboardResource(
     description: `${title} dashboard validation content.`,
     type,
     documentUrl:
-      type === ResourceType.DOCUMENT || type === ResourceType.NOTES
+      type === ResourceType.DOCUMENT
         ? `https://cdn.example.com/lms/demo/${folderId}-${sortOrder}.pdf`
         : null,
     videoUrl:
@@ -659,11 +659,11 @@ async function upsertDashboardResource(
     mimeType:
       type === ResourceType.VIDEO
         ? 'video/mp4'
-        : type === ResourceType.EXAM || type === ResourceType.ASSIGNMENT
+        : type === ResourceType.EXAM
           ? 'application/json'
           : 'application/pdf',
     fileSize:
-      type === ResourceType.DOCUMENT || type === ResourceType.NOTES
+      type === ResourceType.DOCUMENT
         ? BigInt(420_000 + sortOrder * 15_000)
         : null,
     durationInSeconds:

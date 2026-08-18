@@ -21,7 +21,6 @@ import type {
   Resource,
   ResourceStatus,
   ResourceType,
-  UpdateResourceRequest,
 } from "@repo/types";
 import { resourceSchema, type ResourceFormValues } from "@repo/validation";
 import {
@@ -43,7 +42,9 @@ import {
 } from "../components/crud/CrudManagementPage";
 import { useAcademicSessions } from "../academic/useAcademicSessions";
 import {
+  AppInput,
   FormCheckbox,
+  FormControllerField,
   FormInput,
   FormTextArea,
   Text,
@@ -52,11 +53,16 @@ import {
 } from "@repo/ui";
 
 type ResourceForm = ResourceFormValues;
+type ResourceMutationPayload = CreateResourceRequest & {
+  documentFile?: File | null;
+};
 
 type FolderOption = { id: number; label: string };
 
 const initialForm: ResourceForm = {
   description: "",
+  documentFile: null,
+  documentSource: "URL",
   documentUrl: "",
   durationInSeconds: "",
   examId: "",
@@ -81,10 +87,8 @@ const statusOptions = [
 const typeOptions = [
   { label: "All", value: "ALL" },
   { label: "Documents", value: "DOCUMENT" },
-  { label: "Notes", value: "NOTES" },
   { label: "Videos", value: "VIDEO" },
   { label: "Exams", value: "EXAM" },
-  { label: "Assignments", value: "ASSIGNMENT" },
 ];
 const publishedOptions = [
   { label: "All", value: "ALL" },
@@ -105,8 +109,8 @@ function flattenFolders(
   });
 }
 
-function toPayload(form: ResourceForm): CreateResourceRequest {
-  const payload: CreateResourceRequest = {
+function toPayload(form: ResourceForm): ResourceMutationPayload {
+  const payload: ResourceMutationPayload = {
     isDownloadable: form.isDownloadable,
     isPublished: form.isPublished,
     sortOrder: Number(form.sortOrder),
@@ -120,16 +124,36 @@ function toPayload(form: ResourceForm): CreateResourceRequest {
   if (form.fileSize.trim()) payload.fileSize = form.fileSize.trim();
   if (form.durationInSeconds.trim())
     payload.durationInSeconds = Number(form.durationInSeconds);
-  if (form.type === "DOCUMENT" || form.type === "NOTES") {
+  if (form.type === "DOCUMENT" && form.documentSource === "URL") {
     payload.documentUrl = form.documentUrl.trim();
+  }
+  if (form.type === "DOCUMENT" && form.documentSource === "UPLOAD") {
+    payload.documentFile = form.documentFile;
   }
   if (form.type === "VIDEO") payload.videoUrl = form.videoUrl.trim();
   if (form.type === "EXAM") payload.examId = Number(form.examId);
   return payload;
 }
 
-function ResourceForm({ error }: ResourceFormContext<ResourceForm>) {
+function toJsonPayload(
+  payload: ResourceMutationPayload,
+  removeDocumentUrl = false,
+) {
+  const request = { ...payload };
+  delete request.documentFile;
+  if (removeDocumentUrl) delete request.documentUrl;
+  return request;
+}
+
+interface ResourceFormProps extends ResourceFormContext<ResourceForm> {
+  fixedType?: ResourceType;
+}
+
+function ResourceForm({ error, fixedType }: ResourceFormProps) {
   const type = useWatch<ResourceForm, "type">({ name: "type" });
+  const documentSource = useWatch<ResourceForm, "documentSource">({
+    name: "documentSource",
+  });
   return (
     <YStack className="lms-organization-form" gap="$3">
       {error ? (
@@ -147,35 +171,64 @@ function ResourceForm({ error }: ResourceFormContext<ResourceForm>) {
           />
         </div>
         <div className="lms-form-field">
-          <CrudFormSelect
-            label="Type"
-            name="type"
-            options={[
-              { label: "Document", value: "DOCUMENT" },
-              { label: "Notes", value: "NOTES" },
-              { label: "Video", value: "VIDEO" },
-              { label: "Exam", value: "EXAM" },
-              { label: "Assignment", value: "ASSIGNMENT" },
-            ]}
-          />
+          {fixedType ? (
+            <Text color="#52627A" fontSize="$caption">
+              Type: {fixedType}
+            </Text>
+          ) : (
+            <CrudFormSelect
+              label="Type"
+              name="type"
+              options={[
+                { label: "Document", value: "DOCUMENT" },
+                { label: "Video", value: "VIDEO" },
+                { label: "Exam", value: "EXAM" },
+              ]}
+            />
+          )}
         </div>
       </XStack>
-      {type === "DOCUMENT" || type === "NOTES" ? (
+      {type === "DOCUMENT" ? (
         <XStack className="lms-organization-form-grid" gap="$3">
           <div className="lms-form-field">
-            <FormInput
-              label={type === "NOTES" ? "Notes URL" : "Document URL"}
-              name="documentUrl"
-              placeholder="https://cdn.example.com/notes.pdf"
-              type="url"
+            <CrudFormSelect
+              label="Document source"
+              name="documentSource"
+              options={[
+                { label: "External URL", value: "URL" },
+                { label: "Upload file", value: "UPLOAD" },
+              ]}
             />
           </div>
           <div className="lms-form-field">
-            <FormInput
-              label="MIME type"
-              name="mimeType"
-              placeholder="application/pdf"
-            />
+            {documentSource === "UPLOAD" ? (
+              <FormControllerField<ResourceForm, "documentFile">
+                label="Document file"
+                name="documentFile"
+              >
+                {({ field, fieldState, errorId, inputId }) => (
+                  <AppInput
+                    accept=".pdf,.doc,.docx,.ppt,.pptx,.txt"
+                    aria-describedby={fieldState.error ? errorId : undefined}
+                    aria-invalid={fieldState.invalid}
+                    id={inputId}
+                    onBlur={field.onBlur}
+                    onChange={(event) => {
+                      const input = event.target as HTMLInputElement;
+                      field.onChange(input.files?.[0] ?? null);
+                    }}
+                    type="file"
+                  />
+                )}
+              </FormControllerField>
+            ) : (
+              <FormInput
+                label="Document URL"
+                name="documentUrl"
+                placeholder="https://cdn.example.com/notes.pdf"
+                type="url"
+              />
+            )}
           </div>
         </XStack>
       ) : null}
@@ -487,7 +540,11 @@ function details(resource: Resource) {
   );
 }
 
-export function ResourcesPage() {
+export interface ResourcesPageProps {
+  resourceType?: ResourceType;
+}
+
+export function ResourcesPage({ resourceType }: ResourcesPageProps = {}) {
   const searchParams = useSearchParams();
   const academic = useAcademicSessions();
   const {
@@ -507,6 +564,18 @@ export function ResourcesPage() {
   >(requestedSessionCourseId);
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(
     requestedFolderId,
+  );
+  const resourceInitialForm = useMemo(
+    () => ({ ...initialForm, type: resourceType ?? initialForm.type }),
+    [resourceType],
+  );
+  const resourceInitialFilters = useMemo<Record<string, string>>(
+    () => {
+      const filters: Record<string, string> = {};
+      if (resourceType) filters.type = resourceType;
+      return filters;
+    },
+    [resourceType],
   );
 
   useEffect(() => {
@@ -638,17 +707,41 @@ export function ResourcesPage() {
     <CrudManagementPage<
       Resource,
       ResourceForm,
-      CreateResourceRequest,
-      UpdateResourceRequest
+      ResourceMutationPayload,
+      ResourceMutationPayload
     >
       columns={columns}
       context={context}
-      create={(payload) =>
-        effectiveFolderId === null
-          ? Promise.reject(new Error("Select a folder first."))
-          : resourcesApi.create(effectiveFolderId, payload)
+      create={(payload) => {
+        if (effectiveFolderId === null) {
+          return Promise.reject(new Error("Select a folder first."));
+        }
+        if (payload.documentFile) {
+          const formData = new FormData();
+          formData.append("file", payload.documentFile);
+          formData.append("title", payload.title);
+          if (payload.description) {
+            formData.append("description", payload.description);
+          }
+          formData.append("sortOrder", String(payload.sortOrder ?? 0));
+          formData.append("status", payload.status ?? "DRAFT");
+          formData.append("isPublished", String(payload.isPublished ?? false));
+          formData.append(
+            "isDownloadable",
+            String(payload.isDownloadable ?? true),
+          );
+          return resourcesApi.uploadDocument(effectiveFolderId, formData);
+        }
+        return resourcesApi.create(
+          effectiveFolderId,
+          toJsonPayload(payload),
+        );
+      }}
+      description={
+        resourceType === "EXAM"
+          ? "Manage exam resources linked to the selected course folder."
+          : "Manage documents, videos, and exams stored inside course folders."
       }
-      description="Manage documents, videos, and exams stored inside course folders."
       emptyDescription={
         effectiveFolderId === null
           ? "Select a folder to view its resources."
@@ -681,7 +774,8 @@ export function ResourcesPage() {
       getDisplayName={(resource) => resource.title}
       getIsActive={(resource) => resource.isActive}
       getRowId={(resource) => resource.id}
-      initialForm={initialForm}
+      initialFilters={resourceInitialFilters}
+      initialForm={resourceInitialForm}
       permissionPrefix="resource"
       publishedOptions={publishedOptions}
       queryFn={(query) =>
@@ -696,7 +790,7 @@ export function ResourcesPage() {
               type: query.type as ResourceType | undefined,
             })
       }
-      queryKey={["admin", "resources", effectiveFolderId]}
+      queryKey={["admin", "resources", resourceType ?? "all", effectiveFolderId]}
       remove={(id) =>
         effectiveFolderId === null
           ? Promise.reject(new Error("Select a folder first."))
@@ -708,12 +802,16 @@ export function ResourcesPage() {
           : resourcesApi.update(effectiveFolderId, id, { isActive: active })
       }
       renderDetails={details}
-      renderForm={(formContext) => <ResourceForm {...formContext} />}
+      renderForm={(formContext) => (
+        <ResourceForm {...formContext} fixedType={resourceType} />
+      )}
       statusOptions={statusOptions}
-      title="Resources"
+      title={resourceType === "EXAM" ? "Exams" : "Resources"}
       toCreatePayload={toPayload}
       toForm={(resource) => ({
         description: resource.description ?? "",
+        documentFile: null,
+        documentSource: "URL",
         documentUrl: resource.documentUrl ?? "",
         durationInSeconds: resource.durationInSeconds?.toString() ?? "",
         examId: resource.examId?.toString() ?? "",
@@ -729,12 +827,30 @@ export function ResourcesPage() {
         videoUrl: resource.videoUrl ?? "",
       })}
       toUpdatePayload={toPayload}
-      typeOptions={typeOptions}
-      update={(id, payload) =>
-        effectiveFolderId === null
-          ? Promise.reject(new Error("Select a folder first."))
-          : resourcesApi.update(effectiveFolderId, id, payload)
-      }
+      typeOptions={resourceType ? undefined : typeOptions}
+      update={(id, payload) => {
+        if (effectiveFolderId === null) {
+          return Promise.reject(new Error("Select a folder first."));
+        }
+        if (payload.documentFile) {
+          const formData = new FormData();
+          formData.append("file", payload.documentFile);
+          return resourcesApi
+            .replaceDocument(effectiveFolderId, id, formData)
+            .then(() => {
+              return resourcesApi.update(
+                effectiveFolderId,
+                id,
+                toJsonPayload(payload, true),
+              );
+            });
+        }
+        return resourcesApi.update(
+          effectiveFolderId,
+          id,
+          toJsonPayload(payload),
+        );
+      }}
       formResolver={zodResolver(resourceSchema)}
     />
   );

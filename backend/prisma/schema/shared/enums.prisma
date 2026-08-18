@@ -31,10 +31,8 @@ enum FolderStatus {
 
 enum ResourceType {
   DOCUMENT
-  NOTES
   VIDEO
   EXAM
-  ASSIGNMENT
 }
 
 enum ResourceStatus {

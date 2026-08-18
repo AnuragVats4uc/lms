@@ -86,6 +86,12 @@ export const adminNavigation: NavigationItem[] = [
     label: "Resources",
     permission: "resource.read",
   },
+  {
+    href: "/admin/exams",
+    icon: FileText,
+    label: "Exams",
+    permission: "resource.read",
+  },
   // {
   //   href: "/admin/attendance",
   //   icon: ClipboardCheck,

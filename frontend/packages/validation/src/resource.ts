@@ -10,6 +10,10 @@ const optionalNonNegativeInteger = (message: string) =>
 export const resourceSchema = z
   .object({
     description: z.string().trim().max(2000),
+    documentFile: z.custom<File | null>((value) =>
+      value === null || (typeof value === "object" && value !== null),
+    ),
+    documentSource: z.enum(["URL", "UPLOAD"]),
     documentUrl: optionalUrl,
     durationInSeconds: optionalNonNegativeInteger("Duration must be a non-negative whole number"),
     examId: z.string().trim().refine((value) => value === "" || (/^\d+$/.test(value) && Number(value) > 0), "Exam ID must be a positive whole number"),
@@ -21,19 +25,46 @@ export const resourceSchema = z
     status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]),
     thumbnail: optionalUrl,
     title: z.string().trim().min(1, "Resource title is required").max(200),
-    type: z.enum(["DOCUMENT", "NOTES", "VIDEO", "EXAM", "ASSIGNMENT"]),
+    type: z.enum(["DOCUMENT", "VIDEO", "EXAM"]),
     videoUrl: optionalUrl,
   })
   .superRefine((value, context) => {
-    if ((value.type === "DOCUMENT" || value.type === "NOTES") && !value.documentUrl) {
+    if (value.type === "DOCUMENT" && value.documentSource === "URL" && !value.documentUrl) {
       context.addIssue({ code: "custom", message: "Document URL is required", path: ["documentUrl"] });
+    }
+    if (value.type === "DOCUMENT" && value.documentSource === "UPLOAD" && !value.documentFile) {
+      context.addIssue({ code: "custom", message: "Select a document file", path: ["documentFile"] });
     }
     if (value.type === "VIDEO" && !value.videoUrl) {
       context.addIssue({ code: "custom", message: "Video URL is required", path: ["videoUrl"] });
+    }
+    if (value.type === "VIDEO" && value.videoUrl && !isSupportedVideoUrl(value.videoUrl)) {
+      context.addIssue({
+        code: "custom",
+        message: "Use a valid YouTube or Vimeo URL",
+        path: ["videoUrl"],
+      });
     }
     if (value.type === "EXAM" && !value.examId) {
       context.addIssue({ code: "custom", message: "A valid exam ID is required", path: ["examId"] });
     }
   });
+
+function isSupportedVideoUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return false;
+    const hostname = url.hostname.toLowerCase();
+    return (
+      hostname === "youtu.be" ||
+      hostname === "youtube.com" ||
+      hostname.endsWith(".youtube.com") ||
+      hostname === "vimeo.com" ||
+      hostname.endsWith(".vimeo.com")
+    );
+  } catch {
+    return false;
+  }
+}
 
 export type ResourceFormValues = z.infer<typeof resourceSchema>;

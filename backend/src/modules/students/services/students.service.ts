@@ -426,10 +426,7 @@ export class StudentsService {
     const counts = resources.reduce(
       (totals, resource) => {
         if (resource.type === ResourceType.VIDEO) totals.videos += 1;
-        if (
-          resource.type === ResourceType.DOCUMENT ||
-          resource.type === ResourceType.NOTES
-        ) {
+        if (resource.type === ResourceType.DOCUMENT) {
           totals.documents += 1;
         }
         if (resource.type === ResourceType.EXAM) totals.exams += 1;
@@ -525,10 +522,8 @@ export class StudentsService {
 
   private contentUpdateTitle(type: ResourceType) {
     if (type === ResourceType.DOCUMENT) return 'New PDF Added';
-    if (type === ResourceType.NOTES) return 'New Notes Added';
     if (type === ResourceType.VIDEO) return 'New Video Added';
     if (type === ResourceType.EXAM) return 'New Exam Added';
-    if (type === ResourceType.ASSIGNMENT) return 'New Assignment';
     return 'New Content Added';
   }
 

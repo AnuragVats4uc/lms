@@ -13,7 +13,6 @@ import {
   FileText,
   GraduationCap,
   Megaphone,
-  NotebookTabs,
   Play,
   RefreshCw,
   UserRound,
@@ -81,11 +80,6 @@ const contentUpdateIconTones: Record<ResourceType, StudentNotificationTone> = {
     color: "#EF4444",
     Icon: FileText,
   },
-  NOTES: {
-    background: "#EFE7FF",
-    color: "#7C3AED",
-    Icon: NotebookTabs,
-  },
   VIDEO: {
     background: "#E8F8EF",
     color: "#10B981",
@@ -95,11 +89,6 @@ const contentUpdateIconTones: Record<ResourceType, StudentNotificationTone> = {
     background: "#E4F1FF",
     color: "#1683FF",
     Icon: CalendarDays,
-  },
-  ASSIGNMENT: {
-    background: "#FFF0DC",
-    color: "#F97316",
-    Icon: BellRing,
   },
 };
 

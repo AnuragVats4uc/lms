@@ -1,6 +1,6 @@
 import type { PaginatedData } from "./api";
 
-export type ResourceType = "DOCUMENT" | "NOTES" | "VIDEO" | "EXAM" | "ASSIGNMENT";
+export type ResourceType = "DOCUMENT" | "VIDEO" | "EXAM";
 export type ResourceStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 
 export interface Resource {

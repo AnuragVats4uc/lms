@@ -37,7 +37,7 @@ const courses = [
     instructor: { firstName: 'Aman', lastName: 'Verma' },
     name: 'Logical Reasoning',
     resourceTitle: 'Reading Comprehension Strategies',
-    resourceType: ResourceType.NOTES,
+    resourceType: ResourceType.DOCUMENT,
   },
   {
     code: 'MT',
@@ -46,7 +46,7 @@ const courses = [
     instructor: { firstName: 'Test', lastName: 'Series' },
     name: 'Mock Tests',
     resourceTitle: 'Logical Reasoning Practice Set 05',
-    resourceType: ResourceType.ASSIGNMENT,
+    resourceType: ResourceType.DOCUMENT,
   },
 ];
 
@@ -428,25 +428,20 @@ async function upsertResource(
     createdAt,
     description: `${title} dashboard content.`,
     documentUrl:
-      type === ResourceType.DOCUMENT || type === ResourceType.NOTES
+      type === ResourceType.DOCUMENT
         ? `https://cdn.example.com/lms/demo/${folderId}-${sortOrder}.pdf`
         : null,
     durationInSeconds:
       type === ResourceType.VIDEO ? 1_200 + sortOrder * 120 : null,
     examId: type === ResourceType.EXAM ? 900_000 + sortOrder : null,
     fileSize:
-      type === ResourceType.DOCUMENT || type === ResourceType.NOTES
+      type === ResourceType.DOCUMENT
         ? BigInt(420_000 + sortOrder * 15_000)
         : null,
     isActive: true,
     isDownloadable: type !== ResourceType.VIDEO,
     isPublished: true,
-    mimeType:
-      type === ResourceType.VIDEO
-        ? 'video/mp4'
-        : type === ResourceType.ASSIGNMENT
-          ? 'application/json'
-          : 'application/pdf',
+    mimeType: type === ResourceType.VIDEO ? 'video/mp4' : 'application/pdf',
     sortOrder,
     status: ResourceStatus.PUBLISHED,
     title,

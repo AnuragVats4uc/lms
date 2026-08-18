@@ -4,7 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Resource, ResourceStatus, ResourceType } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
+import { basename, extname, join } from 'node:path';
+import { createReadStream } from 'node:fs';
+import { mkdir, stat, unlink, writeFile } from 'node:fs/promises';
 
+import { CreateDocumentUploadDto } from '../dto/create-document-upload.dto';
 import { CreateResourceDto } from '../dto/create-resource.dto';
 import { ResourceQueryDto } from '../dto/resource-query.dto';
 import { UpdateResourceDto } from '../dto/update-resource.dto';
@@ -14,9 +19,97 @@ import {
   ResourceUpdateData,
 } from '../repositories/resource.repository';
 
+const MAX_DOCUMENT_SIZE = 25 * 1024 * 1024;
+const ALLOWED_DOCUMENT_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain',
+]);
+const ALLOWED_DOCUMENT_EXTENSIONS = new Set([
+  '.doc',
+  '.docx',
+  '.pdf',
+  '.ppt',
+  '.pptx',
+  '.txt',
+]);
+
+export interface ResourceUploadFile {
+  buffer: Buffer;
+  mimetype: string;
+  originalname: string;
+  size: number;
+}
+
 @Injectable()
 export class ResourceService {
   constructor(private readonly resourceRepository: ResourceRepository) {}
+
+  async createUploadedDocument(
+    folderId: number,
+    dto: CreateDocumentUploadDto,
+    file: ResourceUploadFile | undefined,
+  ) {
+    await this.ensureFolderExists(folderId);
+    const storedFile = await this.storeDocumentFile(folderId, file);
+
+    try {
+      const resource = await this.resourceRepository.create({
+        folderId,
+        title: dto.title.trim(),
+        description: dto.description,
+        type: ResourceType.DOCUMENT,
+        documentUrl: storedFile.url,
+        videoUrl: null,
+        examId: null,
+        mimeType: file?.mimetype,
+        fileSize: BigInt(file?.size ?? 0),
+        durationInSeconds: null,
+        sortOrder: dto.sortOrder ?? 0,
+        status: dto.status ?? ResourceStatus.DRAFT,
+        isPublished: dto.isPublished ?? false,
+        isDownloadable: dto.isDownloadable ?? true,
+      });
+
+      return this.toResponse(resource);
+    } catch (error) {
+      await this.removeStoredFile(storedFile.path);
+      throw error;
+    }
+  }
+
+  async replaceDocumentFile(
+    folderId: number,
+    id: number,
+    file: ResourceUploadFile | undefined,
+  ) {
+    await this.ensureFolderExists(folderId);
+    const existing = await this.findExisting(folderId, id);
+
+    if (existing.type !== ResourceType.DOCUMENT) {
+      throw new BadRequestException(
+        'Only document resources can have an uploaded file replaced',
+      );
+    }
+
+    const storedFile = await this.storeDocumentFile(folderId, file);
+    try {
+      const resource = await this.resourceRepository.update(id, {
+        documentUrl: storedFile.url,
+        mimeType: file?.mimetype,
+        fileSize: BigInt(file?.size ?? 0),
+      });
+
+      await this.removeStoredFile(this.storedPathFromUrl(existing.documentUrl));
+      return this.toResponse(resource);
+    } catch (error) {
+      await this.removeStoredFile(storedFile.path);
+      throw error;
+    }
+  }
 
   async create(folderId: number, dto: CreateResourceDto) {
     await this.ensureFolderExists(folderId);
@@ -81,6 +174,38 @@ export class ResourceService {
     const resource = await this.resourceRepository.softDelete(id);
 
     return this.toResponse(resource);
+  }
+
+  async readDocumentFile(folderId: number, filename: string) {
+    const safeFilename = basename(filename);
+    if (safeFilename !== filename) {
+      throw new BadRequestException('Invalid document filename');
+    }
+
+    const resource = await this.resourceRepository.findByDocumentFilename(
+      folderId,
+      safeFilename,
+    );
+    if (!resource) {
+      throw new NotFoundException('Document file not found');
+    }
+
+    const path = this.storedPathFromUrl(resource.documentUrl);
+    if (!path) {
+      throw new NotFoundException('Document file not found');
+    }
+
+    try {
+      await stat(path);
+    } catch {
+      throw new NotFoundException('Document file not found');
+    }
+
+    return {
+      fileName: safeFilename,
+      mimeType: resource.mimeType ?? 'application/octet-stream',
+      stream: createReadStream(path),
+    };
   }
 
   private async ensureFolderExists(folderId: number) {
@@ -157,6 +282,11 @@ export class ResourceService {
           'Video resources cannot contain documentUrl or examId',
         );
       }
+      if (!this.isSupportedVideoUrl(videoUrl)) {
+        throw new BadRequestException(
+          'Video URL must point to YouTube or Vimeo',
+        );
+      }
     }
 
     if (type === ResourceType.EXAM) {
@@ -223,6 +353,76 @@ export class ResourceService {
     } catch {
       throw new BadRequestException('fileSize must be a valid integer string');
     }
+  }
+
+  private isSupportedVideoUrl(value: string) {
+    try {
+      const url = new URL(value);
+      if (url.protocol !== 'https:') return false;
+      const hostname = url.hostname.toLowerCase();
+      return (
+        hostname === 'youtu.be' ||
+        hostname === 'youtube.com' ||
+        hostname.endsWith('.youtube.com') ||
+        hostname === 'vimeo.com' ||
+        hostname.endsWith('.vimeo.com')
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  private async storeDocumentFile(
+    folderId: number,
+    file: ResourceUploadFile | undefined,
+  ) {
+    if (!file || !file.buffer || file.size <= 0) {
+      throw new BadRequestException('A non-empty document file is required');
+    }
+    if (file.size > MAX_DOCUMENT_SIZE) {
+      throw new BadRequestException('Document file must not exceed 25 MB');
+    }
+
+    const extension = extname(file.originalname).toLowerCase();
+    if (
+      !ALLOWED_DOCUMENT_MIME_TYPES.has(file.mimetype) ||
+      !ALLOWED_DOCUMENT_EXTENSIONS.has(extension)
+    ) {
+      throw new BadRequestException(
+        'Only PDF, DOC, DOCX, PPT, PPTX, and TXT documents are supported',
+      );
+    }
+
+    const directory = join(process.cwd(), 'uploads', 'resources');
+    const filename = `${randomUUID()}${extension}`;
+    const path = join(directory, filename);
+    await mkdir(directory, { recursive: true });
+    await writeFile(path, file.buffer, { flag: 'wx' });
+
+    const publicBaseUrl = (
+      process.env.PUBLIC_API_URL ??
+      `http://localhost:${process.env.PORT ?? '5000'}`
+    ).replace(/\/$/, '');
+
+    return {
+      path,
+      url: `${publicBaseUrl}/api/v1/folders/${folderId}/resources/file/${filename}`,
+    };
+  }
+
+  private storedPathFromUrl(url: string | null) {
+    if (!url) return null;
+    const marker = '/resources/file/';
+    const markerIndex = url.indexOf(marker);
+    if (markerIndex < 0) return null;
+    const filename = basename(url.slice(markerIndex + marker.length));
+    if (filename !== url.slice(markerIndex + marker.length)) return null;
+    return filename ? join(process.cwd(), 'uploads', 'resources', filename) : null;
+  }
+
+  private async removeStoredFile(path: string | null) {
+    if (!path) return;
+    await unlink(path).catch(() => undefined);
   }
 
   private toResponse(resource: Resource) {
