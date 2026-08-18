@@ -12,7 +12,7 @@ export interface LoginHeaderProps {
 
 export function LoginHeader({
   title = "Welcome back",
-  subtitle = "Login to continue your learning journey",
+  subtitle = "Sign in to continue to your workspace.",
   brandLabel = "The LMS",
 }: LoginHeaderProps) {
   return (

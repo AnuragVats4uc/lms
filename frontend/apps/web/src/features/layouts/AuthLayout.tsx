@@ -9,12 +9,12 @@ export function AuthLayout({
 }) {
   return (
     <YStack
-      p="$4"
       style={{
-        alignItems: "center",
+        alignItems: "stretch",
         backgroundColor: "#ECFDF5",
         justifyContent: "center",
         minHeight: "100vh",
+        width: "100%",
       }}
     >
       {children}

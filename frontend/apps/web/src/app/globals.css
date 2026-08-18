@@ -44,6 +44,59 @@ body {
   overflow-x: hidden;
 }
 
+.lms-login-content {
+  flex-direction: row !important;
+}
+
+.lms-login-hero {
+  display: flex !important;
+}
+
+.lms-login-card-column {
+  width: min(100%, 430px) !important;
+}
+
+@media (max-width: 1023px) {
+  .lms-login-content {
+    flex-direction: column !important;
+    gap: 28px !important;
+    justify-content: flex-start !important;
+    padding-top: 30px !important;
+  }
+
+  .lms-login-hero {
+    align-items: center !important;
+    max-width: 720px !important;
+    text-align: center !important;
+    width: 100% !important;
+  }
+
+  .lms-login-hero > * {
+    max-width: 100% !important;
+  }
+
+  .lms-login-card-column {
+    width: min(100%, 430px) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .lms-login-topbar {
+    align-items: flex-start !important;
+    gap: 14px !important;
+  }
+
+  .lms-login-content {
+    gap: 22px !important;
+    padding-top: 24px !important;
+  }
+
+  .lms-login-hero {
+    gap: 16px !important;
+    text-align: left !important;
+  }
+}
+
 html,
 body {
   height: 100%;

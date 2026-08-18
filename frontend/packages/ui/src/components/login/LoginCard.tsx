@@ -147,6 +147,7 @@ export const LoginCard = memo(function LoginCard({
                 autoFocus
                 disabled={isLoading}
                 enterKeyHint="next"
+                height={50}
                 keyboardType="email-address"
                 returnKeyType="next"
                 onSubmitEditing={focusPasswordField}
@@ -177,7 +178,7 @@ export const LoginCard = memo(function LoginCard({
                       disabled={isLoading}
                       enterKeyHint="done"
                       flex={1}
-                      height={26}
+                      height={32}
                       returnKeyType="done"
                       secureTextEntry={!isPasswordVisible}
                       borderWidth={0}
@@ -264,7 +265,7 @@ export const LoginCard = memo(function LoginCard({
               loading={isLoading}
               disabled={isLoading}
               background="#10B981"
-              height={48}
+              height={50}
               pressStyle={{ background: "#059669" }}
               hoverStyle={{ background: "#059669" }}
               rounded="$3"
@@ -301,14 +302,14 @@ function LoginShell({ children }: PropsWithChildren) {
 }
 
 const LoginShellFrame = styled(Card, {
-  background: "white",
-  borderColor: "rgba(16, 185, 129, 0.16)",
+  background: "rgba(255, 255, 255, 0.94)",
+  borderColor: "rgba(216, 226, 235, 0.92)",
   borderWidth: 1,
   overflow: "hidden",
   p: "$7",
-  rounded: "$8",
-  shadowColor: "rgba(15, 118, 110, 0.22)",
-  shadowRadius: 28,
+  rounded: "$6",
+  shadowColor: "rgba(15, 23, 42, 0.16)",
+  shadowRadius: 34,
   width: "100%",
 
   $sm: {
@@ -318,8 +319,10 @@ const LoginShellFrame = styled(Card, {
 });
 
 const loginShellStyle = {
-  maxWidth: 420,
-  minHeight: 600,
+  backdropFilter: "blur(18px)",
+  boxShadow:
+    "0 28px 70px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(255, 255, 255, 0.8), 0 0 54px rgba(16, 185, 129, 0.12)",
+  maxWidth: 430,
 } satisfies CSSProperties;
 
 function CardContent({ children }: PropsWithChildren) {
@@ -363,10 +366,10 @@ function PasswordFrame({ children }: PropsWithChildren) {
 
 const PasswordFrameStack = styled(XStack, {
   background: "white",
-  borderColor: "#E5E7EB",
+  borderColor: "#DCE5ED",
   borderWidth: 1,
   gap: "$2",
-  height: 46,
+  height: 50,
   p: "$2",
   rounded: "$3",
 });
