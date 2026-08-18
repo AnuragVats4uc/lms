@@ -40,11 +40,17 @@ const DataTableToolbarComponent = <TData,>({
   setSearchValue,
   toolbarActions = [],
 }: DataTableToolbarProps<TData>) => {
-  const [draftSearch, setDraftSearch] = useState(searchValue);
-
-  useEffect(() => {
-    setDraftSearch(searchValue);
-  }, [searchValue]);
+  const [draftSearchState, setDraftSearchState] = useState(() => ({
+    source: searchValue,
+    value: searchValue,
+  }));
+  const draftSearch =
+    draftSearchState.source === searchValue
+      ? draftSearchState.value
+      : searchValue;
+  const setDraftSearch = (value: string) => {
+    setDraftSearchState({ source: searchValue, value });
+  };
 
   useEffect(() => {
     const timeout = window.setTimeout(

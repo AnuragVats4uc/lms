@@ -83,6 +83,8 @@ function SidebarNavItem({
 
   useEffect(() => {
     if (hasActiveChild) {
+      // Active navigation should always reveal its parent item.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsExpanded(true);
     }
   }, [hasActiveChild]);
@@ -315,6 +317,8 @@ export function WorkspaceSidebar({
     const savedValue = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
 
     if (savedValue === "true" || savedValue === "false") {
+      // Restore the user's persisted sidebar preference after hydration.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsCollapsed(savedValue === "true");
     }
   }, []);

@@ -268,7 +268,7 @@ export function ResourceManagementSection({
               >
                 <YStack gap="$1" style={{ flex: "1 1 auto", minWidth: 0 }}>
                   <AppHeading level={3} fontSize="$label" lineHeight="$label">
-                    Resource Folders in "{context.course?.name ?? "selected course"}"
+                    Resource Folders in &quot;{context.course?.name ?? "selected course"}&quot;
                   </AppHeading>
                   <AppText color="#52627A" fontSize="$caption" lineHeight="$caption">
                     Select a folder to view and manage its resources.

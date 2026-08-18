@@ -324,6 +324,8 @@ export function AdminDashboardPage() {
     const data = dashboardQuery.data;
     if (!data) return;
 
+    // The initial dashboard response supplies defaults for the query context.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDashboardContext((current) => {
       const next = { ...current };
       if (next.organizationId === undefined && data.context.organization) {

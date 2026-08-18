@@ -453,6 +453,8 @@ export function ResourceManagementPage<
     if (!action || handledUrlAction.current === actionKey) return;
 
     if (action === "create" && canCreate) {
+      // URL actions intentionally synchronize the local form state.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       openCreate();
       handledUrlAction.current = actionKey;
       const params = new URLSearchParams(searchParams.toString());
