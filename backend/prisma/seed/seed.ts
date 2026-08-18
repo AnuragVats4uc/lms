@@ -265,16 +265,16 @@ async function seedStudentDashboardDemo() {
   const password = await passwordService.hash('Admin@123');
   const now = new Date();
   const organization = await prisma.organization.upsert({
-    where: { code: 'IIFM-DEMO' },
+    where: { code: 'LMS-DEMO' },
     update: {
-      name: 'IIFM Demo Organization',
+      name: 'LMS Demo Organization',
       description: 'Development organization for student dashboard validation.',
       status: OrganizationStatus.ACTIVE,
       isActive: true,
     },
     create: {
-      name: 'IIFM Demo Organization',
-      code: 'IIFM-DEMO',
+      name: 'LMS Demo Organization',
+      code: 'LMS-DEMO',
       description: 'Development organization for student dashboard validation.',
       status: OrganizationStatus.ACTIVE,
       isActive: true,
@@ -309,7 +309,7 @@ async function seedStudentDashboardDemo() {
     select: { id: true },
   });
   const student = await prisma.user.upsert({
-    where: { email: 'student.iifm-demo@lms.test' },
+    where: { email: 'student.demo@lms.test' },
     update: {
       organizationId: organization.id,
       firstName: 'Demo',
@@ -323,7 +323,7 @@ async function seedStudentDashboardDemo() {
       organizationId: organization.id,
       firstName: 'Demo',
       lastName: 'Student',
-      email: 'student.iifm-demo@lms.test',
+      email: 'student.demo@lms.test',
       password,
       isActive: true,
       isVerified: true,
@@ -591,7 +591,7 @@ async function seedStudentDashboardDemo() {
     new Date(now.getTime() - 24 * 60 * 60 * 1000),
   );
 
-  console.log('Dashboard student login: student.iifm-demo@lms.test / Admin@123');
+  console.log('Dashboard student login: student.demo@lms.test / Admin@123');
 }
 
 async function upsertDashboardFolder(
