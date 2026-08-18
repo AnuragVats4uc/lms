@@ -31,6 +31,7 @@ import {
   CrudBadge,
   CrudDetailField,
   CrudDetailSection,
+  CrudFormSelect,
   CrudSelect,
 } from "../components/crud";
 import {
@@ -41,7 +42,6 @@ import { useAcademicSessions } from "../academic/useAcademicSessions";
 import {
   FormCheckbox,
   FormInput,
-  FormSelect,
   FormTextArea,
   Text,
   XStack,
@@ -97,7 +97,7 @@ function Form({
         </Text>
       ) : null}
       <div className="lms-form-field">
-        <FormSelect
+        <CrudFormSelect
           label="Course"
           name="courseId"
           options={courses.map((course) => ({
@@ -107,7 +107,7 @@ function Form({
           placeholder="Select course"
         />
       </div>
-      <XStack gap="$3" style={{ flexWrap: "wrap" }}>
+      <XStack className="lms-organization-form-grid" gap="$3">
         <div className="lms-form-field">
           <FormInput
             label="Display name"
@@ -119,9 +119,9 @@ function Form({
           <FormInput label="Sort order" name="sortOrder" type="number" />
         </div>
       </XStack>
-      <XStack gap="$3" style={{ flexWrap: "wrap" }}>
+      <XStack className="lms-organization-form-grid" gap="$3">
         <div className="lms-form-field">
-          <FormSelect
+          <CrudFormSelect
             label="Status"
             name="status"
             options={[

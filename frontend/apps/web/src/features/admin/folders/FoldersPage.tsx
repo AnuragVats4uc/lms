@@ -32,6 +32,7 @@ import {
   CrudBadge,
   CrudDetailField,
   CrudDetailSection,
+  CrudFormSelect,
   CrudSelect,
 } from "../components/crud";
 import {
@@ -44,7 +45,6 @@ import { AppCard } from "@repo/ui/primitives";
 import {
   Button,
   FormInput,
-  FormSelect,
   FormTextArea,
   Text,
   XStack,
@@ -107,12 +107,12 @@ function Form({
           {error}
         </Text>
       ) : null}
-      <XStack gap="$3" style={{ flexWrap: "wrap" }}>
+      <XStack className="lms-organization-form-grid" gap="$3">
         <div className="lms-form-field">
           <FormInput autoFocus label="Name" name="name" placeholder="Physics" />
         </div>
         <div className="lms-form-field">
-          <FormSelect
+          <CrudFormSelect
             label="Parent folder"
             name="parentFolderId"
             options={folders.map((folder) => ({
@@ -123,12 +123,12 @@ function Form({
           />
         </div>
       </XStack>
-      <XStack gap="$3" style={{ flexWrap: "wrap" }}>
+      <XStack className="lms-organization-form-grid" gap="$3">
         <div className="lms-form-field">
           <FormInput label="Sort order" name="sortOrder" type="number" />
         </div>
         <div className="lms-form-field">
-          <FormSelect
+          <CrudFormSelect
             label="Status"
             name="status"
             options={[
@@ -138,7 +138,7 @@ function Form({
           />
         </div>
       </XStack>
-      <XStack gap="$3" style={{ flexWrap: "wrap" }}>
+      <XStack className="lms-organization-form-grid" gap="$3">
         <div className="lms-form-field">
           <FormInput label="Icon" name="icon" placeholder="book-open" />
         </div>

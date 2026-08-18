@@ -17,15 +17,19 @@ export const AppTextArea: ForwardRefExoticComponent<
     <TamaguiTextArea
       ref={ref}
       size="$4"
+      background="#FCFCFD"
       borderWidth={1}
-      borderColor="$borderColor"
-      fontSize="$label"
+      borderColor="#D8E1EC"
+      rounded="$3"
+      fontSize="$caption"
       fontWeight="$body"
       letterSpacing="$body"
       height={96}
       p="$3"
       focusStyle={{
-        borderColor: "$blue10",
+        background: "#FFFFFF",
+        borderColor: "#059669",
+        boxShadow: "0 0 0 3px rgba(5, 150, 105, 0.12)",
       }}
       {...props}
     />

@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FormInput, FormSelect, FormTextArea, Text } from "@repo/ui";
+import { FormInput, FormTextArea, Text } from "@repo/ui";
 import { sessionSchema } from "@repo/validation";
+import { CrudFormSelect } from "../../components/crud";
 import type { SessionFormState } from "../types";
 
 export function SessionForm({
@@ -18,7 +19,8 @@ export function SessionForm({
 }) {
   const methods = useForm<SessionFormState>({
     defaultValues: form,
-    mode: "onBlur",
+    mode: "onTouched",
+    reValidateMode: "onChange",
     resolver: zodResolver(sessionSchema),
   });
 
@@ -61,7 +63,7 @@ export function SessionForm({
             <FormInput label="End date" name="endDate" type="datetime-local" />
           </div>
           <div className="lms-form-field">
-            <FormSelect
+            <CrudFormSelect
               label="Status"
               name="status"
               options={[

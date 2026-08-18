@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCw, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button, XStack, YStack } from "@repo/ui";
 import { AppCard } from "@repo/ui/primitives";
 import type { ReactNode } from "react";

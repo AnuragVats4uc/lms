@@ -7,7 +7,7 @@ import {
   CalendarDays,
   Clock3,
   FileText,
-  Image,
+  Image as ImageIcon,
   ShieldCheck,
 } from "lucide-react";
 import type {
@@ -27,19 +27,13 @@ import {
   CrudBadge,
   CrudDetailField,
   CrudDetailSection,
+  CrudFormSelect,
 } from "../components/crud";
 import {
   CrudManagementPage,
   type ResourceFormContext,
 } from "../components/crud/CrudManagementPage";
-import {
-  FormInput,
-  FormSelect,
-  FormTextArea,
-  Text,
-  XStack,
-  YStack,
-} from "@repo/ui";
+import { FormInput, FormTextArea, Text, XStack, YStack } from "@repo/ui";
 
 type CourseForm = CourseFormValues;
 
@@ -84,7 +78,7 @@ function Form({ error }: ResourceFormContext<CourseForm>) {
           {error}
         </Text>
       ) : null}
-      <XStack gap="$3" style={{ flexWrap: "wrap" }}>
+      <XStack className="lms-organization-form-grid" gap="$3">
         <div className="lms-form-field">
           <FormInput
             autoFocus
@@ -102,7 +96,7 @@ function Form({ error }: ResourceFormContext<CourseForm>) {
           />
         </div>
       </XStack>
-      <XStack gap="$3" style={{ flexWrap: "wrap" }}>
+      <XStack className="lms-organization-form-grid" gap="$3">
         <div className="lms-form-field">
           <FormInput
             label="Duration (days)"
@@ -112,7 +106,7 @@ function Form({ error }: ResourceFormContext<CourseForm>) {
           />
         </div>
         <div className="lms-form-field">
-          <FormSelect
+          <CrudFormSelect
             label="Status"
             name="status"
             options={[
@@ -266,11 +260,11 @@ function details(course: Course) {
         </Text>
       </YStack>
       <CrudDetailSection
-        icon={<Image color="#059669" size={15} />}
+        icon={<ImageIcon color="#059669" size={15} />}
         title="Availability"
       >
         <CrudDetailField
-          icon={<Image color="#059669" size={15} />}
+          icon={<ImageIcon color="#059669" size={15} />}
           label="Thumbnail"
           value={course.thumbnail ?? "Not provided"}
         />

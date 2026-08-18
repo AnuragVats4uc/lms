@@ -5,7 +5,6 @@ import {
   Building2,
   CalendarDays,
   ClipboardCheck,
-  FileBarChart,
   FileText,
   GraduationCap,
   KeyRound,

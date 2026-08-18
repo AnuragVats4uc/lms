@@ -1,11 +1,7 @@
 "use client";
 
 import { MoreHorizontal, Network, Plus, RefreshCw } from "lucide-react";
-import {
-  AppCard,
-  AppHeading,
-  AppText,
-} from "@repo/ui/primitives";
+import { AppCard, AppHeading, AppText } from "@repo/ui/primitives";
 import {
   BreadcrumbNavigation,
   DashboardSection,
@@ -15,7 +11,11 @@ import {
 } from "@repo/ui/dashboard";
 import { Button, XStack, YStack } from "@repo/ui";
 import { useAuthSession } from "@repo/auth";
-import type { DashboardContext, DashboardContextOptions, DashboardQuery } from "@repo/types";
+import type {
+  DashboardContext,
+  DashboardContextOptions,
+  DashboardQuery,
+} from "@repo/types";
 import type {
   BreadcrumbItem,
   FolderCardProps,
@@ -107,7 +107,11 @@ export function ResourceManagementSection({
             rounded="$3"
           >
             <RefreshCw aria-hidden="true" color="#047857" size={16} />
-            <Button.Text color="#047857" fontSize="$caption" fontWeight="$button">
+            <Button.Text
+              color="#047857"
+              fontSize="$caption"
+              fontWeight="$button"
+            >
               {refreshing ? "Refreshing..." : "Refresh"}
             </Button.Text>
           </Button>
@@ -122,7 +126,11 @@ export function ResourceManagementSection({
             onPress={onViewTree}
           >
             <Network aria-hidden="true" color="#059669" size={16} />
-            <Button.Text color="#047857" fontSize="$caption" fontWeight="$button">
+            <Button.Text
+              color="#047857"
+              fontSize="$caption"
+              fontWeight="$button"
+            >
               {treeOnly ? "View folders" : "View as Tree"}
             </Button.Text>
           </Button>
@@ -161,7 +169,11 @@ export function ResourceManagementSection({
                 label: organization.name,
                 value: String(organization.id),
               }))}
-              value={selectedContext.organizationId ? String(selectedContext.organizationId) : ""}
+              value={
+                selectedContext.organizationId
+                  ? String(selectedContext.organizationId)
+                  : ""
+              }
               width={220}
             />
           ) : null}
@@ -172,10 +184,14 @@ export function ResourceManagementSection({
             loading={contextLoading}
             onChange={(value) => changeContext("sessionId", value)}
             options={contextOptions.sessions.map((session) => ({
-              label: session.code ? `${session.name} · ${session.code}` : session.name,
+              label: session.code
+                ? `${session.name} · ${session.code}`
+                : session.name,
               value: String(session.id),
             }))}
-            value={selectedContext.sessionId ? String(selectedContext.sessionId) : ""}
+            value={
+              selectedContext.sessionId ? String(selectedContext.sessionId) : ""
+            }
             width={190}
           />
           <CrudSelect
@@ -188,7 +204,11 @@ export function ResourceManagementSection({
               label: sessionCourse.displayName ?? sessionCourse.course.name,
               value: String(sessionCourse.id),
             }))}
-            value={selectedContext.sessionCourseId ? String(selectedContext.sessionCourseId) : ""}
+            value={
+              selectedContext.sessionCourseId
+                ? String(selectedContext.sessionCourseId)
+                : ""
+            }
             width={240}
           />
           <CrudSelect
@@ -201,7 +221,9 @@ export function ResourceManagementSection({
               label: folder.parentFolderId ? `↳ ${folder.name}` : folder.name,
               value: String(folder.id),
             }))}
-            value={selectedContext.folderId ? String(selectedContext.folderId) : ""}
+            value={
+              selectedContext.folderId ? String(selectedContext.folderId) : ""
+            }
             width={210}
           />
         </XStack>
@@ -210,7 +232,9 @@ export function ResourceManagementSection({
           gap="$4"
           style={{
             display: "grid",
-            gridTemplateColumns: treeOnly ? "minmax(0, 1fr)" : "minmax(240px, 280px) minmax(0, 1fr)",
+            gridTemplateColumns: treeOnly
+              ? "minmax(0, 1fr)"
+              : "minmax(240px, 280px) minmax(0, 1fr)",
             minWidth: 0,
           }}
         >
@@ -226,7 +250,11 @@ export function ResourceManagementSection({
                 Content Hierarchy
               </AppHeading>
               {tree.length ? (
-                <TreeView items={tree} onSelect={onSelectTree} onToggle={onToggleTree} />
+                <TreeView
+                  items={tree}
+                  onSelect={onSelectTree}
+                  onToggle={onToggleTree}
+                />
               ) : (
                 <AppText color="#52627A" fontSize="$caption">
                   No content hierarchy is available yet.
@@ -243,62 +271,77 @@ export function ResourceManagementSection({
                 rounded="$3"
               >
                 <Plus aria-hidden="true" color="#059669" size={15} />
-                <Button.Text color="#047857" fontSize="$caption" fontWeight="$button">
+                <Button.Text
+                  color="#047857"
+                  fontSize="$caption"
+                  fontWeight="$button"
+                >
                   Add New Folder
                 </Button.Text>
               </Button>
             </YStack>
           </AppCard>
-          {!treeOnly ? <AppCard
-            className="lms-resource-folders-panel"
-            background="#FFFFFF"
-            borderColor="#E1E7F0"
-            p="$4"
-            style={{ borderRadius: 12, minWidth: 0 }}
-          >
-            <YStack gap="$4">
-              <XStack
-                className="lms-resource-folders-header"
-                style={{
-                  alignItems: "flex-start",
-                  gap: 12,
-                  justifyContent: "space-between",
-                  minWidth: 0,
-                }}
-              >
-                <YStack gap="$1" style={{ flex: "1 1 auto", minWidth: 0 }}>
-                  <AppHeading level={3} fontSize="$label" lineHeight="$label">
-                    Resource Folders in "{context.course?.name ?? "selected course"}"
-                  </AppHeading>
-                  <AppText color="#52627A" fontSize="$caption" lineHeight="$caption">
-                    Select a folder to view and manage its resources.
-                  </AppText>
-                </YStack>
-                <Button
-                  aria-label="Add Folder"
-                  background="#059669"
-                  height={40}
-                  px="$4"
-                  rounded="$3"
-                  onPress={onAddFolder}
-                  style={{ flexShrink: 0 }}
+          {!treeOnly ? (
+            <AppCard
+              className="lms-resource-folders-panel"
+              background="#FFFFFF"
+              borderColor="#E1E7F0"
+              p="$4"
+              style={{ borderRadius: 12, minWidth: 0 }}
+            >
+              <YStack gap="$4">
+                <XStack
+                  className="lms-resource-folders-header"
+                  style={{
+                    alignItems: "flex-start",
+                    gap: 12,
+                    justifyContent: "space-between",
+                    minWidth: 0,
+                  }}
                 >
-                  <Plus aria-hidden="true" color="#FFFFFF" size={16} />
-                  <Button.Text color="#FFFFFF" fontSize="$caption" fontWeight="$button">
-                    Add Folder
-                  </Button.Text>
-                </Button>
-              </XStack>
-              {folders.length ? (
-                <ResourceFolderGrid folders={folders} />
-              ) : (
-                <AppText color="#52627A" fontSize="$caption">
-                  No root folders are available for the selected course.
-                </AppText>
-              )}
-              <UploadDropzone {...upload} />
-            </YStack>
-          </AppCard> : null}
+                  <YStack gap="$1" style={{ flex: "1 1 auto", minWidth: 0 }}>
+                    <AppHeading level={3} fontSize="$label" lineHeight="$label">
+                      Resource Folders in &quot;
+                      {context.course?.name ?? "selected course"}&quot;
+                    </AppHeading>
+                    <AppText
+                      color="#52627A"
+                      fontSize="$caption"
+                      lineHeight="$caption"
+                    >
+                      Select a folder to view and manage its resources.
+                    </AppText>
+                  </YStack>
+                  <Button
+                    aria-label="Add Folder"
+                    background="#059669"
+                    height={40}
+                    px="$4"
+                    rounded="$3"
+                    onPress={onAddFolder}
+                    style={{ flexShrink: 0 }}
+                  >
+                    <Plus aria-hidden="true" color="#FFFFFF" size={16} />
+                    <Button.Text
+                      color="#FFFFFF"
+                      fontSize="$caption"
+                      fontWeight="$button"
+                    >
+                      Add Folder
+                    </Button.Text>
+                  </Button>
+                </XStack>
+                {folders.length ? (
+                  <ResourceFolderGrid folders={folders} />
+                ) : (
+                  <AppText color="#52627A" fontSize="$caption">
+                    No root folders are available for the selected course.
+                  </AppText>
+                )}
+                <UploadDropzone {...upload} />
+              </YStack>
+            </AppCard>
+          ) : null}
         </XStack>
       </YStack>
     </DashboardSection>

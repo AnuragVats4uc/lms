@@ -13,6 +13,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@repo/api": "workspace:*",
     "@repo/auth": "workspace:*",
+    "@repo/hooks": "workspace:*",
     "@repo/validation": "workspace:*",
     "@repo/ui": "workspace:*",
     "@tanstack/react-query": "^5.101.2",
@@ -21,7 +22,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.62.0",
-    "tamagui": "^2.4.2"
+    "tamagui": "^2.4.2",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -1,8 +1,16 @@
 "use client";
 
-import { memo, type ReactNode } from "react";
+import {
+  memo,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ElementRef,
+  type ReactNode,
+} from "react";
 import { ExternalLink } from "lucide-react";
-import { Avatar, Text, XStack, YStack } from "@repo/ui";
+import { Avatar, Button, Text, XStack, YStack } from "@repo/ui";
 import { AppBadge, type AppBadgeTone } from "@repo/ui/primitives";
 
 import { DATA_TABLE_COLORS } from "./constants";
@@ -49,6 +57,15 @@ export interface DataTableTagsCellProps {
   maxVisible?: number;
 }
 
+export interface DataTableExpandableTextProps {
+  children: ReactNode;
+  color?: ComponentProps<typeof Text>["color"];
+  fontSize?: number;
+  fontWeight?: "$button" | "$label" | "$heading";
+  lineHeight?: number;
+  maxLines?: number;
+}
+
 const redBadgeStyle = {
   backgroundColor: DATA_TABLE_COLORS.redSoft,
   color: DATA_TABLE_COLORS.red,
@@ -68,15 +85,123 @@ const getInitials = (label: string) => {
     .toUpperCase();
 };
 
+export const DataTableExpandableText = memo(
+  ({
+    children,
+    color = DATA_TABLE_COLORS.text,
+    fontSize = 11,
+    fontWeight,
+    lineHeight = 15,
+    maxLines = 2,
+  }: DataTableExpandableTextProps) => {
+    const contentRef = useRef<ElementRef<typeof Text>>(null);
+    const [expanded, setExpanded] = useState(false);
+    const [hasOverflow, setHasOverflow] = useState(false);
+    const contentKey =
+      typeof children === "string" || typeof children === "number"
+        ? String(children)
+        : undefined;
+
+    useEffect(() => {
+      if (expanded) {
+        return;
+      }
+
+      const content = contentRef.current;
+      if (!content) {
+        return;
+      }
+
+      let cancelled = false;
+      const measurableContent = content as unknown as HTMLElement;
+      const updateOverflow = () => {
+        const nextHasOverflow =
+          measurableContent.scrollHeight > measurableContent.clientHeight + 1;
+        window.setTimeout(() => {
+          if (!cancelled) {
+            setHasOverflow(nextHasOverflow);
+          }
+        }, 0);
+      };
+
+      updateOverflow();
+      const observer =
+        typeof ResizeObserver === "undefined"
+          ? null
+          : new ResizeObserver(updateOverflow);
+      observer?.observe(content);
+
+      return () => {
+        cancelled = true;
+        observer?.disconnect();
+      };
+    }, [contentKey, expanded, lineHeight, maxLines]);
+
+    useEffect(() => {
+      if (!contentKey) {
+        return;
+      }
+
+      window.setTimeout(() => {
+        setExpanded(false);
+      }, 0);
+    }, [contentKey]);
+
+    return (
+      <YStack gap={2} minW={0} width="100%">
+        <Text
+          ref={contentRef}
+          color={color}
+          fontSize={fontSize}
+          fontWeight={fontWeight}
+          lineHeight={lineHeight}
+          width="100%"
+          style={{
+            maxHeight: expanded ? undefined : maxLines * lineHeight,
+            overflow: expanded ? "visible" : "hidden",
+            overflowWrap: "anywhere",
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+          }}
+        >
+          {children}
+        </Text>
+        {hasOverflow ? (
+          <Button
+            aria-expanded={expanded}
+            chromeless
+            height={16}
+            onPress={() => setExpanded((current) => !current)}
+            p={0}
+            style={{
+              alignSelf: "flex-start",
+              flexShrink: 0,
+              marginTop: 1,
+              position: "relative",
+              zIndex: 1,
+            }}
+          >
+            <Button.Text
+              color={DATA_TABLE_COLORS.green}
+              fontSize={9}
+              fontWeight="$button"
+              lineHeight={13}
+            >
+              {expanded ? "See less" : "See more"}
+            </Button.Text>
+          </Button>
+        ) : null}
+      </YStack>
+    );
+  },
+);
+
+DataTableExpandableText.displayName = "DataTableExpandableText";
+
 export const DataTableAvatarCell = memo(
   ({ imageSrc, label, subtitle }: DataTableAvatarCellProps) => {
     return (
-      <XStack
-        gap="$2"
-        minW={0}
-        width='100%'
-        style={{ alignItems: "center", }}
-      >
+      <XStack gap="$2" minW={0} width="100%" style={{ alignItems: "center" }}>
         {imageSrc ? (
           <Avatar circular size={30} style={{ flexShrink: 0 }}>
             <Avatar.Image src={imageSrc} />
@@ -104,24 +229,22 @@ export const DataTableAvatarCell = memo(
           </XStack>
         )}
         <YStack style={{ flex: 1, minWidth: 0 }}>
-          <Text
+          <DataTableExpandableText
             color={DATA_TABLE_COLORS.text}
-            fontSize={12}
+            fontSize={11}
             fontWeight="$button"
-            lineHeight={16}
-            numberOfLines={1}
+            lineHeight={15}
           >
             {label}
-          </Text>
+          </DataTableExpandableText>
           {subtitle ? (
-            <Text
+            <DataTableExpandableText
               color={DATA_TABLE_COLORS.muted}
               fontSize={11}
               lineHeight={15}
-              numberOfLines={2}
             >
               {subtitle}
-            </Text>
+            </DataTableExpandableText>
           ) : null}
         </YStack>
       </XStack>
@@ -136,25 +259,23 @@ export const DataTableUserCell = DataTableAvatarCell;
 export const DataTableTextCell = memo(
   ({ primary, secondary }: DataTableTextCellProps) => {
     return (
-      <YStack gap="$1" style={{ minWidth: 0 }}>
-        <Text
+      <YStack gap="$1" width="100%" style={{ minWidth: 0 }}>
+        <DataTableExpandableText
           color={DATA_TABLE_COLORS.text}
-          fontSize={12}
+          fontSize={11}
           fontWeight="$button"
-          lineHeight={16}
-          numberOfLines={1}
+          lineHeight={15}
         >
           {primary}
-        </Text>
+        </DataTableExpandableText>
         {secondary ? (
-          <Text
+          <DataTableExpandableText
             color={DATA_TABLE_COLORS.muted}
             fontSize={10}
             lineHeight={14}
-            numberOfLines={2}
           >
             {secondary}
-          </Text>
+          </DataTableExpandableText>
         ) : null}
       </YStack>
     );
@@ -168,13 +289,10 @@ export const DataTableEmailCell = memo(
     const email = label ?? href.replace(/^mailto:/u, "");
 
     return (
-      <Text
+      <DataTableExpandableText
         color={DATA_TABLE_COLORS.muted}
         fontSize={11}
         lineHeight={15}
-        numberOfLines={2}
-        maxW="100%"
-        style={{ overflowWrap: "anywhere" }}
       >
         <a
           href={href.startsWith("mailto:") ? href : `mailto:${href}`}
@@ -182,7 +300,7 @@ export const DataTableEmailCell = memo(
         >
           {email}
         </a>
-      </Text>
+      </DataTableExpandableText>
     );
   },
 );
@@ -192,14 +310,13 @@ DataTableEmailCell.displayName = "DataTableEmailCell";
 export const DataTablePhoneCell = memo(
   ({ value }: { value?: string | null }) => {
     return (
-      <Text
+      <DataTableExpandableText
         color={DATA_TABLE_COLORS.text}
         fontSize={11}
         lineHeight={15}
-        numberOfLines={1}
       >
         {value || "-"}
-      </Text>
+      </DataTableExpandableText>
     );
   },
 );
@@ -210,24 +327,23 @@ export const DataTableWebsiteCell = memo(
   ({ external = true, href, label }: DataTableLinkCellProps) => {
     return (
       <XStack gap="$1" style={{ alignItems: "center", minWidth: 0 }}>
-        <Text
-          color={DATA_TABLE_COLORS.green}
-          fontSize={11}
-          fontWeight="$button"
-          lineHeight={15}
-          numberOfLines={2}
-          maxW="100%"
-          style={{ overflowWrap: "anywhere" }}
-        >
-          <a
-            href={href}
-            rel={external ? "noreferrer" : undefined}
-            style={{ color: "inherit", textDecoration: "none" }}
-            target={external ? "_blank" : undefined}
+        <YStack style={{ flex: 1, minWidth: 0 }}>
+          <DataTableExpandableText
+            color={DATA_TABLE_COLORS.green}
+            fontSize={11}
+            fontWeight="$button"
+            lineHeight={15}
           >
-            {label ?? href}
-          </a>
-        </Text>
+            <a
+              href={href}
+              rel={external ? "noreferrer" : undefined}
+              style={{ color: "inherit", textDecoration: "none" }}
+              target={external ? "_blank" : undefined}
+            >
+              {label ?? href}
+            </a>
+          </DataTableExpandableText>
+        </YStack>
         {external ? (
           <ExternalLink
             aria-hidden="true"
@@ -324,7 +440,7 @@ export const DataTableTagsCell = memo(
     const hiddenCount = Math.max(tags.length - visibleTags.length, 0);
 
     return (
-      <XStack gap="$1" flexWrap="wrap" style={{ alignItems: "center", }}>
+      <XStack gap="$1" flexWrap="wrap" style={{ alignItems: "center" }}>
         {visibleTags.map((tag) => (
           <DataTableBadgeCell key={tag} label={tag} tone={tone} />
         ))}

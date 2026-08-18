@@ -11,7 +11,7 @@ import {
   Clock3,
   FileText,
   FolderOpen,
-  Image,
+  Image as ImageIcon,
   ShieldCheck,
   Video,
 } from "lucide-react";
@@ -34,6 +34,7 @@ import {
   CrudBadge,
   CrudDetailField,
   CrudDetailSection,
+  CrudFormSelect,
   CrudSelect,
 } from "../components/crud";
 import {
@@ -44,7 +45,6 @@ import { useAcademicSessions } from "../academic/useAcademicSessions";
 import {
   FormCheckbox,
   FormInput,
-  FormSelect,
   FormTextArea,
   Text,
   XStack,
@@ -133,7 +133,7 @@ function ResourceForm({ error }: ResourceFormContext<ResourceForm>) {
           {error}
         </Text>
       ) : null}
-      <XStack gap="$3" style={{ flexWrap: "wrap" }}>
+      <XStack className="lms-organization-form-grid" gap="$3">
         <div className="lms-form-field">
           <FormInput
             autoFocus
@@ -143,7 +143,7 @@ function ResourceForm({ error }: ResourceFormContext<ResourceForm>) {
           />
         </div>
         <div className="lms-form-field">
-          <FormSelect
+          <CrudFormSelect
             label="Type"
             name="type"
             options={[
@@ -155,7 +155,7 @@ function ResourceForm({ error }: ResourceFormContext<ResourceForm>) {
         </div>
       </XStack>
       {type === "DOCUMENT" ? (
-        <XStack gap="$3" style={{ flexWrap: "wrap" }}>
+        <XStack className="lms-organization-form-grid" gap="$3">
           <div className="lms-form-field">
             <FormInput
               label="Document URL"
@@ -174,7 +174,7 @@ function ResourceForm({ error }: ResourceFormContext<ResourceForm>) {
         </XStack>
       ) : null}
       {type === "VIDEO" ? (
-        <XStack gap="$3" style={{ flexWrap: "wrap" }}>
+        <XStack className="lms-organization-form-grid" gap="$3">
           <div className="lms-form-field">
             <FormInput
               label="Video URL"
@@ -208,7 +208,7 @@ function ResourceForm({ error }: ResourceFormContext<ResourceForm>) {
           </Text>
         </YStack>
       ) : null}
-      <XStack gap="$3" style={{ flexWrap: "wrap" }}>
+      <XStack className="lms-organization-form-grid" gap="$3">
         <div className="lms-form-field">
           <FormInput
             label="File size (bytes)"
@@ -221,9 +221,9 @@ function ResourceForm({ error }: ResourceFormContext<ResourceForm>) {
           <FormInput label="Sort order" name="sortOrder" type="number" />
         </div>
       </XStack>
-      <XStack gap="$3" style={{ flexWrap: "wrap" }}>
+      <XStack className="lms-organization-form-grid" gap="$3">
         <div className="lms-form-field">
-          <FormSelect
+          <CrudFormSelect
             label="Status"
             name="status"
             options={[
@@ -440,7 +440,7 @@ function details(resource: Resource) {
           value={resource.mimeType}
         />
         <CrudDetailField
-          icon={<Image color="#059669" size={15} />}
+          icon={<ImageIcon color="#059669" size={15} />}
           label="Thumbnail"
           value={resource.thumbnail}
         />
