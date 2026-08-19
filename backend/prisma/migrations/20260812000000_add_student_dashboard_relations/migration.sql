@@ -1,6 +1,6 @@
 -- Alter Resource type enum to support dashboard-visible resource types.
 ALTER TABLE `resources`
-  MODIFY `type` ENUM('DOCUMENT', 'NOTES', 'VIDEO', 'EXAM', 'ASSIGNMENT') NOT NULL;
+  MODIFY `type` ENUM('DOCUMENT', 'VIDEO', 'EXAM') NOT NULL;
 
 -- CreateTable
 CREATE TABLE `student_enrollments` (

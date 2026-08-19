@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Prisma, StudentStatus, UserStatus } from '@prisma/client';
+import { Prisma, ResourceType, StudentStatus, UserStatus } from '@prisma/client';
 
 import { PrismaService } from '../../../prisma';
 import { StudentQueryDto } from '../dto/student-query.dto';
@@ -199,6 +199,7 @@ export class StudentsRepository {
         isActive: true,
         isPublished: true,
         status: 'PUBLISHED',
+        type: { in: [ResourceType.DOCUMENT, ResourceType.VIDEO, ResourceType.EXAM] },
         folder: { sessionCourseId: { in: sessionCourseIds } },
       },
       orderBy: { createdAt: 'desc' },
