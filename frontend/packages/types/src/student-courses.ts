@@ -1,5 +1,5 @@
 import type { PaginatedData, PaginationQuery } from "./api";
-import type { ResourceType } from "./resource";
+import type { ResourceType, ResourceTypeId } from "./resource";
 
 export type StudentCourseStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
 
@@ -12,7 +12,8 @@ export interface StudentCourseResourceCounts {
 export interface StudentCourseLastAccessed {
   resourceId: number;
   title: string;
-  type: ResourceType;
+  resourceTypeId: ResourceTypeId;
+  resourceType: ResourceType;
   timestamp: string;
   path: string;
 }

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-labelledby="title">
+  <title id="title">Percentage and profit loss video thumbnail</title>
+  <defs><linearGradient id="g" x1="0" y1="1" x2="1"><stop stop-color="#1d4ed8"/><stop offset="1" stop-color="#60a5fa"/></linearGradient></defs>
+  <rect width="640" height="360" rx="28" fill="url(#g)"/><path d="M395 290 520 165l60 60" fill="none" stroke="#bfdbfe" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="48" y="105" fill="#dbeafe" font-family="Arial" font-size="25" font-weight="700">PROBLEM SOLVING</text><text x="48" y="185" fill="white" font-family="Arial" font-size="46" font-weight="800">PERCENTAGE</text><text x="48" y="242" fill="white" font-family="Arial" font-size="42" font-weight="800">PROFIT &amp; LOSS</text>
+  <circle cx="540" cy="82" r="44" fill="white" opacity=".95"/><path d="m529 59 34 23-34 23Z" fill="#2563eb"/>
+</svg>

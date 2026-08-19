@@ -18,10 +18,11 @@ model Student {
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
-  profile           StudentProfile?
-  enrollments       StudentEnrollment[]
-  courseProgress    StudentCourseProgress[]
-  notifications     StudentNotification[]
+  profile        StudentProfile?
+  enrollments    StudentEnrollment[]
+  courseProgress StudentCourseProgress[]
+  videoProgress  StudentVideoProgress[]
+  notifications  StudentNotification[]
 
   @@unique([organizationId, rollNumber], map: "students_organization_id_roll_number_unique")
   @@index([organizationId], map: "students_organization_id_idx")
@@ -149,6 +150,27 @@ model StudentCourseProgress {
   @@map("student_course_progress")
 }
 
+model StudentVideoProgress {
+  id Int @id @default(autoincrement())
+
+  studentId  Int @map("student_id")
+  resourceId Int @map("resource_id")
+
+  currentPositionSeconds Int       @default(0) @map("current_position_seconds")
+  watchedPercentage      Int       @default(0) @map("watched_percentage")
+  completedAt            DateTime? @map("completed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, resourceId], map: "student_video_progress_student_id_resource_id_unique")
+  @@index([resourceId], map: "student_video_progress_resource_id_idx")
+  @@map("student_video_progress")
+}
+
 model StudentNotification {
   id   Int    @id @default(autoincrement())
   uuid String @unique @default(uuid())
@@ -157,12 +179,12 @@ model StudentNotification {
   organizationId Int @map("organization_id")
 
   type            StudentNotificationType
-  title           String  @db.VarChar(180)
-  description     String  @db.Text
-  relatedEntity   String? @map("related_entity") @db.VarChar(80)
-  relatedEntityId Int?    @map("related_entity_id")
-  isRead          Boolean @default(false) @map("is_read")
-  expiresAt       DateTime? @map("expires_at")
+  title           String                  @db.VarChar(180)
+  description     String                  @db.Text
+  relatedEntity   String?                 @map("related_entity") @db.VarChar(80)
+  relatedEntityId Int?                    @map("related_entity_id")
+  isRead          Boolean                 @default(false) @map("is_read")
+  expiresAt       DateTime?               @map("expires_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

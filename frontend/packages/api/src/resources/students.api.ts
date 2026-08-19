@@ -6,9 +6,16 @@ import type {
   StudentCourseList,
   StudentCoursesQuery,
   StudentDashboard,
+  StudentResourceList,
+  StudentResourceDetail,
+  StudentDocumentProgress,
+  StudentVideoProgress,
+  StudentVideoResourceDetail,
+  StudentResourcesQuery,
   StudentList,
   StudentQuery,
   UpdateStudentRequest,
+  UpdateStudentVideoProgressRequest,
 } from "@repo/types";
 
 import { api } from "../client/axios";
@@ -51,6 +58,64 @@ export const studentsApi = {
       .then(unwrapApiData);
   },
 
+  findMyResources(query?: StudentResourcesQuery) {
+    return api
+      .get<ApiResponse<StudentResourceList>>(
+        `${STUDENTS_ENDPOINT}/me/resources`,
+        {
+          params: query,
+        },
+      )
+      .then(unwrapApiData);
+  },
+
+  findMyResource(resourceId: number) {
+    return api
+      .get<ApiResponse<StudentResourceDetail>>(
+        `${STUDENTS_ENDPOINT}/me/resources/${resourceId}`,
+      )
+      .then(unwrapApiData);
+  },
+
+  findMyResourceFile(resourceId: number) {
+    return api
+      .get<ArrayBuffer>(
+        `${STUDENTS_ENDPOINT}/me/resources/${resourceId}/file`,
+        {
+          responseType: "arraybuffer",
+        },
+      )
+      .then((response) => response.data);
+  },
+
+  recordMyResourceAccess(resourceId: number) {
+    return api
+      .post<ApiResponse<StudentDocumentProgress>>(
+        `${STUDENTS_ENDPOINT}/me/resources/${resourceId}/access`,
+      )
+      .then(unwrapApiData);
+  },
+
+  findMyVideoResource(resourceId: number) {
+    return api
+      .get<ApiResponse<StudentVideoResourceDetail>>(
+        `${STUDENTS_ENDPOINT}/me/resources/${resourceId}/video`,
+      )
+      .then(unwrapApiData);
+  },
+
+  updateMyVideoProgress(
+    resourceId: number,
+    payload: UpdateStudentVideoProgressRequest,
+  ) {
+    return api
+      .patch<ApiResponse<StudentVideoProgress>>(
+        `${STUDENTS_ENDPOINT}/me/resources/${resourceId}/video/progress`,
+        payload,
+      )
+      .then(unwrapApiData);
+  },
+
   findMe() {
     return api
       .get<ApiResponse<CurrentStudent>>(`${STUDENTS_ENDPOINT}/me`)
@@ -59,18 +124,13 @@ export const studentsApi = {
 
   update(id: number, payload: UpdateStudentRequest) {
     return api
-      .patch<ApiResponse<Student>>(
-        `${STUDENTS_ENDPOINT}/${id}`,
-        payload
-      )
+      .patch<ApiResponse<Student>>(`${STUDENTS_ENDPOINT}/${id}`, payload)
       .then(unwrapApiData);
   },
 
   remove(id: number) {
     return api
-      .delete<ApiResponse<Student>>(
-        `${STUDENTS_ENDPOINT}/${id}`
-      )
+      .delete<ApiResponse<Student>>(`${STUDENTS_ENDPOINT}/${id}`)
       .then(unwrapApiData);
   },
 };

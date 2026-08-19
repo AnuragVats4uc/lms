@@ -5,7 +5,6 @@ import {
   Prisma,
   PrismaClient,
   ResourceStatus,
-  ResourceType,
   SessionCourseStatus,
   SessionStatus,
   CourseStatus,
@@ -13,6 +12,11 @@ import {
 } from '@prisma/client';
 
 import { PasswordService } from '../../src/modules/auth/services/password.service';
+import {
+  RESOURCE_TYPE_IDS,
+  ResourceTypeId,
+} from '../../src/modules/resource/constants/resource-type.constants';
+import { seedResourceTypes } from './resource-types';
 
 const prisma = new PrismaClient();
 const BATCH_SIZE = 2_000;
@@ -110,7 +114,12 @@ const courseCatalog = [
   ['Competitive Exam Strategies', 'COMP-STR'],
 ] as const;
 
-const rootFolderNames = ['Physics', 'Chemistry', 'Mathematics', 'English'] as const;
+const rootFolderNames = [
+  'Physics',
+  'Chemistry',
+  'Mathematics',
+  'English',
+] as const;
 const childFolderNames = [
   'Foundations',
   'Concepts',
@@ -129,6 +138,7 @@ type FolderRecord = Id & {
 
 async function main() {
   console.log('Starting LMS relational seed');
+  await seedResourceTypes(prisma);
 
   if (process.env.SEED_DASHBOARD === 'true') {
     console.log('Dashboard seed mode enabled: preserving existing data');
@@ -145,7 +155,9 @@ async function main() {
     return;
   }
 
-  console.log('Stage 1/7: preserving system reference data and cleaning sample data');
+  console.log(
+    'Stage 1/7: preserving system reference data and cleaning sample data',
+  );
   await cleanOrganizationData();
 
   console.log('Stage 2/7: seeding roles and permissions');
@@ -162,7 +174,9 @@ async function main() {
   console.log('Stage 3/7: creating 20 organizations');
   const organizations = await seedOrganizations();
 
-  console.log('Stage 4/7: creating 20 courses and 20 sessions per organization');
+  console.log(
+    'Stage 4/7: creating 20 courses and 20 sessions per organization',
+  );
   const courses = await seedCourses();
   const sessions = await seedSessions(organizations);
 
@@ -212,48 +226,55 @@ async function cleanOrganizationData() {
   });
   const courseIds = relatedCourses.map(({ id }) => id);
 
-  await prisma.$transaction(async (tx) => {
-    if (userIds.length) {
-      await tx.refreshToken.deleteMany({ where: { userId: { in: userIds } } });
-      await tx.userRole.deleteMany({ where: { userId: { in: userIds } } });
-      await tx.user.deleteMany({ where: { id: { in: userIds } } });
-    }
+  await prisma.$transaction(
+    async (tx) => {
+      if (userIds.length) {
+        await tx.refreshToken.deleteMany({
+          where: { userId: { in: userIds } },
+        });
+        await tx.userRole.deleteMany({ where: { userId: { in: userIds } } });
+        await tx.user.deleteMany({ where: { id: { in: userIds } } });
+      }
 
-    await tx.userRole.deleteMany({
-      where: { organizationId: { in: organizationIds } },
-    });
-    await tx.resource.deleteMany({
-      where: {
-        folder: {
+      await tx.userRole.deleteMany({
+        where: { organizationId: { in: organizationIds } },
+      });
+      await tx.resource.deleteMany({
+        where: {
+          folder: {
+            sessionCourse: {
+              session: { organizationId: { in: organizationIds } },
+            },
+          },
+        },
+      });
+      await tx.folder.deleteMany({
+        where: {
           sessionCourse: {
             session: { organizationId: { in: organizationIds } },
           },
         },
-      },
-    });
-    await tx.folder.deleteMany({
-      where: {
-        sessionCourse: {
-          session: { organizationId: { in: organizationIds } },
-        },
-      },
-    });
-    await tx.sessionCourse.deleteMany({
-      where: { session: { organizationId: { in: organizationIds } } },
-    });
-    await tx.session.deleteMany({
-      where: { organizationId: { in: organizationIds } },
-    });
+      });
+      await tx.sessionCourse.deleteMany({
+        where: { session: { organizationId: { in: organizationIds } } },
+      });
+      await tx.session.deleteMany({
+        where: { organizationId: { in: organizationIds } },
+      });
 
-    if (courseIds.length) {
-      await tx.course.deleteMany({ where: { id: { in: courseIds } } });
-    }
+      if (courseIds.length) {
+        await tx.course.deleteMany({ where: { id: { in: courseIds } } });
+      }
 
-    await tx.organization.deleteMany({ where: { id: { in: organizationIds } } });
-  }, {
-    maxWait: 60_000,
-    timeout: 600_000,
-  });
+      await tx.organization.deleteMany({
+        where: { id: { in: organizationIds } },
+      });
+    },
+    {
+      maxWait: 60_000,
+      timeout: 600_000,
+    },
+  );
 
   console.log(
     `Removed ${organizationIds.length} organizations and their dependent sample data; preserved roles, permissions, and unscoped system users`,
@@ -401,7 +422,7 @@ async function seedStudentDashboardDemo() {
       code: 'QA',
       instructor: ['Ritika', 'Mehra', 'ritika.mehra@lms.test'],
       completion: 68,
-      resource: ['Permutation & Combination Notes', ResourceType.DOCUMENT],
+      resource: ['Permutation & Combination Notes', RESOURCE_TYPE_IDS.DOCUMENT],
       folder: 'Aptitude Notes',
       sortOrder: 0,
     },
@@ -410,7 +431,7 @@ async function seedStudentDashboardDemo() {
       code: 'VA',
       instructor: ['Nidhi', 'Arora', 'nidhi.arora@lms.test'],
       completion: 56,
-      resource: ['Linear Equations - Part 2', ResourceType.VIDEO],
+      resource: ['Linear Equations - Part 2', RESOURCE_TYPE_IDS.VIDEO],
       folder: 'Verbal Lessons',
       sortOrder: 1,
     },
@@ -419,7 +440,10 @@ async function seedStudentDashboardDemo() {
       code: 'LR',
       instructor: ['Aman', 'Verma', 'aman.verma@lms.test'],
       completion: 42,
-      resource: ['Reading Comprehension Strategies', ResourceType.DOCUMENT],
+      resource: [
+        'Reading Comprehension Strategies',
+        RESOURCE_TYPE_IDS.DOCUMENT,
+      ],
       folder: 'Reasoning Practice',
       sortOrder: 2,
     },
@@ -428,7 +452,10 @@ async function seedStudentDashboardDemo() {
       code: 'MT',
       instructor: ['Test', 'Series', 'test.series@lms.test'],
       completion: 75,
-      resource: ['Logical Reasoning Practice Set 05', ResourceType.DOCUMENT],
+      resource: [
+        'Logical Reasoning Practice Set 05',
+        RESOURCE_TYPE_IDS.DOCUMENT,
+      ],
       folder: 'Mock Test Assignments',
       sortOrder: 3,
     },
@@ -635,7 +662,7 @@ async function upsertDashboardFolder(
 async function upsertDashboardResource(
   folderId: number,
   title: string,
-  type: ResourceType,
+  type: ResourceTypeId,
   sortOrder: number,
   createdAt: Date,
 ) {
@@ -646,32 +673,32 @@ async function upsertDashboardResource(
   const data = {
     title,
     description: `${title} dashboard validation content.`,
-    type,
+    resourceTypeId: type,
     documentUrl:
-      type === ResourceType.DOCUMENT
+      type === RESOURCE_TYPE_IDS.DOCUMENT
         ? `https://cdn.example.com/lms/demo/${folderId}-${sortOrder}.pdf`
         : null,
     videoUrl:
-      type === ResourceType.VIDEO
+      type === RESOURCE_TYPE_IDS.VIDEO
         ? `https://cdn.example.com/lms/demo/${folderId}-${sortOrder}.mp4`
         : null,
-    examId: type === ResourceType.EXAM ? 900_000 + sortOrder : null,
+    examId: type === RESOURCE_TYPE_IDS.EXAM ? 900_000 + sortOrder : null,
     mimeType:
-      type === ResourceType.VIDEO
+      type === RESOURCE_TYPE_IDS.VIDEO
         ? 'video/mp4'
-        : type === ResourceType.EXAM
+        : type === RESOURCE_TYPE_IDS.EXAM
           ? 'application/json'
           : 'application/pdf',
     fileSize:
-      type === ResourceType.DOCUMENT
+      type === RESOURCE_TYPE_IDS.DOCUMENT
         ? BigInt(420_000 + sortOrder * 15_000)
         : null,
     durationInSeconds:
-      type === ResourceType.VIDEO ? 1_200 + sortOrder * 120 : null,
+      type === RESOURCE_TYPE_IDS.VIDEO ? 1_200 + sortOrder * 120 : null,
     sortOrder,
     status: ResourceStatus.PUBLISHED,
     isPublished: true,
-    isDownloadable: type !== ResourceType.VIDEO,
+    isDownloadable: type !== RESOURCE_TYPE_IDS.VIDEO,
     isActive: true,
     createdAt,
   };
@@ -793,9 +820,8 @@ async function seedSessions(organizations: Array<Id & { code: string }>) {
     }
   }
 
-  await createManyInBatches(
-    data,
-    (batch) => prisma.session.createMany({ data: batch }),
+  await createManyInBatches(data, (batch) =>
+    prisma.session.createMany({ data: batch }),
   );
 
   return prisma.session.findMany({
@@ -815,9 +841,10 @@ async function seedSessionCourses(
 
   for (const session of sessions) {
     for (const [courseIndex, course] of courses.entries()) {
-      const status = courseIndex % 10 === 0
-        ? SessionCourseStatus.DRAFT
-        : SessionCourseStatus.ACTIVE;
+      const status =
+        courseIndex % 10 === 0
+          ? SessionCourseStatus.DRAFT
+          : SessionCourseStatus.ACTIVE;
       data.push({
         sessionId: session.id,
         courseId: course.id,
@@ -831,9 +858,8 @@ async function seedSessionCourses(
     }
   }
 
-  await createManyInBatches(
-    data,
-    (batch) => prisma.sessionCourse.createMany({ data: batch }),
+  await createManyInBatches(data, (batch) =>
+    prisma.sessionCourse.createMany({ data: batch }),
   );
 
   return prisma.sessionCourse.findMany({
@@ -861,9 +887,8 @@ async function seedFolders(sessionCourses: SessionCourseRecord[]) {
     }
   }
 
-  await createManyInBatches(
-    rootData,
-    (batch) => prisma.folder.createMany({ data: batch }),
+  await createManyInBatches(rootData, (batch) =>
+    prisma.folder.createMany({ data: batch }),
   );
 
   const roots = await prisma.folder.findMany({
@@ -871,7 +896,12 @@ async function seedFolders(sessionCourses: SessionCourseRecord[]) {
       sessionCourseId: { in: sessionCourses.map(({ id }) => id) },
       parentFolderId: null,
     },
-    select: { id: true, sessionCourseId: true, parentFolderId: true, name: true },
+    select: {
+      id: true,
+      sessionCourseId: true,
+      parentFolderId: true,
+      name: true,
+    },
     orderBy: [{ sessionCourseId: 'asc' }, { sortOrder: 'asc' }],
   });
 
@@ -886,24 +916,29 @@ async function seedFolders(sessionCourses: SessionCourseRecord[]) {
         sortOrder: offset,
         icon: 'folder',
         color: folderColor(offset + 1),
-        status: offset === childFolderNames.length - 1
-          ? FolderStatus.ARCHIVED
-          : FolderStatus.ACTIVE,
+        status:
+          offset === childFolderNames.length - 1
+            ? FolderStatus.ARCHIVED
+            : FolderStatus.ACTIVE,
         isActive: offset !== childFolderNames.length - 1,
       });
     }
   }
 
-  await createManyInBatches(
-    childData,
-    (batch) => prisma.folder.createMany({ data: batch }),
+  await createManyInBatches(childData, (batch) =>
+    prisma.folder.createMany({ data: batch }),
   );
 
   return prisma.folder.findMany({
     where: {
       sessionCourseId: { in: sessionCourses.map(({ id }) => id) },
     },
-    select: { id: true, sessionCourseId: true, parentFolderId: true, name: true },
+    select: {
+      id: true,
+      sessionCourseId: true,
+      parentFolderId: true,
+      name: true,
+    },
     orderBy: [{ sessionCourseId: 'asc' }, { id: 'asc' }],
   });
 }
@@ -929,10 +964,12 @@ async function seedResources(folders: FolderRecord[]) {
     select: { folderId: true },
   });
   const lastFolderIndex = lastResource
-    ? folderIndexById.get(lastResource.folderId) ?? -1
+    ? (folderIndexById.get(lastResource.folderId) ?? -1)
     : -1;
   const lastFolderCount = lastResource
-    ? await prisma.resource.count({ where: { folderId: lastResource.folderId } })
+    ? await prisma.resource.count({
+        where: { folderId: lastResource.folderId },
+      })
     : 0;
   let created = Math.max(0, lastFolderIndex) * 20 + lastFolderCount;
   let batch: Prisma.ResourceCreateManyInput[] = [];
@@ -949,10 +986,13 @@ async function seedResources(folders: FolderRecord[]) {
 
   for (const [folderIndex, folder] of folders.entries()) {
     if (folderIndex < lastFolderIndex) continue;
-    const existingCount = folderIndex === lastFolderIndex
-      ? Math.min(lastFolderCount, 20)
-      : 0;
-    for (let resourceIndex = existingCount; resourceIndex < 20; resourceIndex += 1) {
+    const existingCount =
+      folderIndex === lastFolderIndex ? Math.min(lastFolderCount, 20) : 0;
+    for (
+      let resourceIndex = existingCount;
+      resourceIndex < 20;
+      resourceIndex += 1
+    ) {
       const type = resourceTypeForIndex(resourceIndex);
       const status = resourceStatusForIndex(resourceIndex);
       const baseTitle = `${folder.name} ${resourceLabel(type)} ${String(resourceIndex + 1).padStart(2, '0')}`;
@@ -960,34 +1000,39 @@ async function seedResources(folders: FolderRecord[]) {
         folderId: folder.id,
         title: baseTitle,
         description: `${resourceLabel(type)} for the ${folder.name} learning track.`,
-        type,
-        documentUrl: type === ResourceType.DOCUMENT
-          ? `https://cdn.example.com/lms/documents/${folder.id}/${resourceIndex + 1}.pdf`
-          : null,
-        videoUrl: type === ResourceType.VIDEO
-          ? `https://cdn.example.com/lms/videos/${folder.id}/${resourceIndex + 1}.mp4`
-          : null,
-        examId: type === ResourceType.EXAM
-          ? 100_000 + folderIndex * 20 + resourceIndex
-          : null,
-        thumbnail: `https://images.example.com/resources/${type.toLowerCase()}/${folder.id}-${resourceIndex + 1}.jpg`,
-        mimeType: type === ResourceType.DOCUMENT
-          ? 'application/pdf'
-          : type === ResourceType.VIDEO
-            ? 'video/mp4'
-            : 'application/json',
-        fileSize: type === ResourceType.DOCUMENT
-          ? BigInt(250_000 + resourceIndex * 17_500)
-          : type === ResourceType.VIDEO
-            ? BigInt(12_000_000 + resourceIndex * 250_000)
+        resourceTypeId: type,
+        documentUrl:
+          type === RESOURCE_TYPE_IDS.DOCUMENT
+            ? `https://cdn.example.com/lms/documents/${folder.id}/${resourceIndex + 1}.pdf`
             : null,
-        durationInSeconds: type === ResourceType.VIDEO
-          ? 1_800 + resourceIndex * 60
-          : null,
+        videoUrl:
+          type === RESOURCE_TYPE_IDS.VIDEO
+            ? `https://cdn.example.com/lms/videos/${folder.id}/${resourceIndex + 1}.mp4`
+            : null,
+        examId:
+          type === RESOURCE_TYPE_IDS.EXAM
+            ? 100_000 + folderIndex * 20 + resourceIndex
+            : null,
+        thumbnail: `https://images.example.com/resources/${resourceTypeCode(type).toLowerCase()}/${folder.id}-${resourceIndex + 1}.jpg`,
+        mimeType:
+          type === RESOURCE_TYPE_IDS.DOCUMENT
+            ? 'application/pdf'
+            : type === RESOURCE_TYPE_IDS.VIDEO
+              ? 'video/mp4'
+              : 'application/json',
+        fileSize:
+          type === RESOURCE_TYPE_IDS.DOCUMENT
+            ? BigInt(250_000 + resourceIndex * 17_500)
+            : type === RESOURCE_TYPE_IDS.VIDEO
+              ? BigInt(12_000_000 + resourceIndex * 250_000)
+              : null,
+        durationInSeconds:
+          type === RESOURCE_TYPE_IDS.VIDEO ? 1_800 + resourceIndex * 60 : null,
         sortOrder: resourceIndex,
         status,
         isPublished: status === ResourceStatus.PUBLISHED,
-        isDownloadable: type !== ResourceType.VIDEO || resourceIndex % 2 === 0,
+        isDownloadable:
+          type !== RESOURCE_TYPE_IDS.VIDEO || resourceIndex % 2 === 0,
         isActive: status !== ResourceStatus.ARCHIVED,
       };
 
@@ -1010,7 +1055,12 @@ async function findSeedFolders() {
         },
       },
     },
-    select: { id: true, sessionCourseId: true, parentFolderId: true, name: true },
+    select: {
+      id: true,
+      sessionCourseId: true,
+      parentFolderId: true,
+      name: true,
+    },
     orderBy: [{ sessionCourseId: 'asc' }, { id: 'asc' }],
   });
 }
@@ -1022,10 +1072,10 @@ function sessionStatusForIndex(index: number): SessionStatus {
   return SessionStatus.UPCOMING;
 }
 
-function resourceTypeForIndex(index: number): ResourceType {
-  if (index % 3 === 0) return ResourceType.DOCUMENT;
-  if (index % 3 === 1) return ResourceType.VIDEO;
-  return ResourceType.EXAM;
+function resourceTypeForIndex(index: number): ResourceTypeId {
+  if (index % 3 === 0) return RESOURCE_TYPE_IDS.DOCUMENT;
+  if (index % 3 === 1) return RESOURCE_TYPE_IDS.VIDEO;
+  return RESOURCE_TYPE_IDS.EXAM;
 }
 
 function resourceStatusForIndex(index: number): ResourceStatus {
@@ -1034,10 +1084,16 @@ function resourceStatusForIndex(index: number): ResourceStatus {
   return ResourceStatus.PUBLISHED;
 }
 
-function resourceLabel(type: ResourceType) {
-  if (type === ResourceType.DOCUMENT) return 'Study Notes';
-  if (type === ResourceType.VIDEO) return 'Lecture';
+function resourceLabel(type: ResourceTypeId) {
+  if (type === RESOURCE_TYPE_IDS.DOCUMENT) return 'Study Notes';
+  if (type === RESOURCE_TYPE_IDS.VIDEO) return 'Lecture';
   return 'Practice Test';
+}
+
+function resourceTypeCode(type: ResourceTypeId) {
+  if (type === RESOURCE_TYPE_IDS.DOCUMENT) return 'DOCUMENT';
+  if (type === RESOURCE_TYPE_IDS.VIDEO) return 'VIDEO';
+  return 'EXAM';
 }
 
 function folderColor(index: number) {

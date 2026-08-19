@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-labelledby="title">
+  <title id="title">Reading comprehension video thumbnail</title>
+  <defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#6d28d9"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs>
+  <rect width="640" height="360" rx="28" fill="url(#g)"/><path d="M430 88h120v180H430c-25 0-42 12-42 12V111s17-23 42-23Z" fill="#ede9fe" opacity=".9"/><path d="M550 88h-120c-25 0-42 23-42 23" fill="none" stroke="#fff" stroke-width="7"/>
+  <text x="48" y="105" fill="#ede9fe" font-family="Arial" font-size="25" font-weight="700">VERBAL ABILITY</text><text x="48" y="185" fill="white" font-family="Arial" font-size="45" font-weight="800">READING</text><text x="48" y="240" fill="white" font-family="Arial" font-size="39" font-weight="800">COMPREHENSION</text>
+  <circle cx="500" cy="290" r="38" fill="white"/><path d="m489 269 32 21-32 21Z" fill="#7c3aed"/>
+</svg>

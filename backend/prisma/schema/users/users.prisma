@@ -13,10 +13,10 @@ model User {
   isVerified     Boolean    @default(false) @map("is_verified")
   lastLoginAt    DateTime?  @map("last_login_at")
 
-  organization  Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  refreshTokens RefreshToken[]
-  userRoles     UserRole[]
-  student       Student?
+  organization          Organization?      @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  refreshTokens         RefreshToken[]
+  userRoles             UserRole[]
+  student               Student?
   instructorAssignments CourseInstructor[] @relation("CourseInstructors")
 
   createdAt DateTime @default(now()) @map("created_at")

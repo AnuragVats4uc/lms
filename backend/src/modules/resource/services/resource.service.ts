@@ -3,13 +3,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Resource, ResourceStatus, ResourceType } from '@prisma/client';
+import { ResourceStatus } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { basename, extname, join } from 'node:path';
 import { createReadStream } from 'node:fs';
 import { mkdir, stat, unlink, writeFile } from 'node:fs/promises';
 
 import { CreateDocumentUploadDto } from '../dto/create-document-upload.dto';
+import { RESOURCE_TYPE_IDS } from '../constants/resource-type.constants';
 import { CreateResourceDto } from '../dto/create-resource.dto';
 import { ResourceQueryDto } from '../dto/resource-query.dto';
 import { UpdateResourceDto } from '../dto/update-resource.dto';
@@ -17,6 +18,7 @@ import {
   NormalizedResourceQuery,
   ResourceRepository,
   ResourceUpdateData,
+  ResourceWithType,
 } from '../repositories/resource.repository';
 
 const MAX_DOCUMENT_SIZE = 25 * 1024 * 1024;
@@ -61,7 +63,7 @@ export class ResourceService {
         folderId,
         title: dto.title.trim(),
         description: dto.description,
-        type: ResourceType.DOCUMENT,
+        resourceTypeId: RESOURCE_TYPE_IDS.DOCUMENT,
         documentUrl: storedFile.url,
         videoUrl: null,
         examId: null,
@@ -89,7 +91,7 @@ export class ResourceService {
     await this.ensureFolderExists(folderId);
     const existing = await this.findExisting(folderId, id);
 
-    if (existing.type !== ResourceType.DOCUMENT) {
+    if (existing.resourceTypeId !== RESOURCE_TYPE_IDS.DOCUMENT) {
       throw new BadRequestException(
         'Only document resources can have an uploaded file replaced',
       );
@@ -113,6 +115,7 @@ export class ResourceService {
 
   async create(folderId: number, dto: CreateResourceDto) {
     await this.ensureFolderExists(folderId);
+    await this.ensureResourceTypeExists(dto.resourceTypeId);
     const normalized = this.normalizeResourceData(dto);
 
     const resource = await this.resourceRepository.create({
@@ -159,6 +162,9 @@ export class ResourceService {
   async update(folderId: number, id: number, dto: UpdateResourceDto) {
     await this.ensureFolderExists(folderId);
     const existing = await this.findExisting(folderId, id);
+    if (dto.resourceTypeId !== undefined) {
+      await this.ensureResourceTypeExists(dto.resourceTypeId);
+    }
     const normalized = this.normalizeResourceData(dto, existing);
     const data = this.toUpdateInput(dto, normalized);
 
@@ -174,6 +180,10 @@ export class ResourceService {
     const resource = await this.resourceRepository.softDelete(id);
 
     return this.toResponse(resource);
+  }
+
+  async findResourceTypes() {
+    return this.resourceRepository.findActiveResourceTypes();
   }
 
   async readDocumentFile(folderId: number, filename: string) {
@@ -216,6 +226,15 @@ export class ResourceService {
     }
   }
 
+  private async ensureResourceTypeExists(resourceTypeId: number) {
+    const resourceType =
+      await this.resourceRepository.findResourceTypeById(resourceTypeId);
+
+    if (!resourceType) {
+      throw new BadRequestException('Resource type is invalid or inactive');
+    }
+  }
+
   private async findExisting(folderId: number, id: number) {
     const resource = await this.resourceRepository.findById(folderId, id);
 
@@ -228,16 +247,18 @@ export class ResourceService {
 
   private normalizeResourceData(
     dto: CreateResourceDto | UpdateResourceDto,
-    existing?: Resource,
+    existing?: ResourceWithType,
   ) {
-    const type = dto.type ?? existing?.type;
+    const resourceTypeId = dto.resourceTypeId ?? existing?.resourceTypeId;
 
-    if (!type) {
+    if (!resourceTypeId) {
       throw new BadRequestException('Resource type is required');
     }
 
     const typeChanged = Boolean(
-      existing && dto.type && dto.type !== existing.type,
+      existing &&
+      dto.resourceTypeId &&
+      dto.resourceTypeId !== existing.resourceTypeId,
     );
     const documentUrl =
       dto.documentUrl !== undefined
@@ -258,7 +279,7 @@ export class ResourceService {
           ? undefined
           : existing?.examId;
 
-    if (type === ResourceType.DOCUMENT) {
+    if (resourceTypeId === RESOURCE_TYPE_IDS.DOCUMENT) {
       if (!documentUrl) {
         throw new BadRequestException(
           'documentUrl is required for document resources',
@@ -271,7 +292,7 @@ export class ResourceService {
       }
     }
 
-    if (type === ResourceType.VIDEO) {
+    if (resourceTypeId === RESOURCE_TYPE_IDS.VIDEO) {
       if (!videoUrl) {
         throw new BadRequestException(
           'videoUrl is required for video resources',
@@ -289,7 +310,7 @@ export class ResourceService {
       }
     }
 
-    if (type === ResourceType.EXAM) {
+    if (resourceTypeId === RESOURCE_TYPE_IDS.EXAM) {
       if (examId === null || examId === undefined) {
         throw new BadRequestException('examId is required for exam resources');
       }
@@ -301,10 +322,11 @@ export class ResourceService {
     }
 
     return {
-      type,
-      documentUrl: type === ResourceType.DOCUMENT ? documentUrl : null,
-      videoUrl: type === ResourceType.VIDEO ? videoUrl : null,
-      examId: type === ResourceType.EXAM ? examId : null,
+      resourceTypeId,
+      documentUrl:
+        resourceTypeId === RESOURCE_TYPE_IDS.DOCUMENT ? documentUrl : null,
+      videoUrl: resourceTypeId === RESOURCE_TYPE_IDS.VIDEO ? videoUrl : null,
+      examId: resourceTypeId === RESOURCE_TYPE_IDS.EXAM ? examId : null,
       thumbnail: dto.thumbnail ?? existing?.thumbnail,
       mimeType: dto.mimeType ?? existing?.mimeType,
       fileSize:
@@ -341,7 +363,7 @@ export class ResourceService {
       page: query.page ?? 1,
       limit: query.limit ?? 10,
       search: query.search ?? '',
-      type: query.type,
+      resourceTypeId: query.resourceTypeId,
       status: query.status,
       published: query.published,
     };
@@ -417,7 +439,9 @@ export class ResourceService {
     if (markerIndex < 0) return null;
     const filename = basename(url.slice(markerIndex + marker.length));
     if (filename !== url.slice(markerIndex + marker.length)) return null;
-    return filename ? join(process.cwd(), 'uploads', 'resources', filename) : null;
+    return filename
+      ? join(process.cwd(), 'uploads', 'resources', filename)
+      : null;
   }
 
   private async removeStoredFile(path: string | null) {
@@ -425,7 +449,7 @@ export class ResourceService {
     await unlink(path).catch(() => undefined);
   }
 
-  private toResponse(resource: Resource) {
+  private toResponse(resource: ResourceWithType) {
     return {
       ...resource,
       fileSize:

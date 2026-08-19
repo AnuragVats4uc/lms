@@ -1,21 +1,34 @@
 import {
+  BadGatewayException,
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ResourceType } from '@prisma/client';
+import { ResourceStatus } from '@prisma/client';
 
 import { PasswordService } from '../../auth/services/password.service';
 import { CurrentUser } from '../../auth/types/current-user.types';
 import { RolesService } from '../../roles/services/roles.service';
+import { ResourceService } from '../../resource/services/resource.service';
+import {
+  RESOURCE_TYPE_CODES,
+  RESOURCE_TYPE_IDS,
+} from '../../resource/constants/resource-type.constants';
 import { CreateStudentDto } from '../dto/create-student.dto';
 import { StudentCoursesQueryDto } from '../dto/student-courses-query.dto';
+import { UpdateStudentVideoProgressDto } from '../dto/update-student-video-progress.dto';
+import {
+  StudentResourcesQueryDto,
+  StudentResourcesSort,
+} from '../dto/student-resources-query.dto';
 import { StudentQueryDto } from '../dto/student-query.dto';
 import { UpdateStudentDto } from '../dto/update-student.dto';
 import {
   NormalizedStudentCoursesQuery,
+  NormalizedStudentResourcesQuery,
   NormalizedStudentQuery,
   StudentUpdateData,
   StudentsRepository,
@@ -30,6 +43,8 @@ export class StudentsService {
     private readonly rolesService: RolesService,
     @Inject(StudentsRepository)
     private readonly studentsRepository: StudentsRepository,
+    @Inject(ResourceService)
+    private readonly resourceService: ResourceService,
   ) {}
 
   async create(dto: CreateStudentDto) {
@@ -56,14 +71,10 @@ export class StudentsService {
 
   async findAll(query: StudentQueryDto) {
     const normalized = this.normalizeQuery(query);
-    const result = await this.studentsRepository.findMany(
-      normalized,
-    );
+    const result = await this.studentsRepository.findMany(normalized);
 
     return {
-      items: result.items.map((student) =>
-        this.toStudentResponse(student),
-      ),
+      items: result.items.map((student) => this.toStudentResponse(student)),
       meta: {
         page: normalized.page,
         limit: normalized.limit,
@@ -83,10 +94,14 @@ export class StudentsService {
     const isStudent = user.roles?.includes('STUDENT');
 
     if (!isStudent) {
-      throw new ForbiddenException('Student profile is only available to students');
+      throw new ForbiddenException(
+        'Student profile is only available to students',
+      );
     }
 
-    const student = await this.studentsRepository.findDashboardStudent(user.userId);
+    const student = await this.studentsRepository.findDashboardStudent(
+      user.userId,
+    );
 
     if (!student) {
       throw new NotFoundException('Student not found');
@@ -139,10 +154,14 @@ export class StudentsService {
     const isStudent = user.roles?.includes('STUDENT');
 
     if (!isStudent) {
-      throw new ForbiddenException('Student dashboard is only available to students');
+      throw new ForbiddenException(
+        'Student dashboard is only available to students',
+      );
     }
 
-    const student = await this.studentsRepository.findDashboardStudent(user.userId);
+    const student = await this.studentsRepository.findDashboardStudent(
+      user.userId,
+    );
 
     if (!student) {
       throw new NotFoundException('Student not found');
@@ -152,7 +171,8 @@ export class StudentsService {
       student.id,
       student.organizationId,
     );
-    const organization = enrollment?.organization ?? student.organization ?? null;
+    const organization =
+      enrollment?.organization ?? student.organization ?? null;
     const session = enrollment?.session ?? null;
     const courseEnrollments = enrollment?.courseEnrollments ?? [];
     const sessionCourseIds = courseEnrollments.map(
@@ -174,7 +194,10 @@ export class StudentsService {
         sessionCourseId: sessionCourse.id,
         courseId: sessionCourse.courseId,
         title: sessionCourse.displayName ?? sessionCourse.course.name,
-        shortCode: this.shortCode(sessionCourse.course.code, sessionCourse.course.name),
+        shortCode: this.shortCode(
+          sessionCourse.course.code,
+          sessionCourse.course.name,
+        ),
         instructor: instructor
           ? this.displayName(instructor)
           : 'Instructor not assigned',
@@ -197,7 +220,10 @@ export class StudentsService {
           courseEnrollment.sessionCourse.studentCourseProgress[0]?.updatedAt ??
           courseEnrollment.updatedAt,
       }))
-      .sort((first, second) => second.updatedAt.getTime() - first.updatedAt.getTime())[0];
+      .sort(
+        (first, second) =>
+          second.updatedAt.getTime() - first.updatedAt.getTime(),
+      )[0];
 
     return {
       student: {
@@ -223,11 +249,15 @@ export class StudentsService {
       contentUpdates: contentUpdates.map((resource) => ({
         id: resource.id,
         resourceId: resource.id,
-        resourceType: resource.type,
-        title: this.contentUpdateTitle(resource.type),
+        resourceTypeId: resource.resourceTypeId,
+        resourceType: resource.resourceType,
+        title: this.contentUpdateTitle(resource.resourceType.code),
         description: resource.title,
         timestamp: resource.createdAt,
-        path: this.buildResourcePath(resource.folder.sessionCourseId, resource.id),
+        path: this.buildResourcePath(
+          resource.folder.sessionCourseId,
+          resource.id,
+        ),
       })),
       continueLearning: {
         sessionCourseId: primaryProgress?.sessionCourseId ?? null,
@@ -246,10 +276,14 @@ export class StudentsService {
     const isStudent = user.roles?.includes('STUDENT');
 
     if (!isStudent) {
-      throw new ForbiddenException('Student courses are only available to students');
+      throw new ForbiddenException(
+        'Student courses are only available to students',
+      );
     }
 
-    const student = await this.studentsRepository.findDashboardStudent(user.userId);
+    const student = await this.studentsRepository.findDashboardStudent(
+      user.userId,
+    );
 
     if (!student) {
       throw new NotFoundException('Student not found');
@@ -282,6 +316,458 @@ export class StudentsService {
     };
   }
 
+  async getMyResources(user: CurrentUser, query: StudentResourcesQueryDto) {
+    const isStudent = user.roles?.includes('STUDENT');
+
+    if (!isStudent) {
+      throw new ForbiddenException(
+        'Student resources are only available to students',
+      );
+    }
+
+    const student = await this.studentsRepository.findDashboardStudent(
+      user.userId,
+    );
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const normalized = this.normalizeStudentResourcesQuery(query);
+    const [result, optionEnrollments, resourceTypes] = await Promise.all([
+      this.studentsRepository.findStudentResources(
+        student.id,
+        student.organizationId,
+        normalized,
+      ),
+      this.studentsRepository.findStudentResourceOptions(
+        student.id,
+        student.organizationId,
+      ),
+      this.resourceService.findResourceTypes(),
+    ]);
+    const courses = optionEnrollments.map(({ sessionCourse }) => ({
+      id: sessionCourse.id,
+      name: sessionCourse.displayName ?? sessionCourse.course.name,
+    }));
+    const subjects = optionEnrollments.flatMap(({ sessionCourse }) =>
+      sessionCourse.folders.map((folder) => ({
+        id: folder.id,
+        sessionCourseId: sessionCourse.id,
+        name: folder.name,
+      })),
+    );
+
+    return {
+      items: result.items.map((resource) => ({
+        id: resource.id,
+        uuid: resource.uuid,
+        title: resource.title,
+        description: resource.description,
+        resourceTypeId: resource.resourceTypeId,
+        resourceType: resource.resourceType,
+        documentUrl: resource.documentUrl,
+        videoUrl: resource.videoUrl,
+        thumbnail: resource.thumbnail,
+        mimeType: resource.mimeType,
+        fileSize: resource.fileSize?.toString() ?? null,
+        durationInSeconds: resource.durationInSeconds,
+        status: resource.status,
+        isDownloadable: resource.isDownloadable,
+        createdAt: resource.createdAt,
+        course: {
+          id: resource.folder.sessionCourse.id,
+          courseId: resource.folder.sessionCourse.course.id,
+          name:
+            resource.folder.sessionCourse.displayName ??
+            resource.folder.sessionCourse.course.name,
+          code: resource.folder.sessionCourse.course.code,
+          sessionId: resource.folder.sessionCourse.session.id,
+          sessionName: resource.folder.sessionCourse.session.name,
+        },
+        subject: {
+          id: resource.folder.id,
+          name: resource.folder.name,
+        },
+        uploadedBy: null,
+      })),
+      meta: {
+        page: normalized.page,
+        limit: normalized.limit,
+        total: result.total,
+        totalPages: Math.ceil(result.total / normalized.limit),
+      },
+      summary: {
+        total: result.total,
+        videos: result.videos,
+        documents: result.documents,
+      },
+      filters: {
+        courses,
+        subjects,
+        types: resourceTypes,
+        statuses: [ResourceStatus.PUBLISHED],
+      },
+    };
+  }
+
+  async getMyResource(user: CurrentUser, resourceId: number) {
+    const { resource, student } = await this.findStudentDocument(
+      user,
+      resourceId,
+    );
+    const folderResources =
+      await this.studentsRepository.findStudentFolderResources(
+        resource.folderId,
+      );
+    const documentResources = folderResources.filter(
+      (item) => item.resourceTypeId === RESOURCE_TYPE_IDS.DOCUMENT,
+    );
+    const documentIndex = documentResources.findIndex(
+      (item) => item.id === resource.id,
+    );
+    const progress = resource.folder.sessionCourse.studentCourseProgress[0];
+
+    return {
+      id: resource.id,
+      uuid: resource.uuid,
+      title: resource.title,
+      description: resource.description,
+      resourceTypeId: resource.resourceTypeId,
+      resourceType: resource.resourceType,
+      fileName: this.documentFileName(resource.title),
+      mimeType: resource.mimeType ?? 'application/pdf',
+      fileSize: resource.fileSize?.toString() ?? null,
+      isDownloadable: resource.isDownloadable,
+      createdAt: resource.createdAt,
+      course: {
+        id: resource.folder.sessionCourse.id,
+        courseId: resource.folder.sessionCourse.course.id,
+        name:
+          resource.folder.sessionCourse.displayName ??
+          resource.folder.sessionCourse.course.name,
+        code: resource.folder.sessionCourse.course.code,
+        sessionId: resource.folder.sessionCourse.session.id,
+        sessionName: resource.folder.sessionCourse.session.name,
+      },
+      subject: { id: resource.folder.id, name: resource.folder.name },
+      organization: resource.folder.sessionCourse.session.organization,
+      progress: this.toResourceProgress(progress, resource.id),
+      estimatedReadingMinutes: null,
+      relatedResources: folderResources
+        .filter((item) => item.id !== resource.id)
+        .slice(0, 4)
+        .map((item) => ({
+          id: item.id,
+          title: item.title,
+          resourceTypeId: item.resourceTypeId,
+          resourceType: item.resourceType,
+          videoUrl: item.videoUrl,
+          thumbnail: item.thumbnail,
+        })),
+      navigation: {
+        current: documentIndex + 1,
+        total: documentResources.length,
+        previous:
+          documentIndex > 0
+            ? this.toResourceNavigation(documentResources[documentIndex - 1])
+            : null,
+        next:
+          documentIndex >= 0 && documentIndex < documentResources.length - 1
+            ? this.toResourceNavigation(documentResources[documentIndex + 1])
+            : null,
+      },
+    };
+  }
+
+  async getMyVideoResource(user: CurrentUser, resourceId: number) {
+    const { resource, student } = await this.findStudentVideo(user, resourceId);
+    const sessionCourse = resource.folder.sessionCourse;
+    const [sequence, progress] = await Promise.all([
+      this.studentsRepository.findStudentCourseResourceSequence(
+        sessionCourse.id,
+      ),
+      this.studentsRepository.findStudentVideoProgress(student.id, resource.id),
+    ]);
+    const resourceIndex = sequence.findIndex((item) => item.id === resource.id);
+    const instructor = sessionCourse.instructors[0]?.instructor;
+
+    return {
+      id: resource.id,
+      uuid: resource.uuid,
+      title: resource.title,
+      description: resource.description,
+      resourceTypeId: resource.resourceTypeId,
+      resourceType: resource.resourceType,
+      videoUrl: resource.videoUrl,
+      thumbnail: resource.thumbnail,
+      mimeType: resource.mimeType,
+      durationInSeconds: resource.durationInSeconds,
+      course: {
+        id: sessionCourse.id,
+        courseId: sessionCourse.course.id,
+        name: sessionCourse.displayName ?? sessionCourse.course.name,
+        code: sessionCourse.course.code,
+        sessionId: sessionCourse.session.id,
+        sessionName: sessionCourse.session.name,
+      },
+      subject: { id: resource.folder.id, name: resource.folder.name },
+      organization: sessionCourse.session.organization,
+      instructor: instructor
+        ? {
+            id: instructor.id,
+            name: `${instructor.firstName} ${instructor.lastName ?? ''}`.trim(),
+          }
+        : null,
+      progress: this.toVideoProgress(progress),
+      upNext:
+        resourceIndex >= 0
+          ? sequence.slice(resourceIndex + 1, resourceIndex + 3)
+          : [],
+    };
+  }
+
+  async updateMyVideoProgress(
+    user: CurrentUser,
+    resourceId: number,
+    dto: UpdateStudentVideoProgressDto,
+  ) {
+    const { resource, student } = await this.findStudentVideo(user, resourceId);
+    const duration = resource.durationInSeconds;
+    const currentPositionSeconds = Math.floor(
+      duration
+        ? Math.min(dto.currentPositionSeconds, duration)
+        : dto.currentPositionSeconds,
+    );
+    const existing = await this.studentsRepository.findStudentVideoProgress(
+      student.id,
+      resource.id,
+    );
+    const calculatedPercentage = duration
+      ? Math.floor((currentPositionSeconds / duration) * 100)
+      : 0;
+    const endedNearFinish = Boolean(
+      dto.ended &&
+      (!duration ||
+        currentPositionSeconds >= Math.max(duration - 5, duration * 0.95)),
+    );
+    const completedAt =
+      existing?.completedAt ?? (endedNearFinish ? new Date() : null);
+    const watchedPercentage = completedAt
+      ? 100
+      : Math.min(
+          99,
+          Math.max(existing?.watchedPercentage ?? 0, calculatedPercentage),
+        );
+
+    const progress = await this.studentsRepository.upsertStudentVideoProgress(
+      student.id,
+      resource.id,
+      { currentPositionSeconds, watchedPercentage, completedAt },
+    );
+    await this.studentsRepository.upsertStudentResourceAccess(
+      student.id,
+      resource.folder.sessionCourse.id,
+      resource.id,
+    );
+
+    return this.toVideoProgress(progress);
+  }
+
+  async recordMyResourceAccess(user: CurrentUser, resourceId: number) {
+    const { resource, student } = await this.findStudentDocument(
+      user,
+      resourceId,
+    );
+    const progress = await this.studentsRepository.upsertStudentResourceAccess(
+      student.id,
+      resource.folder.sessionCourse.id,
+      resource.id,
+    );
+
+    return this.toResourceProgress(progress, resource.id);
+  }
+
+  async getMyDocumentFile(user: CurrentUser, resourceId: number) {
+    const { resource } = await this.findStudentDocument(user, resourceId);
+    const documentUrl = resource.documentUrl;
+
+    if (!documentUrl) {
+      throw new NotFoundException('Document file not found');
+    }
+
+    const localFileMatch = documentUrl.match(
+      /\/folders\/(\d+)\/resources\/file\/([^?#/]+)$/,
+    );
+    if (localFileMatch && Number(localFileMatch[1]) === resource.folderId) {
+      const storedFile = await this.resourceService.readDocumentFile(
+        resource.folderId,
+        decodeURIComponent(localFileMatch[2]),
+      );
+      return {
+        content: storedFile.stream,
+        fileName: storedFile.fileName,
+        mimeType: storedFile.mimeType,
+      };
+    }
+
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(documentUrl);
+    } catch {
+      throw new BadRequestException('Document URL is invalid');
+    }
+
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      throw new BadRequestException('Document URL is not supported');
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(parsedUrl, { redirect: 'follow' });
+    } catch {
+      throw new BadGatewayException('Document storage is unavailable');
+    }
+
+    if (!response.ok) {
+      throw new BadGatewayException('Document storage returned an error');
+    }
+
+    const maximumSize = 25 * 1024 * 1024;
+    const contentLength = Number(response.headers.get('content-length') ?? 0);
+    if (contentLength > maximumSize) {
+      throw new BadRequestException('Document exceeds the 25 MB size limit');
+    }
+
+    const content = Buffer.from(await response.arrayBuffer());
+    if (content.byteLength > maximumSize) {
+      throw new BadRequestException('Document exceeds the 25 MB size limit');
+    }
+
+    return {
+      content,
+      fileName: this.documentFileName(resource.title),
+      mimeType:
+        response.headers.get('content-type') ??
+        resource.mimeType ??
+        'application/pdf',
+    };
+  }
+
+  private async findStudentDocument(user: CurrentUser, resourceId: number) {
+    const result = await this.findStudentResource(user, resourceId);
+    if (result.resource.resourceTypeId !== RESOURCE_TYPE_IDS.DOCUMENT) {
+      throw new BadRequestException('Resource is not a document');
+    }
+
+    return result;
+  }
+
+  private async findStudentVideo(user: CurrentUser, resourceId: number) {
+    const result = await this.findStudentResource(user, resourceId);
+    if (result.resource.resourceTypeId !== RESOURCE_TYPE_IDS.VIDEO) {
+      throw new BadRequestException('Resource is not a video');
+    }
+    if (!result.resource.videoUrl) {
+      throw new NotFoundException('Video source not found');
+    }
+
+    return result;
+  }
+
+  private async findStudentResource(user: CurrentUser, resourceId: number) {
+    if (!user.roles?.includes('STUDENT')) {
+      throw new ForbiddenException(
+        'Student resources are only available to students',
+      );
+    }
+
+    const student = await this.studentsRepository.findDashboardStudent(
+      user.userId,
+    );
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const resource = await this.studentsRepository.findStudentResourceById(
+      student.id,
+      student.organizationId,
+      resourceId,
+    );
+    if (!resource) {
+      throw new NotFoundException('Resource not found');
+    }
+    return { resource, student };
+  }
+
+  private toVideoProgress(
+    progress: {
+      currentPositionSeconds: number;
+      watchedPercentage: number;
+      completedAt: Date | null;
+      updatedAt: Date;
+    } | null,
+  ) {
+    const percentage = Math.max(
+      0,
+      Math.min(100, progress?.watchedPercentage ?? 0),
+    );
+
+    return {
+      currentPositionSeconds: progress?.currentPositionSeconds ?? 0,
+      percentage,
+      status: progress?.completedAt
+        ? ('COMPLETED' as const)
+        : percentage > 0 || (progress?.currentPositionSeconds ?? 0) > 0
+          ? ('IN_PROGRESS' as const)
+          : ('NOT_STARTED' as const),
+      lastWatchedAt: progress?.updatedAt ?? null,
+    };
+  }
+
+  private toResourceProgress(
+    progress:
+      | {
+          completionPercentage: number;
+          lastAccessedResourceId: number | null;
+          updatedAt: Date;
+        }
+      | undefined,
+    resourceId: number,
+  ) {
+    const percentage = Math.max(
+      0,
+      Math.min(100, progress?.completionPercentage ?? 0),
+    );
+    const status =
+      percentage >= 100
+        ? 'COMPLETED'
+        : percentage > 0 || progress?.lastAccessedResourceId === resourceId
+          ? 'IN_PROGRESS'
+          : 'NOT_STARTED';
+
+    return {
+      percentage,
+      status,
+      lastOpenedAt:
+        progress?.lastAccessedResourceId === resourceId
+          ? progress.updatedAt
+          : null,
+    };
+  }
+
+  private toResourceNavigation(resource: { id: number; title: string }) {
+    return { id: resource.id, title: resource.title };
+  }
+
+  private documentFileName(title: string) {
+    const safeTitle = title
+      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return /\.pdf$/i.test(safeTitle) ? safeTitle : `${safeTitle}.pdf`;
+  }
+
   private async findExisting(id: number) {
     const student = await this.studentsRepository.findById(id);
 
@@ -292,15 +778,9 @@ export class StudentsService {
     return student;
   }
 
-  private async ensureEmailIsUnique(
-    email: string,
-    excludeId?: number,
-  ) {
+  private async ensureEmailIsUnique(email: string, excludeId?: number) {
     const student = excludeId
-      ? await this.studentsRepository.findByEmailExcludingId(
-          email,
-          excludeId,
-        )
+      ? await this.studentsRepository.findByEmailExcludingId(email, excludeId)
       : await this.studentsRepository.findByEmail(email);
 
     if (student) {
@@ -308,15 +788,9 @@ export class StudentsService {
     }
   }
 
-  private async ensurePhoneIsUnique(
-    phone: string,
-    excludeId?: number,
-  ) {
+  private async ensurePhoneIsUnique(phone: string, excludeId?: number) {
     const student = excludeId
-      ? await this.studentsRepository.findByPhoneExcludingId(
-          phone,
-          excludeId,
-        )
+      ? await this.studentsRepository.findByPhoneExcludingId(phone, excludeId)
       : await this.studentsRepository.findByPhone(phone);
 
     if (student) {
@@ -324,9 +798,7 @@ export class StudentsService {
     }
   }
 
-  private normalizeQuery(
-    query: StudentQueryDto,
-  ): NormalizedStudentQuery {
+  private normalizeQuery(query: StudentQueryDto): NormalizedStudentQuery {
     return {
       page: query.page ?? 1,
       limit: query.limit ?? 10,
@@ -347,13 +819,27 @@ export class StudentsService {
     };
   }
 
+  private normalizeStudentResourcesQuery(
+    query: StudentResourcesQueryDto,
+  ): NormalizedStudentResourcesQuery {
+    return {
+      page: query.page ?? 1,
+      limit: query.limit ?? 10,
+      search: query.search?.trim() ?? '',
+      resourceTypeId: query.resourceTypeId,
+      sessionCourseId: query.sessionCourseId,
+      folderId: query.folderId,
+      uploadedOn: query.uploadedOn,
+      status: query.status,
+      sort: query.sort ?? StudentResourcesSort.NEWEST,
+    };
+  }
+
   private async toUpdateInput(
     dto: UpdateStudentDto,
   ): Promise<StudentUpdateData> {
     const data = Object.fromEntries(
-      Object.entries(dto).filter(
-        ([, value]) => value !== undefined,
-      ),
+      Object.entries(dto).filter(([, value]) => value !== undefined),
     ) as StudentUpdateData;
 
     if (dto.dateOfBirth) {
@@ -425,11 +911,15 @@ export class StudentsService {
     );
     const counts = resources.reduce(
       (totals, resource) => {
-        if (resource.type === ResourceType.VIDEO) totals.videos += 1;
-        if (resource.type === ResourceType.DOCUMENT) {
+        if (resource.resourceTypeId === RESOURCE_TYPE_IDS.VIDEO) {
+          totals.videos += 1;
+        }
+        if (resource.resourceTypeId === RESOURCE_TYPE_IDS.DOCUMENT) {
           totals.documents += 1;
         }
-        if (resource.type === ResourceType.EXAM) totals.exams += 1;
+        if (resource.resourceTypeId === RESOURCE_TYPE_IDS.EXAM) {
+          totals.exams += 1;
+        }
         return totals;
       },
       { documents: 0, exams: 0, videos: 0 },
@@ -459,7 +949,8 @@ export class StudentsService {
         ? {
             resourceId: lastAccessedResource.id,
             title: lastAccessedResource.title,
-            type: lastAccessedResource.type,
+            resourceTypeId: lastAccessedResource.resourceTypeId,
+            resourceType: lastAccessedResource.resourceType,
             timestamp: progress.updatedAt,
             path: this.buildResourcePath(
               sessionCourse.id,
@@ -471,7 +962,8 @@ export class StudentsService {
         sessionCourse.id,
         progress?.lastAccessedResourceId,
       ),
-      actionLabel: completionPercentage > 0 ? 'Continue Learning' : 'Start Course',
+      actionLabel:
+        completionPercentage > 0 ? 'Continue Learning' : 'Start Course',
     };
   }
 
@@ -497,13 +989,18 @@ export class StudentsService {
     lastName?: string | null;
     email?: string;
   }) {
-    return [
-      user.profile?.firstName ?? user.user?.firstName ?? user.firstName,
-      user.profile?.lastName ?? user.user?.lastName ?? user.lastName,
-    ].filter(Boolean).join(' ').trim()
-      || user.user?.email
-      || user.email
-      || 'Student';
+    return (
+      [
+        user.profile?.firstName ?? user.user?.firstName ?? user.firstName,
+        user.profile?.lastName ?? user.user?.lastName ?? user.lastName,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .trim() ||
+      user.user?.email ||
+      user.email ||
+      'Student'
+    );
   }
 
   private shortCode(code: string, name: string) {
@@ -514,16 +1011,20 @@ export class StudentsService {
       .filter(Boolean);
 
     if (parts.length >= 2) {
-      return parts.slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+      return parts
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join('')
+        .toUpperCase();
     }
 
     return source.slice(0, 2).toUpperCase();
   }
 
-  private contentUpdateTitle(type: ResourceType) {
-    if (type === ResourceType.DOCUMENT) return 'New PDF Added';
-    if (type === ResourceType.VIDEO) return 'New Video Added';
-    if (type === ResourceType.EXAM) return 'New Exam Added';
+  private contentUpdateTitle(type: string) {
+    if (type === RESOURCE_TYPE_CODES.DOCUMENT) return 'New PDF Added';
+    if (type === RESOURCE_TYPE_CODES.VIDEO) return 'New Video Added';
+    if (type === RESOURCE_TYPE_CODES.EXAM) return 'New Exam Added';
     return 'New Content Added';
   }
 

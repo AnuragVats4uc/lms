@@ -1,8 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  ResourceType,
-  StudentNotificationType,
-} from '@prisma/client';
+import { StudentNotificationType } from '@prisma/client';
+
+import { ResourceTypeDataDto } from '../../resource/dto/resource-type-response.dto';
 
 export class StudentDashboardOrganizationDto {
   @ApiProperty({ example: 1 })
@@ -48,7 +47,10 @@ export class StudentDashboardStudentDto {
   @ApiPropertyOptional({ nullable: true })
   batch: string | null;
 
-  @ApiPropertyOptional({ type: StudentDashboardOrganizationDto, nullable: true })
+  @ApiPropertyOptional({
+    type: StudentDashboardOrganizationDto,
+    nullable: true,
+  })
   organization: StudentDashboardOrganizationDto | null;
 
   @ApiPropertyOptional({ type: StudentDashboardSessionDto, nullable: true })
@@ -114,8 +116,11 @@ export class StudentDashboardContentUpdateDto {
   @ApiProperty({ example: 1 })
   resourceId: number;
 
-  @ApiProperty({ enum: ResourceType })
-  resourceType: ResourceType;
+  @ApiProperty({ example: 1 })
+  resourceTypeId: number;
+
+  @ApiProperty({ type: ResourceTypeDataDto })
+  resourceType: ResourceTypeDataDto;
 
   @ApiProperty({ example: 'New PDF Added' })
   title: string;

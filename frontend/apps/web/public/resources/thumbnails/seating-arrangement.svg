@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-labelledby="title">
+  <title id="title">Seating arrangement video thumbnail</title>
+  <defs><linearGradient id="g" x1="0" y1="1" x2="1"><stop stop-color="#c2410c"/><stop offset="1" stop-color="#fb923c"/></linearGradient></defs>
+  <rect width="640" height="360" rx="28" fill="url(#g)"/><circle cx="500" cy="185" r="55" fill="none" stroke="#ffedd5" stroke-width="17"/><g fill="#fff"><circle cx="500" cy="88" r="25"/><circle cx="500" cy="282" r="25"/><circle cx="403" cy="185" r="25"/><circle cx="597" cy="185" r="25"/></g>
+  <text x="48" y="102" fill="#ffedd5" font-family="Arial" font-size="25" font-weight="700">LOGICAL REASONING</text><text x="48" y="185" fill="white" font-family="Arial" font-size="44" font-weight="800">SEATING</text><text x="48" y="240" fill="white" font-family="Arial" font-size="44" font-weight="800">ARRANGEMENT</text>
+</svg>

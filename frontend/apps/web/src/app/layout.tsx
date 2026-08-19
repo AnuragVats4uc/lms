@@ -1,4 +1,6 @@
 import Providers from "./providers";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
 import "./globals.css";
 
 export default function RootLayout({

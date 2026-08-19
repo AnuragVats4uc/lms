@@ -1,5 +1,7 @@
 import { z } from "zod/v4";
 
+const resourceTypeId = z.enum(["1", "2", "3"]);
+
 const optionalUrl = z.string().trim().url("Enter a valid URL").or(z.literal(""));
 const optionalNonNegativeInteger = (message: string) =>
   z.string().trim().refine(
@@ -25,27 +27,27 @@ export const resourceSchema = z
     status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]),
     thumbnail: optionalUrl,
     title: z.string().trim().min(1, "Resource title is required").max(200),
-    type: z.enum(["DOCUMENT", "VIDEO", "EXAM"]),
+    resourceTypeId,
     videoUrl: optionalUrl,
   })
   .superRefine((value, context) => {
-    if (value.type === "DOCUMENT" && value.documentSource === "URL" && !value.documentUrl) {
+    if (value.resourceTypeId === "1" && value.documentSource === "URL" && !value.documentUrl) {
       context.addIssue({ code: "custom", message: "Document URL is required", path: ["documentUrl"] });
     }
-    if (value.type === "DOCUMENT" && value.documentSource === "UPLOAD" && !value.documentFile) {
+    if (value.resourceTypeId === "1" && value.documentSource === "UPLOAD" && !value.documentFile) {
       context.addIssue({ code: "custom", message: "Select a document file", path: ["documentFile"] });
     }
-    if (value.type === "VIDEO" && !value.videoUrl) {
+    if (value.resourceTypeId === "2" && !value.videoUrl) {
       context.addIssue({ code: "custom", message: "Video URL is required", path: ["videoUrl"] });
     }
-    if (value.type === "VIDEO" && value.videoUrl && !isSupportedVideoUrl(value.videoUrl)) {
+    if (value.resourceTypeId === "2" && value.videoUrl && !isSupportedVideoUrl(value.videoUrl)) {
       context.addIssue({
         code: "custom",
         message: "Use a valid YouTube or Vimeo URL",
         path: ["videoUrl"],
       });
     }
-    if (value.type === "EXAM" && !value.examId) {
+    if (value.resourceTypeId === "3" && !value.examId) {
       context.addIssue({ code: "custom", message: "A valid exam ID is required", path: ["examId"] });
     }
   });

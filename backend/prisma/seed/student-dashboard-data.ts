@@ -2,12 +2,17 @@ import {
   CourseStatus,
   PrismaClient,
   ResourceStatus,
-  ResourceType,
   SessionCourseStatus,
   SessionStatus,
   StudentNotificationType,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+
+import {
+  RESOURCE_TYPE_IDS,
+  ResourceTypeId,
+} from '../../src/modules/resource/constants/resource-type.constants';
+import { seedResourceTypes } from './resource-types';
 
 const prisma = new PrismaClient();
 
@@ -15,38 +20,45 @@ const courses = [
   {
     code: 'QA',
     completion: 68,
+    documentUrl:
+      'https://digital.nios.ac.in/content/311en/311_Maths_Eng_Lesson11.pdf',
     folderName: 'Aptitude Notes',
     instructor: { firstName: 'Ritika', lastName: 'Mehra' },
     name: 'Quantitative Aptitude',
     resourceTitle: 'Permutation & Combination Notes',
-    resourceType: ResourceType.DOCUMENT,
+    resourceType: RESOURCE_TYPE_IDS.DOCUMENT,
   },
   {
     code: 'VA',
     completion: 56,
+    documentUrl: null,
     folderName: 'Verbal Lessons',
     instructor: { firstName: 'Nidhi', lastName: 'Arora' },
     name: 'Verbal Ability',
     resourceTitle: 'Linear Equations - Part 2',
-    resourceType: ResourceType.VIDEO,
+    resourceType: RESOURCE_TYPE_IDS.VIDEO,
   },
   {
     code: 'LR',
     completion: 42,
+    documentUrl:
+      'https://cbseacademic.nic.in/web_material/publication/Class_X_ENGLISH_WORKBOOK/001-010.pdf',
     folderName: 'Reasoning Practice',
     instructor: { firstName: 'Aman', lastName: 'Verma' },
     name: 'Logical Reasoning',
     resourceTitle: 'Reading Comprehension Strategies',
-    resourceType: ResourceType.DOCUMENT,
+    resourceType: RESOURCE_TYPE_IDS.DOCUMENT,
   },
   {
     code: 'MT',
     completion: 75,
+    documentUrl:
+      'https://digital.nios.ac.in/content/311en/311_Maths_Eng_Lesson10.pdf',
     folderName: 'Mock Test Assignments',
     instructor: { firstName: 'Test', lastName: 'Series' },
     name: 'Mock Tests',
     resourceTitle: 'Logical Reasoning Practice Set 05',
-    resourceType: ResourceType.DOCUMENT,
+    resourceType: RESOURCE_TYPE_IDS.DOCUMENT,
   },
 ];
 
@@ -72,6 +84,7 @@ const notifications = [
 ];
 
 async function main() {
+  await seedResourceTypes(prisma);
   const password = await bcrypt.hash('Admin@123', 10);
   const roles = await prisma.role.findMany({
     where: { code: { in: ['ADMIN', 'STUDENT'] } },
@@ -296,6 +309,7 @@ async function seedForStudent(
       item.resourceType,
       sortOrder,
       new Date(now.getTime() - (sortOrder + 1) * 24 * 60 * 60 * 1000),
+      item.documentUrl,
     );
 
     await prisma.studentCourseProgress.upsert({
@@ -416,9 +430,10 @@ async function upsertFolder(
 async function upsertResource(
   folderId: number,
   title: string,
-  type: ResourceType,
+  type: ResourceTypeId,
   sortOrder: number,
   createdAt: Date,
+  documentUrl: string | null,
 ) {
   const existing = await prisma.resource.findFirst({
     where: { folderId, title },
@@ -426,29 +441,33 @@ async function upsertResource(
   });
   const data = {
     createdAt,
-    description: `${title} dashboard content.`,
-    documentUrl:
-      type === ResourceType.DOCUMENT
-        ? `https://cdn.example.com/lms/demo/${folderId}-${sortOrder}.pdf`
-        : null,
-    durationInSeconds:
-      type === ResourceType.VIDEO ? 1_200 + sortOrder * 120 : null,
-    examId: type === ResourceType.EXAM ? 900_000 + sortOrder : null,
+    description:
+      type === RESOURCE_TYPE_IDS.VIDEO
+        ? 'An instructional lesson on solving linear equations of the form ax + b = c, with worked examples and equation-checking strategies.'
+        : `${title} dashboard content.`,
+    documentUrl: type === RESOURCE_TYPE_IDS.DOCUMENT ? documentUrl : null,
+    durationInSeconds: type === RESOURCE_TYPE_IDS.VIDEO ? 367 : null,
+    examId: type === RESOURCE_TYPE_IDS.EXAM ? 900_000 + sortOrder : null,
     fileSize:
-      type === ResourceType.DOCUMENT
+      type === RESOURCE_TYPE_IDS.DOCUMENT
         ? BigInt(420_000 + sortOrder * 15_000)
         : null,
     isActive: true,
-    isDownloadable: type !== ResourceType.VIDEO,
+    isDownloadable: type !== RESOURCE_TYPE_IDS.VIDEO,
     isPublished: true,
-    mimeType: type === ResourceType.VIDEO ? 'video/mp4' : 'application/pdf',
+    mimeType:
+      type === RESOURCE_TYPE_IDS.VIDEO ? 'video/youtube' : 'application/pdf',
     sortOrder,
     status: ResourceStatus.PUBLISHED,
     title,
-    type,
+    thumbnail:
+      type === RESOURCE_TYPE_IDS.VIDEO
+        ? 'https://img.youtube.com/vi/DopnmxeMt-s/hqdefault.jpg'
+        : null,
+    resourceTypeId: type,
     videoUrl:
-      type === ResourceType.VIDEO
-        ? `https://cdn.example.com/lms/demo/${folderId}-${sortOrder}.mp4`
+      type === RESOURCE_TYPE_IDS.VIDEO
+        ? 'https://www.youtube.com/watch?v=DopnmxeMt-s'
         : null,
   };
 

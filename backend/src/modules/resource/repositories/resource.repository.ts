@@ -1,14 +1,23 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, ResourceStatus, ResourceType } from '@prisma/client';
+import { Prisma, ResourceStatus } from '@prisma/client';
 
 import { PrismaService } from '../../../prisma';
+import { RESOURCE_TYPE_IDS } from '../constants/resource-type.constants';
 import { ResourceQueryDto } from '../dto/resource-query.dto';
+
+const resourceInclude = {
+  resourceType: true,
+} satisfies Prisma.ResourceInclude;
+
+export type ResourceWithType = Prisma.ResourceGetPayload<{
+  include: typeof resourceInclude;
+}>;
 
 export interface ResourceCreateData {
   folderId: number;
   title: string;
   description?: string;
-  type: ResourceType;
+  resourceTypeId: number;
   documentUrl?: string | null;
   videoUrl?: string | null;
   examId?: number | null;
@@ -26,9 +35,9 @@ export interface ResourceCreateData {
 export type ResourceUpdateData = Partial<Omit<ResourceCreateData, 'folderId'>>;
 
 export interface NormalizedResourceQuery extends Required<
-  Omit<ResourceQueryDto, 'type' | 'status' | 'published'>
+  Omit<ResourceQueryDto, 'resourceTypeId' | 'status' | 'published'>
 > {
-  type?: ResourceQueryDto['type'];
+  resourceTypeId?: ResourceQueryDto['resourceTypeId'];
   status?: ResourceQueryDto['status'];
   published?: ResourceQueryDto['published'];
 }
@@ -38,7 +47,20 @@ export class ResourceRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   create(data: ResourceCreateData) {
-    return this.prisma.resource.create({ data });
+    return this.prisma.resource.create({ data, include: resourceInclude });
+  }
+
+  findActiveResourceTypes() {
+    return this.prisma.resourceType.findMany({
+      where: { isActive: true },
+      orderBy: { id: 'asc' },
+    });
+  }
+
+  findResourceTypeById(id: number) {
+    return this.prisma.resourceType.findFirst({
+      where: { id, isActive: true },
+    });
   }
 
   findFolderById(folderId: number) {
@@ -50,6 +72,7 @@ export class ResourceRepository {
   findById(folderId: number, id: number) {
     return this.prisma.resource.findFirst({
       where: { id, folderId },
+      include: resourceInclude,
     });
   }
 
@@ -57,7 +80,7 @@ export class ResourceRepository {
     return this.prisma.resource.findFirst({
       where: {
         folderId,
-        type: ResourceType.DOCUMENT,
+        resourceTypeId: RESOURCE_TYPE_IDS.DOCUMENT,
         isActive: true,
         documentUrl: { endsWith: filename },
       },
@@ -74,6 +97,7 @@ export class ResourceRepository {
         orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
         skip,
         take: query.limit,
+        include: resourceInclude,
       }),
       this.prisma.resource.count({ where }),
     ]);
@@ -85,6 +109,7 @@ export class ResourceRepository {
     return this.prisma.resource.update({
       where: { id },
       data,
+      include: resourceInclude,
     });
   }
 
@@ -95,6 +120,7 @@ export class ResourceRepository {
         isActive: false,
         status: ResourceStatus.ARCHIVED,
       },
+      include: resourceInclude,
     });
   }
 
@@ -109,7 +135,9 @@ export class ResourceRepository {
         : { isActive: true }),
     };
 
-    if (query.type) where.type = query.type;
+    if (query.resourceTypeId) {
+      where.resourceTypeId = query.resourceTypeId;
+    }
     if (query.status && query.status !== ResourceStatus.ARCHIVED) {
       where.status = query.status;
     }

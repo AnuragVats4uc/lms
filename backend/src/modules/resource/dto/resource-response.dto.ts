@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ResourceStatus, ResourceType } from '@prisma/client';
+import { ResourceStatus } from '@prisma/client';
+
+import { ResourceTypeDataDto } from './resource-type-response.dto';
 
 export class ResourceDataDto {
   @ApiProperty({ example: 1 })
@@ -17,8 +19,11 @@ export class ResourceDataDto {
   @ApiPropertyOptional({ example: 'Chapter notes for motion.' })
   description: string | null;
 
-  @ApiProperty({ enum: ResourceType })
-  type: ResourceType;
+  @ApiProperty({ example: 1 })
+  resourceTypeId: number;
+
+  @ApiProperty({ type: ResourceTypeDataDto })
+  resourceType: ResourceTypeDataDto;
 
   @ApiPropertyOptional({ example: 'https://cdn.example.com/motion-notes.pdf' })
   documentUrl: string | null;

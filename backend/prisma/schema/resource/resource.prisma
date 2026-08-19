@@ -4,17 +4,17 @@ model Resource {
 
   folderId Int @map("folder_id")
 
-  title       String       @db.VarChar(200)
-  description String?      @db.Text
-  type        ResourceType
+  title          String  @db.VarChar(200)
+  description    String? @db.Text
+  resourceTypeId Int     @map("type")
 
-  documentUrl     String? @map("document_url")
-  videoUrl        String? @map("video_url")
-  examId          Int?    @map("exam_id")
-  thumbnail       String?
-  mimeType        String? @map("mime_type") @db.VarChar(150)
-  fileSize        BigInt? @map("file_size")
-  durationInSeconds Int?  @map("duration_in_seconds")
+  documentUrl       String? @map("document_url")
+  videoUrl          String? @map("video_url")
+  examId            Int?    @map("exam_id")
+  thumbnail         String?
+  mimeType          String? @map("mime_type") @db.VarChar(150)
+  fileSize          BigInt? @map("file_size")
+  durationInSeconds Int?    @map("duration_in_seconds")
 
   sortOrder      Int            @default(0) @map("sort_order")
   status         ResourceStatus @default(DRAFT)
@@ -25,12 +25,30 @@ model Resource {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  folder Folder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  folder                     Folder                  @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  resourceType               ResourceType            @relation(fields: [resourceTypeId], references: [id], onDelete: Restrict)
   lastAccessedCourseProgress StudentCourseProgress[] @relation("LastAccessedResource")
+  videoProgress              StudentVideoProgress[]
 
   @@index([folderId], map: "resources_folder_id_idx")
-  @@index([type], map: "resources_type_idx")
+  @@index([resourceTypeId], map: "resources_type_idx")
   @@index([status], map: "resources_status_idx")
   @@index([isPublished], map: "resources_is_published_idx")
   @@map("resources")
+}
+
+model ResourceType {
+  id Int @id
+
+  code        String  @unique(map: "resource_types_code_unique") @db.VarChar(30)
+  name        String  @unique(map: "resource_types_name_unique") @db.VarChar(80)
+  description String? @db.VarChar(255)
+  isActive    Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  resources Resource[]
+
+  @@map("resource_types")
 }

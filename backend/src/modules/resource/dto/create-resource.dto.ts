@@ -1,9 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ResourceStatus, ResourceType } from '@prisma/client';
+import { ResourceStatus } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsNumberString,
@@ -14,6 +15,12 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+
+import {
+  RESOURCE_TYPE_IDS,
+  RESOURCE_TYPE_ID_VALUES,
+} from '../constants/resource-type.constants';
+import type { ResourceTypeId } from '../constants/resource-type.constants';
 
 export class CreateResourceDto {
   @ApiProperty({ example: 'Motion Notes', minLength: 1, maxLength: 200 })
@@ -31,9 +38,15 @@ export class CreateResourceDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ enum: ResourceType, example: ResourceType.DOCUMENT })
-  @IsEnum(ResourceType)
-  type: ResourceType;
+  @ApiProperty({
+    enum: RESOURCE_TYPE_ID_VALUES,
+    example: RESOURCE_TYPE_IDS.DOCUMENT,
+    description: '1 = Document, 2 = Video, 3 = Exam',
+  })
+  @Type(() => Number)
+  @IsInt()
+  @IsIn(RESOURCE_TYPE_ID_VALUES)
+  resourceTypeId: ResourceTypeId;
 
   @ApiPropertyOptional({ example: 'https://cdn.example.com/motion-notes.pdf' })
   @Transform(({ value }: { value: unknown }) =>

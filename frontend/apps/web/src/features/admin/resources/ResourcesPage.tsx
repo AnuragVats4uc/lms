@@ -21,7 +21,10 @@ import type {
   Resource,
   ResourceStatus,
   ResourceType,
+  ResourceTypeCode,
+  ResourceTypeId,
 } from "@repo/types";
+import { RESOURCE_TYPE_IDS } from "@repo/types";
 import { resourceSchema, type ResourceFormValues } from "@repo/validation";
 import {
   DataTableDateCell,
@@ -74,7 +77,7 @@ const initialForm: ResourceForm = {
   status: "DRAFT",
   thumbnail: "",
   title: "",
-  type: "DOCUMENT",
+  resourceTypeId: "1",
   videoUrl: "",
 };
 
@@ -83,12 +86,6 @@ const statusOptions = [
   { label: "Draft", value: "DRAFT" },
   { label: "Published", value: "PUBLISHED" },
   { label: "Archived", value: "ARCHIVED" },
-];
-const typeOptions = [
-  { label: "All", value: "ALL" },
-  { label: "Documents", value: "DOCUMENT" },
-  { label: "Videos", value: "VIDEO" },
-  { label: "Exams", value: "EXAM" },
 ];
 const publishedOptions = [
   { label: "All", value: "ALL" },
@@ -116,7 +113,7 @@ function toPayload(form: ResourceForm): ResourceMutationPayload {
     sortOrder: Number(form.sortOrder),
     status: form.status,
     title: form.title.trim(),
-    type: form.type,
+    resourceTypeId: Number(form.resourceTypeId) as ResourceTypeId,
   };
   if (form.description.trim()) payload.description = form.description.trim();
   if (form.thumbnail.trim()) payload.thumbnail = form.thumbnail.trim();
@@ -124,14 +121,14 @@ function toPayload(form: ResourceForm): ResourceMutationPayload {
   if (form.fileSize.trim()) payload.fileSize = form.fileSize.trim();
   if (form.durationInSeconds.trim())
     payload.durationInSeconds = Number(form.durationInSeconds);
-  if (form.type === "DOCUMENT" && form.documentSource === "URL") {
+  if (form.resourceTypeId === "1" && form.documentSource === "URL") {
     payload.documentUrl = form.documentUrl.trim();
   }
-  if (form.type === "DOCUMENT" && form.documentSource === "UPLOAD") {
+  if (form.resourceTypeId === "1" && form.documentSource === "UPLOAD") {
     payload.documentFile = form.documentFile;
   }
-  if (form.type === "VIDEO") payload.videoUrl = form.videoUrl.trim();
-  if (form.type === "EXAM") payload.examId = Number(form.examId);
+  if (form.resourceTypeId === "2") payload.videoUrl = form.videoUrl.trim();
+  if (form.resourceTypeId === "3") payload.examId = Number(form.examId);
   return payload;
 }
 
@@ -146,11 +143,12 @@ function toJsonPayload(
 }
 
 interface ResourceFormProps extends ResourceFormContext<ResourceForm> {
-  fixedType?: ResourceType;
+  fixedTypeId?: ResourceTypeId;
+  resourceTypes: ResourceType[];
 }
 
-function ResourceForm({ error, fixedType }: ResourceFormProps) {
-  const type = useWatch<ResourceForm, "type">({ name: "type" });
+function ResourceForm({ error, fixedTypeId, resourceTypes }: ResourceFormProps) {
+  const resourceTypeId = useWatch<ResourceForm, "resourceTypeId">({ name: "resourceTypeId" });
   const documentSource = useWatch<ResourceForm, "documentSource">({
     name: "documentSource",
   });
@@ -171,24 +169,23 @@ function ResourceForm({ error, fixedType }: ResourceFormProps) {
           />
         </div>
         <div className="lms-form-field">
-          {fixedType ? (
+          {fixedTypeId ? (
             <Text color="#52627A" fontSize="$caption">
-              Type: {fixedType}
+              Type: {resourceTypes.find(({ id }) => id === fixedTypeId)?.name ?? "Resource"}
             </Text>
           ) : (
             <CrudFormSelect
               label="Type"
-              name="type"
-              options={[
-                { label: "Document", value: "DOCUMENT" },
-                { label: "Video", value: "VIDEO" },
-                { label: "Exam", value: "EXAM" },
-              ]}
+              name="resourceTypeId"
+              options={resourceTypes.map((type) => ({
+                label: type.name,
+                value: String(type.id),
+              }))}
             />
           )}
         </div>
       </XStack>
-      {type === "DOCUMENT" ? (
+      {resourceTypeId === "1" ? (
         <XStack className="lms-organization-form-grid" gap="$3">
           <div className="lms-form-field">
             <CrudFormSelect
@@ -232,7 +229,7 @@ function ResourceForm({ error, fixedType }: ResourceFormProps) {
           </div>
         </XStack>
       ) : null}
-      {type === "VIDEO" ? (
+      {resourceTypeId === "2" ? (
         <XStack className="lms-organization-form-grid" gap="$3">
           <div className="lms-form-field">
             <FormInput
@@ -251,7 +248,7 @@ function ResourceForm({ error, fixedType }: ResourceFormProps) {
           </div>
         </XStack>
       ) : null}
-      {type === "EXAM" ? (
+      {resourceTypeId === "3" ? (
         <YStack gap="$2">
           <div className="lms-form-field">
             <FormInput
@@ -307,7 +304,7 @@ function ResourceForm({ error, fixedType }: ResourceFormProps) {
   );
 }
 
-function resourceTone(type: ResourceType) {
+function resourceTone(type: ResourceTypeCode) {
   return type === "VIDEO"
     ? ("info" as const)
     : type === "EXAM"
@@ -338,7 +335,7 @@ const columns: DataTableColumn<Resource>[] = [
   },
   {
     cell: ({ row }) => (
-      <CrudBadge tone={resourceTone(row.type)}>{row.type}</CrudBadge>
+      <CrudBadge tone={resourceTone(row.resourceType.code)}>{row.resourceType.name}</CrudBadge>
     ),
     header: "Type",
     id: "type",
@@ -367,9 +364,9 @@ const columns: DataTableColumn<Resource>[] = [
     cell: ({ row }) => (
       <DataTableTextCell
         primary={
-          row.type === "EXAM"
+          row.resourceTypeId === RESOURCE_TYPE_IDS.EXAM
             ? "Exam #" + row.examId
-            : row.type === "VIDEO"
+            : row.resourceTypeId === RESOURCE_TYPE_IDS.VIDEO
               ? (row.durationInSeconds ?? 0) + " seconds"
               : row.fileSize
                 ? row.fileSize + " bytes"
@@ -389,13 +386,13 @@ const columns: DataTableColumn<Resource>[] = [
   },
   {
     cell: ({ row }) =>
-      row.type === "DOCUMENT" && row.documentUrl ? (
+      row.resourceTypeId === RESOURCE_TYPE_IDS.DOCUMENT && row.documentUrl ? (
         <DataTableWebsiteCell href={row.documentUrl} label="Open document" />
-      ) : row.type === "VIDEO" && row.videoUrl ? (
+      ) : row.resourceTypeId === RESOURCE_TYPE_IDS.VIDEO && row.videoUrl ? (
         <DataTableWebsiteCell href={row.videoUrl} label="Open video" />
       ) : (
         <DataTableTextCell
-          primary={row.type === "EXAM" ? `Exam #${row.examId ?? "-"}` : "-"}
+          primary={row.resourceTypeId === RESOURCE_TYPE_IDS.EXAM ? `Exam #${row.examId ?? "-"}` : "-"}
         />
       ),
     header: "Source",
@@ -449,8 +446,8 @@ function details(resource: Resource) {
           icon={<FileText color="#059669" size={15} />}
           label="Type"
           value={
-            <CrudBadge tone={resourceTone(resource.type)}>
-              {resource.type}
+            <CrudBadge tone={resourceTone(resource.resourceType.code)}>
+              {resource.resourceType.name}
             </CrudBadge>
           }
         />
@@ -541,11 +538,17 @@ function details(resource: Resource) {
 }
 
 export interface ResourcesPageProps {
-  resourceType?: ResourceType;
+  resourceTypeId?: ResourceTypeId;
 }
 
-export function ResourcesPage({ resourceType }: ResourcesPageProps = {}) {
+export function ResourcesPage({ resourceTypeId }: ResourcesPageProps = {}) {
   const searchParams = useSearchParams();
+  const resourceTypesQuery = useQuery({
+    queryFn: () => resourcesApi.findTypes(),
+    queryKey: ["admin", "resource-types"],
+    staleTime: 5 * 60_000,
+  });
+  const resourceTypes = resourceTypesQuery.data ?? [];
   const academic = useAcademicSessions();
   const {
     selectedOrganizationId,
@@ -566,16 +569,16 @@ export function ResourcesPage({ resourceType }: ResourcesPageProps = {}) {
     requestedFolderId,
   );
   const resourceInitialForm = useMemo(
-    () => ({ ...initialForm, type: resourceType ?? initialForm.type }),
-    [resourceType],
+    () => ({ ...initialForm, resourceTypeId: String(resourceTypeId ?? RESOURCE_TYPE_IDS.DOCUMENT) as ResourceForm["resourceTypeId"] }),
+    [resourceTypeId],
   );
   const resourceInitialFilters = useMemo<Record<string, string>>(
     () => {
       const filters: Record<string, string> = {};
-      if (resourceType) filters.type = resourceType;
+      if (resourceTypeId) filters.type = String(resourceTypeId);
       return filters;
     },
-    [resourceType],
+    [resourceTypeId],
   );
 
   useEffect(() => {
@@ -738,7 +741,7 @@ export function ResourcesPage({ resourceType }: ResourcesPageProps = {}) {
         );
       }}
       description={
-        resourceType === "EXAM"
+        resourceTypeId === RESOURCE_TYPE_IDS.EXAM
           ? "Manage exam resources linked to the selected course folder."
           : "Manage documents, videos, and exams stored inside course folders."
       }
@@ -758,12 +761,12 @@ export function ResourcesPage({ resourceType }: ResourcesPageProps = {}) {
         {
           icon: <FileText color="#059669" size={20} />,
           label: "Documents",
-          value: rows.filter((row) => row.type === "DOCUMENT").length,
+          value: rows.filter((row) => row.resourceTypeId === RESOURCE_TYPE_IDS.DOCUMENT).length,
         },
         {
           icon: <Video color="#2563EB" size={20} />,
           label: "Videos",
-          value: rows.filter((row) => row.type === "VIDEO").length,
+          value: rows.filter((row) => row.resourceTypeId === RESOURCE_TYPE_IDS.VIDEO).length,
         },
         {
           icon: <ShieldCheck color="#059669" size={20} />,
@@ -787,10 +790,10 @@ export function ResourcesPage({ resourceType }: ResourcesPageProps = {}) {
               published: query.published,
               search: query.search,
               status: query.status as ResourceStatus | undefined,
-              type: query.type as ResourceType | undefined,
+              resourceTypeId: query.type ? Number(query.type) as ResourceTypeId : undefined,
             })
       }
-      queryKey={["admin", "resources", resourceType ?? "all", effectiveFolderId]}
+      queryKey={["admin", "resources", resourceTypeId ?? "all", effectiveFolderId]}
       remove={(id) =>
         effectiveFolderId === null
           ? Promise.reject(new Error("Select a folder first."))
@@ -803,10 +806,14 @@ export function ResourcesPage({ resourceType }: ResourcesPageProps = {}) {
       }
       renderDetails={details}
       renderForm={(formContext) => (
-        <ResourceForm {...formContext} fixedType={resourceType} />
+        <ResourceForm
+          {...formContext}
+          fixedTypeId={resourceTypeId}
+          resourceTypes={resourceTypes}
+        />
       )}
       statusOptions={statusOptions}
-      title={resourceType === "EXAM" ? "Exams" : "Resources"}
+      title={resourceTypeId === RESOURCE_TYPE_IDS.EXAM ? "Exams" : "Resources"}
       toCreatePayload={toPayload}
       toForm={(resource) => ({
         description: resource.description ?? "",
@@ -823,11 +830,17 @@ export function ResourcesPage({ resourceType }: ResourcesPageProps = {}) {
         status: resource.status,
         thumbnail: resource.thumbnail ?? "",
         title: resource.title,
-        type: resource.type,
+        resourceTypeId: String(resource.resourceTypeId) as ResourceForm["resourceTypeId"],
         videoUrl: resource.videoUrl ?? "",
       })}
       toUpdatePayload={toPayload}
-      typeOptions={resourceType ? undefined : typeOptions}
+      typeOptions={resourceTypeId ? undefined : [
+        { label: "All", value: "ALL" },
+        ...resourceTypes.map((type) => ({
+          label: type.name,
+          value: String(type.id),
+        })),
+      ]}
       update={(id, payload) => {
         if (effectiveFolderId === null) {
           return Promise.reject(new Error("Select a folder first."));

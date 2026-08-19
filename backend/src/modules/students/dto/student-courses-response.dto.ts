@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ResourceType } from '@prisma/client';
+
+import { ResourceTypeDataDto } from '../../resource/dto/resource-type-response.dto';
 
 class StudentCourseResourceCountsDto {
   @ApiProperty({ example: 24 })
@@ -19,8 +20,11 @@ class StudentCourseLastAccessedDto {
   @ApiProperty({ example: 'Linear Equations - Part 2' })
   title: string;
 
-  @ApiProperty({ enum: ResourceType })
-  type: ResourceType;
+  @ApiProperty({ example: 2 })
+  resourceTypeId: number;
+
+  @ApiProperty({ type: ResourceTypeDataDto })
+  resourceType: ResourceTypeDataDto;
 
   @ApiProperty({ example: '2026-08-12T08:00:00.000Z' })
   timestamp: Date;

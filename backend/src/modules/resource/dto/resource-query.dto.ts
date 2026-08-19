@@ -1,15 +1,19 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { ResourceStatus, ResourceType } from '@prisma/client';
+import { ResourceStatus } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
   Max,
   Min,
 } from 'class-validator';
+
+import { RESOURCE_TYPE_ID_VALUES } from '../constants/resource-type.constants';
+import type { ResourceTypeId } from '../constants/resource-type.constants';
 
 export class ResourceQueryDto {
   @ApiPropertyOptional({ example: 1, default: 1, minimum: 1 })
@@ -32,10 +36,15 @@ export class ResourceQueryDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ enum: ResourceType })
+  @ApiPropertyOptional({
+    enum: RESOURCE_TYPE_ID_VALUES,
+    description: '1 = Document, 2 = Video, 3 = Exam',
+  })
   @IsOptional()
-  @IsEnum(ResourceType)
-  type?: ResourceType;
+  @Type(() => Number)
+  @IsInt()
+  @IsIn(RESOURCE_TYPE_ID_VALUES)
+  resourceTypeId?: ResourceTypeId;
 
   @ApiPropertyOptional({ enum: ResourceStatus })
   @IsOptional()

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-labelledby="title">
+  <title id="title">IPMAT mock test solutions video thumbnail</title>
+  <defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#0f172a"/><stop offset="1" stop-color="#334155"/></linearGradient></defs>
+  <rect width="640" height="360" rx="28" fill="url(#g)"/><rect x="420" y="72" width="150" height="210" rx="14" fill="#f8fafc"/><path d="m450 132 18 18 38-45M450 194l18 18 38-45" fill="none" stroke="#10b981" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/><path d="M523 131h24M523 193h24M450 250h97" stroke="#94a3b8" stroke-width="8" stroke-linecap="round"/>
+  <text x="48" y="102" fill="#a7f3d0" font-family="Arial" font-size="25" font-weight="700">IPMAT PREPARATION</text><text x="48" y="185" fill="white" font-family="Arial" font-size="48" font-weight="800">MOCK TEST 05</text><text x="48" y="239" fill="#d1fae5" font-family="Arial" font-size="35" font-weight="700">SOLUTIONS</text>
+</svg>

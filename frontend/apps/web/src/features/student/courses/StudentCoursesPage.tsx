@@ -370,7 +370,7 @@ function StudentCourseCard({
           <XStack>
             <strong>
               {course.lastAccessed
-                ? `${course.lastAccessed.title} (${formatResourceType(course.lastAccessed.type)})`
+                ? `${course.lastAccessed.title} (${formatResourceType(course.lastAccessed.resourceType.code)})`
                 : "-"}
             </strong>
             {course.lastAccessed ? (

@@ -129,7 +129,7 @@ export const DataTableExpandableText = memo(
         typeof ResizeObserver === "undefined"
           ? null
           : new ResizeObserver(updateOverflow);
-      observer?.observe(content);
+      observer?.observe(measurableContent);
 
       return () => {
         cancelled = true;

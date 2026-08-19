@@ -22,7 +22,7 @@ import {
 import { AppEmptyState, Button, Card, Spinner, Text, XStack, YStack } from "@repo/ui";
 import { studentsApi } from "@repo/api";
 import type {
-  ResourceType,
+  ResourceTypeCode,
   StudentDashboardContentUpdate,
   StudentDashboardCourse,
   StudentDashboardNotification,
@@ -74,7 +74,7 @@ const notificationIconTones: Record<
   },
 };
 
-const contentUpdateIconTones: Record<ResourceType, StudentNotificationTone> = {
+const contentUpdateIconTones: Record<ResourceTypeCode, StudentNotificationTone> = {
   DOCUMENT: {
     background: "#FFE8E8",
     color: "#EF4444",
@@ -301,7 +301,7 @@ function ContentUpdateItem({ item }: { item: StudentDashboardContentUpdate }) {
       onPress={() => router.push(item.path)}
       role="button"
     >
-      <IconBadge tone={contentUpdateIconTones[item.resourceType]} />
+      <IconBadge tone={contentUpdateIconTones[item.resourceType.code]} />
       <YStack className="student-feed-copy">
         <Text className="student-feed-title">{item.title}</Text>
         <Text className="student-feed-description">{item.description}</Text>

@@ -4,8 +4,13 @@ import {
   Prisma,
   PrismaClient,
   ResourceStatus,
-  ResourceType,
 } from '@prisma/client';
+
+import {
+  RESOURCE_TYPE_IDS,
+  ResourceTypeId,
+} from '../../src/modules/resource/constants/resource-type.constants';
+import { seedResourceTypes } from './resource-types';
 
 const prisma = new PrismaClient();
 
@@ -53,7 +58,7 @@ interface ResourceSeed {
   fileSize?: bigint;
   thumbnail?: string;
   title: string;
-  type: ResourceType;
+  type: ResourceTypeId;
   uuid: string;
   videoUrl?: string;
 }
@@ -64,10 +69,9 @@ const resourceSeeds: readonly ResourceSeed[] = [
     title: 'Number Systems – Complete Revision Notes',
     description:
       'Concept notes covering divisibility, factors, multiples, remainders, unit digits, and number-system shortcuts for IPMAT preparation.',
-    type: ResourceType.DOCUMENT,
+    type: RESOURCE_TYPE_IDS.DOCUMENT,
     courseCodes: ['QA'],
-    documentUrl:
-      'https://cdn.example.com/lms/documents/ipmat/number-systems-complete-revision-notes.pdf',
+    documentUrl: 'https://digital.nios.ac.in/content/211en/Chapter-1.pdf',
     fileSize: BigInt(1_842_176),
   },
   {
@@ -75,10 +79,10 @@ const resourceSeeds: readonly ResourceSeed[] = [
     title: 'Vocabulary Builder – High-Frequency IPMAT Words',
     description:
       'A practical vocabulary workbook with high-frequency words, contextual examples, roots, synonyms, antonyms, and short revision exercises.',
-    type: ResourceType.DOCUMENT,
+    type: RESOURCE_TYPE_IDS.DOCUMENT,
     courseCodes: ['VA'],
     documentUrl:
-      'https://cdn.example.com/lms/documents/ipmat/vocabulary-builder-high-frequency-words.pdf',
+      'https://cbseacademic.nic.in/web_material/publication/Class_X_ENGLISH_WORKBOOK/001-010.pdf',
     fileSize: BigInt(2_154_496),
   },
   {
@@ -86,10 +90,10 @@ const resourceSeeds: readonly ResourceSeed[] = [
     title: 'Analytical Reasoning – Core Concepts and Practice',
     description:
       'Structured notes on statements, assumptions, deductions, arrangements, and analytical puzzles with worked examples and practice questions.',
-    type: ResourceType.DOCUMENT,
+    type: RESOURCE_TYPE_IDS.DOCUMENT,
     courseCodes: ['LR'],
     documentUrl:
-      'https://cdn.example.com/lms/documents/ipmat/analytical-reasoning-core-concepts.pdf',
+      'https://www.ncert.nic.in/pdf/publication/journalsandperiodicals/indianeducationalreview/IER_July_2019.pdf',
     fileSize: BigInt(2_736_128),
   },
   {
@@ -97,10 +101,10 @@ const resourceSeeds: readonly ResourceSeed[] = [
     title: 'Current Affairs – July 2026 Monthly Revision',
     description:
       'Monthly revision notes covering major national, international, economic, science, sports, and awards-related developments for entrance exams.',
-    type: ResourceType.DOCUMENT,
+    type: RESOURCE_TYPE_IDS.DOCUMENT,
     courseCodes: ['GEN-KNOW', 'MT'],
     documentUrl:
-      'https://cdn.example.com/lms/documents/ipmat/current-affairs-july-2026-revision.pdf',
+      'https://cdnbbsr.s3waas.gov.in/s3b2ab001909a8a6f04b51920306046ce5/uploads/2025/07/202507112006113203.pdf',
     fileSize: BigInt(3_018_752),
   },
   {
@@ -108,10 +112,10 @@ const resourceSeeds: readonly ResourceSeed[] = [
     title: 'IPMAT Preparation – Exam Strategy Guide',
     description:
       'A complete planning guide for section order, time allocation, accuracy targets, mock-test analysis, and final-month revision strategy.',
-    type: ResourceType.DOCUMENT,
+    type: RESOURCE_TYPE_IDS.DOCUMENT,
     courseCodes: ['MT'],
     documentUrl:
-      'https://cdn.example.com/lms/documents/ipmat/ipmat-exam-strategy-guide.pdf',
+      'https://cbseacademic.nic.in/web_material/ASL/2014/2_ASL_Guidelines_for_Teachers_Principals_2014.pdf',
     fileSize: BigInt(1_527_808),
   },
   {
@@ -119,11 +123,10 @@ const resourceSeeds: readonly ResourceSeed[] = [
     title: 'Number Systems – Concept Introduction',
     description:
       'A guided introduction to natural numbers, integers, divisibility, prime factorization, remainders, and common IPMAT question patterns.',
-    type: ResourceType.VIDEO,
+    type: RESOURCE_TYPE_IDS.VIDEO,
     courseCodes: ['QA'],
     videoUrl: 'https://vimeo.com/76979871',
-    thumbnail:
-      'https://images.example.com/lms/resources/videos/number-systems-introduction.jpg',
+    thumbnail: '/resources/thumbnails/number-systems.svg',
     durationInSeconds: 1_584,
   },
   {
@@ -131,11 +134,10 @@ const resourceSeeds: readonly ResourceSeed[] = [
     title: 'Percentage & Profit/Loss – Problem Solving',
     description:
       'Practice session covering percentage change, successive percentages, cost and selling price, discounts, profit and loss, and shortcut techniques.',
-    type: ResourceType.VIDEO,
+    type: RESOURCE_TYPE_IDS.VIDEO,
     courseCodes: ['QA'],
     videoUrl: 'https://vimeo.com/22439234',
-    thumbnail:
-      'https://images.example.com/lms/resources/videos/percentage-profit-loss.jpg',
+    thumbnail: '/resources/thumbnails/percentage-profit-loss.svg',
     durationInSeconds: 2_146,
   },
   {
@@ -143,11 +145,10 @@ const resourceSeeds: readonly ResourceSeed[] = [
     title: 'Reading Comprehension – Strategy Session',
     description:
       'A strategy lesson on passage mapping, identifying central ideas, handling inference questions, eliminating options, and improving reading speed.',
-    type: ResourceType.VIDEO,
+    type: RESOURCE_TYPE_IDS.VIDEO,
     courseCodes: ['VA'],
     videoUrl: 'https://vimeo.com/148751763',
-    thumbnail:
-      'https://images.example.com/lms/resources/videos/reading-comprehension-strategy.jpg',
+    thumbnail: '/resources/thumbnails/reading-comprehension.svg',
     durationInSeconds: 1_872,
   },
   {
@@ -155,11 +156,10 @@ const resourceSeeds: readonly ResourceSeed[] = [
     title: 'Logical Reasoning – Seating Arrangement Workshop',
     description:
       'Step-by-step workshop on linear and circular seating arrangements, constraint notation, case analysis, and timed problem-solving methods.',
-    type: ResourceType.VIDEO,
+    type: RESOURCE_TYPE_IDS.VIDEO,
     courseCodes: ['LR'],
     videoUrl: 'https://vimeo.com/1084537',
-    thumbnail:
-      'https://images.example.com/lms/resources/videos/seating-arrangement-workshop.jpg',
+    thumbnail: '/resources/thumbnails/seating-arrangement.svg',
     durationInSeconds: 2_328,
   },
   {
@@ -167,16 +167,16 @@ const resourceSeeds: readonly ResourceSeed[] = [
     title: 'IPMAT Mock Test 05 – Complete Solution Discussion',
     description:
       'Detailed solution discussion for Mock Test 05 with alternate approaches, common mistakes, time-management observations, and score-improvement actions.',
-    type: ResourceType.VIDEO,
+    type: RESOURCE_TYPE_IDS.VIDEO,
     courseCodes: ['MT'],
     videoUrl: 'https://vimeo.com/395212534',
-    thumbnail:
-      'https://images.example.com/lms/resources/videos/ipmat-mock-test-05-solutions.jpg',
+    thumbnail: '/resources/thumbnails/mock-test-solutions.svg',
     durationInSeconds: 3_486,
   },
 ];
 
 async function main() {
+  await seedResourceTypes(prisma);
   const session = await findTargetSession();
   const folderByCourseCode = await resolveFolders(session);
 
@@ -189,12 +189,12 @@ async function main() {
         throw new Error(`No folder resolved for course ${courseCode}`);
       }
 
-      const isDocument = resource.type === ResourceType.DOCUMENT;
+      const isDocument = resource.type === RESOURCE_TYPE_IDS.DOCUMENT;
       const data: Prisma.ResourceUncheckedCreateInput = {
         folderId,
         title: resource.title,
         description: resource.description,
-        type: resource.type,
+        resourceTypeId: resource.type,
         documentUrl: resource.documentUrl ?? null,
         videoUrl: resource.videoUrl ?? null,
         examId: null,
@@ -330,6 +330,7 @@ async function verifyResources(session: TargetSession) {
   const resources = await prisma.resource.findMany({
     where: { uuid: { in: resourceSeeds.map(({ uuid }) => uuid) } },
     include: {
+      resourceType: true,
       folder: {
         include: {
           sessionCourse: {
@@ -346,9 +347,11 @@ async function verifyResources(session: TargetSession) {
     resources.map((resource) => [resource.uuid, resource]),
   );
   const documents = resources.filter(
-    ({ type }) => type === ResourceType.DOCUMENT,
+    ({ resourceTypeId }) => resourceTypeId === RESOURCE_TYPE_IDS.DOCUMENT,
   );
-  const videos = resources.filter(({ type }) => type === ResourceType.VIDEO);
+  const videos = resources.filter(
+    ({ resourceTypeId }) => resourceTypeId === RESOURCE_TYPE_IDS.VIDEO,
+  );
 
   if (
     resources.length !== 10 ||
@@ -368,10 +371,10 @@ async function verifyResources(session: TargetSession) {
     const relation = resource.folder.sessionCourse;
     const expectedCourseCode = resolveCourseCode(seed, session);
     const validDocument =
-      seed.type !== ResourceType.DOCUMENT ||
+      seed.type !== RESOURCE_TYPE_IDS.DOCUMENT ||
       (Boolean(resource.documentUrl) && !resource.videoUrl && !resource.examId);
     const validVideo =
-      seed.type !== ResourceType.VIDEO ||
+      seed.type !== RESOURCE_TYPE_IDS.VIDEO ||
       (Boolean(resource.videoUrl) &&
         Boolean(resource.thumbnail) &&
         Boolean(resource.durationInSeconds) &&
@@ -382,6 +385,8 @@ async function verifyResources(session: TargetSession) {
       relation.session.organization.id !== session.organization.id ||
       relation.session.id !== session.id ||
       relation.course.code !== expectedCourseCode ||
+      resource.resourceType.id !== seed.type ||
+      !resource.resourceType.isActive ||
       !validDocument ||
       !validVideo ||
       resource.status !== ResourceStatus.PUBLISHED ||
@@ -402,9 +407,11 @@ function printSummary(
   resources: Awaited<ReturnType<typeof verifyResources>>,
 ) {
   const documents = resources.filter(
-    ({ type }) => type === ResourceType.DOCUMENT,
+    ({ resourceTypeId }) => resourceTypeId === RESOURCE_TYPE_IDS.DOCUMENT,
   );
-  const videos = resources.filter(({ type }) => type === ResourceType.VIDEO);
+  const videos = resources.filter(
+    ({ resourceTypeId }) => resourceTypeId === RESOURCE_TYPE_IDS.VIDEO,
+  );
 
   console.log('\n========================================');
   console.log('LMS RESOURCE SEED COMPLETED');

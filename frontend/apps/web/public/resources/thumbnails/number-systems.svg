@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-labelledby="title">
+  <title id="title">Number Systems video thumbnail</title>
+  <defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#0f766e"/><stop offset="1" stop-color="#34d399"/></linearGradient></defs>
+  <rect width="640" height="360" rx="28" fill="url(#g)"/><circle cx="520" cy="72" r="115" fill="#fff" opacity=".1"/>
+  <text x="48" y="115" fill="#d1fae5" font-family="Arial" font-size="25" font-weight="700">QUANTITATIVE APTITUDE</text>
+  <text x="48" y="190" fill="white" font-family="Arial" font-size="48" font-weight="800">NUMBER</text><text x="48" y="245" fill="white" font-family="Arial" font-size="48" font-weight="800">SYSTEMS</text>
+  <path d="M520 235a50 50 0 1 0 0 100 50 50 0 0 0 0-100Z" fill="#fff" opacity=".95"/><path d="m507 263 38 22-38 22Z" fill="#059669"/>
+</svg>

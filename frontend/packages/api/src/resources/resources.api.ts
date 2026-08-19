@@ -4,6 +4,7 @@ import type {
   Resource,
   ResourceList,
   ResourceQuery,
+  ResourceType,
   UpdateResourceRequest,
 } from "@repo/types";
 
@@ -15,6 +16,11 @@ function endpoint(folderId: number) {
 }
 
 export const resourcesApi = {
+  findTypes() {
+    return api
+      .get<ApiResponse<ResourceType[]>>("/resource-types")
+      .then(unwrapApiData);
+  },
   create(folderId: number, payload: CreateResourceRequest) {
     return api.post<ApiResponse<Resource>>(endpoint(folderId), payload).then(unwrapApiData);
   },

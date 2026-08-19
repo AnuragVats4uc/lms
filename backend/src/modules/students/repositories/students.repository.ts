@@ -1,8 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Prisma, ResourceType, StudentStatus, UserStatus } from '@prisma/client';
+import {
+  Prisma,
+  ResourceStatus,
+  StudentStatus,
+  UserStatus,
+} from '@prisma/client';
 
 import { PrismaService } from '../../../prisma';
+import { RESOURCE_TYPE_IDS } from '../../resource/constants/resource-type.constants';
 import { StudentQueryDto } from '../dto/student-query.dto';
+import { StudentResourcesSort } from '../dto/student-resources-query.dto';
 
 export interface StudentCreateData {
   organizationId?: number;
@@ -34,10 +41,9 @@ export type StudentUpdateData = Partial<StudentCreateData> & {
   isActive?: boolean;
 };
 
-export interface NormalizedStudentQuery
-  extends Required<
-    Omit<StudentQueryDto, 'status' | 'organizationId'>
-  > {
+export interface NormalizedStudentQuery extends Required<
+  Omit<StudentQueryDto, 'status' | 'organizationId'>
+> {
   status?: StudentStatus;
   organizationId?: number;
 }
@@ -47,6 +53,18 @@ export interface NormalizedStudentCoursesQuery {
   limit: number;
   search: string;
   category?: string;
+}
+
+export interface NormalizedStudentResourcesQuery {
+  page: number;
+  limit: number;
+  search: string;
+  resourceTypeId?: number;
+  sessionCourseId?: number;
+  folderId?: number;
+  uploadedOn?: string;
+  status?: ResourceStatus;
+  sort: StudentResourcesSort;
 }
 
 @Injectable()
@@ -199,12 +217,19 @@ export class StudentsRepository {
         isActive: true,
         isPublished: true,
         status: 'PUBLISHED',
-        type: { in: [ResourceType.DOCUMENT, ResourceType.VIDEO, ResourceType.EXAM] },
+        resourceTypeId: {
+          in: [
+            RESOURCE_TYPE_IDS.DOCUMENT,
+            RESOURCE_TYPE_IDS.VIDEO,
+            RESOURCE_TYPE_IDS.EXAM,
+          ],
+        },
         folder: { sessionCourseId: { in: sessionCourseIds } },
       },
       orderBy: { createdAt: 'desc' },
       take: 6,
       include: {
+        resourceType: true,
         folder: {
           select: {
             id: true,
@@ -220,7 +245,11 @@ export class StudentsRepository {
     organizationId: number | null | undefined,
     query: NormalizedStudentCoursesQuery,
   ) {
-    const where = this.buildStudentCoursesWhere(studentId, organizationId, query);
+    const where = this.buildStudentCoursesWhere(
+      studentId,
+      organizationId,
+      query,
+    );
     const skip = (query.page - 1) * query.limit;
 
     const [items, total] = await this.prisma.$transaction([
@@ -259,7 +288,8 @@ export class StudentsRepository {
                     select: {
                       id: true,
                       title: true,
-                      type: true,
+                      resourceTypeId: true,
+                      resourceType: true,
                       createdAt: true,
                       updatedAt: true,
                     },
@@ -285,7 +315,8 @@ export class StudentsRepository {
                     select: {
                       id: true,
                       title: true,
-                      type: true,
+                      resourceTypeId: true,
+                      resourceType: true,
                       updatedAt: true,
                     },
                   },
@@ -328,6 +359,263 @@ export class StudentsRepository {
           .filter(Boolean),
       ),
     ];
+  }
+
+  async findStudentResources(
+    studentId: number,
+    organizationId: number | null | undefined,
+    query: NormalizedStudentResourcesQuery,
+  ) {
+    const where = this.buildStudentResourcesWhere(
+      studentId,
+      organizationId,
+      query,
+    );
+    const skip = (query.page - 1) * query.limit;
+    const orderBy = this.studentResourcesOrderBy(query.sort);
+
+    const [items, total, videos, documents] = await this.prisma.$transaction([
+      this.prisma.resource.findMany({
+        where,
+        orderBy,
+        skip,
+        take: query.limit,
+        include: {
+          resourceType: true,
+          folder: {
+            select: {
+              id: true,
+              name: true,
+              sessionCourse: {
+                select: {
+                  id: true,
+                  displayName: true,
+                  course: {
+                    select: { id: true, code: true, name: true },
+                  },
+                  session: {
+                    select: { id: true, name: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.resource.count({ where }),
+      this.prisma.resource.count({
+        where: {
+          AND: [where, { resourceTypeId: RESOURCE_TYPE_IDS.VIDEO }],
+        },
+      }),
+      this.prisma.resource.count({
+        where: {
+          AND: [where, { resourceTypeId: RESOURCE_TYPE_IDS.DOCUMENT }],
+        },
+      }),
+    ]);
+
+    return { documents, items, total, videos };
+  }
+
+  findStudentResourceById(
+    studentId: number,
+    organizationId: number | null | undefined,
+    resourceId: number,
+  ) {
+    return this.prisma.resource.findFirst({
+      where: {
+        id: resourceId,
+        ...this.buildStudentResourcesWhere(studentId, organizationId, {
+          search: '',
+          status: ResourceStatus.PUBLISHED,
+        }),
+      },
+      include: {
+        resourceType: true,
+        folder: {
+          include: {
+            sessionCourse: {
+              include: {
+                course: true,
+                session: {
+                  include: {
+                    organization: {
+                      select: { id: true, name: true, code: true },
+                    },
+                  },
+                },
+                studentCourseProgress: {
+                  where: { studentId },
+                  take: 1,
+                },
+                instructors: {
+                  orderBy: { createdAt: 'asc' },
+                  take: 1,
+                  select: {
+                    instructor: {
+                      select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  findStudentFolderResources(folderId: number) {
+    return this.prisma.resource.findMany({
+      where: {
+        folderId,
+        isActive: true,
+        isPublished: true,
+        status: ResourceStatus.PUBLISHED,
+      },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        resourceTypeId: true,
+        resourceType: true,
+        documentUrl: true,
+        videoUrl: true,
+        thumbnail: true,
+        mimeType: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async findStudentCourseResourceSequence(sessionCourseId: number) {
+    const folders = await this.prisma.folder.findMany({
+      where: {
+        sessionCourseId,
+        isActive: true,
+        status: 'ACTIVE',
+      },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+      select: {
+        resources: {
+          where: {
+            isActive: true,
+            isPublished: true,
+            status: ResourceStatus.PUBLISHED,
+          },
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+          select: {
+            id: true,
+            title: true,
+            resourceTypeId: true,
+            resourceType: true,
+            thumbnail: true,
+            mimeType: true,
+            durationInSeconds: true,
+          },
+        },
+      },
+    });
+
+    return folders.flatMap((folder) => folder.resources);
+  }
+
+  findStudentVideoProgress(studentId: number, resourceId: number) {
+    return this.prisma.studentVideoProgress.findUnique({
+      where: {
+        studentId_resourceId: { studentId, resourceId },
+      },
+    });
+  }
+
+  upsertStudentVideoProgress(
+    studentId: number,
+    resourceId: number,
+    data: {
+      currentPositionSeconds: number;
+      watchedPercentage: number;
+      completedAt: Date | null;
+    },
+  ) {
+    return this.prisma.studentVideoProgress.upsert({
+      where: {
+        studentId_resourceId: { studentId, resourceId },
+      },
+      create: { studentId, resourceId, ...data },
+      update: data,
+    });
+  }
+
+  upsertStudentResourceAccess(
+    studentId: number,
+    sessionCourseId: number,
+    resourceId: number,
+  ) {
+    return this.prisma.studentCourseProgress.upsert({
+      where: {
+        studentId_sessionCourseId: { studentId, sessionCourseId },
+      },
+      create: {
+        studentId,
+        sessionCourseId,
+        lastAccessedResourceId: resourceId,
+      },
+      update: { lastAccessedResourceId: resourceId },
+    });
+  }
+
+  async findStudentResourceOptions(
+    studentId: number,
+    organizationId: number | null | undefined,
+  ) {
+    return this.prisma.studentCourseEnrollment.findMany({
+      where: {
+        isActive: true,
+        status: { in: ['ACTIVE', 'COMPLETED'] },
+        enrollment: {
+          studentId,
+          isActive: true,
+          status: 'ACTIVE',
+          ...(organizationId ? { organizationId } : {}),
+        },
+        sessionCourse: {
+          isActive: true,
+          isPublished: true,
+          status: 'ACTIVE',
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        sessionCourse: {
+          select: {
+            id: true,
+            displayName: true,
+            course: { select: { name: true } },
+            folders: {
+              where: {
+                isActive: true,
+                status: 'ACTIVE',
+                resources: {
+                  some: {
+                    isActive: true,
+                    isPublished: true,
+                    status: ResourceStatus.PUBLISHED,
+                  },
+                },
+              },
+              orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+              select: { id: true, name: true },
+            },
+          },
+        },
+      },
+    });
   }
 
   findByEmail(email: string) {
@@ -545,6 +833,76 @@ export class StudentsRepository {
           : {}),
       },
     };
+  }
+
+  private buildStudentResourcesWhere(
+    studentId: number,
+    organizationId: number | null | undefined,
+    query: Omit<NormalizedStudentResourcesQuery, 'page' | 'limit' | 'sort'>,
+  ): Prisma.ResourceWhereInput {
+    const search = query.search.trim();
+    const uploadedAt = query.uploadedOn
+      ? new Date(`${query.uploadedOn}T00:00:00.000Z`)
+      : undefined;
+    const uploadedBefore = uploadedAt
+      ? new Date(uploadedAt.getTime() + 24 * 60 * 60 * 1000)
+      : undefined;
+
+    return {
+      isActive: true,
+      isPublished: true,
+      status: query.status ?? ResourceStatus.PUBLISHED,
+      ...(query.resourceTypeId ? { resourceTypeId: query.resourceTypeId } : {}),
+      ...(query.folderId ? { folderId: query.folderId } : {}),
+      ...(uploadedAt && uploadedBefore
+        ? { createdAt: { gte: uploadedAt, lt: uploadedBefore } }
+        : {}),
+      ...(search
+        ? {
+            OR: [
+              { title: { contains: search } },
+              { description: { contains: search } },
+            ],
+          }
+        : {}),
+      folder: {
+        isActive: true,
+        status: 'ACTIVE',
+        sessionCourse: {
+          ...(query.sessionCourseId ? { id: query.sessionCourseId } : {}),
+          isActive: true,
+          isPublished: true,
+          status: 'ACTIVE',
+          studentCourseEnrollments: {
+            some: {
+              isActive: true,
+              status: { in: ['ACTIVE', 'COMPLETED'] },
+              enrollment: {
+                studentId,
+                isActive: true,
+                status: 'ACTIVE',
+                ...(organizationId ? { organizationId } : {}),
+              },
+            },
+          },
+        },
+      },
+    };
+  }
+
+  private studentResourcesOrderBy(
+    sort: StudentResourcesSort,
+  ): Prisma.ResourceOrderByWithRelationInput[] {
+    if (sort === StudentResourcesSort.OLDEST) {
+      return [{ createdAt: 'asc' }, { id: 'asc' }];
+    }
+    if (sort === StudentResourcesSort.TITLE_ASC) {
+      return [{ title: 'asc' }, { id: 'asc' }];
+    }
+    if (sort === StudentResourcesSort.TITLE_DESC) {
+      return [{ title: 'desc' }, { id: 'desc' }];
+    }
+    return [{ createdAt: 'desc' }, { id: 'desc' }];
   }
 
   private defaultStudentCode(userId: number) {

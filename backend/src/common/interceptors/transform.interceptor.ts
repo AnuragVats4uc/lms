@@ -3,24 +3,37 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
+  StreamableFile,
 } from '@nestjs/common';
 import { map, Observable } from 'rxjs';
 
+interface SuccessResponse<T> {
+  success: true;
+  message: string;
+  data: T;
+  timestamp: string;
+}
+
 @Injectable()
-export class TransformInterceptor<T>
-  implements NestInterceptor<T, any>
-{
+export class TransformInterceptor<T = unknown> implements NestInterceptor<
+  T,
+  T | StreamableFile | SuccessResponse<T>
+> {
   intercept(
     context: ExecutionContext,
-    next: CallHandler,
-  ): Observable<any> {
+    next: CallHandler<T>,
+  ): Observable<T | StreamableFile | SuccessResponse<T>> {
     return next.handle().pipe(
-      map((data) => ({
-        success: true,
-        message: 'Success',
-        data,
-        timestamp: new Date().toISOString(),
-      })),
+      map((data) =>
+        data instanceof StreamableFile
+          ? data
+          : {
+              success: true,
+              message: 'Success',
+              data,
+              timestamp: new Date().toISOString(),
+            },
+      ),
     );
   }
 }

@@ -1,10 +1,10 @@
-import { StudentPlaceholderPage } from "@/features/student/components/StudentPlaceholderPage";
+import { StudentResourcesPage } from "@/features/student/resources/StudentResourcesPage";
 
-export default function Page() {
-  return (
-    <StudentPlaceholderPage
-      title="Resources"
-      description="Student resources will connect to the future Resources API."
-    />
-  );
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string }>;
+}) {
+  const { search = "" } = await searchParams;
+  return <StudentResourcesPage initialSearch={search} />;
 }

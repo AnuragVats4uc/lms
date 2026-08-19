@@ -1,4 +1,4 @@
-import type { ResourceType } from "./resource";
+import type { ResourceType, ResourceTypeId } from "./resource";
 
 export type StudentDashboardNotificationType =
   | "ASSIGNMENT"
@@ -57,6 +57,7 @@ export interface StudentDashboardNotification {
 export interface StudentDashboardContentUpdate {
   id: number;
   resourceId: number;
+  resourceTypeId: ResourceTypeId;
   resourceType: ResourceType;
   title: string;
   description: string;

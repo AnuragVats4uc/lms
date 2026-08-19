@@ -11,6 +11,7 @@ import {
   Post,
   Query,
   Req,
+  StreamableFile,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -32,7 +33,12 @@ import { CreateStudentDto } from '../dto/create-student.dto';
 import { StudentDashboardResponseDto } from '../dto/student-dashboard-response.dto';
 import { StudentCoursesQueryDto } from '../dto/student-courses-query.dto';
 import { StudentCoursesResponseDto } from '../dto/student-courses-response.dto';
+import { StudentResourcesQueryDto } from '../dto/student-resources-query.dto';
+import { StudentResourcesResponseDto } from '../dto/student-resources-response.dto';
+import { StudentResourceDetailResponseDto } from '../dto/student-resource-detail-response.dto';
+import { StudentVideoResourceResponseDto } from '../dto/student-video-resource-response.dto';
 import { StudentQueryDto } from '../dto/student-query.dto';
+import { UpdateStudentVideoProgressDto } from '../dto/update-student-video-progress.dto';
 import { UpdateStudentDto } from '../dto/update-student.dto';
 import { StudentsService } from '../services/students.service';
 
@@ -87,6 +93,112 @@ export class StudentsController {
     return this.studentsService.getMyCourses(request.user, query);
   }
 
+  @Get('me/resources')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Get authenticated student learning resources' })
+  @ApiOkResponse({
+    description: 'Student resources fetched successfully',
+    type: StudentResourcesResponseDto,
+  })
+  getMyResources(
+    @Req() request: AuthenticatedRequest,
+    @Query() query: StudentResourcesQueryDto,
+  ) {
+    return this.studentsService.getMyResources(request.user, query);
+  }
+
+  @Get('me/resources/:resourceId/video')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Get an authorized student video lesson' })
+  @ApiParam({ name: 'resourceId', type: Number, example: 1 })
+  @ApiOkResponse({
+    description: 'Student video lesson fetched successfully',
+    type: StudentVideoResourceResponseDto,
+  })
+  getMyVideoResource(
+    @Req() request: AuthenticatedRequest,
+    @Param('resourceId', ParseIntPipe) resourceId: number,
+  ) {
+    return this.studentsService.getMyVideoResource(request.user, resourceId);
+  }
+
+  @Patch('me/resources/:resourceId/video/progress')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Save student video playback progress' })
+  @ApiParam({ name: 'resourceId', type: Number, example: 1 })
+  @ApiBody({ type: UpdateStudentVideoProgressDto })
+  @ApiOkResponse({ description: 'Video playback progress saved successfully' })
+  updateMyVideoProgress(
+    @Req() request: AuthenticatedRequest,
+    @Param('resourceId', ParseIntPipe) resourceId: number,
+    @Body() dto: UpdateStudentVideoProgressDto,
+  ) {
+    return this.studentsService.updateMyVideoProgress(
+      request.user,
+      resourceId,
+      dto,
+    );
+  }
+
+  @Get('me/resources/:resourceId/file')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Stream an authorized student document file' })
+  @ApiParam({ name: 'resourceId', type: Number, example: 1 })
+  @ApiOkResponse({ description: 'Document file streamed successfully' })
+  async getMyDocumentFile(
+    @Req() request: AuthenticatedRequest,
+    @Param('resourceId', ParseIntPipe) resourceId: number,
+  ) {
+    const file = await this.studentsService.getMyDocumentFile(
+      request.user,
+      resourceId,
+    );
+
+    const safeAsciiFileName = file.fileName
+      .normalize('NFKD')
+      .replace(/[^\x20-\x7e]/g, '-')
+      .replace(/["\\]/g, '');
+    const options = {
+      type: file.mimeType,
+      disposition: `inline; filename="${safeAsciiFileName}"; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,
+    };
+
+    return Buffer.isBuffer(file.content)
+      ? new StreamableFile(file.content, options)
+      : new StreamableFile(file.content, options);
+  }
+
+  @Post('me/resources/:resourceId/access')
+  @Roles('STUDENT')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Record a student document access' })
+  @ApiParam({ name: 'resourceId', type: Number, example: 1 })
+  @ApiOkResponse({ description: 'Document access recorded successfully' })
+  recordMyResourceAccess(
+    @Req() request: AuthenticatedRequest,
+    @Param('resourceId', ParseIntPipe) resourceId: number,
+  ) {
+    return this.studentsService.recordMyResourceAccess(
+      request.user,
+      resourceId,
+    );
+  }
+
+  @Get('me/resources/:resourceId')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Get an authorized student document' })
+  @ApiParam({ name: 'resourceId', type: Number, example: 1 })
+  @ApiOkResponse({
+    description: 'Student document fetched successfully',
+    type: StudentResourceDetailResponseDto,
+  })
+  getMyResource(
+    @Req() request: AuthenticatedRequest,
+    @Param('resourceId', ParseIntPipe) resourceId: number,
+  ) {
+    return this.studentsService.getMyResource(request.user, resourceId);
+  }
+
   @Get('me')
   @Roles('STUDENT')
   @ApiOperation({ summary: 'Get authenticated student account and profile' })
@@ -113,10 +225,7 @@ export class StudentsController {
   @ApiOkResponse({ description: 'Student updated successfully' })
   @ApiConflictResponse({ description: 'Email or phone already exists' })
   @ApiNotFoundResponse({ description: 'Student not found' })
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateStudentDto,
-  ) {
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateStudentDto) {
     return this.studentsService.update(id, dto);
   }
 
