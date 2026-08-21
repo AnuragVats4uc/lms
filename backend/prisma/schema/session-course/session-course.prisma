@@ -24,6 +24,7 @@ model SessionCourse {
   studentCourseEnrollments StudentCourseEnrollment[]
   studentCourseProgress    StudentCourseProgress[]
   instructors              CourseInstructor[]
+  examAssignments          ExamSessionCourse[]
 
   @@unique([sessionId, courseId], map: "session_courses_session_id_course_id_unique")
   @@index([sessionId], map: "session_courses_session_id_idx")

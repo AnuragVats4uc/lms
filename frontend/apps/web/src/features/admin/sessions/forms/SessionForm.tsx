@@ -1,9 +1,13 @@
 import { useEffect } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormInput, FormTextArea, Text } from "@repo/ui";
 import { sessionSchema } from "@repo/validation";
-import { CrudFormSelect } from "../../components/crud";
+import {
+  CrudFormDateTimePicker,
+  CrudFormSelect,
+  fromLocalDateTimeValue,
+} from "../../components/crud";
 import type { SessionFormState } from "../types";
 
 export function SessionForm({
@@ -27,6 +31,11 @@ export function SessionForm({
   useEffect(() => {
     methods.reset(form);
   }, [form, methods]);
+
+  const startDate = useWatch({
+    control: methods.control,
+    name: "startDate",
+  });
 
   return (
     <FormProvider {...methods}>
@@ -53,14 +62,21 @@ export function SessionForm({
             />
           </div>
           <div className="lms-form-field">
-            <FormInput
+            <CrudFormDateTimePicker
               label="Start date"
               name="startDate"
-              type="datetime-local"
+              placeholder="Choose start date and time"
+              required
             />
           </div>
           <div className="lms-form-field">
-            <FormInput label="End date" name="endDate" type="datetime-local" />
+            <CrudFormDateTimePicker
+              label="End date"
+              minDate={fromLocalDateTimeValue(startDate)}
+              name="endDate"
+              placeholder="Choose end date and time"
+              required
+            />
           </div>
           <div className="lms-form-field">
             <CrudFormSelect

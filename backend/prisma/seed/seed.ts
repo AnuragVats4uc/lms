@@ -9,6 +9,10 @@ import {
   SessionStatus,
   CourseStatus,
   StudentNotificationType,
+  ExamStatus,
+  ExamTemplateStatus,
+  ExamTemplateVersionStatus,
+  QuestionStatus,
 } from '@prisma/client';
 
 import { PasswordService } from '../../src/modules/auth/services/password.service';
@@ -55,6 +59,11 @@ const permissionModules = [
   'folder',
   'resource',
   'dashboard',
+  'subject',
+  'question',
+  'exam-template',
+  'exam',
+  'exam-import',
 ] as const;
 
 const crudActions = ['create', 'read', 'update', 'delete'] as const;
@@ -142,7 +151,22 @@ async function main() {
 
   if (process.env.SEED_DASHBOARD === 'true') {
     console.log('Dashboard seed mode enabled: preserving existing data');
+    const rolesByCode = await seedRoles();
+    const permissionsByKey = await seedPermissions();
+    await assignPermissionsToRole(
+      rolesByCode.get('ADMIN')!.id,
+      defaultPermissions
+        .filter(
+          (permission) =>
+            !['organizations', 'roles', 'permissions'].includes(
+              permission.module,
+            ),
+        )
+        .map((permission) => permission.key),
+      permissionsByKey,
+    );
     await seedStudentDashboardDemo();
+    await seedDemoExamModule();
     console.log('Dashboard seed completed successfully');
     return;
   }
@@ -166,6 +190,18 @@ async function main() {
   await assignPermissionsToRole(
     rolesByCode.get('SUPER_ADMIN')!.id,
     defaultPermissions.map((permission) => permission.key),
+    permissionsByKey,
+  );
+  await assignPermissionsToRole(
+    rolesByCode.get('ADMIN')!.id,
+    defaultPermissions
+      .filter(
+        (permission) =>
+          !['organizations', 'roles', 'permissions'].includes(
+            permission.module,
+          ),
+      )
+      .map((permission) => permission.key),
     permissionsByKey,
   );
   const superAdmin = await seedSuperAdmin();
@@ -228,6 +264,21 @@ async function cleanOrganizationData() {
 
   await prisma.$transaction(
     async (tx) => {
+      await tx.examImportJob.deleteMany({
+        where: { organizationId: { in: organizationIds } },
+      });
+      await tx.exam.deleteMany({
+        where: { organizationId: { in: organizationIds } },
+      });
+      await tx.examTemplate.deleteMany({
+        where: { organizationId: { in: organizationIds } },
+      });
+      await tx.question.deleteMany({
+        where: { organizationId: { in: organizationIds } },
+      });
+      await tx.subject.deleteMany({
+        where: { organizationId: { in: organizationIds } },
+      });
       if (userIds.length) {
         await tx.refreshToken.deleteMany({
           where: { userId: { in: userIds } },
@@ -1065,6 +1116,375 @@ async function findSeedFolders() {
   });
 }
 
+async function seedDemoExamModule() {
+  const questionTypeIds = {
+    SINGLE_CHOICE: 1,
+    NUMERIC: 2,
+    ONE_WORD: 3,
+  } as const;
+  const questionTypeSeeds = [
+    {
+      id: questionTypeIds.SINGLE_CHOICE,
+      code: 'SINGLE_CHOICE',
+      name: 'Single Answer',
+      description: 'Options are provided and exactly one option is correct.',
+    },
+    {
+      id: questionTypeIds.NUMERIC,
+      code: 'NUMERIC',
+      name: 'Numeric Answer',
+      description:
+        'A numeric response is evaluated with an optional tolerance.',
+    },
+    {
+      id: questionTypeIds.ONE_WORD,
+      code: 'ONE_WORD',
+      name: 'One Word Answer',
+      description:
+        'A text response is matched against one or more accepted answers.',
+    },
+  ] as const;
+  for (const questionType of questionTypeSeeds) {
+    await prisma.questionType.upsert({
+      where: { id: questionType.id },
+      update: {
+        code: questionType.code,
+        name: questionType.name,
+        description: questionType.description,
+        isActive: true,
+      },
+      create: questionType,
+    });
+  }
+
+  const organization = await prisma.organization.findUnique({
+    where: { code: 'LMS-DEMO' },
+  });
+  if (!organization) return;
+  const session = await prisma.session.findFirst({
+    where: { organizationId: organization.id, code: 'IPMAT-2027' },
+  });
+  if (!session) return;
+  const sessionCourses = await prisma.sessionCourse.findMany({
+    where: { sessionId: session.id, isActive: true },
+    include: { course: true, folders: { where: { isActive: true }, take: 1 } },
+    orderBy: { sortOrder: 'asc' },
+  });
+  if (!sessionCourses.length) return;
+
+  const subjectSeeds = [
+    ['ENGLISH', 'English Language'],
+    ['MATHEMATICS', 'Quantitative Aptitude'],
+    ['REASONING', 'Logical Reasoning'],
+  ] as const;
+  const subjects = new Map<string, { id: number }>();
+  for (const [code, name] of subjectSeeds) {
+    const subject = await prisma.subject.upsert({
+      where: { organizationId_code: { organizationId: organization.id, code } },
+      update: { name, isActive: true },
+      create: {
+        organizationId: organization.id,
+        code,
+        name,
+        description: `${name} questions for competitive entrance exams.`,
+      },
+      select: { id: true },
+    });
+    subjects.set(code, subject);
+  }
+
+  const questionSeeds: Array<{
+    code: string;
+    subject: string;
+    type: keyof typeof questionTypeIds;
+    content: string;
+    answer: string;
+    options?: Array<[string, string]>;
+  }> = [
+    {
+      code: 'ENG-SC-001',
+      subject: 'ENGLISH',
+      type: 'SINGLE_CHOICE',
+      content: 'Choose the word closest in meaning to “concise”.',
+      answer: 'A',
+      options: [
+        ['A', 'Brief'],
+        ['B', 'Lengthy'],
+        ['C', 'Unclear'],
+        ['D', 'Ancient'],
+      ],
+    },
+    {
+      code: 'ENG-OW-001',
+      subject: 'ENGLISH',
+      type: 'ONE_WORD',
+      content: 'Write one word meaning “a person who loves books”.',
+      answer: 'bibliophile',
+    },
+    {
+      code: 'MAT-NUM-001',
+      subject: 'MATHEMATICS',
+      type: 'NUMERIC',
+      content: 'What is 15% of 240?',
+      answer: '36',
+    },
+    {
+      code: 'MAT-SC-001',
+      subject: 'MATHEMATICS',
+      type: 'SINGLE_CHOICE',
+      content: 'If 2x + 5 = 17, what is x?',
+      answer: 'C',
+      options: [
+        ['A', '4'],
+        ['B', '5'],
+        ['C', '6'],
+        ['D', '7'],
+      ],
+    },
+    {
+      code: 'REA-SC-001',
+      subject: 'REASONING',
+      type: 'SINGLE_CHOICE',
+      content: 'Complete the series: 2, 6, 12, 20, __.',
+      answer: 'D',
+      options: [
+        ['A', '24'],
+        ['B', '26'],
+        ['C', '28'],
+        ['D', '30'],
+      ],
+    },
+    {
+      code: 'REA-OW-001',
+      subject: 'REASONING',
+      type: 'ONE_WORD',
+      content:
+        'If all pens are tools and some tools are blue, can we conclude all pens are blue? Answer yes or no.',
+      answer: 'no',
+    },
+  ];
+  const questionVersions = new Map<string, number>();
+  for (const seed of questionSeeds) {
+    let question = await prisma.question.findUnique({
+      where: {
+        organizationId_code: {
+          organizationId: organization.id,
+          code: seed.code,
+        },
+      },
+      include: { versions: { orderBy: { versionNumber: 'desc' }, take: 1 } },
+    });
+    if (!question) {
+      question = await prisma.question.create({
+        data: {
+          organizationId: organization.id,
+          subjectId: subjects.get(seed.subject)!.id,
+          code: seed.code,
+          status: QuestionStatus.PUBLISHED,
+          versions: {
+            create: {
+              versionNumber: 1,
+              questionTypeId: questionTypeIds[seed.type],
+              content: seed.content,
+              defaultMarks: 5,
+              defaultNegativeMarks: seed.type === 'SINGLE_CHOICE' ? 1 : 0,
+              isPublished: true,
+              options: seed.options?.length
+                ? {
+                    create: seed.options.map(([code, content], sortOrder) => ({
+                      code,
+                      content,
+                      isCorrect: code === seed.answer,
+                      sortOrder,
+                    })),
+                  }
+                : undefined,
+              acceptedAnswers:
+                seed.type !== 'SINGLE_CHOICE'
+                  ? {
+                      create: [
+                        {
+                          textValue:
+                            seed.type === 'ONE_WORD' ? seed.answer : undefined,
+                          normalizedText:
+                            seed.type === 'ONE_WORD'
+                              ? seed.answer.toLowerCase()
+                              : undefined,
+                          numericValue:
+                            seed.type === 'NUMERIC' ? seed.answer : undefined,
+                          numericTolerance:
+                            seed.type === 'NUMERIC' ? 0 : undefined,
+                          isPrimary: true,
+                        },
+                      ],
+                    }
+                  : undefined,
+            },
+          },
+        },
+        include: { versions: true },
+      });
+    }
+    questionVersions.set(seed.code, question.versions[0].id);
+  }
+
+  const template = await prisma.examTemplate.upsert({
+    where: {
+      organizationId_code: {
+        organizationId: organization.id,
+        code: 'CUET-DEMO',
+      },
+    },
+    update: {
+      name: 'CUET General Test Template',
+      status: ExamTemplateStatus.PUBLISHED,
+      isActive: true,
+    },
+    create: {
+      organizationId: organization.id,
+      code: 'CUET-DEMO',
+      name: 'CUET General Test Template',
+      description:
+        'A timed CUET-style exam with language, quantitative aptitude, and reasoning sections.',
+      status: ExamTemplateStatus.PUBLISHED,
+    },
+  });
+  let version = await prisma.examTemplateVersion.findUnique({
+    where: {
+      examTemplateId_versionNumber: {
+        examTemplateId: template.id,
+        versionNumber: 1,
+      },
+    },
+    include: { slots: true },
+  });
+  if (!version) {
+    version = await prisma.examTemplateVersion.create({
+      data: {
+        examTemplateId: template.id,
+        versionNumber: 1,
+        defaultDurationMinutes: 90,
+        status: ExamTemplateVersionStatus.PUBLISHED,
+        publishedAt: new Date(),
+        instructions: 'Complete each timed section before it closes.',
+      },
+      include: { slots: true },
+    });
+  }
+  if (!version.slots.length) {
+    await prisma.examTemplateSlot.create({
+      data: {
+        examTemplateVersionId: version.id,
+        code: 'CUET_SLOT_1',
+        name: 'CUET Slot 1',
+        durationMinutes: 90,
+        sections: {
+          create: subjectSeeds.map(
+            ([subjectCode, subjectName], sectionIndex) => ({
+              code:
+                subjectCode === 'ENGLISH'
+                  ? 'LANGUAGE'
+                  : subjectCode === 'MATHEMATICS'
+                    ? 'QUANT'
+                    : 'REASONING',
+              name: subjectName,
+              durationMinutes: 30,
+              questionsToAttempt: 2,
+              sortOrder: sectionIndex,
+              subjects: {
+                create: [
+                  {
+                    subjectId: subjects.get(subjectCode)!.id,
+                    questions: {
+                      create: questionSeeds
+                        .filter((question) => question.subject === subjectCode)
+                        .map((question, sortOrder) => ({
+                          questionVersionId: questionVersions.get(
+                            question.code,
+                          )!,
+                          marks: 5,
+                          negativeMarks:
+                            question.type === 'SINGLE_CHOICE' ? 1 : 0,
+                          sortOrder,
+                        })),
+                    },
+                  },
+                ],
+              },
+            }),
+          ),
+        },
+      },
+    });
+    version = await prisma.examTemplateVersion.findUniqueOrThrow({
+      where: { id: version.id },
+      include: { slots: true },
+    });
+  }
+
+  const selectedSlot = version.slots[0];
+  const exam = await prisma.exam.upsert({
+    where: {
+      organizationId_code: {
+        organizationId: organization.id,
+        code: 'CUET-MOCK-01',
+      },
+    },
+    update: {
+      title: 'CUET Full-Length Mock Test 01',
+      attemptLimit: 2,
+      isActive: true,
+    },
+    create: {
+      organizationId: organization.id,
+      sessionId: session.id,
+      examTemplateVersionId: version.id,
+      code: 'CUET-MOCK-01',
+      title: 'CUET Full-Length Mock Test 01',
+      instructions:
+        'One 90-minute slot with separately timed subject sections. Two attempts are allowed.',
+      availableFrom: new Date('2026-08-20T00:00:00.000Z'),
+      availableUntil: new Date('2027-03-31T23:59:59.000Z'),
+      durationMinutes: 90,
+      attemptLimit: 2,
+      status: ExamStatus.SCHEDULED,
+      selectedSlots: { create: [{ examTemplateSlotId: selectedSlot.id }] },
+      courseAssignments: {
+        create: sessionCourses
+          .slice(0, 3)
+          .map((course) => ({ sessionCourseId: course.id })),
+      },
+    },
+  });
+  const folder = sessionCourses.find((course) => course.folders.length)
+    ?.folders[0];
+  if (folder) {
+    const existingResource = await prisma.resource.findFirst({
+      where: { examId: exam.id },
+    });
+    const resourceData = {
+      folderId: folder.id,
+      resourceTypeId: RESOURCE_TYPE_IDS.EXAM,
+      examId: exam.id,
+      title: exam.title,
+      description: exam.instructions,
+      status: ResourceStatus.PUBLISHED,
+      isPublished: true,
+      isDownloadable: false,
+      isActive: true,
+    };
+    if (existingResource)
+      await prisma.resource.update({
+        where: { id: existingResource.id },
+        data: resourceData,
+      });
+    else await prisma.resource.create({ data: resourceData });
+  }
+  console.log(
+    'Exam module seed completed: 3 subjects, 6 questions, 1 template, 1 slot, 3 sections, and 1 scheduled exam',
+  );
+}
+
 function sessionStatusForIndex(index: number): SessionStatus {
   if (index < 2) return SessionStatus.COMPLETED;
   if (index === 2) return SessionStatus.ACTIVE;
@@ -1073,9 +1493,7 @@ function sessionStatusForIndex(index: number): SessionStatus {
 }
 
 function resourceTypeForIndex(index: number): ResourceTypeId {
-  if (index % 3 === 0) return RESOURCE_TYPE_IDS.DOCUMENT;
-  if (index % 3 === 1) return RESOURCE_TYPE_IDS.VIDEO;
-  return RESOURCE_TYPE_IDS.EXAM;
+  return index % 2 === 0 ? RESOURCE_TYPE_IDS.DOCUMENT : RESOURCE_TYPE_IDS.VIDEO;
 }
 
 function resourceStatusForIndex(index: number): ResourceStatus {

@@ -1,0 +1,527 @@
+model QuestionType {
+  id          Int      @id
+  code        String   @unique @db.VarChar(40)
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  questionVersions QuestionVersion[]
+  importRows       ExamImportRow[]
+
+  @@map("question_types")
+}
+
+model Subject {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  organizationId Int      @map("organization_id")
+  code           String   @db.VarChar(40)
+  name           String   @db.VarChar(150)
+  description    String?  @db.Text
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization    Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  questions       Question[]
+  sectionSubjects ExamTemplateSectionSubject[]
+  importJobs      ExamImportJob[]
+
+  @@unique([organizationId, code], map: "subjects_organization_id_code_unique")
+  @@unique([organizationId, name], map: "subjects_organization_id_name_unique")
+  @@index([organizationId, isActive], map: "subjects_organization_id_is_active_idx")
+  @@map("subjects")
+}
+
+model Question {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  organizationId Int            @map("organization_id")
+  subjectId      Int            @map("subject_id")
+  code           String         @db.VarChar(80)
+  status         QuestionStatus @default(DRAFT)
+  isActive       Boolean        @default(true) @map("is_active")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subject      Subject           @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  versions     QuestionVersion[]
+
+  @@unique([organizationId, code], map: "questions_organization_id_code_unique")
+  @@index([subjectId], map: "questions_subject_id_idx")
+  @@index([organizationId, status, isActive], map: "questions_scope_status_idx")
+  @@map("questions")
+}
+
+model QuestionVersion {
+  id                   Int      @id @default(autoincrement())
+  questionId           Int      @map("question_id")
+  questionTypeId       Int      @map("question_type_id")
+  comprehensionId      Int?     @map("comprehension_id")
+  versionNumber        Int      @map("version_number")
+  content              String   @db.LongText
+  explanation          String?  @db.LongText
+  defaultMarks         Decimal  @default(1) @map("default_marks") @db.Decimal(8, 2)
+  defaultNegativeMarks Decimal  @default(0) @map("default_negative_marks") @db.Decimal(8, 2)
+  caseSensitive        Boolean  @default(false) @map("case_sensitive")
+  normalizeWhitespace  Boolean  @default(true) @map("normalize_whitespace")
+  isPublished          Boolean  @default(false) @map("is_published")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  question          Question                 @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionType      QuestionType             @relation(fields: [questionTypeId], references: [id], onDelete: Restrict)
+  comprehension     QuestionComprehension?   @relation(fields: [comprehensionId], references: [id], onDelete: SetNull)
+  options           QuestionOption[]
+  acceptedAnswers   QuestionAcceptedAnswer[]
+  templateQuestions ExamTemplateQuestion[]
+
+  @@unique([questionId, versionNumber], map: "question_versions_question_id_version_unique")
+  @@index([questionTypeId], map: "question_versions_type_idx")
+  @@index([comprehensionId], map: "question_versions_comprehension_idx")
+  @@map("question_versions")
+}
+
+model QuestionComprehension {
+  id             Int      @id @default(autoincrement())
+  uuid           String   @unique @default(uuid())
+  organizationId Int      @map("organization_id")
+  code           String   @db.VarChar(80)
+  content        String   @db.LongText
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  questionVersions QuestionVersion[]
+
+  @@unique([organizationId, code], map: "question_comprehensions_organization_code_unique")
+  @@index([organizationId, isActive], map: "question_comprehensions_scope_idx")
+  @@map("question_comprehensions")
+}
+
+model QuestionOption {
+  id                Int     @id @default(autoincrement())
+  questionVersionId Int     @map("question_version_id")
+  code              String  @db.VarChar(10)
+  content           String  @db.LongText
+  isCorrect         Boolean @default(false) @map("is_correct")
+  sortOrder         Int     @default(0) @map("sort_order")
+
+  questionVersion QuestionVersion           @relation(fields: [questionVersionId], references: [id], onDelete: Cascade)
+  selectedAnswers StudentExamAnswerOption[]
+
+  @@unique([questionVersionId, code], map: "question_options_version_code_unique")
+  @@index([questionVersionId, sortOrder], map: "question_options_version_order_idx")
+  @@map("question_options")
+}
+
+model QuestionAcceptedAnswer {
+  id                Int      @id @default(autoincrement())
+  questionVersionId Int      @map("question_version_id")
+  textValue         String?  @map("text_value") @db.VarChar(500)
+  normalizedText    String?  @map("normalized_text") @db.VarChar(500)
+  numericValue      Decimal? @map("numeric_value") @db.Decimal(18, 6)
+  numericTolerance  Decimal? @map("numeric_tolerance") @db.Decimal(18, 6)
+  isPrimary         Boolean  @default(false) @map("is_primary")
+  sortOrder         Int      @default(0) @map("sort_order")
+
+  questionVersion QuestionVersion @relation(fields: [questionVersionId], references: [id], onDelete: Cascade)
+
+  @@index([questionVersionId], map: "question_answers_version_idx")
+  @@map("question_accepted_answers")
+}
+
+model ExamTemplate {
+  id             Int                @id @default(autoincrement())
+  uuid           String             @unique @default(uuid())
+  organizationId Int                @map("organization_id")
+  code           String             @db.VarChar(60)
+  name           String             @db.VarChar(180)
+  description    String?            @db.Text
+  status         ExamTemplateStatus @default(DRAFT)
+  isActive       Boolean            @default(true) @map("is_active")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  versions     ExamTemplateVersion[]
+
+  @@unique([organizationId, code], map: "exam_templates_organization_id_code_unique")
+  @@index([organizationId, status, isActive], map: "exam_templates_scope_status_idx")
+  @@map("exam_templates")
+}
+
+model ExamTemplateVersion {
+  id                     Int                       @id @default(autoincrement())
+  examTemplateId         Int                       @map("exam_template_id")
+  versionNumber          Int                       @map("version_number")
+  instructions           String?                   @db.LongText
+  defaultDurationMinutes Int?                      @map("default_duration_minutes")
+  status                 ExamTemplateVersionStatus @default(DRAFT)
+  publishedAt            DateTime?                 @map("published_at")
+  createdAt              DateTime                  @default(now()) @map("created_at")
+  updatedAt              DateTime                  @updatedAt @map("updated_at")
+
+  examTemplate ExamTemplate       @relation(fields: [examTemplateId], references: [id], onDelete: Cascade)
+  slots        ExamTemplateSlot[]
+  exams        Exam[]
+  importJobs   ExamImportJob[]
+
+  @@unique([examTemplateId, versionNumber], map: "exam_template_versions_template_version_unique")
+  @@index([status], map: "exam_template_versions_status_idx")
+  @@map("exam_template_versions")
+}
+
+model ExamTemplateSlot {
+  id                    Int                @id @default(autoincrement())
+  examTemplateVersionId Int                @map("exam_template_version_id")
+  code                  String             @db.VarChar(60)
+  name                  String             @db.VarChar(150)
+  description           String?            @db.Text
+  instructions          String?            @db.LongText
+  durationMinutes       Int                @map("duration_minutes")
+  navigationMode        ExamNavigationMode @default(FREE) @map("navigation_mode")
+  autoSubmitOnTimeout   Boolean            @default(true) @map("auto_submit_on_timeout")
+  sortOrder             Int                @default(0) @map("sort_order")
+  isActive              Boolean            @default(true) @map("is_active")
+
+  examTemplateVersion ExamTemplateVersion   @relation(fields: [examTemplateVersionId], references: [id], onDelete: Cascade)
+  sections            ExamTemplateSection[]
+  selectedBy          ExamSelectedSlot[]
+  importJobs          ExamImportJob[]
+
+  @@unique([examTemplateVersionId, code], map: "exam_template_slots_version_code_unique")
+  @@index([examTemplateVersionId, sortOrder], map: "exam_template_slots_version_order_idx")
+  @@map("exam_template_slots")
+}
+
+model ExamTemplateSection {
+  id                  Int                @id @default(autoincrement())
+  examTemplateSlotId  Int                @map("exam_template_slot_id")
+  code                String             @db.VarChar(60)
+  name                String             @db.VarChar(150)
+  instructions        String?            @db.LongText
+  durationMinutes     Int                @map("duration_minutes")
+  questionsToAttempt  Int?               @map("questions_to_attempt")
+  randomizeQuestions  Boolean            @default(false) @map("randomize_questions")
+  randomizeOptions    Boolean            @default(false) @map("randomize_options")
+  navigationMode      ExamNavigationMode @default(FREE) @map("navigation_mode")
+  allowReview         Boolean            @default(true) @map("allow_review")
+  autoSubmitOnTimeout Boolean            @default(true) @map("auto_submit_on_timeout")
+  sortOrder           Int                @default(0) @map("sort_order")
+  isActive            Boolean            @default(true) @map("is_active")
+
+  examTemplateSlot ExamTemplateSlot             @relation(fields: [examTemplateSlotId], references: [id], onDelete: Cascade)
+  subjects         ExamTemplateSectionSubject[]
+  attemptProgress  StudentExamSectionAttempt[]
+  importJobs       ExamImportJob[]
+
+  @@unique([examTemplateSlotId, code], map: "exam_template_sections_slot_code_unique")
+  @@index([examTemplateSlotId, sortOrder], map: "exam_template_sections_slot_order_idx")
+  @@map("exam_template_sections")
+}
+
+model ExamTemplateSectionSubject {
+  id                    Int     @id @default(autoincrement())
+  examTemplateSectionId Int     @map("exam_template_section_id")
+  subjectId             Int     @map("subject_id")
+  isMandatory           Boolean @default(true) @map("is_mandatory")
+  sortOrder             Int     @default(0) @map("sort_order")
+
+  examTemplateSection ExamTemplateSection    @relation(fields: [examTemplateSectionId], references: [id], onDelete: Cascade)
+  subject             Subject                @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  questions           ExamTemplateQuestion[]
+
+  @@unique([examTemplateSectionId, subjectId], map: "exam_section_subjects_section_subject_unique")
+  @@index([subjectId], map: "exam_section_subjects_subject_idx")
+  @@map("exam_template_section_subjects")
+}
+
+model ExamTemplateQuestion {
+  id                           Int     @id @default(autoincrement())
+  examTemplateSectionSubjectId Int     @map("exam_template_section_subject_id")
+  questionVersionId            Int     @map("question_version_id")
+  marks                        Decimal @db.Decimal(8, 2)
+  negativeMarks                Decimal @default(0) @map("negative_marks") @db.Decimal(8, 2)
+  isMandatory                  Boolean @default(true) @map("is_mandatory")
+  sortOrder                    Int     @default(0) @map("sort_order")
+
+  sectionSubject  ExamTemplateSectionSubject @relation(fields: [examTemplateSectionSubjectId], references: [id], onDelete: Cascade)
+  questionVersion QuestionVersion            @relation(fields: [questionVersionId], references: [id], onDelete: Restrict)
+  answers         StudentExamAnswer[]
+
+  @@unique([examTemplateSectionSubjectId, questionVersionId], map: "exam_template_questions_section_question_unique")
+  @@index([questionVersionId], map: "exam_template_questions_version_idx")
+  @@map("exam_template_questions")
+}
+
+model Exam {
+  id                    Int        @id @default(autoincrement())
+  uuid                  String     @unique @default(uuid())
+  organizationId        Int        @map("organization_id")
+  sessionId             Int        @map("session_id")
+  examTemplateVersionId Int        @map("exam_template_version_id")
+  code                  String     @db.VarChar(80)
+  title                 String     @db.VarChar(200)
+  instructions          String?    @db.LongText
+  availableFrom         DateTime   @map("available_from")
+  availableUntil        DateTime   @map("available_until")
+  durationMinutes       Int        @map("duration_minutes")
+  attemptLimit          Int        @default(1) @map("attempt_limit")
+  autoSubmitOnTimeout   Boolean    @default(true) @map("auto_submit_on_timeout")
+  resultPublishAt       DateTime?  @map("result_publish_at")
+  status                ExamStatus @default(DRAFT)
+  isActive              Boolean    @default(true) @map("is_active")
+  createdAt             DateTime   @default(now()) @map("created_at")
+  updatedAt             DateTime   @updatedAt @map("updated_at")
+
+  organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  session           Session              @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  templateVersion   ExamTemplateVersion  @relation(fields: [examTemplateVersionId], references: [id], onDelete: Restrict)
+  selectedSlots     ExamSelectedSlot[]
+  courseAssignments ExamSessionCourse[]
+  resources         Resource[]
+  attempts          StudentExamAttempt[]
+
+  @@unique([organizationId, code], map: "exams_organization_id_code_unique")
+  @@index([sessionId, status], map: "exams_session_id_status_idx")
+  @@index([examTemplateVersionId], map: "exams_template_version_idx")
+  @@map("exams")
+}
+
+model ExamSelectedSlot {
+  id                      Int  @id @default(autoincrement())
+  examId                  Int  @map("exam_id")
+  examTemplateSlotId      Int  @map("exam_template_slot_id")
+  durationMinutesOverride Int? @map("duration_minutes_override")
+  sortOrder               Int  @default(0) @map("sort_order")
+
+  exam            Exam                     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  templateSlot    ExamTemplateSlot         @relation(fields: [examTemplateSlotId], references: [id], onDelete: Restrict)
+  attemptProgress StudentExamSlotAttempt[]
+
+  @@unique([examId, examTemplateSlotId], map: "exam_selected_slots_exam_slot_unique")
+  @@index([examTemplateSlotId], map: "exam_selected_slots_slot_idx")
+  @@map("exam_selected_slots")
+}
+
+model ExamSessionCourse {
+  id              Int @id @default(autoincrement())
+  examId          Int @map("exam_id")
+  sessionCourseId Int @map("session_course_id")
+
+  exam          Exam          @relation(fields: [examId], references: [id], onDelete: Cascade)
+  sessionCourse SessionCourse @relation(fields: [sessionCourseId], references: [id], onDelete: Restrict)
+
+  @@unique([examId, sessionCourseId], map: "exam_session_courses_exam_course_unique")
+  @@index([sessionCourseId], map: "exam_session_courses_course_idx")
+  @@map("exam_session_courses")
+}
+
+model ExamImportJob {
+  id                    Int              @id @default(autoincrement())
+  uuid                  String           @unique @default(uuid())
+  importFingerprint     String?          @unique @map("import_fingerprint") @db.VarChar(64)
+  organizationId        Int              @map("organization_id")
+  examTemplateVersionId Int              @map("exam_template_version_id")
+  examTemplateSlotId    Int?             @map("exam_template_slot_id")
+  examTemplateSectionId Int?             @map("exam_template_section_id")
+  subjectId             Int?             @map("subject_id")
+  uploadedById          Int              @map("uploaded_by_id")
+  scope                 ExamImportScope
+  status                ExamImportStatus @default(UPLOADED)
+  totalRows             Int              @default(0) @map("total_rows")
+  validRows             Int              @default(0) @map("valid_rows")
+  warningRows           Int              @default(0) @map("warning_rows")
+  errorRows             Int              @default(0) @map("error_rows")
+  errorSummary          String?          @map("error_summary") @db.Text
+  importedAt            DateTime?        @map("imported_at")
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+
+  organization    Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  templateVersion ExamTemplateVersion  @relation(fields: [examTemplateVersionId], references: [id], onDelete: Cascade)
+  templateSlot    ExamTemplateSlot?    @relation(fields: [examTemplateSlotId], references: [id], onDelete: SetNull)
+  templateSection ExamTemplateSection? @relation(fields: [examTemplateSectionId], references: [id], onDelete: SetNull)
+  subject         Subject?             @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  uploadedBy      User                 @relation("ExamImportUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+  rows            ExamImportRow[]
+  errors          ExamImportError[]
+  files           ExamImportFile[]
+
+  @@index([organizationId, status], map: "exam_import_jobs_scope_status_idx")
+  @@index([examTemplateVersionId], map: "exam_import_jobs_version_idx")
+  @@map("exam_import_jobs")
+}
+
+model ExamImportFile {
+  id               Int                @id @default(autoincrement())
+  examImportJobId  Int                @map("exam_import_job_id")
+  kind             ExamImportFileKind
+  originalFileName String             @map("original_file_name") @db.VarChar(255)
+  storagePath      String             @map("storage_path") @db.VarChar(500)
+  fileHash         String             @map("file_hash") @db.VarChar(64)
+  mimeType         String             @map("mime_type") @db.VarChar(120)
+  sizeBytes        Int                @map("size_bytes")
+  createdAt        DateTime           @default(now()) @map("created_at")
+
+  importJob ExamImportJob @relation(fields: [examImportJobId], references: [id], onDelete: Cascade)
+
+  @@unique([examImportJobId, kind], map: "exam_import_files_job_kind_unique")
+  @@index([fileHash], map: "exam_import_files_hash_idx")
+  @@map("exam_import_files")
+}
+
+model ExamImportRow {
+  id                  Int                 @id @default(autoincrement())
+  examImportJobId     Int                 @map("exam_import_job_id")
+  sourceIndex         Int                 @map("source_index")
+  slotCode            String?             @map("slot_code") @db.VarChar(60)
+  sectionCode         String?             @map("section_code") @db.VarChar(60)
+  subjectCode         String?             @map("subject_code") @db.VarChar(40)
+  questionCode        String?             @map("question_code") @db.VarChar(80)
+  questionTypeId      Int?                @map("question_type_id")
+  rawQuestionTypeId   Int?                @map("raw_question_type_id")
+  comprehensionCode   String?             @map("comprehension_code") @db.VarChar(80)
+  comprehensionText   String?             @map("comprehension_text") @db.LongText
+  questionText        String?             @map("question_text") @db.LongText
+  marks               Decimal?            @db.Decimal(8, 2)
+  negativeMarks       Decimal?            @map("negative_marks") @db.Decimal(8, 2)
+  sortOrder           Int?                @map("sort_order")
+  isMandatory         Boolean             @default(true) @map("is_mandatory")
+  correctAnswer       String?             @map("correct_answer") @db.Text
+  numericTolerance    Decimal?            @map("numeric_tolerance") @db.Decimal(18, 6)
+  caseSensitive       Boolean             @default(false) @map("case_sensitive")
+  explanation         String?             @db.LongText
+  optionsJson         Json?               @map("options_json")
+  acceptedAnswersJson Json?               @map("accepted_answers_json")
+  rawData             Json?               @map("raw_data")
+  status              ExamImportRowStatus @default(VALID)
+  validationMessage   String?             @map("validation_message") @db.Text
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  importJob    ExamImportJob @relation(fields: [examImportJobId], references: [id], onDelete: Cascade)
+  questionType QuestionType? @relation(fields: [questionTypeId], references: [id], onDelete: Restrict)
+
+  @@unique([examImportJobId, sourceIndex], map: "exam_import_rows_job_source_unique")
+  @@index([examImportJobId, status], map: "exam_import_rows_job_status_idx")
+  @@index([questionTypeId], map: "exam_import_rows_question_type_idx")
+  @@map("exam_import_rows")
+}
+
+model ExamImportError {
+  id              Int      @id @default(autoincrement())
+  examImportJobId Int      @map("exam_import_job_id")
+  sourceIndex     Int?     @map("source_index")
+  fieldName       String?  @map("field_name") @db.VarChar(80)
+  errorCode       String   @map("error_code") @db.VarChar(80)
+  message         String   @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  importJob ExamImportJob @relation(fields: [examImportJobId], references: [id], onDelete: Cascade)
+
+  @@index([examImportJobId], map: "exam_import_errors_job_idx")
+  @@map("exam_import_errors")
+}
+
+model StudentExamAttempt {
+  id                         Int                   @id @default(autoincrement())
+  uuid                       String                @unique @default(uuid())
+  studentId                  Int                   @map("student_id")
+  examId                     Int                   @map("exam_id")
+  attemptNumber              Int                   @map("attempt_number")
+  status                     ExamAttemptStatus     @default(IN_PROGRESS)
+  startedAt                  DateTime              @default(now()) @map("started_at")
+  expiresAt                  DateTime              @map("expires_at")
+  submittedAt                DateTime?             @map("submitted_at")
+  durationSeconds            Int                   @default(0) @map("duration_seconds")
+  remainingSecondsAtLastSave Int?                  @map("remaining_seconds_at_last_save")
+  submissionReason           ExamSubmissionReason? @map("submission_reason")
+  score                      Decimal?              @db.Decimal(10, 2)
+  maximumScore               Decimal?              @map("maximum_score") @db.Decimal(10, 2)
+  createdAt                  DateTime              @default(now()) @map("created_at")
+  updatedAt                  DateTime              @updatedAt @map("updated_at")
+
+  student      Student                  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  exam         Exam                     @relation(fields: [examId], references: [id], onDelete: Restrict)
+  slotProgress StudentExamSlotAttempt[]
+  answers      StudentExamAnswer[]
+
+  @@unique([studentId, examId, attemptNumber], map: "student_exam_attempts_student_exam_number_unique")
+  @@index([examId, status], map: "student_exam_attempts_exam_status_idx")
+  @@map("student_exam_attempts")
+}
+
+model StudentExamSlotAttempt {
+  id                   Int               @id @default(autoincrement())
+  studentExamAttemptId Int               @map("student_exam_attempt_id")
+  examSelectedSlotId   Int               @map("exam_selected_slot_id")
+  status               ExamAttemptStatus @default(IN_PROGRESS)
+  startedAt            DateTime?         @map("started_at")
+  expiresAt            DateTime?         @map("expires_at")
+  submittedAt          DateTime?         @map("submitted_at")
+  timeSpentSeconds     Int               @default(0) @map("time_spent_seconds")
+
+  attempt         StudentExamAttempt          @relation(fields: [studentExamAttemptId], references: [id], onDelete: Cascade)
+  selectedSlot    ExamSelectedSlot            @relation(fields: [examSelectedSlotId], references: [id], onDelete: Restrict)
+  sectionProgress StudentExamSectionAttempt[]
+
+  @@unique([studentExamAttemptId, examSelectedSlotId], map: "student_exam_slot_attempts_attempt_slot_unique")
+  @@map("student_exam_slot_attempts")
+}
+
+model StudentExamSectionAttempt {
+  id                       Int               @id @default(autoincrement())
+  studentExamSlotAttemptId Int               @map("student_exam_slot_attempt_id")
+  examTemplateSectionId    Int               @map("exam_template_section_id")
+  status                   ExamAttemptStatus @default(IN_PROGRESS)
+  startedAt                DateTime?         @map("started_at")
+  expiresAt                DateTime?         @map("expires_at")
+  submittedAt              DateTime?         @map("submitted_at")
+  timeSpentSeconds         Int               @default(0) @map("time_spent_seconds")
+
+  slotAttempt     StudentExamSlotAttempt @relation(fields: [studentExamSlotAttemptId], references: [id], onDelete: Cascade)
+  templateSection ExamTemplateSection    @relation(fields: [examTemplateSectionId], references: [id], onDelete: Restrict)
+
+  @@unique([studentExamSlotAttemptId, examTemplateSectionId], map: "student_exam_section_attempts_slot_section_unique")
+  @@map("student_exam_section_attempts")
+}
+
+model StudentExamAnswer {
+  id                     Int       @id @default(autoincrement())
+  studentExamAttemptId   Int       @map("student_exam_attempt_id")
+  examTemplateQuestionId Int       @map("exam_template_question_id")
+  textAnswer             String?   @map("text_answer") @db.Text
+  numericAnswer          Decimal?  @map("numeric_answer") @db.Decimal(18, 6)
+  isCorrect              Boolean?  @map("is_correct")
+  marksAwarded           Decimal?  @map("marks_awarded") @db.Decimal(8, 2)
+  answeredAt             DateTime? @map("answered_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  attempt          StudentExamAttempt        @relation(fields: [studentExamAttemptId], references: [id], onDelete: Cascade)
+  templateQuestion ExamTemplateQuestion      @relation(fields: [examTemplateQuestionId], references: [id], onDelete: Restrict)
+  selectedOptions  StudentExamAnswerOption[]
+
+  @@unique([studentExamAttemptId, examTemplateQuestionId], map: "student_exam_answers_attempt_question_unique")
+  @@map("student_exam_answers")
+}
+
+model StudentExamAnswerOption {
+  id                  Int @id @default(autoincrement())
+  studentExamAnswerId Int @map("student_exam_answer_id")
+  questionOptionId    Int @map("question_option_id")
+
+  answer         StudentExamAnswer @relation(fields: [studentExamAnswerId], references: [id], onDelete: Cascade)
+  questionOption QuestionOption    @relation(fields: [questionOptionId], references: [id], onDelete: Restrict)
+
+  @@unique([studentExamAnswerId, questionOptionId], map: "student_exam_answer_options_answer_option_unique")
+  @@map("student_exam_answer_options")
+}

@@ -73,3 +73,81 @@ enum StudentNotificationType {
   RESOURCE
   SYSTEM
 }
+
+enum ExamTemplateStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ExamTemplateVersionStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
+}
+
+enum QuestionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ExamNavigationMode {
+  FREE
+  SEQUENTIAL
+  LOCKED_AFTER_SUBMIT
+}
+
+enum ExamStatus {
+  DRAFT
+  SCHEDULED
+  LIVE
+  CLOSED
+  CANCELLED
+  ARCHIVED
+}
+
+enum ExamAttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  AUTO_SUBMITTED
+  EVALUATED
+  CANCELLED
+}
+
+enum ExamSubmissionReason {
+  STUDENT_SUBMITTED
+  EXAM_TIMEOUT
+  SLOT_TIMEOUT
+  SECTION_TIMEOUT
+  ADMIN_SUBMITTED
+}
+
+enum ExamImportFileKind {
+  CONTENT_DOCX
+  MAPPING_XLSX
+}
+
+enum ExamImportScope {
+  SINGLE_SECTION
+  FULL_EXAM
+}
+
+enum ExamImportStatus {
+  UPLOADED
+  PARSING
+  VALIDATION_FAILED
+  READY_FOR_REVIEW
+  IMPORTING
+  IMPORTED
+  FAILED
+  CANCELLED
+}
+
+enum ExamImportRowStatus {
+  VALID
+  WARNING
+  ERROR
+  IMPORTED
+  SKIPPED
+}

@@ -16,7 +16,14 @@ import {
   PanelLeftOpen,
   X,
 } from "lucide-react";
-import { Button, Text, XStack, YStack } from "@repo/ui";
+import {
+  Button,
+  Collapsible,
+  Text,
+  TooltipSimple,
+  XStack,
+  YStack,
+} from "@repo/ui";
 
 import type { NavigationItem } from "./navigation";
 
@@ -34,8 +41,19 @@ interface SidebarNavItemProps {
   depth?: number;
   isActive: boolean;
   isCollapsed: boolean;
+  isFocusable?: boolean;
   item: NavigationItem;
   onNavigate?: () => void;
+}
+
+interface NavigationGroup {
+  items: NavigationItem[];
+  label: string;
+}
+
+interface GroupExpansionOverride {
+  isOpen: boolean;
+  pathname: string;
 }
 
 function isNavigationActive(pathname: string, item: NavigationItem): boolean {
@@ -50,26 +68,28 @@ function isNavigationActive(pathname: string, item: NavigationItem): boolean {
 }
 
 function groupNavigationItems(items: NavigationItem[]) {
-  return items.reduce<Array<{ label: string; items: NavigationItem[] }>>(
-    (groups, item) => {
-      const label = item.group ?? "Navigation";
-      const existingGroup = groups.find((group) => group.label === label);
+  return items.reduce<NavigationGroup[]>((groups, item) => {
+    const label = item.group ?? "Navigation";
+    const existingGroup = groups.find((group) => group.label === label);
 
-      if (existingGroup) {
-        existingGroup.items.push(item);
-        return groups;
-      }
+    if (existingGroup) {
+      existingGroup.items.push(item);
+      return groups;
+    }
 
-      return [...groups, { items: [item], label }];
-    },
-    [],
-  );
+    return [...groups, { items: [item], label }];
+  }, []);
+}
+
+function isNavigationGroupActive(pathname: string, group: NavigationGroup) {
+  return group.items.some((item) => isNavigationActive(pathname, item));
 }
 
 function SidebarNavItem({
   depth = 0,
   isActive,
   isCollapsed,
+  isFocusable = true,
   item,
   onNavigate,
 }: SidebarNavItemProps) {
@@ -165,29 +185,46 @@ function SidebarNavItem({
     </XStack>
   );
 
+  const navigationControl = hasChildren ? (
+    <button
+      aria-label={isCollapsed ? item.label : undefined}
+      aria-expanded={isExpanded}
+      aria-current={isActive ? "page" : undefined}
+      className="lms-sidebar-link-button"
+      onClick={isCollapsed ? undefined : handleToggleChildren}
+      tabIndex={isFocusable ? undefined : -1}
+      type="button"
+    >
+      {itemContent}
+    </button>
+  ) : (
+    <Link
+      aria-label={isCollapsed ? item.label : undefined}
+      aria-current={isActive ? "page" : undefined}
+      className="lms-sidebar-link"
+      href={item.href}
+      onClick={onNavigate}
+      tabIndex={isFocusable ? undefined : -1}
+    >
+      {itemContent}
+    </Link>
+  );
+
   return (
-    <YStack gap="$1">
-      {hasChildren ? (
-        <button
-          aria-expanded={isExpanded}
-          aria-current={isActive ? "page" : undefined}
-          className="lms-sidebar-link-button"
-          onClick={isCollapsed ? undefined : handleToggleChildren}
-          title={isCollapsed ? item.label : undefined}
-          type="button"
+    <YStack className="lms-sidebar-nav-entry" gap="$1">
+      {isCollapsed ? (
+        <TooltipSimple
+          contentProps={{ className: "lms-sidebar-tooltip" }}
+          delay={220}
+          label={item.label}
+          placement="right"
         >
-          {itemContent}
-        </button>
+          <XStack className="lms-sidebar-tooltip-anchor">
+            {navigationControl}
+          </XStack>
+        </TooltipSimple>
       ) : (
-        <Link
-          aria-current={isActive ? "page" : undefined}
-          className="lms-sidebar-link"
-          href={item.href}
-          onClick={onNavigate}
-          title={isCollapsed ? item.label : undefined}
-        >
-          {itemContent}
-        </Link>
+        navigationControl
       )}
 
       {hasChildren && isExpanded && !isCollapsed ? (
@@ -208,17 +245,15 @@ function SidebarNavItem({
   );
 }
 
-function SidebarBrand({
-  isCollapsed,
-  title,
-}: {
-  isCollapsed: boolean;
-  title: string;
-}) {
+function SidebarBrand({ title }: { title: string }) {
   const isStudent = title.toLowerCase() === "student";
   const brandTitle = isStudent ? "The LMS" : `LMS ${title}`;
-  const brandSubtitle = isStudent ? "Student Learning Portal" : "Learning Management";
-  const href = isStudent ? "/student/dashboard" : `/${title.toLowerCase()}/dashboard`;
+  const brandSubtitle = isStudent
+    ? "Student Learning Portal"
+    : "Learning Management";
+  const href = isStudent
+    ? "/student/dashboard"
+    : `/${title.toLowerCase()}/dashboard`;
 
   return (
     <Link
@@ -227,9 +262,7 @@ function SidebarBrand({
       href={href}
     >
       <XStack
-        className={
-          isCollapsed ? "lms-sidebar-brand is-collapsed" : "lms-sidebar-brand"
-        }
+        className="lms-sidebar-brand"
         gap="$3"
         style={{ alignItems: "center", minWidth: 0 }}
       >
@@ -268,12 +301,10 @@ function SidebarBrand({
   );
 }
 
-function SidebarSupportCard({ isCollapsed }: { isCollapsed: boolean }) {
+function SidebarSupportCard() {
   return (
     <YStack
-      className={
-        isCollapsed ? "lms-sidebar-support is-collapsed" : "lms-sidebar-support"
-      }
+      className="lms-sidebar-support"
       gap="$3"
       p="$3"
       style={{
@@ -305,14 +336,14 @@ export function WorkspaceSidebar({
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
   });
-  const [isHovering, setIsHovering] = useState(false);
   const groupedNavigation = useMemo(
     () => groupNavigationItems(navigation),
     [navigation],
   );
-  const isDesktop = variant === "desktop";
-  const isVisuallyExpanded =
-    variant === "mobile" || !isCollapsed || (isDesktop && isHovering);
+  const [groupExpansionOverrides, setGroupExpansionOverrides] = useState<
+    Record<string, GroupExpansionOverride>
+  >({});
+  const isVisuallyExpanded = variant === "mobile" || !isCollapsed;
 
   const handleToggle = useCallback(() => {
     setIsCollapsed((current) => {
@@ -324,16 +355,6 @@ export function WorkspaceSidebar({
     });
   }, []);
 
-  const handleMouseEnter = useCallback(() => {
-    if (isDesktop && isCollapsed) {
-      setIsHovering(true);
-    }
-  }, [isCollapsed, isDesktop]);
-
-  const handleMouseLeave = useCallback(() => {
-    setIsHovering(false);
-  }, []);
-
   const sidebarBody: ReactNode = (
     <YStack
       className={[
@@ -343,8 +364,6 @@ export function WorkspaceSidebar({
       ]
         .filter(Boolean)
         .join(" ")}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
       p="$4"
       role="navigation"
       style={{
@@ -359,7 +378,7 @@ export function WorkspaceSidebar({
         className="lms-sidebar-topbar"
         style={{ alignItems: "center", justifyContent: "space-between" }}
       >
-        <SidebarBrand isCollapsed={!isVisuallyExpanded} title={title} />
+        {isVisuallyExpanded ? <SidebarBrand title={title} /> : null}
 
         {variant === "mobile" ? (
           <Button
@@ -403,36 +422,96 @@ export function WorkspaceSidebar({
         role="menu"
         style={{ flex: 1, minHeight: 0, overflowY: "auto" }}
       >
-        {groupedNavigation.map((group) => (
-          <YStack gap="$2" key={group.label}>
-            <Text
-              className="lms-sidebar-group-label"
-              color="#8A97AA"
-              fontSize={10}
-              fontWeight="$button"
-              letterSpacing={0.8}
-              numberOfLines={1}
-              textTransform="uppercase"
-            >
-              {group.label}
-            </Text>
+        {groupedNavigation.map((group) => {
+          const groupOverride = groupExpansionOverrides[group.label];
+          const isGroupExpanded =
+            groupOverride?.pathname === pathname
+              ? groupOverride.isOpen
+              : isNavigationGroupActive(pathname, group);
 
-            <YStack gap="$1">
+          return isVisuallyExpanded ? (
+            <Collapsible
+              className="lms-sidebar-group"
+              key={group.label}
+              onOpenChange={(isOpen) =>
+                setGroupExpansionOverrides((current) => ({
+                  ...current,
+                  [group.label]: { isOpen, pathname },
+                }))
+              }
+              open={isGroupExpanded}
+            >
+              <Collapsible.Trigger className="lms-sidebar-group-trigger">
+                <XStack
+                  className="lms-sidebar-group-trigger-row"
+                  style={{
+                    alignItems: "center",
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    minWidth: 0,
+                    width: "100%",
+                  }}
+                >
+                  <Text
+                    className="lms-sidebar-group-label"
+                    color="#8A97AA"
+                    fontSize={10}
+                    fontWeight="$button"
+                    letterSpacing={0.8}
+                    numberOfLines={1}
+                    textTransform="uppercase"
+                  >
+                    {group.label}
+                  </Text>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className="lms-sidebar-group-chevron"
+                    color="#7A8799"
+                    size={14}
+                  />
+                </XStack>
+              </Collapsible.Trigger>
+
+              <Collapsible.Content
+                aria-hidden={!isGroupExpanded}
+                className="lms-sidebar-group-content"
+                forceMount
+              >
+                <YStack className="lms-sidebar-group-items" gap="$1">
+                  {group.items.map((item) => (
+                    <SidebarNavItem
+                      isActive={isNavigationActive(pathname, item)}
+                      isCollapsed={false}
+                      isFocusable={isGroupExpanded}
+                      item={item}
+                      key={item.href}
+                      onNavigate={onMobileClose}
+                    />
+                  ))}
+                </YStack>
+              </Collapsible.Content>
+            </Collapsible>
+          ) : (
+            <YStack
+              className="lms-sidebar-collapsed-group"
+              gap="$1"
+              key={group.label}
+            >
               {group.items.map((item) => (
                 <SidebarNavItem
                   isActive={isNavigationActive(pathname, item)}
-                  isCollapsed={!isVisuallyExpanded}
+                  isCollapsed
                   item={item}
                   key={item.href}
                   onNavigate={onMobileClose}
                 />
               ))}
             </YStack>
-          </YStack>
-        ))}
+          );
+        })}
       </YStack>
 
-      <SidebarSupportCard isCollapsed={!isVisuallyExpanded} />
+      {isVisuallyExpanded ? <SidebarSupportCard /> : null}
     </YStack>
   );
 

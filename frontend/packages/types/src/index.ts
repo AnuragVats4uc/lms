@@ -6,6 +6,7 @@ export * from "./folder";
 export * from "./organization";
 export * from "./rbac";
 export * from "./resource";
+export * from "./exam";
 export * from "./session";
 export * from "./session-course";
 export * from "./student-courses";

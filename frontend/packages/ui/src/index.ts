@@ -21,11 +21,11 @@ export {
   Avatar,
   Heading,
   Spacer,
+  Collapsible,
   Theme,
+  TooltipSimple,
   styled,
 } from "tamagui";
-
-
 
 export * from "./provider";
 export * from "./components";

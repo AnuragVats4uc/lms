@@ -18,6 +18,7 @@ model User {
   userRoles             UserRole[]
   student               Student?
   instructorAssignments CourseInstructor[] @relation("CourseInstructors")
+  examImportJobs        ExamImportJob[]    @relation("ExamImportUploader")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

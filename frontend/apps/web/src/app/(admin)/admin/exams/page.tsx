@@ -1,6 +1,5 @@
-import { ResourcesPage } from "@/features/admin/resources";
-import { RESOURCE_TYPE_IDS } from "@repo/types";
+import { ExamManagementPage } from "@/features/admin/exams";
 
 export default function Page() {
-  return <ResourcesPage resourceTypeId={RESOURCE_TYPE_IDS.EXAM} />;
+  return <ExamManagementPage />;
 }

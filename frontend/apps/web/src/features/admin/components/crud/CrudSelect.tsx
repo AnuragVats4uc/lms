@@ -21,12 +21,16 @@ export interface CrudSelectProps {
   id?: string;
   label?: string;
   loading?: boolean;
+  multiple?: boolean;
   onChange: (value: string) => void;
+  onMultiChange?: (value: string[]) => void;
   onBlur?: () => void;
   options: readonly CrudSelectOption[];
   placeholder?: string;
+  selectedLabel?: (count: number) => string;
   describedBy?: string;
   value: string;
+  values?: readonly string[];
   variant?: "filter" | "form";
   width?: number | string;
 }
@@ -37,12 +41,16 @@ export const CrudSelect = ({
   id,
   label,
   loading = false,
+  multiple = false,
   onChange,
+  onMultiChange,
   onBlur,
   options,
   placeholder = "Select an option",
+  selectedLabel = (count) => `${count} selected`,
   describedBy,
   value,
+  values = [],
   variant = "filter",
   width,
 }: CrudSelectProps) => {
@@ -61,6 +69,16 @@ export const CrudSelect = ({
     variant === "form" && !value
       ? undefined
       : (options.find((option) => option.value === value) ?? options[0]);
+  const selectedOptions = multiple
+    ? options.filter((option) => values.includes(option.value))
+    : [];
+  const displayValue = multiple
+    ? selectedOptions.length === 0
+      ? placeholder
+      : selectedOptions.length === 1
+        ? (selectedOptions[0]?.label ?? placeholder)
+        : selectedLabel(selectedOptions.length)
+    : (selectedOption?.label ?? placeholder);
 
   const updateMenuPosition = useCallback(() => {
     const root = rootRef.current;
@@ -103,11 +121,21 @@ export const CrudSelect = ({
   }, [activeIndex, isOpen]);
 
   const selectedIndex = Math.max(
-    options.findIndex((option) => option.value === value),
+    options.findIndex((option) =>
+      multiple ? values.includes(option.value) : option.value === value,
+    ),
     0,
   );
 
   const selectOption = (nextValue: string) => {
+    if (multiple) {
+      onMultiChange?.(
+        values.includes(nextValue)
+          ? values.filter((item) => item !== nextValue)
+          : [...values, nextValue],
+      );
+      return;
+    }
     onChange(nextValue);
     setIsOpen(false);
     triggerElementRef.current?.focus();
@@ -166,7 +194,7 @@ export const CrudSelect = ({
           </span>
         ) : null}
         <span className="lms-crud-select-value lms-organization-select-value">
-          {loading ? "Loading..." : (selectedOption?.label ?? placeholder)}
+          {loading ? "Loading..." : displayValue}
         </span>
         {loading ? (
           <LoaderCircle aria-hidden="true" className="animate-spin" size={13} />
@@ -182,6 +210,7 @@ export const CrudSelect = ({
       {isOpen && typeof document !== "undefined"
         ? createPortal(
             <div
+              aria-multiselectable={multiple || undefined}
               className="lms-crud-select-menu lms-organization-select-menu"
               ref={menuRef}
               role="listbox"
@@ -192,7 +221,9 @@ export const CrudSelect = ({
               }}
             >
               {options.map((option, index) => {
-                const isSelected = option.value === value;
+                const isSelected = multiple
+                  ? values.includes(option.value)
+                  : option.value === value;
                 return (
                   <button
                     aria-selected={isSelected}
