@@ -87,6 +87,12 @@ const courses = [
 ] as const;
 
 async function main() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'The demo student-account seed is disabled in production because it creates known development credentials.',
+    );
+  }
+
   const hashedPasswords = new Map(
     await Promise.all(
       students.map(async (student) => [

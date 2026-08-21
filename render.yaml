@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: lms-backend-api
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: backend
+    buildCommand: pnpm install --frozen-lockfile && pnpm exec prisma generate && pnpm run build
+    startCommand: pnpm run start:render
+    healthCheckPath: /api/v1
+    envVars:
+      - key: NODE_VERSION
+        value: 22.23.2
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: PUBLIC_API_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      - key: BCRYPT_SALT_ROUNDS
+        value: "12"

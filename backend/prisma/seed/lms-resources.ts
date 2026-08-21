@@ -176,6 +176,12 @@ const resourceSeeds: readonly ResourceSeed[] = [
 ];
 
 async function main() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'Refusing to create demo LMS resources with NODE_ENV=production.',
+    );
+  }
+
   await seedResourceTypes(prisma);
   const session = await findTargetSession();
   const folderByCourseCode = await resolveFolders(session);

@@ -1,5 +1,7 @@
 # compiled output
 /dist
+*.tsbuildinfo
+/lms-*.sql
 /node_modules
 /build
 
@@ -41,6 +43,11 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 .env.local
+
+# TLS private material and downloaded provider certificates
+*.pem
+*.key
+*.p12
 
 # temp directory
 .temp
