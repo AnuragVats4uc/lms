@@ -669,6 +669,24 @@ export class StudentsService {
     const sessionCourse = resource.folder.sessionCourse;
     this.ensureExamMatchesSessionCourse(resource.exam, sessionCourse.id);
     const stats = this.examStats(resource.exam);
+    const availability = this.toExamAvailability(resource.exam);
+    const activeAttempt = resource.exam.attempts.find(
+      (attempt) =>
+        attempt.status === 'IN_PROGRESS' && attempt.expiresAt > new Date(),
+    );
+    const attemptsUsed = resource.exam.attempts.filter(
+      (attempt) => attempt.status !== 'CANCELLED',
+    ).length;
+    const action = activeAttempt
+      ? resource.exam.allowResume
+        ? 'RESUME'
+        : 'UNAVAILABLE'
+      : availability === 'AVAILABLE' &&
+          attemptsUsed < resource.exam.attemptLimit
+        ? 'START'
+        : attemptsUsed > 0
+          ? 'VIEW_RESULT'
+          : 'UNAVAILABLE';
 
     return {
       id: resource.id,
@@ -696,12 +714,17 @@ export class StudentsService {
         title: resource.exam.title,
         instructions: resource.exam.instructions,
         status: resource.exam.status,
-        availability: this.toExamAvailability(resource.exam),
+        availability,
         availableFrom: resource.exam.availableFrom,
         availableUntil: resource.exam.availableUntil,
         durationMinutes: resource.exam.durationMinutes,
         attemptLimit: resource.exam.attemptLimit,
-        attemptsUsed: resource.exam.attempts.length,
+        attemptsUsed,
+        action,
+        activeAttemptUuid: activeAttempt?.uuid ?? null,
+        latestAttemptUuid: resource.exam.attempts[0]?.uuid ?? null,
+        allowResume: resource.exam.allowResume,
+        resultReleaseMode: resource.exam.resultReleaseMode,
         questionCount: stats.questionCount,
         maximumMarks: stats.maximumMarks,
         sections: stats.sections,

@@ -1,10 +1,13 @@
-import { StudentPlaceholderPage } from "@/features/student/components/StudentPlaceholderPage";
+import { RESOURCE_TYPE_IDS } from "@repo/types";
+
+import { StudentResourcesPage } from "@/features/student/resources/StudentResourcesPage";
 
 export default function Page() {
   return (
-    <StudentPlaceholderPage
+    <StudentResourcesPage
+      initialResourceTypeId={RESOURCE_TYPE_IDS.EXAM}
       title="Exams"
-      description="Exams will connect to the future Exams backend module."
+      subtitle="Open exams assigned through your enrolled courses and continue active attempts."
     />
   );
 }

@@ -258,5 +258,10 @@ export interface StudentExamResourceDetail {
     title: string;
     instructions: string | null;
     sections: StudentExamSectionSummary[];
+    action: "START" | "RESUME" | "VIEW_RESULT" | "UNAVAILABLE";
+    activeAttemptUuid: string | null;
+    latestAttemptUuid: string | null;
+    allowResume: boolean;
+    resultReleaseMode: "IMMEDIATE" | "SCHEDULED" | "MANUAL";
   };
 }

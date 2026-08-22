@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Bell,
   Building2,
@@ -34,6 +34,7 @@ const WorkspaceLayout = ({
   const { currentUser } = useAuthSession();
   const logoutMutation = useLogout();
   const router = useRouter();
+  const pathname = usePathname();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const isStudentWorkspace = title.toLowerCase() === "student";
   const routePrefix = isStudentWorkspace ? "/student" : "/admin";
@@ -43,7 +44,8 @@ const WorkspaceLayout = ({
   );
   const organizationQuery = useQuery({
     enabled: !isStudentWorkspace && currentUser?.organizationId != null,
-    queryFn: () => organizationsApi.findOne(currentUser?.organizationId as number),
+    queryFn: () =>
+      organizationsApi.findOne(currentUser?.organizationId as number),
     queryKey: ["workspace-organization", currentUser?.organizationId],
     staleTime: 60_000,
   });
@@ -58,8 +60,9 @@ const WorkspaceLayout = ({
     : "User";
   const studentProfile = studentDashboardQuery.data?.student;
   const unreadStudentNotifications =
-    studentDashboardQuery.data?.notifications.filter((notification) => !notification.isRead)
-      .length ?? 0;
+    studentDashboardQuery.data?.notifications.filter(
+      (notification) => !notification.isRead,
+    ).length ?? 0;
   const profileRole =
     studentProfile?.batch ??
     currentUser?.role ??
@@ -87,6 +90,10 @@ const WorkspaceLayout = ({
 
     void logoutMutation.mutateAsync();
   };
+
+  if (/^\/student\/exam-attempts\/[^/]+\/?$/.test(pathname)) {
+    return <>{children}</>;
+  }
 
   return (
     <XStack
@@ -123,13 +130,19 @@ const WorkspaceLayout = ({
             ...action,
             onPress: () => {
               if (action.label === "Open calendar") {
-                router.push(isStudentWorkspace ? "/student/schedule" : "/admin/sessions");
+                router.push(
+                  isStudentWorkspace ? "/student/schedule" : "/admin/sessions",
+                );
               } else if (action.label === "View notifications") {
                 router.push(
-                  isStudentWorkspace ? "/student/notifications" : "/admin/settings",
+                  isStudentWorkspace
+                    ? "/student/notifications"
+                    : "/admin/settings",
                 );
               } else {
-                router.push(isStudentWorkspace ? "/student/profile" : "/admin/settings");
+                router.push(
+                  isStudentWorkspace ? "/student/profile" : "/admin/settings",
+                );
               }
             },
           }))}
@@ -155,24 +168,35 @@ const WorkspaceLayout = ({
                 : `${routePrefix}/${isStudentWorkspace ? "resources" : "organizations"}`,
             );
           }}
-          organizationIcon={<Building2 color="#52627A" size={20} strokeWidth={2} />}
+          organizationIcon={
+            <Building2 color="#52627A" size={20} strokeWidth={2} />
+          }
           organizationLabel={
             isStudentWorkspace
               ? undefined
-              : organizationQuery.data?.name ??
-                (currentUser?.organizationId ? "Organization" : "All organizations")
+              : (organizationQuery.data?.name ??
+                (currentUser?.organizationId
+                  ? "Organization"
+                  : "All organizations"))
           }
           organizationOnPress={() =>
-            router.push(isStudentWorkspace ? "/student/profile" : "/admin/organizations")
+            router.push(
+              isStudentWorkspace ? "/student/profile" : "/admin/organizations",
+            )
           }
-          profile={{ name: studentProfile?.name ?? profileName, role: profileRole }}
+          profile={{
+            name: studentProfile?.name ?? profileName,
+            role: profileRole,
+          }}
           profileActions={[
             {
               icon: <UserRound aria-hidden="true" color="#435266" size={15} />,
               id: "profile",
               label: "Profile",
               onPress: () =>
-                router.push(isStudentWorkspace ? "/student/profile" : "/admin/settings"),
+                router.push(
+                  isStudentWorkspace ? "/student/profile" : "/admin/settings",
+                ),
             },
             {
               closeOnPress: false,
@@ -193,7 +217,9 @@ const WorkspaceLayout = ({
             },
           ]}
           profileOnPress={() =>
-            router.push(isStudentWorkspace ? "/student/profile" : "/admin/settings")
+            router.push(
+              isStudentWorkspace ? "/student/profile" : "/admin/settings",
+            )
           }
           searchPlaceholder={
             isStudentWorkspace

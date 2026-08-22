@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import {
   ExamNavigationMode,
+  ExamResultReleaseMode,
   ExamStatus,
   ExamTemplateStatus,
   ExamTemplateVersionStatus,
@@ -8,6 +9,7 @@ import {
   PrismaClient,
   QuestionStatus,
   ResourceStatus,
+  ExamVirtualKeyboardMode,
 } from '@prisma/client';
 
 import { RESOURCE_TYPE_IDS } from '../../src/modules/resource/constants/resource-type.constants';
@@ -514,6 +516,15 @@ async function moveLearningResources(folders: Map<string, number>) {
 
 async function cleanupPreviousExamSeeds(organizationId: number) {
   const previousCodes = [...seedExamCodes, 'SEED-QA-SECTIONAL'];
+  const previousExams = await prisma.exam.findMany({
+    where: { organizationId, code: { in: previousCodes } },
+    select: { id: true },
+  });
+  if (previousExams.length) {
+    await prisma.studentExamAttempt.deleteMany({
+      where: { examId: { in: previousExams.map((exam) => exam.id) } },
+    });
+  }
   await prisma.resource.deleteMany({
     where: {
       OR: [
@@ -526,14 +537,12 @@ async function cleanupPreviousExamSeeds(organizationId: number) {
     where: {
       organizationId,
       code: { in: previousCodes },
-      attempts: { none: {} },
     },
   });
   await prisma.examTemplate.deleteMany({
     where: {
       organizationId,
       code: { in: previousCodes.map((code) => `TPL-${code}`) },
-      versions: { every: { exams: { none: { attempts: { some: {} } } } } },
     },
   });
   const legacy = await prisma.exam.findFirst({
@@ -617,6 +626,16 @@ async function seedQuestions(
           defaultNegativeMarks: seed.negativeMarks,
           caseSensitive: false,
           normalizeWhitespace: true,
+          virtualKeyboardMode:
+            seed.type === 'NUMERIC'
+              ? ExamVirtualKeyboardMode.NUMERIC
+              : seed.type === 'ONE_WORD'
+                ? ExamVirtualKeyboardMode.ALPHANUMERIC
+                : ExamVirtualKeyboardMode.NONE,
+          allowPhysicalKeyboard: seed.type === 'SINGLE_CHOICE',
+          allowPaste: false,
+          maxAnswerLength:
+            seed.type === 'NUMERIC' ? 20 : seed.type === 'ONE_WORD' ? 80 : null,
           isPublished: true,
         },
       });
@@ -630,6 +649,18 @@ async function seedQuestions(
           explanation: seed.explanation,
           defaultMarks: seed.marks,
           defaultNegativeMarks: seed.negativeMarks,
+          caseSensitive: false,
+          normalizeWhitespace: true,
+          virtualKeyboardMode:
+            seed.type === 'NUMERIC'
+              ? ExamVirtualKeyboardMode.NUMERIC
+              : seed.type === 'ONE_WORD'
+                ? ExamVirtualKeyboardMode.ALPHANUMERIC
+                : ExamVirtualKeyboardMode.NONE,
+          allowPhysicalKeyboard: seed.type === 'SINGLE_CHOICE',
+          allowPaste: false,
+          maxAnswerLength:
+            seed.type === 'NUMERIC' ? 20 : seed.type === 'ONE_WORD' ? 80 : null,
           isPublished: true,
         },
       });
@@ -687,6 +718,8 @@ async function createExamGraph(
       instructions:
         'Complete every section within its time limit. Review answers before submitting.',
       defaultDurationMinutes: seed.minutes,
+      enforceSlotTimers: index >= 3,
+      enforceSectionTimers: index === 1 || index >= 3,
       status: ExamTemplateVersionStatus.PUBLISHED,
       publishedAt: new Date('2026-08-21T00:00:00.000Z'),
     },
@@ -714,6 +747,10 @@ async function createExamGraph(
         questionsToAttempt: item.questionCodes.length,
         randomizeQuestions: index >= 3,
         randomizeOptions: true,
+        navigationMode:
+          index === 4 ? ExamNavigationMode.SEQUENTIAL : ExamNavigationMode.FREE,
+        allowReview: index !== 4,
+        autoSubmitOnTimeout: true,
         sortOrder: sectionIndex + 1,
       },
     });
@@ -751,6 +788,20 @@ async function createExamGraph(
       availableUntil: new Date('2027-12-31T23:59:59.000Z'),
       durationMinutes: seed.minutes,
       attemptLimit: seed.attempts,
+      autoSubmitOnTimeout: true,
+      allowResume: index !== 4,
+      resultReleaseMode:
+        index === 3
+          ? ExamResultReleaseMode.SCHEDULED
+          : index === 4
+            ? ExamResultReleaseMode.MANUAL
+            : ExamResultReleaseMode.IMMEDIATE,
+      resultPublishAt:
+        index === 3 ? new Date('2026-09-01T00:00:00.000Z') : null,
+      showScore: true,
+      showQuestionReview: index < 3,
+      showCorrectAnswers: index === 0,
+      showExplanations: index === 0,
       status: ExamStatus.SCHEDULED,
       selectedSlots: { create: { examTemplateSlotId: slot.id, sortOrder: 1 } },
       courseAssignments: { create: { sessionCourseId } },

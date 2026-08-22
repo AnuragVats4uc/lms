@@ -123,6 +123,18 @@ enum ExamSubmissionReason {
   ADMIN_SUBMITTED
 }
 
+enum ExamVirtualKeyboardMode {
+  NONE
+  NUMERIC
+  ALPHANUMERIC
+}
+
+enum ExamResultReleaseMode {
+  IMMEDIATE
+  SCHEDULED
+  MANUAL
+}
+
 enum ExamImportFileKind {
   CONTENT_DOCX
   MAPPING_XLSX

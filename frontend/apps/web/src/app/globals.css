@@ -1870,6 +1870,10 @@ body {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.student-resource-summary-grid.student-exam-summary-grid {
+  grid-template-columns: minmax(260px, 360px);
+}
+
 .student-resource-summary-card {
   align-items: center;
   background: #ffffff;

@@ -10,6 +10,8 @@ import {
 } from './controllers/exam.controller';
 import { ExamService } from './services/exam.service';
 import { ExamRepository } from './repositories/exam.repository';
+import { StudentExamController } from './controllers/student-exam.controller';
+import { StudentExamService } from './services/student-exam.service';
 
 @Module({
   imports: [PrismaModule],
@@ -20,8 +22,9 @@ import { ExamRepository } from './repositories/exam.repository';
     ExamTemplateController,
     ExamController,
     ExamImportController,
+    StudentExamController,
   ],
-  providers: [ExamService, ExamRepository],
+  providers: [ExamService, StudentExamService, ExamRepository],
   exports: [ExamService, ExamRepository],
 })
 export class ExamModule {}

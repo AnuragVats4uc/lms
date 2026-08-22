@@ -1,4 +1,9 @@
 export type ExamQuestionTypeCode = "SINGLE_CHOICE" | "NUMERIC" | "ONE_WORD";
+export type ExamVirtualKeyboardMode = "NONE" | "NUMERIC" | "ALPHANUMERIC";
+export type ExamNavigationMode = "FREE" | "SEQUENTIAL" | "LOCKED_AFTER_SUBMIT";
+export type ExamResultReleaseMode = "IMMEDIATE" | "SCHEDULED" | "MANUAL";
+export type ExamAttemptStatus =
+  "IN_PROGRESS" | "SUBMITTED" | "AUTO_SUBMITTED" | "EVALUATED" | "CANCELLED";
 export interface ExamQuestionType {
   id: number;
   code: ExamQuestionTypeCode;
@@ -53,6 +58,11 @@ export interface ExamQuestionVersion {
   defaultMarks: string;
   defaultNegativeMarks: string;
   caseSensitive: boolean;
+  normalizeWhitespace: boolean;
+  virtualKeyboardMode: ExamVirtualKeyboardMode;
+  allowPhysicalKeyboard: boolean;
+  allowPaste: boolean;
+  maxAnswerLength: number | null;
   options: ExamQuestionOption[];
   acceptedAnswers: Array<{
     id: number;
@@ -109,6 +119,13 @@ export interface ExamTemplateSection {
   name: string;
   durationMinutes: number;
   questionsToAttempt: number | null;
+  instructions: string | null;
+  randomizeQuestions: boolean;
+  randomizeOptions: boolean;
+  navigationMode: ExamNavigationMode;
+  allowReview: boolean;
+  autoSubmitOnTimeout: boolean;
+  isActive: boolean;
   subjects: ExamTemplateSectionSubject[];
 }
 
@@ -117,6 +134,11 @@ export interface ExamTemplateSlot {
   code: string;
   name: string;
   durationMinutes: number;
+  description: string | null;
+  instructions: string | null;
+  navigationMode: ExamNavigationMode;
+  autoSubmitOnTimeout: boolean;
+  isActive: boolean;
   sections: ExamTemplateSection[];
 }
 
@@ -125,6 +147,9 @@ export interface ExamTemplateVersion {
   versionNumber: number;
   status: ExamTemplateVersionStatus;
   defaultDurationMinutes: number | null;
+  instructions: string | null;
+  enforceSlotTimers: boolean;
+  enforceSectionTimers: boolean;
   publishedAt?: string | null;
   createdAt?: string;
   slots: ExamTemplateSlot[];
@@ -155,6 +180,15 @@ export interface ScheduledExam {
   availableUntil: string;
   durationMinutes: number;
   attemptLimit: number;
+  autoSubmitOnTimeout: boolean;
+  allowResume: boolean;
+  resultReleaseMode: ExamResultReleaseMode;
+  resultPublishAt: string | null;
+  resultsReleasedAt: string | null;
+  showScore: boolean;
+  showCorrectAnswers: boolean;
+  showExplanations: boolean;
+  showQuestionReview: boolean;
   session: { id: number; name: string };
   templateVersion: {
     id: number;
@@ -218,15 +252,29 @@ export interface ExamImportJob {
 }
 
 export interface SaveExamTemplateStructureRequest {
+  instructions?: string;
+  defaultDurationMinutes?: number;
+  enforceSlotTimers?: boolean;
+  enforceSectionTimers?: boolean;
   slots: Array<{
     code: string;
     name: string;
+    description?: string;
+    instructions?: string;
     durationMinutes: number;
+    navigationMode?: ExamNavigationMode;
+    autoSubmitOnTimeout?: boolean;
     sections: Array<{
       code: string;
       name: string;
+      instructions?: string;
       durationMinutes: number;
       questionsToAttempt?: number;
+      randomizeQuestions?: boolean;
+      randomizeOptions?: boolean;
+      navigationMode?: ExamNavigationMode;
+      allowReview?: boolean;
+      autoSubmitOnTimeout?: boolean;
       subjects: [
         {
           subjectId: number;
@@ -238,5 +286,107 @@ export interface SaveExamTemplateStructureRequest {
         },
       ];
     }>;
+  }>;
+}
+
+export interface StudentExamAttemptQuestion {
+  id: number;
+  order: number;
+  code: string;
+  subject: Pick<ExamSubject, "id" | "code" | "name">;
+  sectionAttemptId: number;
+  content: string;
+  comprehension: { id: number; code: string; content: string } | null;
+  questionType: ExamQuestionType;
+  options: Array<{ id: number; code: string; content: string }>;
+  marks: number;
+  negativeMarks: number;
+  inputPolicy: {
+    virtualKeyboardMode: ExamVirtualKeyboardMode;
+    allowPhysicalKeyboard: boolean;
+    allowPaste: boolean;
+    maxAnswerLength: number | null;
+  };
+  state: {
+    visited: boolean;
+    markedForReview: boolean;
+    answered: boolean;
+    selectedOptionIds: number[];
+    textAnswer: string;
+    numericAnswer: number | null;
+  };
+}
+
+export interface StudentExamAttempt {
+  attemptUuid: string;
+  attemptNumber: number;
+  attemptLimit: number;
+  status: ExamAttemptStatus;
+  serverTime: string;
+  startedAt: string;
+  expiresAt: string;
+  lastSavedAt: string | null;
+  currentQuestionId: number | null;
+  title: string;
+  code: string;
+  instructions: string | null;
+  durationMinutes: number;
+  allowResume: boolean;
+  slots: Array<{
+    id: number;
+    code: string;
+    name: string;
+    instructions: string | null;
+    navigationMode: ExamNavigationMode;
+    status: ExamAttemptStatus;
+    startedAt: string | null;
+    expiresAt: string | null;
+    submittedAt: string | null;
+    sections: Array<{
+      id: number;
+      code: string;
+      name: string;
+      instructions: string | null;
+      navigationMode: ExamNavigationMode;
+      allowReview: boolean;
+      questionsToAttempt: number | null;
+      status: ExamAttemptStatus;
+      startedAt: string | null;
+      expiresAt: string | null;
+      submittedAt: string | null;
+    }>;
+  }>;
+  questions: StudentExamAttemptQuestion[];
+}
+
+export interface StudentExamReport {
+  attemptUuid: string;
+  status: ExamAttemptStatus;
+  released: boolean;
+  message?: string;
+  title?: string;
+  attemptNumber?: number;
+  submittedAt?: string;
+  durationSeconds?: number;
+  score?: number;
+  maximumScore?: number;
+  percentage?: number;
+  summary?: {
+    total: number;
+    answered: number;
+    unanswered: number;
+    correct: number;
+    incorrect: number;
+  };
+  questions?: Array<{
+    id: number;
+    order: number;
+    code: string;
+    content: string;
+    explanation?: string | null;
+    isCorrect: boolean | null;
+    marksAwarded: number;
+    correctOptionIds?: number[];
+    acceptedAnswers?: Array<string | null>;
   }>;
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   CalendarClock,
   CheckCircle2,
@@ -17,10 +18,16 @@ export function StudentExamResourcePage({
 }: {
   resourceId: number;
 }) {
+  const router = useRouter();
   const query = useQuery({
     queryKey: ["student-exam-resource", resourceId],
     queryFn: () => studentsApi.findMyExamResource(resourceId),
     staleTime: 15_000,
+  });
+  const startMutation = useMutation({
+    mutationFn: () => studentsApi.startMyExam(resourceId),
+    onSuccess: (result) =>
+      router.push(`/student/exam-attempts/${result.attemptUuid}`),
   });
   if (query.isLoading)
     return (
@@ -43,6 +50,19 @@ export function StudentExamResourcePage({
       </div>
     );
   const data = query.data;
+  const openExam = () => {
+    if (data.exam.action === "RESUME" && data.exam.activeAttemptUuid) {
+      router.push(`/student/exam-attempts/${data.exam.activeAttemptUuid}`);
+      return;
+    }
+    if (data.exam.action === "VIEW_RESULT" && data.exam.latestAttemptUuid) {
+      router.push(
+        `/student/exam-attempts/${data.exam.latestAttemptUuid}/report`,
+      );
+      return;
+    }
+    startMutation.mutate();
+  };
   return (
     <main className="student-folder-page">
       <nav className="student-folder-breadcrumb" aria-label="Breadcrumb">
@@ -131,14 +151,24 @@ export function StudentExamResourcePage({
           </p>
           <button
             className="student-folder-primary-button exam-start"
-            disabled
+            disabled={
+              data.exam.action === "UNAVAILABLE" || startMutation.isPending
+            }
+            onClick={openExam}
           >
-            Exam attempt runner unavailable
+            {startMutation.isPending
+              ? "Starting exam..."
+              : data.exam.action === "RESUME"
+                ? "Resume exam"
+                : data.exam.action === "VIEW_RESULT"
+                  ? "View result"
+                  : data.exam.action === "START"
+                    ? "Start exam"
+                    : "Exam unavailable"}
           </button>
-          <small>
-            This project does not yet expose student attempt or submission
-            APIs.
-          </small>
+          {startMutation.isError ? (
+            <small role="alert">Unable to start the exam. Please try again.</small>
+          ) : null}
         </aside>
       </div>
     </main>

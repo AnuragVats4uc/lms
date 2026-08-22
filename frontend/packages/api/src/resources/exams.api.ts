@@ -57,6 +57,11 @@ export const examsApi = {
       acceptedAnswers?: string[];
       numericTolerance?: number;
       caseSensitive?: boolean;
+      normalizeWhitespace?: boolean;
+      virtualKeyboardMode?: "NONE" | "NUMERIC" | "ALPHANUMERIC";
+      allowPhysicalKeyboard?: boolean;
+      allowPaste?: boolean;
+      maxAnswerLength?: number;
     }) =>
       api
         .post<ApiResponse<ExamQuestion>>("/exam-questions", payload)
@@ -80,6 +85,8 @@ export const examsApi = {
       description?: string;
       instructions?: string;
       defaultDurationMinutes?: number;
+      enforceSlotTimers?: boolean;
+      enforceSectionTimers?: boolean;
     }) =>
       api
         .post<ApiResponse<ExamTemplate>>("/exam-templates", payload)
@@ -110,6 +117,10 @@ export const examsApi = {
     create: (payload: Record<string, unknown>) =>
       api
         .post<ApiResponse<ScheduledExam>>("/exams", payload)
+        .then(unwrapApiData),
+    releaseResults: (id: number) =>
+      api
+        .post<ApiResponse<ScheduledExam>>(`/exams/${id}/release-results`)
         .then(unwrapApiData),
   },
   imports: {
