@@ -4,6 +4,7 @@ import type {
   CurrentStudent,
   Student,
   StudentCourseList,
+  StudentCourseFolders,
   StudentCoursesQuery,
   StudentDashboard,
   StudentResourceList,
@@ -12,6 +13,9 @@ import type {
   StudentVideoProgress,
   StudentVideoResourceDetail,
   StudentResourcesQuery,
+  StudentFolderResourceList,
+  StudentFolderResourcesQuery,
+  StudentExamResourceDetail,
   StudentList,
   StudentQuery,
   UpdateStudentRequest,
@@ -65,6 +69,35 @@ export const studentsApi = {
         {
           params: query,
         },
+      )
+      .then(unwrapApiData);
+  },
+
+  findMyCourseFolders(sessionCourseId: number) {
+    return api
+      .get<ApiResponse<StudentCourseFolders>>(
+        `${STUDENTS_ENDPOINT}/me/courses/${sessionCourseId}/folders`,
+      )
+      .then(unwrapApiData);
+  },
+
+  findMyFolderResources(
+    sessionCourseId: number,
+    folderId: number,
+    query?: StudentFolderResourcesQuery,
+  ) {
+    return api
+      .get<ApiResponse<StudentFolderResourceList>>(
+        `${STUDENTS_ENDPOINT}/me/courses/${sessionCourseId}/folders/${folderId}/resources`,
+        { params: query },
+      )
+      .then(unwrapApiData);
+  },
+
+  findMyExamResource(resourceId: number) {
+    return api
+      .get<ApiResponse<StudentExamResourceDetail>>(
+        `${STUDENTS_ENDPOINT}/me/resources/${resourceId}/exam`,
       )
       .then(unwrapApiData);
   },

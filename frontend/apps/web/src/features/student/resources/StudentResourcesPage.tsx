@@ -91,7 +91,7 @@ export function StudentResourcesPage({
       resourceTypeId:
         appliedFilters.resourceTypeId === ALL
           ? undefined
-          : Number(appliedFilters.resourceTypeId) as ResourceTypeId,
+          : (Number(appliedFilters.resourceTypeId) as ResourceTypeId),
       sessionCourseId:
         appliedFilters.courseId === ALL
           ? undefined
@@ -180,6 +180,17 @@ export function StudentResourcesPage({
           value={data?.summary.documents ?? 0}
           supportingText={percentageLabel(
             data?.summary.documents ?? 0,
+            data?.summary.total ?? 0,
+          )}
+        />
+        <SummaryCard
+          Icon={Trophy}
+          label="Exams"
+          loading={resourcesQuery.isLoading}
+          tone="green"
+          value={data?.summary.exams ?? 0}
+          supportingText={percentageLabel(
+            data?.summary.exams ?? 0,
             data?.summary.total ?? 0,
           )}
         />
@@ -545,7 +556,9 @@ function ResourceCell({ resource }: { resource: StudentResourceItem }) {
       ? `/student/resources/${resource.id}`
       : resource.resourceType.code === "VIDEO"
         ? `/student/resources/${resource.id}/video`
-        : null;
+        : resource.resourceType.code === "EXAM"
+          ? `/student/resources/${resource.id}/exam`
+          : null;
 
   return (
     <XStack className="student-resource-cell">
@@ -629,7 +642,9 @@ function ResourceAction({ resource }: { resource: StudentResourceItem }) {
       ? `/student/resources/${resource.id}`
       : resource.resourceType.code === "VIDEO"
         ? `/student/resources/${resource.id}/video`
-        : null;
+        : resource.resourceType.code === "EXAM"
+          ? `/student/resources/${resource.id}/exam`
+          : null;
   if (resourcePath) {
     return (
       <Link

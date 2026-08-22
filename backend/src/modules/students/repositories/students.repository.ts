@@ -67,6 +67,15 @@ export interface NormalizedStudentResourcesQuery {
   sort: StudentResourcesSort;
 }
 
+export interface NormalizedStudentFolderResourcesQuery {
+  page: number;
+  limit: number;
+  search: string;
+  resourceTypeId?: number;
+  uploadedOn?: string;
+  sort: StudentResourcesSort;
+}
+
 @Injectable()
 export class StudentsRepository {
   constructor(
@@ -224,7 +233,10 @@ export class StudentsRepository {
             RESOURCE_TYPE_IDS.EXAM,
           ],
         },
-        folder: { sessionCourseId: { in: sessionCourseIds } },
+        folder: {
+          parentFolderId: null,
+          sessionCourseId: { in: sessionCourseIds },
+        },
       },
       orderBy: { createdAt: 'desc' },
       take: 6,
@@ -277,7 +289,11 @@ export class StudentsRepository {
             include: {
               course: true,
               folders: {
-                where: { isActive: true, status: 'ACTIVE' },
+                where: {
+                  parentFolderId: null,
+                  isActive: true,
+                  status: 'ACTIVE',
+                },
                 include: {
                   resources: {
                     where: {
@@ -361,6 +377,237 @@ export class StudentsRepository {
     ];
   }
 
+  findStudentCourseFolders(
+    studentId: number,
+    organizationId: number,
+    sessionCourseId: number,
+  ) {
+    const visibleResourceWhere = this.buildVisibleFolderResourceWhere(
+      organizationId,
+      sessionCourseId,
+    );
+
+    return this.prisma.studentCourseEnrollment.findFirst({
+      where: {
+        sessionCourseId,
+        isActive: true,
+        status: { in: ['ACTIVE', 'COMPLETED'] },
+        enrollment: {
+          studentId,
+          organizationId,
+          isActive: true,
+          status: 'ACTIVE',
+        },
+        sessionCourse: {
+          isActive: true,
+          isPublished: true,
+          status: 'ACTIVE',
+          session: { organizationId },
+        },
+      },
+      include: {
+        enrollment: {
+          select: {
+            session: { select: { id: true, code: true, name: true } },
+          },
+        },
+        sessionCourse: {
+          include: {
+            course: true,
+            session: { select: { id: true, code: true, name: true } },
+            folders: {
+              where: {
+                parentFolderId: null,
+                isActive: true,
+                status: 'ACTIVE',
+              },
+              orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+              include: {
+                resources: {
+                  where: visibleResourceWhere,
+                  select: { id: true, resourceTypeId: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async findStudentFolderResources(
+    studentId: number,
+    organizationId: number,
+    sessionCourseId: number,
+    folderId: number,
+    query: NormalizedStudentFolderResourcesQuery,
+  ) {
+    const access = await this.prisma.studentCourseEnrollment.findFirst({
+      where: {
+        sessionCourseId,
+        isActive: true,
+        status: { in: ['ACTIVE', 'COMPLETED'] },
+        enrollment: {
+          studentId,
+          organizationId,
+          isActive: true,
+          status: 'ACTIVE',
+        },
+        sessionCourse: {
+          isActive: true,
+          isPublished: true,
+          status: 'ACTIVE',
+          session: { organizationId },
+          folders: {
+            some: {
+              id: folderId,
+              parentFolderId: null,
+              isActive: true,
+              status: 'ACTIVE',
+            },
+          },
+        },
+      },
+      select: {
+        sessionCourse: {
+          select: {
+            id: true,
+            displayName: true,
+            description: true,
+            course: true,
+            session: { select: { id: true, code: true, name: true } },
+            folders: {
+              where: { id: folderId, parentFolderId: null },
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                icon: true,
+                color: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!access?.sessionCourse.folders[0]) {
+      return null;
+    }
+
+    const search = query.search.trim();
+    const uploadedAt = query.uploadedOn
+      ? new Date(`${query.uploadedOn}T00:00:00.000Z`)
+      : undefined;
+    const uploadedBefore = uploadedAt
+      ? new Date(uploadedAt.getTime() + 24 * 60 * 60 * 1000)
+      : undefined;
+    const where: Prisma.ResourceWhereInput = {
+      folderId,
+      ...(query.resourceTypeId ? { resourceTypeId: query.resourceTypeId } : {}),
+      ...(uploadedAt && uploadedBefore
+        ? { createdAt: { gte: uploadedAt, lt: uploadedBefore } }
+        : {}),
+      AND: [
+        this.buildVisibleFolderResourceWhere(organizationId, sessionCourseId),
+        ...(search
+          ? [
+              {
+                OR: [
+                  { title: { contains: search } },
+                  { description: { contains: search } },
+                ],
+              },
+            ]
+          : []),
+      ],
+    };
+    const skip = (query.page - 1) * query.limit;
+    const orderBy = this.studentResourcesOrderBy(query.sort);
+
+    const [items, total, videos, documents, exams] =
+      await this.prisma.$transaction([
+        this.prisma.resource.findMany({
+          where,
+          orderBy,
+          skip,
+          take: query.limit,
+          include: {
+            resourceType: true,
+            videoProgress: {
+              where: { studentId },
+              take: 1,
+            },
+            exam: {
+              include: {
+                attempts: {
+                  where: { studentId },
+                  orderBy: { attemptNumber: 'desc' },
+                },
+                courseAssignments: {
+                  select: { sessionCourseId: true },
+                },
+                selectedSlots: {
+                  orderBy: { sortOrder: 'asc' },
+                  include: {
+                    templateSlot: {
+                      include: {
+                        sections: {
+                          where: { isActive: true },
+                          orderBy: { sortOrder: 'asc' },
+                          include: {
+                            subjects: {
+                              orderBy: { sortOrder: 'asc' },
+                              include: {
+                                subject: true,
+                                questions: {
+                                  orderBy: { sortOrder: 'asc' },
+                                  select: {
+                                    id: true,
+                                    marks: true,
+                                    negativeMarks: true,
+                                  },
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        }),
+        this.prisma.resource.count({ where }),
+        this.prisma.resource.count({
+          where: {
+            AND: [where, { resourceTypeId: RESOURCE_TYPE_IDS.VIDEO }],
+          },
+        }),
+        this.prisma.resource.count({
+          where: {
+            AND: [where, { resourceTypeId: RESOURCE_TYPE_IDS.DOCUMENT }],
+          },
+        }),
+        this.prisma.resource.count({
+          where: {
+            AND: [where, { resourceTypeId: RESOURCE_TYPE_IDS.EXAM }],
+          },
+        }),
+      ]);
+
+    return {
+      access,
+      documents,
+      exams,
+      items,
+      total,
+      videos,
+    };
+  }
+
   async findStudentResources(
     studentId: number,
     organizationId: number | null | undefined,
@@ -374,48 +621,65 @@ export class StudentsRepository {
     const skip = (query.page - 1) * query.limit;
     const orderBy = this.studentResourcesOrderBy(query.sort);
 
-    const [items, total, videos, documents] = await this.prisma.$transaction([
-      this.prisma.resource.findMany({
-        where,
-        orderBy,
-        skip,
-        take: query.limit,
-        include: {
-          resourceType: true,
-          folder: {
-            select: {
-              id: true,
-              name: true,
-              sessionCourse: {
-                select: {
-                  id: true,
-                  displayName: true,
-                  course: {
-                    select: { id: true, code: true, name: true },
-                  },
-                  session: {
-                    select: { id: true, name: true },
+    const [items, total, videos, documents, exams] =
+      await this.prisma.$transaction([
+        this.prisma.resource.findMany({
+          where,
+          orderBy,
+          skip,
+          take: query.limit,
+          include: {
+            resourceType: true,
+            exam: {
+              select: {
+                id: true,
+                status: true,
+                availableFrom: true,
+                availableUntil: true,
+                durationMinutes: true,
+                attemptLimit: true,
+                courseAssignments: { select: { sessionCourseId: true } },
+              },
+            },
+            folder: {
+              select: {
+                id: true,
+                name: true,
+                sessionCourse: {
+                  select: {
+                    id: true,
+                    displayName: true,
+                    course: {
+                      select: { id: true, code: true, name: true },
+                    },
+                    session: {
+                      select: { id: true, name: true },
+                    },
                   },
                 },
               },
             },
           },
-        },
-      }),
-      this.prisma.resource.count({ where }),
-      this.prisma.resource.count({
-        where: {
-          AND: [where, { resourceTypeId: RESOURCE_TYPE_IDS.VIDEO }],
-        },
-      }),
-      this.prisma.resource.count({
-        where: {
-          AND: [where, { resourceTypeId: RESOURCE_TYPE_IDS.DOCUMENT }],
-        },
-      }),
-    ]);
+        }),
+        this.prisma.resource.count({ where }),
+        this.prisma.resource.count({
+          where: {
+            AND: [where, { resourceTypeId: RESOURCE_TYPE_IDS.VIDEO }],
+          },
+        }),
+        this.prisma.resource.count({
+          where: {
+            AND: [where, { resourceTypeId: RESOURCE_TYPE_IDS.DOCUMENT }],
+          },
+        }),
+        this.prisma.resource.count({
+          where: {
+            AND: [where, { resourceTypeId: RESOURCE_TYPE_IDS.EXAM }],
+          },
+        }),
+      ]);
 
-    return { documents, items, total, videos };
+    return { documents, exams, items, total, videos };
   }
 
   findStudentResourceById(
@@ -433,6 +697,44 @@ export class StudentsRepository {
       },
       include: {
         resourceType: true,
+        exam: {
+          include: {
+            attempts: {
+              where: { studentId },
+              orderBy: { attemptNumber: 'desc' },
+            },
+            courseAssignments: { select: { sessionCourseId: true } },
+            selectedSlots: {
+              orderBy: { sortOrder: 'asc' },
+              include: {
+                templateSlot: {
+                  include: {
+                    sections: {
+                      where: { isActive: true },
+                      orderBy: { sortOrder: 'asc' },
+                      include: {
+                        subjects: {
+                          orderBy: { sortOrder: 'asc' },
+                          include: {
+                            subject: true,
+                            questions: {
+                              orderBy: { sortOrder: 'asc' },
+                              select: {
+                                id: true,
+                                marks: true,
+                                negativeMarks: true,
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         folder: {
           include: {
             sessionCourse: {
@@ -470,7 +772,7 @@ export class StudentsRepository {
     });
   }
 
-  findStudentFolderResources(folderId: number) {
+  findFolderResourceSequence(folderId: number) {
     return this.prisma.resource.findMany({
       where: {
         folderId,
@@ -498,6 +800,7 @@ export class StudentsRepository {
     const folders = await this.prisma.folder.findMany({
       where: {
         sessionCourseId,
+        parentFolderId: null,
         isActive: true,
         status: 'ACTIVE',
       },
@@ -599,6 +902,7 @@ export class StudentsRepository {
             course: { select: { name: true } },
             folders: {
               where: {
+                parentFolderId: null,
                 isActive: true,
                 status: 'ACTIVE',
                 resources: {
@@ -866,6 +1170,7 @@ export class StudentsRepository {
           }
         : {}),
       folder: {
+        parentFolderId: null,
         isActive: true,
         status: 'ACTIVE',
         sessionCourse: {
@@ -887,6 +1192,29 @@ export class StudentsRepository {
           },
         },
       },
+    };
+  }
+
+  private buildVisibleFolderResourceWhere(
+    organizationId: number,
+    sessionCourseId: number,
+  ): Prisma.ResourceWhereInput {
+    return {
+      isActive: true,
+      isPublished: true,
+      status: ResourceStatus.PUBLISHED,
+      OR: [
+        { resourceTypeId: { not: RESOURCE_TYPE_IDS.EXAM } },
+        {
+          resourceTypeId: RESOURCE_TYPE_IDS.EXAM,
+          exam: {
+            organizationId,
+            isActive: true,
+            status: { in: ['SCHEDULED', 'LIVE', 'CLOSED'] },
+            courseAssignments: { some: { sessionCourseId } },
+          },
+        },
+      ],
     };
   }
 

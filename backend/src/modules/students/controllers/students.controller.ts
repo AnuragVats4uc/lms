@@ -33,6 +33,10 @@ import { CreateStudentDto } from '../dto/create-student.dto';
 import { StudentDashboardResponseDto } from '../dto/student-dashboard-response.dto';
 import { StudentCoursesQueryDto } from '../dto/student-courses-query.dto';
 import { StudentCoursesResponseDto } from '../dto/student-courses-response.dto';
+import { StudentCourseFoldersResponseDto } from '../dto/student-course-folders-response.dto';
+import { StudentExamResourceResponseDto } from '../dto/student-exam-resource-response.dto';
+import { StudentFolderResourcesQueryDto } from '../dto/student-folder-resources-query.dto';
+import { StudentFolderResourcesResponseDto } from '../dto/student-folder-resources-response.dto';
 import { StudentResourcesQueryDto } from '../dto/student-resources-query.dto';
 import { StudentResourcesResponseDto } from '../dto/student-resources-response.dto';
 import { StudentResourceDetailResponseDto } from '../dto/student-resource-detail-response.dto';
@@ -93,6 +97,51 @@ export class StudentsController {
     return this.studentsService.getMyCourses(request.user, query);
   }
 
+  @Get('me/courses/:sessionCourseId/folders')
+  @Roles('STUDENT')
+  @ApiOperation({
+    summary: 'Get top-level folders for an assigned student course',
+  })
+  @ApiParam({ name: 'sessionCourseId', type: Number, example: 1 })
+  @ApiOkResponse({
+    description: 'Student course folders fetched successfully',
+    type: StudentCourseFoldersResponseDto,
+  })
+  getMyCourseFolders(
+    @Req() request: AuthenticatedRequest,
+    @Param('sessionCourseId', ParseIntPipe) sessionCourseId: number,
+  ) {
+    return this.studentsService.getMyCourseFolders(
+      request.user,
+      sessionCourseId,
+    );
+  }
+
+  @Get('me/courses/:sessionCourseId/folders/:folderId/resources')
+  @Roles('STUDENT')
+  @ApiOperation({
+    summary: 'Get resources from an assigned top-level course folder',
+  })
+  @ApiParam({ name: 'sessionCourseId', type: Number, example: 1 })
+  @ApiParam({ name: 'folderId', type: Number, example: 1 })
+  @ApiOkResponse({
+    description: 'Student folder resources fetched successfully',
+    type: StudentFolderResourcesResponseDto,
+  })
+  getMyFolderResources(
+    @Req() request: AuthenticatedRequest,
+    @Param('sessionCourseId', ParseIntPipe) sessionCourseId: number,
+    @Param('folderId', ParseIntPipe) folderId: number,
+    @Query() query: StudentFolderResourcesQueryDto,
+  ) {
+    return this.studentsService.getMyFolderResources(
+      request.user,
+      sessionCourseId,
+      folderId,
+      query,
+    );
+  }
+
   @Get('me/resources')
   @Roles('STUDENT')
   @ApiOperation({ summary: 'Get authenticated student learning resources' })
@@ -138,6 +187,21 @@ export class StudentsController {
       resourceId,
       dto,
     );
+  }
+
+  @Get('me/resources/:resourceId/exam')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Get an authorized student exam resource' })
+  @ApiParam({ name: 'resourceId', type: Number, example: 1 })
+  @ApiOkResponse({
+    description: 'Student exam resource fetched successfully',
+    type: StudentExamResourceResponseDto,
+  })
+  getMyExamResource(
+    @Req() request: AuthenticatedRequest,
+    @Param('resourceId', ParseIntPipe) resourceId: number,
+  ) {
+    return this.studentsService.getMyExamResource(request.user, resourceId);
   }
 
   @Get('me/resources/:resourceId/file')

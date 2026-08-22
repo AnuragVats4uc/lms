@@ -19,6 +19,7 @@ import {
 } from '../../resource/constants/resource-type.constants';
 import { CreateStudentDto } from '../dto/create-student.dto';
 import { StudentCoursesQueryDto } from '../dto/student-courses-query.dto';
+import { StudentFolderResourcesQueryDto } from '../dto/student-folder-resources-query.dto';
 import { UpdateStudentVideoProgressDto } from '../dto/update-student-video-progress.dto';
 import {
   StudentResourcesQueryDto,
@@ -28,11 +29,18 @@ import { StudentQueryDto } from '../dto/student-query.dto';
 import { UpdateStudentDto } from '../dto/update-student.dto';
 import {
   NormalizedStudentCoursesQuery,
+  NormalizedStudentFolderResourcesQuery,
   NormalizedStudentResourcesQuery,
   NormalizedStudentQuery,
   StudentUpdateData,
   StudentsRepository,
 } from '../repositories/students.repository';
+
+type StudentFolderResourceResult = NonNullable<
+  Awaited<ReturnType<StudentsRepository['findStudentFolderResources']>>
+>;
+type StudentFolderResourceRecord = StudentFolderResourceResult['items'][number];
+type StudentExamGraph = NonNullable<StudentFolderResourceRecord['exam']>;
 
 @Injectable()
 export class StudentsService {
@@ -204,10 +212,7 @@ export class StudentsService {
         completionPercentage: progress?.completionPercentage ?? 0,
         status: courseEnrollment.status,
         image: sessionCourse.course.thumbnail,
-        continuePath: this.buildCoursePath(
-          sessionCourse.id,
-          progress?.lastAccessedResourceId,
-        ),
+        continuePath: this.buildCoursePath(sessionCourse.id),
       };
     });
     const primaryProgress = courseEnrollments
@@ -263,10 +268,7 @@ export class StudentsService {
         sessionCourseId: primaryProgress?.sessionCourseId ?? null,
         resourceId: primaryProgress?.resourceId ?? null,
         path: primaryProgress
-          ? this.buildCoursePath(
-              primaryProgress.sessionCourseId,
-              primaryProgress.resourceId,
-            )
+          ? this.buildCoursePath(primaryProgress.sessionCourseId)
           : '/student/my-courses',
       },
     };
@@ -313,6 +315,132 @@ export class StudentsService {
         totalPages: Math.ceil(result.total / normalized.limit),
       },
       categories,
+    };
+  }
+
+  async getMyCourseFolders(user: CurrentUser, sessionCourseId: number) {
+    const student = await this.findCurrentStudent(user);
+    const organizationId = this.requireStudentOrganization(student);
+    const enrollment = await this.studentsRepository.findStudentCourseFolders(
+      student.id,
+      organizationId,
+      sessionCourseId,
+    );
+
+    if (!enrollment) {
+      throw new NotFoundException('Assigned course not found');
+    }
+
+    const sessionCourse = enrollment.sessionCourse;
+
+    return {
+      course: {
+        id: sessionCourse.id,
+        courseId: sessionCourse.course.id,
+        name: sessionCourse.displayName ?? sessionCourse.course.name,
+        code: sessionCourse.course.code,
+        description:
+          sessionCourse.description ?? sessionCourse.course.description,
+        sessionId: sessionCourse.session.id,
+        sessionName: sessionCourse.session.name,
+      },
+      folders: sessionCourse.folders.map((folder) => {
+        const resourceCounts = folder.resources.reduce(
+          (counts, resource) => {
+            counts.total += 1;
+            if (resource.resourceTypeId === RESOURCE_TYPE_IDS.VIDEO) {
+              counts.videos += 1;
+            } else if (resource.resourceTypeId === RESOURCE_TYPE_IDS.DOCUMENT) {
+              counts.documents += 1;
+            } else if (resource.resourceTypeId === RESOURCE_TYPE_IDS.EXAM) {
+              counts.exams += 1;
+            }
+            return counts;
+          },
+          { total: 0, videos: 0, documents: 0, exams: 0 },
+        );
+
+        return {
+          id: folder.id,
+          name: folder.name,
+          description: folder.description,
+          icon: folder.icon,
+          color: folder.color,
+          resourceCounts,
+        };
+      }),
+    };
+  }
+
+  async getMyFolderResources(
+    user: CurrentUser,
+    sessionCourseId: number,
+    folderId: number,
+    query: StudentFolderResourcesQueryDto,
+  ) {
+    const student = await this.findCurrentStudent(user);
+    const organizationId = this.requireStudentOrganization(student);
+    const normalized = this.normalizeStudentFolderResourcesQuery(query);
+    const [result, resourceTypes] = await Promise.all([
+      this.studentsRepository.findStudentFolderResources(
+        student.id,
+        organizationId,
+        sessionCourseId,
+        folderId,
+        normalized,
+      ),
+      this.resourceService.findResourceTypes(),
+    ]);
+
+    if (!result) {
+      throw new NotFoundException('Course folder not found');
+    }
+
+    const sessionCourse = result.access.sessionCourse;
+    const folder = sessionCourse.folders[0];
+
+    return {
+      course: {
+        id: sessionCourse.id,
+        courseId: sessionCourse.course.id,
+        name: sessionCourse.displayName ?? sessionCourse.course.name,
+        code: sessionCourse.course.code,
+        description:
+          sessionCourse.description ?? sessionCourse.course.description,
+        sessionId: sessionCourse.session.id,
+        sessionName: sessionCourse.session.name,
+      },
+      folder: {
+        id: folder.id,
+        name: folder.name,
+        description: folder.description,
+        icon: folder.icon,
+        color: folder.color,
+      },
+      items: result.items.map((resource) =>
+        this.toStudentFolderResource(resource),
+      ),
+      meta: {
+        page: normalized.page,
+        limit: normalized.limit,
+        total: result.total,
+        totalPages: Math.ceil(result.total / normalized.limit),
+      },
+      summary: {
+        total: result.total,
+        videos: result.videos,
+        documents: result.documents,
+        exams: result.exams,
+      },
+      filters: {
+        types: resourceTypes.filter((type) =>
+          new Set<number>([
+            RESOURCE_TYPE_IDS.DOCUMENT,
+            RESOURCE_TYPE_IDS.VIDEO,
+            RESOURCE_TYPE_IDS.EXAM,
+          ]).has(type.id),
+        ),
+      },
     };
   }
 
@@ -401,6 +529,7 @@ export class StudentsService {
         total: result.total,
         videos: result.videos,
         documents: result.documents,
+        exams: result.exams,
       },
       filters: {
         courses,
@@ -417,7 +546,7 @@ export class StudentsService {
       resourceId,
     );
     const folderResources =
-      await this.studentsRepository.findStudentFolderResources(
+      await this.studentsRepository.findFolderResourceSequence(
         resource.folderId,
       );
     const documentResources = folderResources.filter(
@@ -524,6 +653,59 @@ export class StudentsService {
         resourceIndex >= 0
           ? sequence.slice(resourceIndex + 1, resourceIndex + 3)
           : [],
+    };
+  }
+
+  async getMyExamResource(user: CurrentUser, resourceId: number) {
+    const { resource } = await this.findStudentResource(user, resourceId);
+
+    if (resource.resourceTypeId !== RESOURCE_TYPE_IDS.EXAM) {
+      throw new BadRequestException('Resource is not an exam');
+    }
+    if (!resource.exam) {
+      throw new NotFoundException('Exam is not available');
+    }
+
+    const sessionCourse = resource.folder.sessionCourse;
+    this.ensureExamMatchesSessionCourse(resource.exam, sessionCourse.id);
+    const stats = this.examStats(resource.exam);
+
+    return {
+      id: resource.id,
+      uuid: resource.uuid,
+      title: resource.title,
+      description: resource.description,
+      resourceTypeId: resource.resourceTypeId,
+      resourceType: resource.resourceType,
+      course: {
+        id: sessionCourse.id,
+        courseId: sessionCourse.course.id,
+        name: sessionCourse.displayName ?? sessionCourse.course.name,
+        code: sessionCourse.course.code,
+        sessionId: sessionCourse.session.id,
+        sessionName: sessionCourse.session.name,
+      },
+      folder: {
+        id: resource.folder.id,
+        name: resource.folder.name,
+      },
+      organization: sessionCourse.session.organization,
+      exam: {
+        id: resource.exam.id,
+        code: resource.exam.code,
+        title: resource.exam.title,
+        instructions: resource.exam.instructions,
+        status: resource.exam.status,
+        availability: this.toExamAvailability(resource.exam),
+        availableFrom: resource.exam.availableFrom,
+        availableUntil: resource.exam.availableUntil,
+        durationMinutes: resource.exam.durationMinutes,
+        attemptLimit: resource.exam.attemptLimit,
+        attemptsUsed: resource.exam.attempts.length,
+        questionCount: stats.questionCount,
+        maximumMarks: stats.maximumMarks,
+        sections: stats.sections,
+      },
     };
   }
 
@@ -697,7 +879,187 @@ export class StudentsService {
     if (!resource) {
       throw new NotFoundException('Resource not found');
     }
+
+    if (resource.resourceTypeId === RESOURCE_TYPE_IDS.EXAM) {
+      if (!resource.exam) {
+        throw new NotFoundException('Exam is not available');
+      }
+      this.ensureExamMatchesSessionCourse(
+        resource.exam,
+        resource.folder.sessionCourse.id,
+      );
+    }
+
     return { resource, student };
+  }
+
+  private async findCurrentStudent(user: CurrentUser) {
+    if (!user.roles?.includes('STUDENT')) {
+      throw new ForbiddenException(
+        'Student resources are only available to students',
+      );
+    }
+
+    const student = await this.studentsRepository.findDashboardStudent(
+      user.userId,
+    );
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    return student;
+  }
+
+  private requireStudentOrganization(student: {
+    organizationId: number | null;
+  }) {
+    if (!student.organizationId) {
+      throw new ForbiddenException('Student organization is required');
+    }
+
+    return student.organizationId;
+  }
+
+  private normalizeStudentFolderResourcesQuery(
+    query: StudentFolderResourcesQueryDto,
+  ): NormalizedStudentFolderResourcesQuery {
+    return {
+      page: query.page ?? 1,
+      limit: query.limit ?? 12,
+      search: query.search?.trim() ?? '',
+      resourceTypeId: query.resourceTypeId,
+      uploadedOn: query.uploadedOn,
+      sort: query.sort ?? StudentResourcesSort.NEWEST,
+    };
+  }
+
+  private toStudentFolderResource(resource: StudentFolderResourceRecord) {
+    const exam = resource.exam ?? null;
+    const stats = exam ? this.examStats(exam) : null;
+    const latestAttempt = exam?.attempts?.[0];
+    const examProgress = latestAttempt
+      ? ['SUBMITTED', 'AUTO_SUBMITTED', 'EVALUATED'].includes(
+          latestAttempt.status,
+        )
+        ? 'COMPLETED'
+        : latestAttempt.status === 'IN_PROGRESS'
+          ? 'IN_PROGRESS'
+          : 'NOT_STARTED'
+      : 'NOT_STARTED';
+    const videoProgress = resource.videoProgress?.[0]
+      ? this.toVideoProgress(resource.videoProgress[0])
+      : null;
+
+    return {
+      id: resource.id,
+      uuid: resource.uuid,
+      title: resource.title,
+      description: resource.description,
+      resourceTypeId: resource.resourceTypeId,
+      resourceType: resource.resourceType,
+      documentUrl: resource.documentUrl,
+      videoUrl: resource.videoUrl,
+      thumbnail: resource.thumbnail,
+      mimeType: resource.mimeType,
+      fileSize: resource.fileSize?.toString() ?? null,
+      durationInSeconds: resource.durationInSeconds,
+      status: resource.status,
+      isDownloadable: resource.isDownloadable,
+      createdAt: resource.createdAt,
+      progressStatus:
+        resource.resourceTypeId === RESOURCE_TYPE_IDS.VIDEO
+          ? (videoProgress?.status ?? 'NOT_STARTED')
+          : resource.resourceTypeId === RESOURCE_TYPE_IDS.EXAM
+            ? examProgress
+            : null,
+      progressPercentage:
+        resource.resourceTypeId === RESOURCE_TYPE_IDS.VIDEO
+          ? (videoProgress?.percentage ?? 0)
+          : null,
+      exam: exam
+        ? {
+            id: exam.id,
+            code: exam.code,
+            status: exam.status,
+            availability: this.toExamAvailability(exam),
+            availableFrom: exam.availableFrom,
+            availableUntil: exam.availableUntil,
+            durationMinutes: exam.durationMinutes,
+            attemptLimit: exam.attemptLimit,
+            attemptsUsed: exam.attempts.length,
+            questionCount: stats?.questionCount ?? 0,
+            maximumMarks: stats?.maximumMarks ?? 0,
+          }
+        : null,
+    };
+  }
+
+  private ensureExamMatchesSessionCourse(
+    exam: { courseAssignments?: { sessionCourseId: number }[] },
+    sessionCourseId: number,
+  ) {
+    if (
+      !exam.courseAssignments?.some(
+        (assignment) => assignment.sessionCourseId === sessionCourseId,
+      )
+    ) {
+      throw new NotFoundException('Exam is not assigned to this course');
+    }
+  }
+
+  private examStats(exam: StudentExamGraph) {
+    const sections = (exam.selectedSlots ?? []).flatMap((selectedSlot) =>
+      (selectedSlot.templateSlot?.sections ?? []).map((section) => {
+        const questions = (section.subjects ?? []).flatMap(
+          (subject) => subject.questions ?? [],
+        );
+
+        return {
+          id: section.id,
+          code: section.code,
+          name: section.name,
+          durationMinutes: section.durationMinutes,
+          subjects: (section.subjects ?? [])
+            .map((subject) => subject.subject?.name)
+            .filter(Boolean),
+          questionCount: questions.length,
+          maximumMarks: questions.reduce(
+            (total, question) => total + Number(question.marks ?? 0),
+            0,
+          ),
+        };
+      }),
+    );
+
+    return {
+      sections,
+      questionCount: sections.reduce(
+        (total, section) => total + section.questionCount,
+        0,
+      ),
+      maximumMarks: sections.reduce(
+        (total, section) => total + section.maximumMarks,
+        0,
+      ),
+    };
+  }
+
+  private toExamAvailability(exam: {
+    status: string;
+    availableFrom: Date;
+    availableUntil: Date;
+  }) {
+    const now = Date.now();
+    if (['CANCELLED', 'ARCHIVED', 'DRAFT'].includes(exam.status)) {
+      return 'UNAVAILABLE';
+    }
+    if (exam.availableFrom.getTime() > now) {
+      return 'UPCOMING';
+    }
+    if (exam.status === 'CLOSED' || exam.availableUntil.getTime() < now) {
+      return 'CLOSED';
+    }
+    return 'AVAILABLE';
   }
 
   private toVideoProgress(
@@ -958,10 +1320,7 @@ export class StudentsService {
             ),
           }
         : null,
-      continuePath: this.buildCoursePath(
-        sessionCourse.id,
-        progress?.lastAccessedResourceId,
-      ),
+      continuePath: this.buildCoursePath(sessionCourse.id),
       actionLabel:
         completionPercentage > 0 ? 'Continue Learning' : 'Start Course',
     };
@@ -1028,10 +1387,8 @@ export class StudentsService {
     return 'New Content Added';
   }
 
-  private buildCoursePath(sessionCourseId: number, resourceId?: number | null) {
-    return resourceId
-      ? this.buildResourcePath(sessionCourseId, resourceId)
-      : `/student/resources?sessionCourseId=${sessionCourseId}`;
+  private buildCoursePath(sessionCourseId: number) {
+    return `/student/my-courses/${sessionCourseId}`;
   }
 
   private buildResourcePath(sessionCourseId: number, resourceId: number) {

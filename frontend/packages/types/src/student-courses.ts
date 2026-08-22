@@ -44,3 +44,34 @@ export interface StudentCoursesQuery extends PaginationQuery {
 export interface StudentCourseList extends PaginatedData<StudentCourseItem> {
   categories: string[];
 }
+
+export interface StudentCourseFolderCounts {
+  total: number;
+  videos: number;
+  documents: number;
+  exams: number;
+}
+
+export interface StudentCourseFolder {
+  id: number;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+  resourceCounts: StudentCourseFolderCounts;
+}
+
+export interface StudentCourseContext {
+  id: number;
+  courseId: number;
+  name: string;
+  code: string;
+  description: string | null;
+  sessionId: number;
+  sessionName: string;
+}
+
+export interface StudentCourseFolders {
+  course: StudentCourseContext;
+  folders: StudentCourseFolder[];
+}

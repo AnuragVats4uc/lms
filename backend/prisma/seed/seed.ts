@@ -21,6 +21,7 @@ import {
   ResourceTypeId,
 } from '../../src/modules/resource/constants/resource-type.constants';
 import { seedResourceTypes } from './resource-types';
+import { seedStudentLearningFlow } from './student-learning-flow';
 
 const prisma = new PrismaClient();
 const BATCH_SIZE = 2_000;
@@ -166,7 +167,7 @@ async function main() {
       permissionsByKey,
     );
     await seedStudentDashboardDemo();
-    await seedDemoExamModule();
+    await seedStudentLearningFlow();
     console.log('Dashboard seed completed successfully');
     return;
   }

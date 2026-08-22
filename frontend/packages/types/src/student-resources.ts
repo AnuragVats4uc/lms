@@ -1,9 +1,5 @@
 import type { PaginatedData, PaginationQuery } from "./api";
-import type {
-  ResourceStatus,
-  ResourceType,
-  ResourceTypeId,
-} from "./resource";
+import type { ResourceStatus, ResourceType, ResourceTypeId } from "./resource";
 
 export type StudentResourcesSort =
   "NEWEST" | "OLDEST" | "TITLE_ASC" | "TITLE_DESC";
@@ -53,6 +49,7 @@ export interface StudentResourcesSummary {
   total: number;
   videos: number;
   documents: number;
+  exams: number;
 }
 
 export interface StudentResourceCourseOption {
@@ -188,4 +185,78 @@ export interface StudentVideoResourceDetail {
 export interface UpdateStudentVideoProgressRequest {
   currentPositionSeconds: number;
   ended?: boolean;
+}
+
+export type StudentExamAvailability =
+  "AVAILABLE" | "UPCOMING" | "CLOSED" | "UNAVAILABLE";
+
+export interface StudentFolderExamSummary {
+  id: number;
+  code: string;
+  status: string;
+  availability: StudentExamAvailability;
+  availableFrom: string;
+  availableUntil: string;
+  durationMinutes: number;
+  attemptLimit: number;
+  attemptsUsed: number;
+  questionCount: number;
+  maximumMarks: number;
+}
+
+export interface StudentFolderResourceItem extends Omit<
+  StudentResourceItem,
+  "course" | "subject" | "uploadedBy"
+> {
+  progressStatus: StudentResourceProgressStatus | null;
+  progressPercentage: number | null;
+  exam: StudentFolderExamSummary | null;
+}
+
+export interface StudentFolderContext {
+  id: number;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+}
+
+export interface StudentFolderResourcesQuery extends PaginationQuery {
+  resourceTypeId?: ResourceTypeId;
+  uploadedOn?: string;
+  sort?: StudentResourcesSort;
+}
+
+export interface StudentFolderResourceList extends PaginatedData<StudentFolderResourceItem> {
+  course: StudentResourceCourse;
+  folder: StudentFolderContext;
+  summary: StudentResourcesSummary;
+  filters: { types: ResourceType[] };
+}
+
+export interface StudentExamSectionSummary {
+  id: number;
+  code: string;
+  name: string;
+  durationMinutes: number;
+  subjects: string[];
+  questionCount: number;
+  maximumMarks: number;
+}
+
+export interface StudentExamResourceDetail {
+  id: number;
+  uuid: string;
+  title: string;
+  description: string | null;
+  resourceTypeId: ResourceTypeId;
+  resourceType: ResourceType;
+  course: StudentResourceCourse;
+  folder: StudentFolderContext;
+  organization: StudentResourceOrganization;
+  exam: StudentFolderExamSummary & {
+    title: string;
+    instructions: string | null;
+    sections: StudentExamSectionSummary[];
+  };
 }
