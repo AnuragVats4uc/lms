@@ -10,3 +10,4 @@ export * from "./folders.api";
 export * from "./resources.api";
 export * from "./exams.api";
 export * from "./dashboard.api";
+export * from "./registration.api";

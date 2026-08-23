@@ -74,6 +74,19 @@ enum StudentNotificationType {
   SYSTEM
 }
 
+enum RegistrationPageStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum RegistrationFieldType {
+  TEXT
+  SELECT
+  RADIO
+  TEXTAREA
+}
+
 enum ExamTemplateStatus {
   DRAFT
   PUBLISHED

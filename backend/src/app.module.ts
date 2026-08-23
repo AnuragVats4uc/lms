@@ -25,6 +25,7 @@ import { FolderModule } from './modules/folder/folder.module';
 import { ResourceModule } from './modules/resource/resource.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ExamModule } from './modules/exam/exam.module';
+import { RegistrationModule } from './modules/registration/registration.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { ExamModule } from './modules/exam/exam.module';
     StudentsModule,
     UsersModule,
     ExamModule,
+    RegistrationModule,
   ],
   controllers: [AppController],
   providers: [
