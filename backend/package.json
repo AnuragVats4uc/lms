@@ -12,6 +12,9 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "start:render": "prisma migrate deploy && node dist/main",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "prisma migrate status",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -22,6 +25,7 @@
     "seed:registration-form": "tsx prisma/seed/google-registration-form.ts",
     "seed:students": "tsx prisma/seed/student-accounts.ts",
     "seed:resources": "tsx prisma/seed/lms-resources.ts",
+    "seed:demo": "tsx prisma/seed/demo.ts",
     "seed:student-flow": "tsx prisma/seed/student-learning-flow.ts",
     "verify:student-flow": "tsx scripts/audit-student-learning-flow.ts"
   },

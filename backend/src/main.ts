@@ -27,9 +27,23 @@ async function bootstrap() {
 
   app.use(compression());
 
+  const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:3000')
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+
   app.enableCors({
-    origin: '*',
-    credentials: true,
+    origin(
+      origin: string | undefined,
+      callback: (error: Error | null, allow?: boolean) => void,
+    ) {
+      if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ''))) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error('Origin is not allowed by CORS'));
+    },
   });
 
   app.setGlobalPrefix('api/v1');
@@ -48,7 +62,8 @@ async function bootstrap() {
 
   setupSwagger(app);
 
-  await app.listen(process.env.PORT || 5000);
+  const port = Number(process.env.PORT ?? 5000);
+  await app.listen(port, '0.0.0.0');
 }
 
-bootstrap();
+void bootstrap();
