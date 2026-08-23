@@ -1,18 +1,22 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+  ArrayUnique,
+  IsArray,
   IsBoolean,
+  IsInt,
   IsOptional,
   IsString,
   IsUppercase,
   Matches,
   MaxLength,
+  Min,
   MinLength,
 } from 'class-validator';
 
 export class UpdateRoleDto {
   @ApiPropertyOptional({ example: 'Organization Admin' })
-  @Transform(({ value }) =>
+  @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
   @IsOptional()
@@ -22,7 +26,7 @@ export class UpdateRoleDto {
   name?: string;
 
   @ApiPropertyOptional({ example: 'ORGANIZATION_ADMIN' })
-  @Transform(({ value }) =>
+  @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim().toUpperCase() : value,
   )
   @IsOptional()
@@ -43,4 +47,12 @@ export class UpdateRoleDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ example: [1, 2, 3], type: [Number] })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  permissionIds?: number[];
 }

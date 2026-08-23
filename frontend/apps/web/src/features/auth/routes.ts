@@ -3,7 +3,9 @@ import type { AuthUser } from "@repo/auth";
 export const LOGIN_PATH = "/login";
 export const UNAUTHORIZED_PATH = "/unauthorized";
 export const ADMIN_HOME_PATH = "/admin/dashboard";
-export const STUDENT_HOME_PATH = "/student/dashboard";
+export const STUDENT_LANDING_PATH = "/student";
+export const STUDENT_DASHBOARD_PATH = "/student/dashboard";
+export const STUDENT_HOME_PATH = STUDENT_LANDING_PATH;
 
 export function getAuthenticatedPath(user: AuthUser | null) {
   if (!user) {

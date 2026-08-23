@@ -2,18 +2,25 @@ model Role {
   id   Int    @id @default(autoincrement())
   uuid String @unique @default(uuid())
 
-  name        String  @unique(map: "roles_name_unique") @db.VarChar(150)
-  code        String  @unique(map: "roles_code_unique") @db.VarChar(50)
+  organizationId Int?   @map("organization_id")
+  scope          String @default("GLOBAL") @db.VarChar(64)
+  name           String @db.VarChar(150)
+  code           String @db.VarChar(50)
   description String? @db.Text
 
+  isSystem Boolean @default(false) @map("is_system")
   isActive Boolean @default(true) @map("is_active")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   permissions RolePermission[]
   userRoles   UserRole[]
 
+  @@unique([scope, name], map: "roles_scope_name_unique")
+  @@unique([scope, code], map: "roles_scope_code_unique")
+  @@index([organizationId], map: "roles_organization_id_idx")
   @@map("roles")
 }
 

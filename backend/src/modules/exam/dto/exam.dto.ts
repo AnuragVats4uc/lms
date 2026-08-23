@@ -19,7 +19,9 @@ import {
 import {
   ExamImportScope,
   ExamNavigationMode,
+  ExamResultReleaseMode,
   ExamStatus,
+  ExamVirtualKeyboardMode,
   QuestionStatus,
 } from '@prisma/client';
 
@@ -190,6 +192,25 @@ export class CreateQuestionDto extends OrganizationScopedQueryDto {
   @Type(() => Number)
   @IsNumber()
   numericTolerance?: number;
+
+  @IsOptional()
+  @IsEnum(ExamVirtualKeyboardMode)
+  virtualKeyboardMode?: ExamVirtualKeyboardMode;
+
+  @IsOptional()
+  @IsBoolean()
+  allowPhysicalKeyboard?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  allowPaste?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(500)
+  maxAnswerLength?: number;
 }
 
 export class CreateExamTemplateDto extends OrganizationScopedQueryDto {
@@ -218,6 +239,14 @@ export class CreateExamTemplateDto extends OrganizationScopedQueryDto {
   @IsInt()
   @Min(1)
   defaultDurationMinutes?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  enforceSlotTimers?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  enforceSectionTimers?: boolean;
 }
 
 export class TemplateQuestionDto {
@@ -359,6 +388,24 @@ export class TemplateSlotDto {
 }
 
 export class SaveTemplateStructureDto {
+  @IsOptional()
+  @IsString()
+  instructions?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  defaultDurationMinutes?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  enforceSlotTimers?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  enforceSectionTimers?: boolean;
+
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })
@@ -413,6 +460,30 @@ export class CreateExamDto extends OrganizationScopedQueryDto {
   @IsOptional()
   @IsBoolean()
   autoSubmitOnTimeout?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  allowResume?: boolean;
+
+  @IsOptional()
+  @IsEnum(ExamResultReleaseMode)
+  resultReleaseMode?: ExamResultReleaseMode;
+
+  @IsOptional()
+  @IsBoolean()
+  showScore?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  showCorrectAnswers?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  showExplanations?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  showQuestionReview?: boolean;
 
   @IsOptional()
   @IsDateString()

@@ -1,7 +1,18 @@
 "use client";
 
-import { MoreHorizontal, Network, Plus, RefreshCw } from "lucide-react";
-import { AppCard, AppHeading, AppText } from "@repo/ui/primitives";
+import {
+  FolderOpen,
+  MoreHorizontal,
+  Network,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
+import {
+  AppCard,
+  AppEmptyState,
+  AppHeading,
+  AppText,
+} from "@repo/ui/primitives";
 import {
   BreadcrumbNavigation,
   DashboardSection,
@@ -256,9 +267,25 @@ export function ResourceManagementSection({
                   onToggle={onToggleTree}
                 />
               ) : (
-                <AppText color="#52627A" fontSize="$caption">
-                  No content hierarchy is available yet.
-                </AppText>
+                <AppEmptyState
+                  description="Create sessions, courses and folders to build the content hierarchy for this workspace."
+                  icon={
+                    <XStack
+                      background="#ECFDF5"
+                      height={46}
+                      rounded="$10"
+                      style={{
+                        alignItems: "center",
+                        color: "#059669",
+                        justifyContent: "center",
+                      }}
+                      width={46}
+                    >
+                      <Network aria-hidden="true" size={22} strokeWidth={2.1} />
+                    </XStack>
+                  }
+                  title="No hierarchy yet"
+                />
               )}
               <Button
                 aria-label="Add New Folder"
@@ -334,9 +361,48 @@ export function ResourceManagementSection({
                 {folders.length ? (
                   <ResourceFolderGrid folders={folders} />
                 ) : (
-                  <AppText color="#52627A" fontSize="$caption">
-                    No root folders are available for the selected course.
-                  </AppText>
+                  <AppEmptyState
+                    action={
+                      <Button
+                        aria-label="Add first folder"
+                        background="#059669"
+                        height={38}
+                        onPress={onAddFolder}
+                        px="$4"
+                        rounded="$3"
+                      >
+                        <Plus aria-hidden="true" color="#FFFFFF" size={15} />
+                        <Button.Text
+                          color="#FFFFFF"
+                          fontSize="$caption"
+                          fontWeight="$button"
+                        >
+                          Add Folder
+                        </Button.Text>
+                      </Button>
+                    }
+                    description="Add a folder to organize notes, assignments, documents and other learning resources."
+                    icon={
+                      <XStack
+                        background="#ECFDF5"
+                        height={52}
+                        rounded="$10"
+                        style={{
+                          alignItems: "center",
+                          color: "#059669",
+                          justifyContent: "center",
+                        }}
+                        width={52}
+                      >
+                        <FolderOpen
+                          aria-hidden="true"
+                          size={26}
+                          strokeWidth={2.1}
+                        />
+                      </XStack>
+                    }
+                    title="No folders yet"
+                  />
                 )}
                 <UploadDropzone {...upload} />
               </YStack>

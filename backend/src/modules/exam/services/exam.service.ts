@@ -10,12 +10,14 @@ import {
   ExamImportRowStatus,
   ExamImportScope,
   ExamImportStatus,
+  ExamResultReleaseMode,
   ExamStatus,
   ExamTemplateStatus,
   ExamTemplateVersionStatus,
   Prisma,
   QuestionStatus,
   ResourceStatus,
+  ExamVirtualKeyboardMode,
 } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { extname, join } from 'node:path';
@@ -291,6 +293,11 @@ export class ExamService {
               defaultNegativeMarks: dto.defaultNegativeMarks,
               caseSensitive: dto.caseSensitive ?? false,
               normalizeWhitespace: dto.normalizeWhitespace ?? true,
+              virtualKeyboardMode:
+                dto.virtualKeyboardMode ?? ExamVirtualKeyboardMode.NONE,
+              allowPhysicalKeyboard: dto.allowPhysicalKeyboard ?? true,
+              allowPaste: dto.allowPaste ?? true,
+              maxAnswerLength: dto.maxAnswerLength,
               isPublished: dto.status === QuestionStatus.PUBLISHED,
               options: dto.options?.length
                 ? {
@@ -391,6 +398,8 @@ export class ExamService {
               versionNumber: 1,
               instructions: dto.instructions,
               defaultDurationMinutes: dto.defaultDurationMinutes,
+              enforceSlotTimers: dto.enforceSlotTimers ?? false,
+              enforceSectionTimers: dto.enforceSectionTimers ?? false,
             },
           },
         },
@@ -483,6 +492,15 @@ export class ExamService {
         }
 
     await this.prisma.$transaction(async (tx) => {
+      await tx.examTemplateVersion.update({
+        where: { id: version.id },
+        data: {
+          instructions: dto.instructions,
+          defaultDurationMinutes: dto.defaultDurationMinutes,
+          enforceSlotTimers: dto.enforceSlotTimers ?? false,
+          enforceSectionTimers: dto.enforceSectionTimers ?? false,
+        },
+      });
       await tx.examTemplateSlot.deleteMany({
         where: { examTemplateVersionId: version.id },
       });
@@ -598,6 +616,8 @@ export class ExamService {
         versionNumber: source.versionNumber + 1,
         instructions: source.instructions,
         defaultDurationMinutes: source.defaultDurationMinutes,
+        enforceSlotTimers: source.enforceSlotTimers,
+        enforceSectionTimers: source.enforceSectionTimers,
         slots: {
           create: source.slots.map((slot) => ({
             code: slot.code,
@@ -739,6 +759,13 @@ export class ExamService {
             durationMinutes: dto.durationMinutes,
             attemptLimit: dto.attemptLimit,
             autoSubmitOnTimeout: dto.autoSubmitOnTimeout ?? true,
+            allowResume: dto.allowResume ?? true,
+            resultReleaseMode:
+              dto.resultReleaseMode ?? ExamResultReleaseMode.IMMEDIATE,
+            showScore: dto.showScore ?? true,
+            showCorrectAnswers: dto.showCorrectAnswers ?? false,
+            showExplanations: dto.showExplanations ?? false,
+            showQuestionReview: dto.showQuestionReview ?? false,
             resultPublishAt: dto.resultPublishAt
               ? new Date(dto.resultPublishAt)
               : undefined,
@@ -785,6 +812,18 @@ export class ExamService {
         'Exam code already exists in this organization',
       );
     }
+  }
+
+  async releaseExamResults(user: CurrentUser, examId: number) {
+    const organizationId = this.organizationId(user);
+    const exam = await this.prisma.exam.findFirst({
+      where: { id: examId, organizationId, isActive: true },
+    });
+    if (!exam) throw new NotFoundException('Exam not found');
+    return this.prisma.exam.update({
+      where: { id: exam.id },
+      data: { resultsReleasedAt: new Date() },
+    });
   }
 
   async stageImport(

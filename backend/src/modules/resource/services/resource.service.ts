@@ -114,9 +114,10 @@ export class ResourceService {
   }
 
   async create(folderId: number, dto: CreateResourceDto) {
-    await this.ensureFolderExists(folderId);
+    const folder = await this.ensureFolderExists(folderId);
     await this.ensureResourceTypeExists(dto.resourceTypeId);
     const normalized = this.normalizeResourceData(dto);
+    await this.ensureExamMatchesFolder(folder, normalized.examId);
 
     const resource = await this.resourceRepository.create({
       folderId,
@@ -160,12 +161,13 @@ export class ResourceService {
   }
 
   async update(folderId: number, id: number, dto: UpdateResourceDto) {
-    await this.ensureFolderExists(folderId);
+    const folder = await this.ensureFolderExists(folderId);
     const existing = await this.findExisting(folderId, id);
     if (dto.resourceTypeId !== undefined) {
       await this.ensureResourceTypeExists(dto.resourceTypeId);
     }
     const normalized = this.normalizeResourceData(dto, existing);
+    await this.ensureExamMatchesFolder(folder, normalized.examId);
     const data = this.toUpdateInput(dto, normalized);
 
     const resource = await this.resourceRepository.update(id, data);
@@ -223,6 +225,31 @@ export class ResourceService {
 
     if (!folder) {
       throw new NotFoundException('Folder not found');
+    }
+
+    return folder;
+  }
+
+  private async ensureExamMatchesFolder(
+    folder: {
+      sessionCourse: {
+        id: number;
+        session: { organizationId: number };
+      };
+    },
+    examId: number | null | undefined,
+  ) {
+    if (!examId) return;
+
+    const exam = await this.resourceRepository.findExamForFolder(
+      examId,
+      folder.sessionCourse.session.organizationId,
+      folder.sessionCourse.id,
+    );
+    if (!exam) {
+      throw new BadRequestException(
+        'Exam must belong to the folder organization and be assigned to its session course',
+      );
     }
   }
 

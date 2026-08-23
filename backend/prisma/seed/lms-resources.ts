@@ -175,13 +175,7 @@ const resourceSeeds: readonly ResourceSeed[] = [
   },
 ];
 
-async function main() {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      'Refusing to create demo LMS resources with NODE_ENV=production.',
-    );
-  }
-
+export async function seedLmsResources() {
   await seedResourceTypes(prisma);
   const session = await findTargetSession();
   const folderByCourseCode = await resolveFolders(session);
@@ -225,6 +219,10 @@ async function main() {
 
   const verified = await verifyResources(session);
   printSummary(session, verified);
+}
+
+export function disconnectLmsResourceSeed() {
+  return prisma.$disconnect();
 }
 
 async function findTargetSession() {
@@ -438,11 +436,13 @@ function printSummary(
   console.log('========================================\n');
 }
 
-main()
-  .catch((error: unknown) => {
-    console.error('LMS resource seed failed', error);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (require.main === module) {
+  seedLmsResources()
+    .catch((error: unknown) => {
+      console.error('LMS resource seed failed', error);
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

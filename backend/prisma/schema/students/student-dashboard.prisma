@@ -24,6 +24,7 @@ model Student {
   videoProgress  StudentVideoProgress[]
   notifications  StudentNotification[]
   examAttempts   StudentExamAttempt[]
+  registrationAnswers OrganizationRegistrationAnswer[]
 
   @@unique([organizationId, rollNumber], map: "students_organization_id_roll_number_unique")
   @@index([organizationId], map: "students_organization_id_idx")

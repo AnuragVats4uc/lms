@@ -21,6 +21,7 @@ model Organization {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   users                  User[]
+  roles                  Role[]
   userRoles              UserRole[]
   sessions               Session[]
   students               Student[]
@@ -32,6 +33,9 @@ model Organization {
   examTemplates          ExamTemplate[]
   exams                  Exam[]
   examImportJobs         ExamImportJob[]
+  registrationPages      OrganizationRegistrationPage[]
+  educationOptions       OrganizationEducationOption[]
+  digitalLibraryLocations OrganizationDigitalLibraryLocation[]
 
   @@map("organizations")
 }

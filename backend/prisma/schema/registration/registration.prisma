@@ -1,0 +1,232 @@
+model OrganizationRegistrationPage {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  organizationId Int @map("organization_id")
+  sessionId      Int @map("session_id")
+
+  slug        String  @unique(map: "organization_registration_pages_slug_unique") @db.VarChar(120)
+  title       String  @default("Student Registration") @db.VarChar(180)
+  description String? @db.Text
+
+  logoOverride String? @map("logo_override") @db.VarChar(255)
+  heroImage    String? @map("hero_image") @db.VarChar(255)
+
+  primaryColor String? @map("primary_color") @db.VarChar(20)
+  accentColor  String? @map("accent_color") @db.VarChar(20)
+
+  supportEmail String? @map("support_email") @db.VarChar(191)
+  supportPhone String? @map("support_phone") @db.VarChar(30)
+
+  submitButtonText String  @default("Submit Registration") @map("submit_button_text") @db.VarChar(80)
+  successTitle     String  @default("Registration Successful") @map("success_title") @db.VarChar(120)
+  successMessage   String? @map("success_message") @db.Text
+
+  registrationEnabled    Boolean @default(false) @map("registration_enabled")
+  requireEmailVerification Boolean @default(false) @map("require_email_verification")
+  requirePhoneVerification Boolean @default(false) @map("require_phone_verification")
+
+  status   RegistrationPageStatus @default(DRAFT)
+  isActive Boolean                @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  session      Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  fields                          OrganizationRegistrationField[]
+  answers                         OrganizationRegistrationAnswer[]
+  selectedCourses                 OrganizationRegistrationPageCourse[]
+  selectedEducationOptions        OrganizationRegistrationPageEducationOption[]
+  selectedDigitalLibraryLocations OrganizationRegistrationPageDigitalLibraryLocation[]
+
+  @@index([organizationId], map: "org_registration_pages_organization_id_idx")
+  @@index([sessionId], map: "org_registration_pages_session_id_idx")
+  @@index([status, isActive], map: "org_registration_pages_status_is_active_idx")
+  @@index([registrationEnabled], map: "org_registration_pages_enabled_idx")
+  @@map("organization_registration_pages")
+}
+
+model OrganizationRegistrationField {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  registrationPageId Int @map("registration_page_id")
+
+  fieldKey    String                @map("field_key") @db.VarChar(80)
+  label       String                @db.VarChar(150)
+  fieldType   RegistrationFieldType @default(TEXT) @map("field_type")
+  isRequired  Boolean               @default(false) @map("is_required")
+  placeholder String?               @db.VarChar(180)
+  helpText    String?               @map("help_text") @db.VarChar(255)
+  mapsTo      String?               @map("maps_to") @db.VarChar(80)
+  sortOrder   Int                   @default(0) @map("sort_order")
+  isActive    Boolean               @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  registrationPage OrganizationRegistrationPage @relation(fields: [registrationPageId], references: [id], onDelete: Cascade)
+  options          OrganizationRegistrationFieldOption[]
+  answers          OrganizationRegistrationAnswer[]
+
+  @@unique([registrationPageId, fieldKey], map: "org_registration_fields_page_key_unique")
+  @@index([registrationPageId, sortOrder], map: "org_registration_fields_page_sort_idx")
+  @@map("organization_registration_fields")
+}
+
+model OrganizationRegistrationFieldOption {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  fieldId Int @map("field_id")
+
+  optionKey String  @map("option_key") @db.VarChar(80)
+  label     String  @db.VarChar(150)
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  field OrganizationRegistrationField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldId, optionKey], map: "org_registration_field_options_field_key_unique")
+  @@index([fieldId, sortOrder], map: "org_registration_field_options_field_sort_idx")
+  @@map("organization_registration_field_options")
+}
+
+model OrganizationRegistrationAnswer {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  registrationPageId Int  @map("registration_page_id")
+  fieldId            Int? @map("field_id")
+  studentId          Int  @map("student_id")
+
+  fieldKey String  @map("field_key") @db.VarChar(80)
+  value    String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  registrationPage OrganizationRegistrationPage   @relation(fields: [registrationPageId], references: [id], onDelete: Cascade)
+  field            OrganizationRegistrationField? @relation(fields: [fieldId], references: [id], onDelete: SetNull)
+  student          Student                        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([registrationPageId, studentId, fieldKey], map: "org_registration_answers_page_student_key_unique")
+  @@index([fieldId], map: "org_registration_answers_field_id_idx")
+  @@index([studentId], map: "org_registration_answers_student_id_idx")
+  @@map("organization_registration_answers")
+}
+
+model OrganizationEducationOption {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  organizationId Int @map("organization_id")
+
+  name      String  @db.VarChar(150)
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization      Organization                              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  registrationPages OrganizationRegistrationPageEducationOption[]
+
+  @@unique([organizationId, name], map: "organization_education_options_org_name_unique")
+  @@index([organizationId], map: "organization_education_options_organization_id_idx")
+  @@index([organizationId, isActive, sortOrder], map: "organization_education_options_org_active_sort_idx")
+  @@map("organization_education_options")
+}
+
+model OrganizationDigitalLibraryLocation {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  organizationId Int @map("organization_id")
+
+  name      String  @db.VarChar(150)
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization      Organization                                      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  registrationPages OrganizationRegistrationPageDigitalLibraryLocation[]
+
+  @@unique([organizationId, name], map: "organization_library_locations_org_name_unique")
+  @@index([organizationId], map: "organization_library_locations_organization_id_idx")
+  @@index([organizationId, isActive, sortOrder], map: "organization_library_locations_org_active_sort_idx")
+  @@map("organization_digital_library_locations")
+}
+
+model OrganizationRegistrationPageCourse {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  registrationPageId Int @map("registration_page_id")
+  sessionCourseId    Int @map("session_course_id")
+
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  registrationPage OrganizationRegistrationPage @relation(fields: [registrationPageId], references: [id], onDelete: Cascade)
+  sessionCourse    SessionCourse                @relation(fields: [sessionCourseId], references: [id], onDelete: Cascade)
+
+  @@unique([registrationPageId, sessionCourseId], map: "org_registration_page_courses_page_course_unique")
+  @@index([registrationPageId, sortOrder], map: "org_registration_page_courses_page_sort_idx")
+  @@index([sessionCourseId], map: "org_registration_page_courses_session_course_idx")
+  @@map("organization_registration_page_courses")
+}
+
+model OrganizationRegistrationPageEducationOption {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  registrationPageId Int @map("registration_page_id")
+  educationOptionId  Int @map("education_option_id")
+
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  registrationPage OrganizationRegistrationPage @relation(fields: [registrationPageId], references: [id], onDelete: Cascade)
+  educationOption  OrganizationEducationOption  @relation(fields: [educationOptionId], references: [id], onDelete: Cascade)
+
+  @@unique([registrationPageId, educationOptionId], map: "org_registration_page_education_page_option_unique")
+  @@index([registrationPageId, sortOrder], map: "org_registration_page_education_page_sort_idx")
+  @@index([educationOptionId], map: "org_registration_page_education_option_idx")
+  @@map("organization_registration_page_education_options")
+}
+
+model OrganizationRegistrationPageDigitalLibraryLocation {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique(map: "org_registration_page_library_uuid_key") @default(uuid())
+
+  registrationPageId        Int @map("registration_page_id")
+  digitalLibraryLocationId  Int @map("digital_library_location_id")
+
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  registrationPage       OrganizationRegistrationPage          @relation(fields: [registrationPageId], references: [id], onDelete: Cascade)
+  digitalLibraryLocation OrganizationDigitalLibraryLocation    @relation(fields: [digitalLibraryLocationId], references: [id], onDelete: Cascade)
+
+  @@unique([registrationPageId, digitalLibraryLocationId], map: "org_registration_page_library_page_location_unique")
+  @@index([registrationPageId, sortOrder], map: "org_registration_page_library_page_sort_idx")
+  @@index([digitalLibraryLocationId], map: "org_registration_page_library_location_idx")
+  @@map("organization_registration_page_digital_library_locations")
+}

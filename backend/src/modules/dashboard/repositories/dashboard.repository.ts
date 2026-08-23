@@ -87,7 +87,12 @@ export class DashboardRepository {
         ? this.prisma.folder.findMany({
             where: { sessionCourseId: scope.sessionCourseId, isActive: true },
             orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-            select: { id: true, sessionCourseId: true, parentFolderId: true, name: true },
+            select: {
+              id: true,
+              sessionCourseId: true,
+              parentFolderId: true,
+              name: true,
+            },
           })
         : Promise.resolve([]),
     ]).then(([organizations, sessions, sessionCourses, folders]) => ({
@@ -123,16 +128,18 @@ export class DashboardRepository {
       ...(Object.keys(folderSessionCourseWhere).length
         ? { sessionCourse: folderSessionCourseWhere }
         : {}),
-      ...(scope.sessionCourseId ? { sessionCourseId: scope.sessionCourseId } : {}),
+      ...(scope.sessionCourseId
+        ? { sessionCourseId: scope.sessionCourseId }
+        : {}),
       ...(scope.folderId ? { id: scope.folderId } : {}),
     };
     const resourceWhere: Prisma.ResourceWhereInput = {
       ...(Object.keys(folderWhere).length ? { folder: folderWhere } : {}),
     };
-    const courseWhere: Prisma.CourseWhereInput =
-      Object.keys(sessionCourseWhere).length
-        ? { sessionCourses: { some: sessionCourseWhere } }
-        : {};
+    const courseWhere: Prisma.CourseWhereInput = Object.keys(sessionCourseWhere)
+      .length
+      ? { sessionCourses: { some: sessionCourseWhere } }
+      : {};
     const userWhere: Prisma.UserWhereInput = {
       ...(scope.organizationId ? { organizationId: scope.organizationId } : {}),
     };
@@ -145,19 +152,35 @@ export class DashboardRepository {
       this.countMetric('folder', folderWhere, 'isActive'),
       this.countMetric('resource', resourceWhere, 'isActive'),
       this.countMetric('user', userWhere, 'isActive'),
-      this.countMetric('role', {}, 'isActive'),
+      this.countMetric(
+        'role',
+        scope.organizationId ? { organizationId: scope.organizationId } : {},
+        'isActive',
+      ),
       this.prisma.permission.count(),
-    ]).then(([organizations, sessions, courses, sessionCourses, folders, resources, users, roles, permissions]) => ({
-      organizations,
-      sessions,
-      courses,
-      sessionCourses,
-      folders,
-      resources,
-      users,
-      roles,
-      permissions,
-    }));
+    ]).then(
+      ([
+        organizations,
+        sessions,
+        courses,
+        sessionCourses,
+        folders,
+        resources,
+        users,
+        roles,
+        permissions,
+      ]) => ({
+        organizations,
+        sessions,
+        courses,
+        sessionCourses,
+        folders,
+        resources,
+        users,
+        roles,
+        permissions,
+      }),
+    );
   }
 
   findFolders(sessionCourseId: number) {
@@ -175,9 +198,14 @@ export class DashboardRepository {
     });
   }
 
-  findRoles() {
+  findRoles(scope: DashboardScope) {
     return this.prisma.role.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        ...(scope.organizationId
+          ? { organizationId: scope.organizationId }
+          : {}),
+      },
       orderBy: { createdAt: 'asc' },
       select: {
         id: true,
@@ -191,7 +219,15 @@ export class DashboardRepository {
   }
 
   private countMetric<
-    T extends 'organization' | 'session' | 'course' | 'sessionCourse' | 'folder' | 'resource' | 'user' | 'role',
+    T extends
+      | 'organization'
+      | 'session'
+      | 'course'
+      | 'sessionCourse'
+      | 'folder'
+      | 'resource'
+      | 'user'
+      | 'role',
   >(model: T, where: object, activeField: 'isActive') {
     const delegate = this.prisma[model] as unknown as {
       count: (args: { where: object }) => Prisma.PrismaPromise<number>;

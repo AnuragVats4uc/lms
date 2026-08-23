@@ -27,6 +27,7 @@ import type {
   StudentResourcesQuery,
   StudentResourcesSort,
 } from "@repo/types";
+import { RESOURCE_TYPE_IDS } from "@repo/types";
 import { Text, XStack, YStack } from "@repo/ui";
 import { AppBadge } from "@repo/ui/primitives";
 
@@ -57,10 +58,15 @@ const sortOptions = [
   { label: "Name Z–A", value: "TITLE_DESC" },
 ] as const;
 
-function createDefaultFilters(search = ""): FilterValues {
+function createDefaultFilters(
+  search = "",
+  resourceTypeId?: ResourceTypeId,
+): FilterValues {
   return {
     search,
-    resourceTypeId: ALL,
+    resourceTypeId: resourceTypeId
+      ? (String(resourceTypeId) as `${ResourceTypeId}`)
+      : ALL,
     courseId: ALL,
     subjectId: ALL,
     uploadedOn: "",
@@ -71,14 +77,20 @@ function createDefaultFilters(search = ""): FilterValues {
 
 export function StudentResourcesPage({
   initialSearch = "",
+  initialResourceTypeId,
+  subtitle = "Access all your learning materials in one place",
+  title = "Resources",
 }: {
   initialSearch?: string;
+  initialResourceTypeId?: ResourceTypeId;
+  subtitle?: string;
+  title?: string;
 }) {
   const [draftFilters, setDraftFilters] = useState(() =>
-    createDefaultFilters(initialSearch),
+    createDefaultFilters(initialSearch, initialResourceTypeId),
   );
   const [appliedFilters, setAppliedFilters] = useState(() =>
-    createDefaultFilters(initialSearch),
+    createDefaultFilters(initialSearch, initialResourceTypeId),
   );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -91,7 +103,7 @@ export function StudentResourcesPage({
       resourceTypeId:
         appliedFilters.resourceTypeId === ALL
           ? undefined
-          : Number(appliedFilters.resourceTypeId) as ResourceTypeId,
+          : (Number(appliedFilters.resourceTypeId) as ResourceTypeId),
       sessionCourseId:
         appliedFilters.courseId === ALL
           ? undefined
@@ -137,7 +149,7 @@ export function StudentResourcesPage({
   };
 
   const resetFilters = () => {
-    const reset = createDefaultFilters();
+    const reset = createDefaultFilters("", initialResourceTypeId);
     setDraftFilters(reset);
     setAppliedFilters(reset);
     setPage(1);
@@ -146,43 +158,71 @@ export function StudentResourcesPage({
   return (
     <YStack className="student-resources-page">
       <YStack className="student-resources-heading">
-        <Text className="student-resources-title">Resources</Text>
-        <Text className="student-resources-subtitle">
-          Access all your learning materials in one place
-        </Text>
+        <Text className="student-resources-title">{title}</Text>
+        <Text className="student-resources-subtitle">{subtitle}</Text>
       </YStack>
 
-      <div className="student-resource-summary-grid">
-        <SummaryCard
-          Icon={FolderOpen}
-          label="Total Resources"
-          loading={resourcesQuery.isLoading}
-          tone="green"
-          value={data?.summary.total ?? 0}
-          supportingText="Across your enrolled courses"
-        />
-        <SummaryCard
-          Icon={Video}
-          label="Videos"
-          loading={resourcesQuery.isLoading}
-          tone="purple"
-          value={data?.summary.videos ?? 0}
-          supportingText={percentageLabel(
-            data?.summary.videos ?? 0,
-            data?.summary.total ?? 0,
-          )}
-        />
-        <SummaryCard
-          Icon={FileText}
-          label="Documents"
-          loading={resourcesQuery.isLoading}
-          tone="orange"
-          value={data?.summary.documents ?? 0}
-          supportingText={percentageLabel(
-            data?.summary.documents ?? 0,
-            data?.summary.total ?? 0,
-          )}
-        />
+      <div
+        className={`student-resource-summary-grid ${
+          initialResourceTypeId === RESOURCE_TYPE_IDS.EXAM
+            ? "student-exam-summary-grid"
+            : ""
+        }`.trim()}
+      >
+        {initialResourceTypeId === RESOURCE_TYPE_IDS.EXAM ? (
+          <SummaryCard
+            Icon={Trophy}
+            label="Assigned Exams"
+            loading={resourcesQuery.isLoading}
+            tone="green"
+            value={data?.summary.exams ?? 0}
+            supportingText="Through your active course enrollments"
+          />
+        ) : (
+          <>
+            <SummaryCard
+              Icon={FolderOpen}
+              label="Total Resources"
+              loading={resourcesQuery.isLoading}
+              tone="green"
+              value={data?.summary.total ?? 0}
+              supportingText="Across your enrolled courses"
+            />
+            <SummaryCard
+              Icon={Video}
+              label="Videos"
+              loading={resourcesQuery.isLoading}
+              tone="purple"
+              value={data?.summary.videos ?? 0}
+              supportingText={percentageLabel(
+                data?.summary.videos ?? 0,
+                data?.summary.total ?? 0,
+              )}
+            />
+            <SummaryCard
+              Icon={FileText}
+              label="Documents"
+              loading={resourcesQuery.isLoading}
+              tone="orange"
+              value={data?.summary.documents ?? 0}
+              supportingText={percentageLabel(
+                data?.summary.documents ?? 0,
+                data?.summary.total ?? 0,
+              )}
+            />
+            <SummaryCard
+              Icon={Trophy}
+              label="Exams"
+              loading={resourcesQuery.isLoading}
+              tone="green"
+              value={data?.summary.exams ?? 0}
+              supportingText={percentageLabel(
+                data?.summary.exams ?? 0,
+                data?.summary.total ?? 0,
+              )}
+            />
+          </>
+        )}
       </div>
 
       <section
@@ -209,28 +249,30 @@ export function StudentResourcesPage({
               </div>
             </FilterField>
 
-            <FilterField label="Resource Type">
-              <CrudSelect
-                ariaLabel="Resource type"
-                disabled={resourcesQuery.isLoading}
-                onChange={(value) =>
-                  updateFilter(
-                    "resourceTypeId",
-                    value as FilterValues["resourceTypeId"],
-                  )
-                }
-                options={[
-                  { label: "All Types", value: ALL },
-                  ...(data?.filters.types ?? []).map((type) => ({
-                    label: type.name,
-                    value: String(type.id),
-                  })),
-                ]}
-                value={draftFilters.resourceTypeId}
-                variant="form"
-                width="100%"
-              />
-            </FilterField>
+            {initialResourceTypeId ? null : (
+              <FilterField label="Resource Type">
+                <CrudSelect
+                  ariaLabel="Resource type"
+                  disabled={resourcesQuery.isLoading}
+                  onChange={(value) =>
+                    updateFilter(
+                      "resourceTypeId",
+                      value as FilterValues["resourceTypeId"],
+                    )
+                  }
+                  options={[
+                    { label: "All Types", value: ALL },
+                    ...(data?.filters.types ?? []).map((type) => ({
+                      label: type.name,
+                      value: String(type.id),
+                    })),
+                  ]}
+                  value={draftFilters.resourceTypeId}
+                  variant="form"
+                  width="100%"
+                />
+              </FilterField>
+            )}
 
             <FilterField label="Course">
               <CrudSelect
@@ -363,16 +405,28 @@ export function StudentResourcesPage({
         columns={columns}
         data={data?.items ?? []}
         emptyState={{
-          description: "Try adjusting your filters.",
-          title: "No resources found",
+          description:
+            initialResourceTypeId === RESOURCE_TYPE_IDS.EXAM
+              ? "No exams are currently assigned through your enrolled courses."
+              : "Try adjusting your filters.",
+          title:
+            initialResourceTypeId === RESOURCE_TYPE_IDS.EXAM
+              ? "No assigned exams"
+              : "No resources found",
         }}
         error={
           resourcesQuery.isError
             ? {
-                description: "Your learning resources could not be loaded.",
+                description:
+                  initialResourceTypeId === RESOURCE_TYPE_IDS.EXAM
+                    ? "Your assigned exams could not be loaded."
+                    : "Your learning resources could not be loaded.",
                 onRetry: () => void resourcesQuery.refetch(),
                 retryLabel: "Retry",
-                title: "Unable to load resources",
+                title:
+                  initialResourceTypeId === RESOURCE_TYPE_IDS.EXAM
+                    ? "Unable to load exams"
+                    : "Unable to load resources",
               }
             : null
         }
@@ -384,7 +438,10 @@ export function StudentResourcesPage({
           setPage(1);
         }}
         pagination={{
-          entityLabel: "resources",
+          entityLabel:
+            initialResourceTypeId === RESOURCE_TYPE_IDS.EXAM
+              ? "exams"
+              : "resources",
           mode: "server",
           page,
           pageSize,
@@ -545,7 +602,9 @@ function ResourceCell({ resource }: { resource: StudentResourceItem }) {
       ? `/student/resources/${resource.id}`
       : resource.resourceType.code === "VIDEO"
         ? `/student/resources/${resource.id}/video`
-        : null;
+        : resource.resourceType.code === "EXAM"
+          ? `/student/resources/${resource.id}/exam`
+          : null;
 
   return (
     <XStack className="student-resource-cell">
@@ -629,7 +688,9 @@ function ResourceAction({ resource }: { resource: StudentResourceItem }) {
       ? `/student/resources/${resource.id}`
       : resource.resourceType.code === "VIDEO"
         ? `/student/resources/${resource.id}/video`
-        : null;
+        : resource.resourceType.code === "EXAM"
+          ? `/student/resources/${resource.id}/exam`
+          : null;
   if (resourcePath) {
     return (
       <Link

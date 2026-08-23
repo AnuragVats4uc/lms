@@ -12,17 +12,18 @@ const StatsGrid = styled(YStack, {
   width: "100%",
 });
 
-const gridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3, minmax(200px, 1fr)) minmax(376px, 1.35fr)",
-} as const;
-
 export const DashboardStats = memo(function DashboardStats({
   quickActions,
   stats,
 }: DashboardStatsProps) {
   return (
-    <StatsGrid className="lms-dashboard-stats-grid" style={gridStyle}>
+    <StatsGrid
+      className="lms-dashboard-stats-grid"
+      style={{
+        display: "grid",
+        gridTemplateColumns: `repeat(${stats.length}, minmax(160px, 1fr)) minmax(300px, 1.35fr)`,
+      }}
+    >
       {stats.map((stat) => (
         <StatCard key={stat.title} minW={0} {...stat} />
       ))}

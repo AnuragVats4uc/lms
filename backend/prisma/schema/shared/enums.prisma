@@ -74,6 +74,19 @@ enum StudentNotificationType {
   SYSTEM
 }
 
+enum RegistrationPageStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum RegistrationFieldType {
+  TEXT
+  SELECT
+  RADIO
+  TEXTAREA
+}
+
 enum ExamTemplateStatus {
   DRAFT
   PUBLISHED
@@ -121,6 +134,18 @@ enum ExamSubmissionReason {
   SLOT_TIMEOUT
   SECTION_TIMEOUT
   ADMIN_SUBMITTED
+}
+
+enum ExamVirtualKeyboardMode {
+  NONE
+  NUMERIC
+  ALPHANUMERIC
+}
+
+enum ExamResultReleaseMode {
+  IMMEDIATE
+  SCHEDULED
+  MANUAL
 }
 
 enum ExamImportFileKind {

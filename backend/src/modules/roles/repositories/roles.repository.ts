@@ -4,17 +4,23 @@ import { PrismaService } from '../../../prisma';
 import { RoleQueryDto } from '../dto/role-query.dto';
 
 export interface RoleCreateData {
+  organizationId?: number;
+  scope: string;
   name: string;
   code: string;
   description?: string;
+  isSystem?: boolean;
   isActive?: boolean;
 }
 
 export type RoleUpdateData = Partial<RoleCreateData>;
 
-export interface NormalizedRoleQuery
-  extends Required<Omit<RoleQueryDto, 'isActive'>> {
+export interface NormalizedRoleQuery extends Required<
+  Omit<RoleQueryDto, 'isActive' | 'organizationId'>
+> {
   isActive?: boolean;
+  organizationId?: number;
+  includeGlobal?: boolean;
 }
 
 @Injectable()
@@ -32,6 +38,7 @@ export class RolesRepository {
     return this.prisma.role.findUnique({
       where: { id },
       include: {
+        organization: true,
         permissions: {
           include: {
             permission: true,
@@ -41,31 +48,33 @@ export class RolesRepository {
     });
   }
 
-  findByCode(code: string) {
+  findByCode(code: string, scope = 'GLOBAL') {
     return this.prisma.role.findUnique({
-      where: { code },
+      where: { scope_code: { scope, code } },
     });
   }
 
-  findByName(name: string) {
+  findByName(name: string, scope = 'GLOBAL') {
     return this.prisma.role.findUnique({
-      where: { name },
+      where: { scope_name: { scope, name } },
     });
   }
 
-  findByCodeExcludingId(code: string, id: number) {
+  findByCodeExcludingId(code: string, scope: string, id: number) {
     return this.prisma.role.findFirst({
       where: {
         code,
+        scope,
         id: { not: id },
       },
     });
   }
 
-  findByNameExcludingId(name: string, id: number) {
+  findByNameExcludingId(name: string, scope: string, id: number) {
     return this.prisma.role.findFirst({
       where: {
         name,
+        scope,
         id: { not: id },
       },
     });
@@ -79,6 +88,7 @@ export class RolesRepository {
       this.prisma.role.findMany({
         where,
         include: {
+          organization: true,
           permissions: {
             include: {
               permission: true,
@@ -100,6 +110,7 @@ export class RolesRepository {
       where: { id },
       data,
       include: {
+        organization: true,
         permissions: {
           include: {
             permission: true,
@@ -109,10 +120,7 @@ export class RolesRepository {
     });
   }
 
-  async replacePermissions(
-    roleId: number,
-    permissionIds: number[],
-  ) {
+  async replacePermissions(roleId: number, permissionIds: number[]) {
     await this.prisma.$transaction([
       this.prisma.rolePermission.deleteMany({
         where: { roleId },
@@ -129,11 +137,7 @@ export class RolesRepository {
     return this.findById(roleId);
   }
 
-  findUserRole(
-    userId: number,
-    roleId: number,
-    organizationId?: number,
-  ) {
+  findUserRole(userId: number, roleId: number, organizationId?: number) {
     return this.prisma.userRole.findFirst({
       where: {
         userId,
@@ -143,11 +147,7 @@ export class RolesRepository {
     });
   }
 
-  createUserRole(
-    userId: number,
-    roleId: number,
-    organizationId?: number,
-  ) {
+  createUserRole(userId: number, roleId: number, organizationId?: number) {
     return this.prisma.userRole.create({
       data: {
         userId,
@@ -195,6 +195,13 @@ export class RolesRepository {
     });
   }
 
+  findAccessUser(userId: bigint | string | number) {
+    return this.prisma.user.findUnique({
+      where: { id: Number(userId) },
+      select: { id: true, organizationId: true },
+    });
+  }
+
   findUserById(userId: number) {
     return this.prisma.user.findUnique({
       where: { id: userId },
@@ -209,12 +216,24 @@ export class RolesRepository {
 
   private buildWhere(query: NormalizedRoleQuery) {
     const where: {
+      organizationId?: number | null;
       isActive?: boolean;
       OR?: Array<{
         name?: { contains: string };
         code?: { contains: string };
       }>;
+      AND?: Array<{
+        OR?: Array<{
+          organizationId?: number | null;
+        }>;
+      }>;
     } = {};
+
+    if (query.organizationId !== undefined) {
+      where.organizationId = query.organizationId;
+    } else if (!query.includeGlobal) {
+      where.organizationId = null;
+    }
 
     if (query.isActive !== undefined) {
       where.isActive = query.isActive;

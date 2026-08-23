@@ -59,20 +59,24 @@ model Question {
 }
 
 model QuestionVersion {
-  id                   Int      @id @default(autoincrement())
-  questionId           Int      @map("question_id")
-  questionTypeId       Int      @map("question_type_id")
-  comprehensionId      Int?     @map("comprehension_id")
-  versionNumber        Int      @map("version_number")
-  content              String   @db.LongText
-  explanation          String?  @db.LongText
-  defaultMarks         Decimal  @default(1) @map("default_marks") @db.Decimal(8, 2)
-  defaultNegativeMarks Decimal  @default(0) @map("default_negative_marks") @db.Decimal(8, 2)
-  caseSensitive        Boolean  @default(false) @map("case_sensitive")
-  normalizeWhitespace  Boolean  @default(true) @map("normalize_whitespace")
-  isPublished          Boolean  @default(false) @map("is_published")
-  createdAt            DateTime @default(now()) @map("created_at")
-  updatedAt            DateTime @updatedAt @map("updated_at")
+  id                    Int                     @id @default(autoincrement())
+  questionId            Int                     @map("question_id")
+  questionTypeId        Int                     @map("question_type_id")
+  comprehensionId       Int?                    @map("comprehension_id")
+  versionNumber         Int                     @map("version_number")
+  content               String                  @db.LongText
+  explanation           String?                 @db.LongText
+  defaultMarks          Decimal                 @default(1) @map("default_marks") @db.Decimal(8, 2)
+  defaultNegativeMarks  Decimal                 @default(0) @map("default_negative_marks") @db.Decimal(8, 2)
+  caseSensitive         Boolean                 @default(false) @map("case_sensitive")
+  normalizeWhitespace   Boolean                 @default(true) @map("normalize_whitespace")
+  virtualKeyboardMode   ExamVirtualKeyboardMode @default(NONE) @map("virtual_keyboard_mode")
+  allowPhysicalKeyboard Boolean                 @default(true) @map("allow_physical_keyboard")
+  allowPaste            Boolean                 @default(true) @map("allow_paste")
+  maxAnswerLength       Int?                    @map("max_answer_length")
+  isPublished           Boolean                 @default(false) @map("is_published")
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @updatedAt @map("updated_at")
 
   question          Question                 @relation(fields: [questionId], references: [id], onDelete: Cascade)
   questionType      QuestionType             @relation(fields: [questionTypeId], references: [id], onDelete: Restrict)
@@ -163,6 +167,8 @@ model ExamTemplateVersion {
   versionNumber          Int                       @map("version_number")
   instructions           String?                   @db.LongText
   defaultDurationMinutes Int?                      @map("default_duration_minutes")
+  enforceSlotTimers      Boolean                   @default(false) @map("enforce_slot_timers")
+  enforceSectionTimers   Boolean                   @default(false) @map("enforce_section_timers")
   status                 ExamTemplateVersionStatus @default(DRAFT)
   publishedAt            DateTime?                 @map("published_at")
   createdAt              DateTime                  @default(now()) @map("created_at")
@@ -252,9 +258,10 @@ model ExamTemplateQuestion {
   isMandatory                  Boolean @default(true) @map("is_mandatory")
   sortOrder                    Int     @default(0) @map("sort_order")
 
-  sectionSubject  ExamTemplateSectionSubject @relation(fields: [examTemplateSectionSubjectId], references: [id], onDelete: Cascade)
-  questionVersion QuestionVersion            @relation(fields: [questionVersionId], references: [id], onDelete: Restrict)
-  answers         StudentExamAnswer[]
+  sectionSubject   ExamTemplateSectionSubject   @relation(fields: [examTemplateSectionSubjectId], references: [id], onDelete: Cascade)
+  questionVersion  QuestionVersion              @relation(fields: [questionVersionId], references: [id], onDelete: Restrict)
+  answers          StudentExamAnswer[]
+  attemptQuestions StudentExamAttemptQuestion[]
 
   @@unique([examTemplateSectionSubjectId, questionVersionId], map: "exam_template_questions_section_question_unique")
   @@index([questionVersionId], map: "exam_template_questions_version_idx")
@@ -262,24 +269,31 @@ model ExamTemplateQuestion {
 }
 
 model Exam {
-  id                    Int        @id @default(autoincrement())
-  uuid                  String     @unique @default(uuid())
-  organizationId        Int        @map("organization_id")
-  sessionId             Int        @map("session_id")
-  examTemplateVersionId Int        @map("exam_template_version_id")
-  code                  String     @db.VarChar(80)
-  title                 String     @db.VarChar(200)
-  instructions          String?    @db.LongText
-  availableFrom         DateTime   @map("available_from")
-  availableUntil        DateTime   @map("available_until")
-  durationMinutes       Int        @map("duration_minutes")
-  attemptLimit          Int        @default(1) @map("attempt_limit")
-  autoSubmitOnTimeout   Boolean    @default(true) @map("auto_submit_on_timeout")
-  resultPublishAt       DateTime?  @map("result_publish_at")
-  status                ExamStatus @default(DRAFT)
-  isActive              Boolean    @default(true) @map("is_active")
-  createdAt             DateTime   @default(now()) @map("created_at")
-  updatedAt             DateTime   @updatedAt @map("updated_at")
+  id                    Int                   @id @default(autoincrement())
+  uuid                  String                @unique @default(uuid())
+  organizationId        Int                   @map("organization_id")
+  sessionId             Int                   @map("session_id")
+  examTemplateVersionId Int                   @map("exam_template_version_id")
+  code                  String                @db.VarChar(80)
+  title                 String                @db.VarChar(200)
+  instructions          String?               @db.LongText
+  availableFrom         DateTime              @map("available_from")
+  availableUntil        DateTime              @map("available_until")
+  durationMinutes       Int                   @map("duration_minutes")
+  attemptLimit          Int                   @default(1) @map("attempt_limit")
+  autoSubmitOnTimeout   Boolean               @default(true) @map("auto_submit_on_timeout")
+  allowResume           Boolean               @default(true) @map("allow_resume")
+  resultReleaseMode     ExamResultReleaseMode @default(IMMEDIATE) @map("result_release_mode")
+  resultsReleasedAt     DateTime?             @map("results_released_at")
+  showScore             Boolean               @default(true) @map("show_score")
+  showCorrectAnswers    Boolean               @default(false) @map("show_correct_answers")
+  showExplanations      Boolean               @default(false) @map("show_explanations")
+  showQuestionReview    Boolean               @default(false) @map("show_question_review")
+  resultPublishAt       DateTime?             @map("result_publish_at")
+  status                ExamStatus            @default(DRAFT)
+  isActive              Boolean               @default(true) @map("is_active")
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @updatedAt @map("updated_at")
 
   organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   session           Session              @relation(fields: [sessionId], references: [id], onDelete: Restrict)
@@ -443,16 +457,20 @@ model StudentExamAttempt {
   submittedAt                DateTime?             @map("submitted_at")
   durationSeconds            Int                   @default(0) @map("duration_seconds")
   remainingSecondsAtLastSave Int?                  @map("remaining_seconds_at_last_save")
+  lastSavedAt                DateTime?             @map("last_saved_at")
+  evaluatedAt                DateTime?             @map("evaluated_at")
+  configurationSnapshot      Json?                 @map("configuration_snapshot")
   submissionReason           ExamSubmissionReason? @map("submission_reason")
   score                      Decimal?              @db.Decimal(10, 2)
   maximumScore               Decimal?              @map("maximum_score") @db.Decimal(10, 2)
   createdAt                  DateTime              @default(now()) @map("created_at")
   updatedAt                  DateTime              @updatedAt @map("updated_at")
 
-  student      Student                  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  exam         Exam                     @relation(fields: [examId], references: [id], onDelete: Restrict)
+  student      Student                      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  exam         Exam                         @relation(fields: [examId], references: [id], onDelete: Restrict)
   slotProgress StudentExamSlotAttempt[]
   answers      StudentExamAnswer[]
+  questions    StudentExamAttemptQuestion[]
 
   @@unique([studentId, examId, attemptNumber], map: "student_exam_attempts_student_exam_number_unique")
   @@index([examId, status], map: "student_exam_attempts_exam_status_idx")
@@ -468,10 +486,12 @@ model StudentExamSlotAttempt {
   expiresAt            DateTime?         @map("expires_at")
   submittedAt          DateTime?         @map("submitted_at")
   timeSpentSeconds     Int               @default(0) @map("time_spent_seconds")
+  completionReason     String?           @map("completion_reason") @db.VarChar(40)
 
-  attempt         StudentExamAttempt          @relation(fields: [studentExamAttemptId], references: [id], onDelete: Cascade)
-  selectedSlot    ExamSelectedSlot            @relation(fields: [examSelectedSlotId], references: [id], onDelete: Restrict)
+  attempt         StudentExamAttempt           @relation(fields: [studentExamAttemptId], references: [id], onDelete: Cascade)
+  selectedSlot    ExamSelectedSlot             @relation(fields: [examSelectedSlotId], references: [id], onDelete: Restrict)
   sectionProgress StudentExamSectionAttempt[]
+  questions       StudentExamAttemptQuestion[]
 
   @@unique([studentExamAttemptId, examSelectedSlotId], map: "student_exam_slot_attempts_attempt_slot_unique")
   @@map("student_exam_slot_attempts")
@@ -486,12 +506,40 @@ model StudentExamSectionAttempt {
   expiresAt                DateTime?         @map("expires_at")
   submittedAt              DateTime?         @map("submitted_at")
   timeSpentSeconds         Int               @default(0) @map("time_spent_seconds")
+  completionReason         String?           @map("completion_reason") @db.VarChar(40)
 
-  slotAttempt     StudentExamSlotAttempt @relation(fields: [studentExamSlotAttemptId], references: [id], onDelete: Cascade)
-  templateSection ExamTemplateSection    @relation(fields: [examTemplateSectionId], references: [id], onDelete: Restrict)
+  slotAttempt     StudentExamSlotAttempt       @relation(fields: [studentExamSlotAttemptId], references: [id], onDelete: Cascade)
+  templateSection ExamTemplateSection          @relation(fields: [examTemplateSectionId], references: [id], onDelete: Restrict)
+  questions       StudentExamAttemptQuestion[]
 
   @@unique([studentExamSlotAttemptId, examTemplateSectionId], map: "student_exam_section_attempts_slot_section_unique")
   @@map("student_exam_section_attempts")
+}
+
+model StudentExamAttemptQuestion {
+  id                          Int       @id @default(autoincrement())
+  studentExamAttemptId        Int       @map("student_exam_attempt_id")
+  studentExamSlotAttemptId    Int       @map("student_exam_slot_attempt_id")
+  studentExamSectionAttemptId Int       @map("student_exam_section_attempt_id")
+  examTemplateQuestionId      Int       @map("exam_template_question_id")
+  questionOrder               Int       @map("question_order")
+  optionOrder                 Json?     @map("option_order")
+  visitedAt                   DateTime? @map("visited_at")
+  lastViewedAt                DateTime? @map("last_viewed_at")
+  markedForReview             Boolean   @default(false) @map("marked_for_review")
+  timeSpentSeconds            Int       @default(0) @map("time_spent_seconds")
+  createdAt                   DateTime  @default(now()) @map("created_at")
+  updatedAt                   DateTime  @updatedAt @map("updated_at")
+
+  attempt          StudentExamAttempt        @relation(fields: [studentExamAttemptId], references: [id], onDelete: Cascade)
+  slotAttempt      StudentExamSlotAttempt    @relation(fields: [studentExamSlotAttemptId], references: [id], onDelete: Cascade)
+  sectionAttempt   StudentExamSectionAttempt @relation(fields: [studentExamSectionAttemptId], references: [id], onDelete: Cascade)
+  templateQuestion ExamTemplateQuestion      @relation(fields: [examTemplateQuestionId], references: [id], onDelete: Restrict)
+
+  @@unique([studentExamAttemptId, examTemplateQuestionId], map: "student_exam_attempt_questions_attempt_question_unique")
+  @@unique([studentExamAttemptId, questionOrder], map: "student_exam_attempt_questions_attempt_order_unique")
+  @@index([studentExamSectionAttemptId, questionOrder], map: "student_exam_attempt_questions_section_order_idx")
+  @@map("student_exam_attempt_questions")
 }
 
 model StudentExamAnswer {

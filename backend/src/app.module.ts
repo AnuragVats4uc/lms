@@ -18,12 +18,14 @@ import { RolesModule } from './modules/roles/roles.module';
 import { RolesGuard } from './modules/auth/roles/roles.guard';
 import { SessionModule } from './modules/session/session.module';
 import { StudentsModule } from './modules/students/students.module';
+import { UsersModule } from './modules/users/users.module';
 import { CourseModule } from './modules/course/course.module';
 import { SessionCourseModule } from './modules/session-course/session-course.module';
 import { FolderModule } from './modules/folder/folder.module';
 import { ResourceModule } from './modules/resource/resource.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ExamModule } from './modules/exam/exam.module';
+import { RegistrationModule } from './modules/registration/registration.module';
 
 @Module({
   imports: [
@@ -54,7 +56,9 @@ import { ExamModule } from './modules/exam/exam.module';
     ResourceModule,
     DashboardModule,
     StudentsModule,
+    UsersModule,
     ExamModule,
+    RegistrationModule,
   ],
   controllers: [AppController],
   providers: [

@@ -2,7 +2,6 @@
 
 import {
   DashboardStats,
-  HelpCard,
   PageContainer,
 } from "@repo/ui/dashboard";
 import type {
@@ -11,7 +10,6 @@ import type {
   QuickActionsProps,
   RoleCardProps,
   StatCardProps,
-  SupportCardProps,
   TreeNodeItem,
   UploadDropzoneProps,
 } from "@repo/ui/dashboard";
@@ -30,7 +28,6 @@ interface DashboardPageProps {
   quickActions: QuickActionsProps;
   roles: RoleCardProps[];
   statistics: StatCardProps[];
-  support: SupportCardProps;
   tree: TreeNodeItem[];
   onAddFolder?: () => void;
   onMore?: () => void;
@@ -55,7 +52,6 @@ export function DashboardPage({
   quickActions,
   roles,
   statistics,
-  support,
   tree,
   onAddFolder,
   onMore,
@@ -95,7 +91,7 @@ export function DashboardPage({
         upload={upload}
       />
       <RolesPermissionSection onViewAllRoles={onViewAllRoles} roles={roles} />
-      <HelpCard {...support} />
+      {/* <HelpCard {...support} /> */}
     </PageContainer>
   );
 }

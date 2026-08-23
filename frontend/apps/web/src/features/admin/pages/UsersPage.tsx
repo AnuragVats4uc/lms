@@ -2,7 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { organizationsApi, studentsApi } from "@repo/api";
+import { organizationsApi, rolesApi, usersApi } from "@repo/api";
+import { useAuthSession } from "@repo/auth";
 import {
   CalendarDays,
   Clock3,
@@ -12,10 +13,10 @@ import {
   UserRound,
 } from "lucide-react";
 import type {
-  CreateStudentRequest,
-  Student,
-  StudentStatus,
-  UpdateStudentRequest,
+  CreateUserRequest,
+  UpdateUserRequest,
+  User,
+  UserStatus,
 } from "@repo/types";
 import { type UserFormValues, userSchema } from "@repo/validation";
 import {
@@ -35,9 +36,10 @@ import {
   CrudManagementPage,
   type ResourceFormContext,
 } from "../components/crud/CrudManagementPage";
-import { FormInput, Text, XStack, YStack } from "@repo/ui";
+import { FormInput, Text, YStack } from "@repo/ui";
 
 type UserForm = UserFormValues;
+
 const initialForm: UserForm = {
   email: "",
   firstName: "",
@@ -45,22 +47,27 @@ const initialForm: UserForm = {
   organizationId: "",
   password: "",
   phone: "",
+  roleId: "",
 };
-function toCreate(form: UserForm): CreateStudentRequest {
-  const payload: CreateStudentRequest = {
+
+function toCreate(form: UserForm): CreateUserRequest {
+  const payload: CreateUserRequest = {
     email: form.email.trim().toLowerCase(),
     firstName: form.firstName.trim(),
     password: form.password,
+    roleId: Number(form.roleId),
   };
   if (form.lastName.trim()) payload.lastName = form.lastName.trim();
   if (form.organizationId) payload.organizationId = Number(form.organizationId);
   if (form.phone.trim()) payload.phone = form.phone.trim();
   return payload;
 }
-function toUpdate(form: UserForm): UpdateStudentRequest {
-  const payload: UpdateStudentRequest = {
+
+function toUpdate(form: UserForm): UpdateUserRequest {
+  const payload: UpdateUserRequest = {
     email: form.email.trim().toLowerCase(),
     firstName: form.firstName.trim(),
+    roleId: Number(form.roleId),
   };
   if (form.lastName.trim()) payload.lastName = form.lastName.trim();
   if (form.organizationId) payload.organizationId = Number(form.organizationId);
@@ -68,6 +75,7 @@ function toUpdate(form: UserForm): UpdateStudentRequest {
   if (form.password) payload.password = form.password;
   return payload;
 }
+
 function validate(form: UserForm, isEdit = false) {
   if (form.firstName.trim().length < 2)
     return "First name must be at least 2 characters.";
@@ -75,16 +83,27 @@ function validate(form: UserForm, isEdit = false) {
     return "Enter a valid email address.";
   if (form.phone && !/^[+\d()\s-]{7,20}$/u.test(form.phone))
     return "Enter a valid phone number.";
+  if (!form.roleId) return "Select a role.";
   if (!isEdit && form.password.length < 8)
     return "Password must be at least 8 characters.";
   return null;
 }
+
 function Form({
   error,
-  organizations,
   isEdit,
+  isSuperAdmin,
+  organizations,
+  roles,
 }: ResourceFormContext<UserForm> & {
+  isSuperAdmin: boolean;
   organizations: { id: number; name: string }[];
+  roles: {
+    id: number;
+    code: string;
+    name: string;
+    organizationId: number | null;
+  }[];
 }) {
   return (
     <YStack className="lms-organization-form" gap="$3">
@@ -93,44 +112,64 @@ function Form({
           {error}
         </Text>
       ) : null}
-      <XStack gap="$3" style={{ flexWrap: "wrap" }}>
+      <div className="lms-organization-form-grid">
         <div className="lms-form-field">
           <FormInput autoFocus label="First name" name="firstName" />
         </div>
         <div className="lms-form-field">
           <FormInput label="Last name" name="lastName" />
         </div>
-      </XStack>
-      <XStack gap="$3" style={{ flexWrap: "wrap" }}>
         <div className="lms-form-field">
           <FormInput label="Email" name="email" type="email" />
         </div>
         <div className="lms-form-field">
           <FormInput label="Phone" name="phone" />
         </div>
-      </XStack>
-      <div className="lms-form-field">
-        <CrudFormSelect
-          label="Organization"
-          name="organizationId"
-          options={organizations.map((organization) => ({
-            label: organization.name,
-            value: String(organization.id),
-          }))}
-          placeholder="No organization"
-        />
-      </div>
-      <div className="lms-form-field">
-        <FormInput
-          label={isEdit ? "New password (optional)" : "Password"}
-          name="password"
-          type="password"
-        />
+        {isSuperAdmin ? (
+          <div className="lms-form-field">
+            <CrudFormSelect
+              label="Organization"
+              name="organizationId"
+              options={organizations.map((organization) => ({
+                label: organization.name,
+                value: String(organization.id),
+              }))}
+              placeholder="Select organization"
+            />
+          </div>
+        ) : null}
+        <div className="lms-form-field">
+          <CrudFormSelect
+            label="Role"
+            name="roleId"
+            options={roles
+              .filter((role) => role.code !== "SUPER_ADMIN")
+              .map((role) => ({
+                label: `${role.name} (${role.code})`,
+                value: String(role.id),
+              }))}
+            placeholder="Select role"
+          />
+        </div>
+        <div
+          className={
+            isSuperAdmin
+              ? "lms-form-field lms-form-field-wide"
+              : "lms-form-field"
+          }
+        >
+          <FormInput
+            label={isEdit ? "New password (optional)" : "Password"}
+            name="password"
+            type="password"
+          />
+        </div>
       </div>
     </YStack>
   );
 }
-const columns: DataTableColumn<Student>[] = [
+
+const columns: DataTableColumn<User>[] = [
   {
     cell: ({ row }) => (
       <DataTableTextCell
@@ -157,7 +196,7 @@ const columns: DataTableColumn<Student>[] = [
         tone={
           row.status === "ACTIVE"
             ? "success"
-            : row.status === "SUSPENDED"
+            : row.status === "BLOCKED"
               ? "danger"
               : "neutral"
         }
@@ -222,21 +261,31 @@ const columns: DataTableColumn<Student>[] = [
 ];
 
 export function UsersPage() {
+  const { currentUser } = useAuthSession();
+  const isSuperAdmin = Boolean(currentUser?.roles.includes("SUPER_ADMIN"));
+  const organizationId = currentUser?.organizationId ?? undefined;
   const organizationsQuery = useQuery({
+    enabled: isSuperAdmin,
     queryFn: () => organizationsApi.findAll({ limit: 100, page: 1 }),
     queryKey: ["admin", "user-organizations"],
     staleTime: 60_000,
   });
+  const rolesQuery = useQuery({
+    queryFn: () =>
+      rolesApi.findAll({
+        limit: 100,
+        organizationId,
+        page: 1,
+      }),
+    queryKey: ["admin", "user-roles", organizationId ?? "all"],
+    staleTime: 60_000,
+  });
+
   return (
-    <CrudManagementPage<
-      Student,
-      UserForm,
-      CreateStudentRequest,
-      UpdateStudentRequest
-    >
+    <CrudManagementPage<User, UserForm, CreateUserRequest, UpdateUserRequest>
       columns={columns}
-      create={(payload) => studentsApi.create(payload)}
-      description="Manage student and user records, organization membership, and account status."
+      create={(payload) => usersApi.create(payload)}
+      description="Manage organization user accounts, role assignment, and access status."
       entityLabel="User"
       getStats={({ rows, total }) => [
         {
@@ -265,17 +314,22 @@ export function UsersPage() {
       }
       getRowId={(user) => user.id}
       initialForm={initialForm}
-      permissionPrefix="students"
+      getCreateForm={() => ({
+        ...initialForm,
+        organizationId: organizationId ? String(organizationId) : "",
+      })}
+      permissionPrefix="users"
       queryFn={(query) =>
-        studentsApi.findAll({
+        usersApi.findAll({
           limit: query.limit,
+          organizationId,
           page: query.page,
           search: query.search,
-          status: query.status as StudentStatus | undefined,
+          status: query.status as UserStatus | undefined,
         })
       }
-      queryKey={["admin", "users"]}
-      remove={(id) => studentsApi.remove(id)}
+      queryKey={["admin", "users", organizationId ?? "all"]}
+      remove={(id) => usersApi.remove(id)}
       renderDetails={(user) => (
         <YStack gap="$3">
           <CrudDetailSection
@@ -360,15 +414,16 @@ export function UsersPage() {
         <Form
           {...context}
           isEdit={context.isEdit}
+          isSuperAdmin={isSuperAdmin}
           organizations={organizationsQuery.data?.items ?? []}
+          roles={rolesQuery.data?.items ?? []}
         />
       )}
       statusOptions={[
         { label: "All", value: "ALL" },
         { label: "Active", value: "ACTIVE" },
         { label: "Inactive", value: "INACTIVE" },
-        { label: "Alumni", value: "ALUMNI" },
-        { label: "Suspended", value: "SUSPENDED" },
+        { label: "Blocked", value: "BLOCKED" },
       ]}
       title="Users"
       toCreatePayload={toCreate}
@@ -379,9 +434,10 @@ export function UsersPage() {
         organizationId: user.organizationId?.toString() ?? "",
         password: "",
         phone: user.phone ?? "",
+        roleId: user.roles?.[0]?.id ? String(user.roles[0].id) : "",
       })}
       toUpdatePayload={toUpdate}
-      update={(id, payload) => studentsApi.update(id, payload)}
+      update={(id, payload) => usersApi.update(id, payload)}
       formResolver={zodResolver(userSchema)}
       validate={(form, isEdit) => validate(form, isEdit)}
     />

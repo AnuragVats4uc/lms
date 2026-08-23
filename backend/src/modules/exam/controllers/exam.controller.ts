@@ -182,6 +182,15 @@ export class ExamController {
   create(@Req() request: AuthenticatedRequest, @Body() dto: CreateExamDto) {
     return this.service.createExam(request.user, dto);
   }
+
+  @Post(':id/release-results')
+  @Permissions('exam.create')
+  releaseResults(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.service.releaseExamResults(request.user, id);
+  }
 }
 
 @ApiTags('Exam imports')

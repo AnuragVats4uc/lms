@@ -21,6 +21,7 @@ model Session {
   sessionCourses     SessionCourse[]
   studentEnrollments StudentEnrollment[]
   exams              Exam[]
+  registrationPages  OrganizationRegistrationPage[]
 
   @@unique([organizationId, name], map: "sessions_organization_id_name_unique")
   @@index([organizationId], map: "sessions_organization_id_idx")

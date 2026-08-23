@@ -20,21 +20,25 @@ import type {
   ExamTemplate,
   ExamTemplateListItem,
   ExamTemplateVersion,
+  ExamNavigationMode,
   SaveExamTemplateStructureRequest,
   ScheduledExam,
 } from "@repo/types";
 import {
+  AlertTriangle,
   BookOpenCheck,
   CalendarClock,
   CheckCircle2,
   ChevronDown,
   CirclePlus,
+  Clock3,
   ClipboardList,
   FileSpreadsheet,
   FileText,
   FileUp,
   Layers3,
   Library,
+  ListChecks,
   Plus,
   Save,
   Search,
@@ -69,6 +73,12 @@ type BuilderSection = {
   name: string;
   durationMinutes: number;
   questionsToAttempt: number;
+  instructions: string;
+  randomizeQuestions: boolean;
+  randomizeOptions: boolean;
+  navigationMode: ExamNavigationMode;
+  allowReview: boolean;
+  autoSubmitOnTimeout: boolean;
   subjectId: number;
   questions: BuilderQuestion[];
 };
@@ -76,7 +86,15 @@ type BuilderSlot = {
   code: string;
   name: string;
   durationMinutes: number;
+  description: string;
+  instructions: string;
+  navigationMode: ExamNavigationMode;
+  autoSubmitOnTimeout: boolean;
   sections: BuilderSection[];
+};
+type BuilderValidationIssue = {
+  target: string;
+  message: string;
 };
 
 const emptySection = (): BuilderSection => ({
@@ -84,6 +102,12 @@ const emptySection = (): BuilderSection => ({
   name: "New section",
   durationMinutes: 30,
   questionsToAttempt: 1,
+  instructions: "",
+  randomizeQuestions: false,
+  randomizeOptions: false,
+  navigationMode: "FREE",
+  allowReview: true,
+  autoSubmitOnTimeout: true,
   subjectId: 0,
   questions: [],
 });
@@ -91,12 +115,16 @@ const emptySlot = (): BuilderSlot => ({
   code: "SLOT_1",
   name: "Slot 1",
   durationMinutes: 30,
+  description: "",
+  instructions: "",
+  navigationMode: "FREE",
+  autoSubmitOnTimeout: true,
   sections: [emptySection()],
 });
 
 const questionLimitOptions = [1, 5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100];
 
-function messageOf(error: unknown) {
+const messageOf = (error: unknown) => {
   if (typeof error === "object" && error && "response" in error) {
     const response = (
       error as {
@@ -113,7 +141,7 @@ function messageOf(error: unknown) {
   return error instanceof Error ? error.message : "Request failed";
 }
 
-function RichContent({ value }: { value?: string | null }) {
+const RichContent = ({ value }: { value?: string | null }) => {
   if (!value) return <span>No content</span>;
   if (
     !/<(?:p|br|strong|em|u|ol|ul|li|table|thead|tbody|tr|td|th|h1|h2|h3|sub|sup|img)\b/i.test(
@@ -129,7 +157,7 @@ function RichContent({ value }: { value?: string | null }) {
   );
 }
 
-function contentSummary(value?: string | null) {
+const contentSummary = (value?: string | null) => {
   if (!value) return "No question content";
   const hasImage = /<img\b/i.test(value);
   const text = value
@@ -160,19 +188,21 @@ const questionSortOptions: Array<{
   { label: "Recently updated", value: "RECENTLY_UPDATED" },
 ];
 
-function SectionQuestionPicker({
+const SectionQuestionPicker = ({
   organizationId,
   subjectId,
   questionTypes,
+  questionsToAttempt,
   selectedQuestions,
   onSelectionChange,
 }: {
   organizationId: number;
   subjectId: number;
   questionTypes: ExamQuestionType[];
+  questionsToAttempt: number;
   selectedQuestions: BuilderQuestion[];
   onSelectionChange: (questions: BuilderQuestion[]) => void;
-}) {
+}) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [questionType, setQuestionType] = useState("all");
@@ -273,91 +303,98 @@ function SectionQuestionPicker({
 
   return (
     <div className={styles.questionPool}>
-      <div className={styles.questionPoolToolbar}>
-        <div className={styles.questionPoolSearch}>
-          <span>Search questions</span>
-          <CrudSearch
-            ariaLabel="Search questions by code or text"
-            loading={pool.isFetching && !pool.data}
-            maxWidth={700}
-            onChange={setSearch}
-            placeholder="Search question code or text..."
-            value={search}
+      <div className={styles.questionControls}>
+        <div className={styles.questionPoolToolbar}>
+          <div className={styles.questionPoolSearch}>
+            <span>Search questions</span>
+            <CrudSearch
+              ariaLabel="Search questions by code or text"
+              loading={pool.isFetching && !pool.data}
+              maxWidth={700}
+              onChange={setSearch}
+              placeholder="Search question code or text..."
+              value={search}
+            />
+          </div>
+          <CrudSelect
+            ariaLabel="Filter by question type"
+            label="Question type"
+            onChange={setQuestionType}
+            options={[
+              { label: "All types", value: "all" },
+              ...questionTypes.map((type) => ({
+                label: type.name,
+                value: String(type.id),
+              })),
+            ]}
+            value={questionType}
+            width="100%"
           />
+          <CrudSelect
+            ariaLabel="Filter by question status"
+            label="Status"
+            onChange={setStatus}
+            options={questionStatusOptions}
+            value={status}
+            width="100%"
+          />
+          <CrudSelect
+            ariaLabel="Choose number of latest questions"
+            label="Show latest"
+            onChange={setLimit}
+            options={questionLimitOptions.map((value) => ({
+              label: `${value} ${value === 1 ? "question" : "questions"}`,
+              value: String(value),
+            }))}
+            value={limit}
+            width="100%"
+          />
+          <CrudSelect
+            ariaLabel="Sort questions"
+            label="Sort by"
+            onChange={(value) => setSort(value as ExamQuestionSort)}
+            options={questionSortOptions}
+            value={sort}
+            width="100%"
+          />
+          <button
+            className={styles.filterResetButton}
+            onClick={resetFilters}
+            type="button"
+          >
+            Reset filters
+          </button>
         </div>
-        <CrudSelect
-          ariaLabel="Filter by question type"
-          label="Question type"
-          onChange={setQuestionType}
-          options={[
-            { label: "All types", value: "all" },
-            ...questionTypes.map((type) => ({
-              label: type.name,
-              value: String(type.id),
-            })),
-          ]}
-          value={questionType}
-          width="100%"
-        />
-        <CrudSelect
-          ariaLabel="Filter by question status"
-          label="Status"
-          onChange={setStatus}
-          options={questionStatusOptions}
-          value={status}
-          width="100%"
-        />
-        <CrudSelect
-          ariaLabel="Choose number of latest questions"
-          label="Show latest"
-          onChange={setLimit}
-          options={questionLimitOptions.map((value) => ({
-            label: `${value} ${value === 1 ? "question" : "questions"}`,
-            value: String(value),
-          }))}
-          value={limit}
-          width="100%"
-        />
-        <CrudSelect
-          ariaLabel="Sort questions"
-          label="Sort by"
-          onChange={(value) => setSort(value as ExamQuestionSort)}
-          options={questionSortOptions}
-          value={sort}
-          width="100%"
-        />
-        <button
-          className={styles.filterResetButton}
-          onClick={resetFilters}
-          type="button"
-        >
-          Reset filters
-        </button>
-      </div>
 
-      <div className={styles.questionSelectionBar}>
-        <span>
-          <strong>{selectedQuestions.length}</strong> questions selected
-          {pool.isFetching ? " · Updating list..." : ""}
-        </span>
-        <div>
-          <button
-            className={styles.textButton}
-            disabled={!visibleQuestions.length || allVisibleSelected}
-            onClick={selectAllVisible}
-            type="button"
-          >
-            Select all visible
-          </button>
-          <button
-            className={styles.textButton}
-            disabled={!selectedVisibleCount}
-            onClick={clearVisibleSelection}
-            type="button"
-          >
-            Clear visible
-          </button>
+        <div className={styles.questionSelectionBar}>
+          <span>
+            <strong>{selectedQuestions.length}</strong> selected
+            <b> · Students may attempt {questionsToAttempt}</b>
+            {pool.isFetching ? " · Updating list..." : ""}
+          </span>
+          <div>
+            <button
+              className={styles.textButton}
+              disabled={!visibleQuestions.length || allVisibleSelected}
+              onClick={selectAllVisible}
+              type="button"
+            >
+              Select all visible
+            </button>
+            <button
+              className={styles.textButton}
+              disabled={!selectedVisibleCount}
+              onClick={clearVisibleSelection}
+              type="button"
+            >
+              Clear visible
+            </button>
+          </div>
         </div>
+        <p className={styles.marksOverrideNote}>
+          Marks and negative marks below override Question Bank defaults for
+          this template version.
+        </p>
       </div>
 
       <div className={styles.questionPicker}>
@@ -488,7 +525,7 @@ type QuestionDetailOption = {
   isCorrect: boolean;
 };
 
-function QuestionDetails({
+const QuestionDetails = ({
   id,
   placement,
   comprehensionCode,
@@ -516,7 +553,7 @@ function QuestionDetails({
   explanation?: string | null;
   isMandatory?: boolean;
   validationMessage?: string | null;
-}) {
+}) => {
   const visiblePlacement =
     placement?.filter(
       (item) =>
@@ -634,7 +671,7 @@ function QuestionDetails({
   );
 }
 
-function ImportQuestionDetails({ row }: { row: ExamImportRow }) {
+const ImportQuestionDetails = ({ row }: { row: ExamImportRow }) => {
   return (
     <QuestionDetails
       acceptedAnswers={row.acceptedAnswersJson}
@@ -666,7 +703,7 @@ function ImportQuestionDetails({ row }: { row: ExamImportRow }) {
   );
 }
 
-export function ExamManagementPage() {
+export const ExamManagementPage = () => {
   const currentUser = useCurrentUser();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("templates");
@@ -895,7 +932,7 @@ export function ExamManagementPage() {
   );
 }
 
-function TemplatesPanel({
+const TemplatesPanel = ({
   organizationId,
   templates,
   subjects,
@@ -909,7 +946,7 @@ function TemplatesPanel({
   questionTypes: ExamQuestionType[];
   clearNotice: () => void;
   report: Report;
-}) {
+})  => {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<ExamTemplate | null>(
     null,
@@ -918,6 +955,13 @@ function TemplatesPanel({
     null,
   );
   const [slots, setSlots] = useState<BuilderSlot[]>([emptySlot()]);
+  const [versionInstructions, setVersionInstructions] = useState("");
+  const [defaultDurationMinutes, setDefaultDurationMinutes] = useState(90);
+  const [enforceSlotTimers, setEnforceSlotTimers] = useState(false);
+  const [enforceSectionTimers, setEnforceSectionTimers] = useState(false);
+  const [validationIssues, setValidationIssues] = useState<
+    BuilderValidationIssue[]
+  >([]);
   const selected = templates.find((item) => item.id === selectedId);
   const hasDraft =
     selectedTemplate?.versions.some((item) => item.status === "DRAFT") ?? false;
@@ -927,7 +971,12 @@ function TemplatesPanel({
   const isSelectedDraft = selectedVersion?.status === "DRAFT";
 
   const showVersion = (version: ExamTemplateVersion) => {
+    setValidationIssues([]);
     setSelectedVersionId(version.id);
+    setVersionInstructions(version.instructions ?? "");
+    setDefaultDurationMinutes(version.defaultDurationMinutes ?? 90);
+    setEnforceSlotTimers(version.enforceSlotTimers);
+    setEnforceSectionTimers(version.enforceSectionTimers);
     const versionSlots = version.slots ?? [];
     setSlots(
       versionSlots.length
@@ -935,6 +984,10 @@ function TemplatesPanel({
             code: slot.code,
             name: slot.name,
             durationMinutes: slot.durationMinutes,
+            description: slot.description ?? "",
+            instructions: slot.instructions ?? "",
+            navigationMode: slot.navigationMode,
+            autoSubmitOnTimeout: slot.autoSubmitOnTimeout,
             sections: slot.sections.map((section) => ({
               code: section.code,
               name: section.name,
@@ -945,6 +998,12 @@ function TemplatesPanel({
                   (total, subject) => total + subject.questions.length,
                   0,
                 ),
+              instructions: section.instructions ?? "",
+              randomizeQuestions: section.randomizeQuestions,
+              randomizeOptions: section.randomizeOptions,
+              navigationMode: section.navigationMode,
+              allowReview: section.allowReview,
+              autoSubmitOnTimeout: section.autoSubmitOnTimeout,
               subjectId: section.subjects[0]?.subjectId ?? 0,
               questions:
                 section.subjects[0]?.questions.map((question) => ({
@@ -998,17 +1057,20 @@ function TemplatesPanel({
       "Draft template created",
     );
 
-  const updateSlot = (slotIndex: number, patch: Partial<BuilderSlot>) =>
+  const updateSlot = (slotIndex: number, patch: Partial<BuilderSlot>) => {
+    setValidationIssues([]);
     setSlots((current) =>
       current.map((slot, index) =>
         index === slotIndex ? { ...slot, ...patch } : slot,
       ),
     );
+  };
   const updateSection = (
     slotIndex: number,
     sectionIndex: number,
     patch: Partial<BuilderSection>,
-  ) =>
+  ) => {
+    setValidationIssues([]);
     setSlots((current) =>
       current.map((slot, index) =>
         index === slotIndex
@@ -1023,45 +1085,255 @@ function TemplatesPanel({
           : slot,
       ),
     );
+  };
+
+  const buildPayload = (): SaveExamTemplateStructureRequest => ({
+    instructions: versionInstructions || undefined,
+    defaultDurationMinutes,
+    enforceSlotTimers,
+    enforceSectionTimers,
+    slots: slots.map((slot) => ({
+      code: slot.code,
+      name: slot.name,
+      description: slot.description || undefined,
+      instructions: slot.instructions || undefined,
+      durationMinutes: slot.durationMinutes,
+      navigationMode: slot.navigationMode,
+      autoSubmitOnTimeout: slot.autoSubmitOnTimeout,
+      sections: slot.sections.map((section) => ({
+        code: section.code,
+        name: section.name,
+        durationMinutes: section.durationMinutes,
+        questionsToAttempt: section.questionsToAttempt,
+        instructions: section.instructions || undefined,
+        randomizeQuestions: section.randomizeQuestions,
+        randomizeOptions: section.randomizeOptions,
+        navigationMode: section.navigationMode,
+        allowReview: section.allowReview,
+        autoSubmitOnTimeout: section.autoSubmitOnTimeout,
+        subjects: [
+          {
+            subjectId: section.subjectId,
+            questions: section.questions.map((question) => ({
+              questionVersionId: question.questionVersionId,
+              marks: question.marks,
+              negativeMarks: question.negativeMarks,
+            })),
+          },
+        ],
+      })),
+    })),
+  });
+
+  const validateBuilder = (): BuilderValidationIssue[] => {
+    const issues: BuilderValidationIssue[] = [];
+    if (
+      !Number.isInteger(defaultDurationMinutes) ||
+      defaultDurationMinutes < 1
+    ) {
+      issues.push({
+        target: "timing-configuration",
+        message: "Default exam time must be at least 1 minute.",
+      });
+    }
+    if (!slots.length) {
+      issues.push({
+        target: "template-editor-actions",
+        message: "Add at least one slot.",
+      });
+      return issues;
+    }
+
+    const slotCodes = new Set<string>();
+    slots.forEach((slot, slotIndex) => {
+      const slotTarget = `exam-slot-${slotIndex + 1}`;
+      const normalizedSlotCode = slot.code.trim().toUpperCase();
+      if (!normalizedSlotCode || !slot.name.trim()) {
+        issues.push({
+          target: slotTarget,
+          message: `Slot ${slotIndex + 1} requires a code and name.`,
+        });
+      }
+      if (normalizedSlotCode && slotCodes.has(normalizedSlotCode)) {
+        issues.push({
+          target: slotTarget,
+          message: `Slot code ${normalizedSlotCode} is duplicated.`,
+        });
+      }
+      slotCodes.add(normalizedSlotCode);
+      if (!Number.isInteger(slot.durationMinutes) || slot.durationMinutes < 1) {
+        issues.push({
+          target: slotTarget,
+          message: `${slot.name || `Slot ${slotIndex + 1}`} must have a duration of at least 1 minute.`,
+        });
+      }
+      if (!slot.sections.length) {
+        issues.push({
+          target: slotTarget,
+          message: `${slot.name || `Slot ${slotIndex + 1}`} needs at least one section.`,
+        });
+      }
+
+      const totalSectionTime = slot.sections.reduce(
+        (total, section) => total + section.durationMinutes,
+        0,
+      );
+      if (totalSectionTime > slot.durationMinutes) {
+        issues.push({
+          target: slotTarget,
+          message: `${slot.name || `Slot ${slotIndex + 1}`} has ${totalSectionTime} section minutes but only ${slot.durationMinutes} slot minutes.`,
+        });
+      }
+
+      const sectionCodes = new Set<string>();
+      slot.sections.forEach((section, sectionIndex) => {
+        const sectionTarget = `${slotTarget}-section-${sectionIndex + 1}`;
+        const normalizedSectionCode = section.code.trim().toUpperCase();
+        if (!normalizedSectionCode || !section.name.trim()) {
+          issues.push({
+            target: sectionTarget,
+            message: `${slot.name || `Slot ${slotIndex + 1}`}, section ${sectionIndex + 1} requires a code and name.`,
+          });
+        }
+        if (normalizedSectionCode && sectionCodes.has(normalizedSectionCode)) {
+          issues.push({
+            target: sectionTarget,
+            message: `Section code ${normalizedSectionCode} is duplicated inside ${slot.name || `Slot ${slotIndex + 1}`}.`,
+          });
+        }
+        sectionCodes.add(normalizedSectionCode);
+        if (
+          !Number.isInteger(section.durationMinutes) ||
+          section.durationMinutes < 1
+        ) {
+          issues.push({
+            target: sectionTarget,
+            message: `${section.name || `Section ${sectionIndex + 1}`} must have a duration of at least 1 minute.`,
+          });
+        }
+        if (!section.subjectId) {
+          issues.push({
+            target: sectionTarget,
+            message: `${section.name || `Section ${sectionIndex + 1}`} needs a subject.`,
+          });
+        }
+        if (!section.questions.length) {
+          issues.push({
+            target: sectionTarget,
+            message: `${section.name || `Section ${sectionIndex + 1}`} has no questions selected.`,
+          });
+        }
+        if (
+          !Number.isInteger(section.questionsToAttempt) ||
+          section.questionsToAttempt < 1
+        ) {
+          issues.push({
+            target: sectionTarget,
+            message: `${section.name || `Section ${sectionIndex + 1}`} must allow at least 1 question to be attempted.`,
+          });
+        } else if (section.questionsToAttempt > section.questions.length) {
+          issues.push({
+            target: sectionTarget,
+            message: `${section.name || `Section ${sectionIndex + 1}`} allows ${section.questionsToAttempt} attempts but only ${section.questions.length} questions are selected.`,
+          });
+        }
+        if (
+          section.questions.some(
+            (question) =>
+              !Number.isFinite(question.marks) ||
+              question.marks < 0 ||
+              !Number.isFinite(question.negativeMarks) ||
+              question.negativeMarks < 0,
+          )
+        ) {
+          issues.push({
+            target: sectionTarget,
+            message: `${section.name || `Section ${sectionIndex + 1}`} contains invalid marks or negative marks.`,
+          });
+        }
+      });
+    });
+    return issues;
+  };
+
   const save = () => {
     if (!selected) return;
-    const payload: SaveExamTemplateStructureRequest = {
-      slots: slots.map((slot) => ({
-        ...slot,
-        sections: slot.sections.map((section) => ({
-          code: section.code,
-          name: section.name,
-          durationMinutes: section.durationMinutes,
-          questionsToAttempt: section.questionsToAttempt,
-          subjects: [
-            {
-              subjectId: section.subjectId,
-              questions: section.questions.map((question) => ({
-                questionVersionId: question.questionVersionId,
-                marks: question.marks,
-                negativeMarks: question.negativeMarks,
-              })),
-            },
-          ],
-        })),
-      })),
-    };
+    const issues = validateBuilder();
+    setValidationIssues(issues);
+    if (issues.length) return;
     report(
-      examsApi.templates.saveStructure(selected.id, payload),
+      examsApi.templates.saveStructure(selected.id, buildPayload()),
       "Template structure saved",
       () => loadBuilder(selected, selectedVersionId ?? "draft"),
     );
   };
 
+  const publish = () => {
+    if (!selected) return;
+    const issues = validateBuilder();
+    setValidationIssues(issues);
+    if (issues.length) return;
+    report(
+      examsApi.templates
+        .saveStructure(selected.id, buildPayload())
+        .then(() => examsApi.templates.publish(selected.id)),
+      `Version ${selectedVersion?.versionNumber} published and locked`,
+      () => loadBuilder(selected, selectedVersionId ?? "draft"),
+    );
+  };
+
+  const sectionCount = slots.reduce(
+    (total, slot) => total + slot.sections.length,
+    0,
+  );
+  const selectedQuestionCount = slots.reduce(
+    (slotTotal, slot) =>
+      slotTotal +
+      slot.sections.reduce(
+        (sectionTotal, section) => sectionTotal + section.questions.length,
+        0,
+      ),
+    0,
+  );
+  const totalQuestionsToAttempt = slots.reduce(
+    (slotTotal, slot) =>
+      slotTotal +
+      slot.sections.reduce(
+        (sectionTotal, section) =>
+          sectionTotal + Math.max(0, section.questionsToAttempt),
+        0,
+      ),
+    0,
+  );
+  const timingMode = enforceSlotTimers
+    ? enforceSectionTimers
+      ? "Overall + slot + section timers"
+      : "Overall + slot timers"
+    : enforceSectionTimers
+      ? "Overall + section timers"
+      : "Overall exam timer";
+  const publishedTemplateCount = templates.filter(
+    (template) => template.status === "PUBLISHED",
+  ).length;
+
   return (
     <div className={styles.twoColumn}>
-      <section className={styles.panel}>
+      <section className={`${styles.panel} ${styles.templateListPanel}`}>
         <div className={styles.panelTitle}>
           <div>
             <h2>Exam templates</h2>
             <p>Published versions remain immutable when exams are scheduled.</p>
           </div>
-          <span>{templates.length}</span>
+          <div className={styles.templateCounts} aria-label="Template counts">
+            <span>
+              <strong>{templates.length}</strong>
+              Total
+            </span>
+            <span>
+              <strong>{publishedTemplateCount}</strong>
+              Published
+            </span>
+          </div>
         </div>
         <form action={create} className={styles.compactForm}>
           <label>
@@ -1118,7 +1390,7 @@ function TemplatesPanel({
           ))}
         </div>
       </section>
-      <section className={styles.panel}>
+      <section className={`${styles.panel} ${styles.editorPanel}`}>
         {!selected ? (
           <Empty
             icon={Layers3}
@@ -1127,7 +1399,10 @@ function TemplatesPanel({
           />
         ) : (
           <>
-            <div className={styles.panelTitle}>
+            <div
+              className={`${styles.panelTitle} ${styles.editorHeader}`}
+              id="template-editor-actions"
+            >
               <div>
                 <h2>{selected.name}</h2>
                 <p>
@@ -1141,7 +1416,7 @@ function TemplatesPanel({
                   <div className={styles.versionSelect}>
                     <CrudSelect
                       ariaLabel="Choose template version"
-                      label="Template version"
+                      label="Version"
                       onChange={(value) => {
                         const version = selectedTemplate?.versions.find(
                           (item) => item.id === Number(value),
@@ -1192,14 +1467,7 @@ function TemplatesPanel({
                   <button
                     className={styles.publishButton}
                     disabled={!isSelectedDraft}
-                    onClick={() =>
-                      report(
-                        examsApi.templates.publish(selected.id),
-                        `Version ${selectedVersion?.versionNumber} published and locked`,
-                        () =>
-                          loadBuilder(selected, selectedVersionId ?? "draft"),
-                      )
-                    }
+                    onClick={publish}
                   >
                     <Send size={15} />
                     Publish
@@ -1235,9 +1503,139 @@ function TemplatesPanel({
                 </div>
               </div>
             </div>
+            <div
+              className={styles.configurationSummary}
+              aria-label="Exam configuration summary"
+            >
+              <span>
+                <Clock3 size={14} />
+                {defaultDurationMinutes} min
+              </span>
+              <span>
+                <Layers3 size={14} />
+                {slots.length} {slots.length === 1 ? "slot" : "slots"}
+              </span>
+              <span>
+                <ListChecks size={14} />
+                {sectionCount} {sectionCount === 1 ? "section" : "sections"}
+              </span>
+              <span>
+                <ClipboardList size={14} />
+                {selectedQuestionCount} selected
+              </span>
+              <span>{totalQuestionsToAttempt} may be attempted</span>
+              <span>{timingMode}</span>
+            </div>
+            {validationIssues.length ? (
+              <section className={styles.validationSummary} role="alert">
+                <div>
+                  <AlertTriangle size={18} aria-hidden="true" />
+                  <div>
+                    <strong>Cannot save or publish yet</strong>
+                    <span>Resolve these configuration issues first.</span>
+                  </div>
+                </div>
+                <ul>
+                  {validationIssues.map((issue, index) => (
+                    <li key={`${issue.target}-${index}`}>
+                      <a href={`#${issue.target}`}>{issue.message}</a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
             <div className={styles.builder}>
+              <section
+                className={styles.templatePolicyCard}
+                id="timing-configuration"
+              >
+                <div className={styles.sectionHeading}>
+                  <div>
+                    <span>Template timing</span>
+                    <h3>Timing configuration</h3>
+                  </div>
+                  <strong>{timingMode}</strong>
+                </div>
+                <div className={styles.rowFields}>
+                  <label>
+                    Overall exam time (minutes)
+                    <input
+                      disabled={!isSelectedDraft}
+                      min="1"
+                      onChange={(event) => {
+                        setValidationIssues([]);
+                        setDefaultDurationMinutes(Number(event.target.value));
+                      }}
+                      type="number"
+                      value={defaultDurationMinutes}
+                    />
+                  </label>
+                  <label>
+                    Version instructions
+                    <input
+                      disabled={!isSelectedDraft}
+                      onChange={(event) =>
+                        setVersionInstructions(event.target.value)
+                      }
+                      placeholder="Instructions shown before the attempt"
+                      value={versionInstructions}
+                    />
+                  </label>
+                </div>
+                <div className={styles.policyChecks}>
+                  <label>
+                    <input
+                      checked={enforceSlotTimers}
+                      disabled={!isSelectedDraft}
+                      onChange={(event) => {
+                        setValidationIssues([]);
+                        setEnforceSlotTimers(event.target.checked);
+                      }}
+                      type="checkbox"
+                    />
+                    Enforce slot timers
+                  </label>
+                  <label>
+                    <input
+                      checked={enforceSectionTimers}
+                      disabled={!isSelectedDraft}
+                      onChange={(event) => {
+                        setValidationIssues([]);
+                        setEnforceSectionTimers(event.target.checked);
+                      }}
+                      type="checkbox"
+                    />
+                    Enforce section timers
+                  </label>
+                </div>
+                <p className={styles.helperText}>
+                  {enforceSlotTimers && enforceSectionTimers
+                    ? "The overall timer always caps the attempt. Active slot and section timers also run, and the earliest deadline ends the current scope."
+                    : enforceSlotTimers
+                      ? "The overall timer caps the attempt. Each active slot also uses its configured slot time."
+                      : enforceSectionTimers
+                        ? "The overall timer caps the attempt. Each active section also uses its configured section time."
+                        : "One overall timer controls the entire exam; slot and section times remain available for future timed versions."}
+                </p>
+              </section>
               {slots.map((slot, slotIndex) => (
-                <article className={styles.slot} key={slotIndex}>
+                <article
+                  className={styles.slot}
+                  id={`exam-slot-${slotIndex + 1}`}
+                  key={slotIndex}
+                >
+                  <div className={styles.hierarchyHeader}>
+                    <div>
+                      <span>Slot {slotIndex + 1}</span>
+                      <h3>{slot.name || `Untitled slot ${slotIndex + 1}`}</h3>
+                      <code>{slot.code || "NO_CODE"}</code>
+                    </div>
+                    <span className={styles.hierarchyMeta}>
+                      {slot.sections.length}{" "}
+                      {slot.sections.length === 1 ? "section" : "sections"} ·{" "}
+                      {slot.durationMinutes} min
+                    </span>
+                  </div>
                   <div className={styles.slotHeader}>
                     <div className={styles.rowFields}>
                       <label>
@@ -1298,8 +1696,110 @@ function TemplatesPanel({
                       Remove slot
                     </button>
                   </div>
+                  <div className={styles.policyGrid}>
+                    <CrudSelect
+                      ariaLabel={`${slot.name} navigation mode`}
+                      disabled={!isSelectedDraft}
+                      label="Slot navigation"
+                      onChange={(value) =>
+                        updateSlot(slotIndex, {
+                          navigationMode: value as ExamNavigationMode,
+                        })
+                      }
+                      options={[
+                        { label: "Free navigation", value: "FREE" },
+                        { label: "Sequential", value: "SEQUENTIAL" },
+                        {
+                          label: "Lock after submit",
+                          value: "LOCKED_AFTER_SUBMIT",
+                        },
+                      ]}
+                      value={slot.navigationMode}
+                      width="100%"
+                    />
+                    <label>
+                      Slot instructions
+                      <input
+                        disabled={!isSelectedDraft}
+                        onChange={(event) =>
+                          updateSlot(slotIndex, {
+                            instructions: event.target.value,
+                          })
+                        }
+                        placeholder="Optional slot instructions"
+                        value={slot.instructions}
+                      />
+                    </label>
+                    <label className={styles.inlineCheck}>
+                      <input
+                        checked={slot.autoSubmitOnTimeout}
+                        disabled={!isSelectedDraft || !enforceSlotTimers}
+                        onChange={(event) =>
+                          updateSlot(slotIndex, {
+                            autoSubmitOnTimeout: event.target.checked,
+                          })
+                        }
+                        type="checkbox"
+                      />
+                      Auto-submit when slot time ends
+                    </label>
+                    {!enforceSlotTimers ? (
+                      <span className={styles.inlineHelper}>
+                        Enable slot timers to use slot auto-submit.
+                      </span>
+                    ) : null}
+                  </div>
                   {slot.sections.map((section, sectionIndex) => (
-                    <div className={styles.sectionCard} key={sectionIndex}>
+                    <div
+                      className={styles.sectionCard}
+                      id={`exam-slot-${slotIndex + 1}-section-${sectionIndex + 1}`}
+                      key={sectionIndex}
+                    >
+                      <div className={styles.sectionHeader}>
+                        <div>
+                          <span>Section {sectionIndex + 1}</span>
+                          <h4>
+                            {section.name ||
+                              `Untitled section ${sectionIndex + 1}`}
+                          </h4>
+                          <code>{section.code || "NO_CODE"}</code>
+                        </div>
+                        <div className={styles.sectionHeaderActions}>
+                          <span
+                            className={styles.questionLimitBadge}
+                            data-invalid={
+                              section.questionsToAttempt < 1 ||
+                              section.questionsToAttempt >
+                                section.questions.length
+                            }
+                          >
+                            {section.questions.length} selected ·{" "}
+                            {section.questionsToAttempt} allowed
+                          </span>
+                          <button
+                            className={styles.dangerButton}
+                            disabled={
+                              !isSelectedDraft || slot.sections.length === 1
+                            }
+                            onClick={() =>
+                              updateSlot(slotIndex, {
+                                sections: slot.sections.filter(
+                                  (_, index) => index !== sectionIndex,
+                                ),
+                              })
+                            }
+                            title={
+                              slot.sections.length === 1
+                                ? "A slot must contain at least one section"
+                                : `Remove ${section.name}`
+                            }
+                            type="button"
+                          >
+                            <Trash2 size={13} />
+                            Remove
+                          </button>
+                        </div>
+                      </div>
                       <div className={styles.rowFields}>
                         <label>
                           Section code
@@ -1340,7 +1840,7 @@ function TemplatesPanel({
                           />
                         </label>
                         <label>
-                          Attempt
+                          Questions to attempt
                           <input
                             disabled={!isSelectedDraft}
                             type="number"
@@ -1354,6 +1854,124 @@ function TemplatesPanel({
                           />
                         </label>
                       </div>
+                      <div className={styles.policyGrid}>
+                        <CrudSelect
+                          ariaLabel={`${section.name} navigation mode`}
+                          disabled={!isSelectedDraft}
+                          label="Question navigation"
+                          onChange={(value) =>
+                            updateSection(slotIndex, sectionIndex, {
+                              navigationMode: value as ExamNavigationMode,
+                            })
+                          }
+                          options={[
+                            { label: "Free navigation", value: "FREE" },
+                            { label: "Sequential", value: "SEQUENTIAL" },
+                            {
+                              label: "Lock after submit",
+                              value: "LOCKED_AFTER_SUBMIT",
+                            },
+                          ]}
+                          value={section.navigationMode}
+                          width="100%"
+                        />
+                        <label>
+                          Section instructions
+                          <input
+                            disabled={!isSelectedDraft}
+                            onChange={(event) =>
+                              updateSection(slotIndex, sectionIndex, {
+                                instructions: event.target.value,
+                              })
+                            }
+                            placeholder="Optional section instructions"
+                            value={section.instructions}
+                          />
+                        </label>
+                      </div>
+                      <div
+                        className={styles.questionLimitSummary}
+                        data-invalid={
+                          section.questionsToAttempt < 1 ||
+                          section.questionsToAttempt > section.questions.length
+                        }
+                      >
+                        <strong>
+                          {section.questions.length} questions selected
+                        </strong>
+                        <span>
+                          Students may answer {section.questionsToAttempt} of{" "}
+                          {section.questions.length}.
+                        </span>
+                        {section.questionsToAttempt < 1 ? (
+                          <em>Choose a question limit of at least 1.</em>
+                        ) : section.questionsToAttempt >
+                          section.questions.length ? (
+                          <em>
+                            Select at least {section.questionsToAttempt}{" "}
+                            questions or lower the limit.
+                          </em>
+                        ) : null}
+                      </div>
+                      <div className={styles.policyChecks}>
+                        <label>
+                          <input
+                            checked={section.randomizeQuestions}
+                            disabled={!isSelectedDraft}
+                            onChange={(event) =>
+                              updateSection(slotIndex, sectionIndex, {
+                                randomizeQuestions: event.target.checked,
+                              })
+                            }
+                            type="checkbox"
+                          />
+                          Randomize questions
+                        </label>
+                        <label>
+                          <input
+                            checked={section.randomizeOptions}
+                            disabled={!isSelectedDraft}
+                            onChange={(event) =>
+                              updateSection(slotIndex, sectionIndex, {
+                                randomizeOptions: event.target.checked,
+                              })
+                            }
+                            type="checkbox"
+                          />
+                          Randomize options
+                        </label>
+                        <label>
+                          <input
+                            checked={section.allowReview}
+                            disabled={!isSelectedDraft}
+                            onChange={(event) =>
+                              updateSection(slotIndex, sectionIndex, {
+                                allowReview: event.target.checked,
+                              })
+                            }
+                            type="checkbox"
+                          />
+                          Allow mark for review
+                        </label>
+                        <label>
+                          <input
+                            checked={section.autoSubmitOnTimeout}
+                            disabled={!isSelectedDraft || !enforceSectionTimers}
+                            onChange={(event) =>
+                              updateSection(slotIndex, sectionIndex, {
+                                autoSubmitOnTimeout: event.target.checked,
+                              })
+                            }
+                            type="checkbox"
+                          />
+                          Auto-submit on section timeout
+                        </label>
+                      </div>
+                      {!enforceSectionTimers ? (
+                        <span className={styles.inlineHelper}>
+                          Enable section timers to use section auto-submit.
+                        </span>
+                      ) : null}
                       <div className={styles.sectionSubjectField}>
                         <CrudSelectField
                           disabled={!isSelectedDraft}
@@ -1411,6 +2029,7 @@ function TemplatesPanel({
                             })
                           }
                           questionTypes={questionTypes}
+                          questionsToAttempt={section.questionsToAttempt}
                           selectedQuestions={section.questions}
                           subjectId={section.subjectId}
                         />
@@ -1445,7 +2064,7 @@ function TemplatesPanel({
   );
 }
 
-function SubjectsPanel({
+const SubjectsPanel =({
   organizationId,
   subjects,
   report,
@@ -1453,7 +2072,7 @@ function SubjectsPanel({
   organizationId: number;
   subjects: ExamSubject[];
   report: Report;
-}) {
+})  => {
   return (
     <div className={styles.twoColumn}>
       <section className={styles.panel}>
@@ -1526,7 +2145,7 @@ function SubjectsPanel({
   );
 }
 
-function QuestionsPanel({
+const QuestionsPanel =({
   organizationId,
   subjects,
   questions,
@@ -1538,9 +2157,12 @@ function QuestionsPanel({
   questions: ExamQuestion[];
   questionTypes: ExamQuestionType[];
   report: Report;
-}) {
+}) => {
   const [newQuestionSubjectId, setNewQuestionSubjectId] = useState(0);
   const [questionTypeId, setQuestionTypeId] = useState(0);
+  const [virtualKeyboardMode, setVirtualKeyboardMode] = useState<
+    "NONE" | "NUMERIC" | "ALPHANUMERIC"
+  >("NONE");
   const [questionSearch, setQuestionSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -1595,6 +2217,12 @@ function QuestionsPanel({
                 .map((item) => item.trim())
                 .filter(Boolean),
         numericTolerance: Number(form.get("tolerance")) || 0,
+        caseSensitive: form.get("caseSensitive") === "on",
+        normalizeWhitespace: form.get("normalizeWhitespace") === "on",
+        virtualKeyboardMode,
+        allowPhysicalKeyboard: form.get("allowPhysicalKeyboard") === "on",
+        allowPaste: form.get("allowPaste") === "on",
+        maxAnswerLength: Number(form.get("maxAnswerLength")) || undefined,
       }),
       "Question added to the bank",
     );
@@ -1629,7 +2257,19 @@ function QuestionsPanel({
             />
             <CrudSelectField
               label="Answer type"
-              onChange={(value) => setQuestionTypeId(Number(value))}
+              onChange={(value) => {
+                const nextType = questionTypes.find(
+                  (item) => item.id === Number(value),
+                );
+                setQuestionTypeId(Number(value));
+                setVirtualKeyboardMode(
+                  nextType?.code === "NUMERIC"
+                    ? "NUMERIC"
+                    : nextType?.code === "ONE_WORD"
+                      ? "ALPHANUMERIC"
+                      : "NONE",
+                );
+              }}
               options={questionTypes.map((item) => ({
                 label: `${item.name} (ID ${item.id})`,
                 value: String(item.id),
@@ -1710,6 +2350,66 @@ function QuestionsPanel({
               />
             </label>
           </div>
+          {typeCode && typeCode !== "SINGLE_CHOICE" ? (
+            <div className={styles.templatePolicyCard}>
+              <div className={styles.rowFields}>
+                <CrudSelect
+                  ariaLabel="On-screen keyboard"
+                  label="On-screen keyboard"
+                  onChange={(value) =>
+                    setVirtualKeyboardMode(
+                      value as "NONE" | "NUMERIC" | "ALPHANUMERIC",
+                    )
+                  }
+                  options={[
+                    { label: "None", value: "NONE" },
+                    { label: "Numeric", value: "NUMERIC" },
+                    { label: "Alphanumeric", value: "ALPHANUMERIC" },
+                  ]}
+                  value={virtualKeyboardMode}
+                  width="100%"
+                />
+                <label>
+                  Maximum answer length
+                  <input
+                    max="5000"
+                    min="1"
+                    name="maxAnswerLength"
+                    placeholder={typeCode === "NUMERIC" ? "20" : "100"}
+                    type="number"
+                  />
+                </label>
+              </div>
+              <div className={styles.policyChecks}>
+                <label>
+                  <input
+                    defaultChecked
+                    name="allowPhysicalKeyboard"
+                    type="checkbox"
+                  />
+                  Allow physical keyboard
+                </label>
+                <label>
+                  <input defaultChecked name="allowPaste" type="checkbox" />
+                  Allow paste
+                </label>
+                <label>
+                  <input
+                    defaultChecked
+                    name="normalizeWhitespace"
+                    type="checkbox"
+                  />
+                  Normalize whitespace
+                </label>
+                {typeCode === "ONE_WORD" ? (
+                  <label>
+                    <input name="caseSensitive" type="checkbox" />
+                    Case-sensitive answer
+                  </label>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           <label>
             Explanation
             <textarea name="explanation" rows={2} />
@@ -1885,13 +2585,13 @@ function QuestionsPanel({
   );
 }
 
-function ImportsPanel({
+const ImportsPanel =({
   templates,
   report,
 }: {
   templates: ExamTemplateListItem[];
   report: Report;
-}) {
+})  => {
   const [templateId, setTemplateId] = useState(0);
   const [scope, setScope] = useState<"SINGLE_SECTION" | "FULL_EXAM">(
     "SINGLE_SECTION",
@@ -2216,7 +2916,7 @@ function ImportsPanel({
   );
 }
 
-function SchedulePanel({
+const SchedulePanel = ({
   organizationId,
   templates,
   exams,
@@ -2226,7 +2926,7 @@ function SchedulePanel({
   templates: ExamTemplateListItem[];
   exams: ScheduledExam[];
   report: Report;
-}) {
+}) => {
   const [sessionId, setSessionId] = useState(0);
   const [templateId, setTemplateId] = useState(0);
   const [versionId, setVersionId] = useState(0);
@@ -2234,6 +2934,11 @@ function SchedulePanel({
   const [folderId, setFolderId] = useState(0);
   const [availableFrom, setAvailableFrom] = useState<Date | null>(null);
   const [availableUntil, setAvailableUntil] = useState<Date | null>(null);
+  const [selectedSlotIds, setSelectedSlotIds] = useState<number[] | null>(null);
+  const [resultReleaseMode, setResultReleaseMode] = useState<
+    "IMMEDIATE" | "SCHEDULED" | "MANUAL"
+  >("IMMEDIATE");
+  const [resultPublishAt, setResultPublishAt] = useState<Date | null>(null);
   const sessions = useQuery({
     queryKey: ["exam-sessions", organizationId],
     queryFn: () => sessionsApi.findAll(organizationId, { page: 1, limit: 100 }),
@@ -2262,6 +2967,8 @@ function SchedulePanel({
   const version =
     publishedVersions.find((item) => item.id === versionId) ??
     publishedVersions[0];
+  const effectiveSelectedSlotIds =
+    selectedSlotIds ?? version?.slots.map((slot) => slot.id) ?? [];
   const create = (form: FormData) => {
     if (!version) return;
     report(
@@ -2280,8 +2987,19 @@ function SchedulePanel({
         ).toISOString(),
         durationMinutes: Number(form.get("duration")),
         attemptLimit: Number(form.get("attemptLimit")),
+        autoSubmitOnTimeout: form.get("autoSubmitOnTimeout") === "on",
+        allowResume: form.get("allowResume") === "on",
+        resultReleaseMode,
+        resultPublishAt:
+          resultReleaseMode === "SCHEDULED" && resultPublishAt
+            ? resultPublishAt.toISOString()
+            : undefined,
+        showScore: form.get("showScore") === "on",
+        showCorrectAnswers: form.get("showCorrectAnswers") === "on",
+        showExplanations: form.get("showExplanations") === "on",
+        showQuestionReview: form.get("showQuestionReview") === "on",
         status: "SCHEDULED",
-        selectedSlotIds: version.slots.map((slot) => slot.id),
+        selectedSlotIds: effectiveSelectedSlotIds,
         sessionCourseIds: courseIds,
         resourceFolderId: folderId || undefined,
       }),
@@ -2317,6 +3035,7 @@ function SchedulePanel({
             onChange={(value) => {
               setTemplateId(Number(value));
               setVersionId(0);
+              setSelectedSlotIds(null);
             }}
             options={templates
               .filter((item) =>
@@ -2333,7 +3052,10 @@ function SchedulePanel({
             description="Scheduled attempts remain permanently linked to this version."
             disabled={!publishedVersions.length}
             label="Published version"
-            onChange={(value) => setVersionId(Number(value))}
+            onChange={(value) => {
+              setVersionId(Number(value));
+              setSelectedSlotIds(null);
+            }}
             options={publishedVersions.map((publishedVersion) => ({
               label: `Version ${publishedVersion.versionNumber} - Published`,
               value: String(publishedVersion.id),
@@ -2341,6 +3063,36 @@ function SchedulePanel({
             placeholder="Choose version"
             value={version ? String(version.id) : ""}
           />
+          {version?.slots.length ? (
+            <fieldset className={styles.slotSelection}>
+              <legend>Slots included in this exam</legend>
+              {version.slots.map((slot) => (
+                <label key={slot.id}>
+                  <input
+                    checked={effectiveSelectedSlotIds.includes(slot.id)}
+                    onChange={(event) =>
+                      setSelectedSlotIds((current) =>
+                        event.target.checked
+                          ? [
+                              ...(current ?? effectiveSelectedSlotIds),
+                              slot.id,
+                            ].filter(
+                              (id, index, values) =>
+                                values.indexOf(id) === index,
+                            )
+                          : (current ?? effectiveSelectedSlotIds).filter(
+                              (id) => id !== slot.id,
+                            ),
+                      )
+                    }
+                    type="checkbox"
+                  />
+                  <span>{slot.name}</span>
+                  <small>{slot.durationMinutes} min</small>
+                </label>
+              ))}
+            </fieldset>
+          ) : null}
           <CrudSelectField
             label="Session"
             loading={sessions.isLoading}
@@ -2440,13 +3192,74 @@ function SchedulePanel({
               />
             </label>
           </div>
+          <section className={styles.templatePolicyCard}>
+            <CrudSelect
+              ariaLabel="Result release"
+              label="Result release"
+              onChange={(value) =>
+                setResultReleaseMode(
+                  value as "IMMEDIATE" | "SCHEDULED" | "MANUAL",
+                )
+              }
+              options={[
+                { label: "Immediately after submission", value: "IMMEDIATE" },
+                { label: "At a scheduled time", value: "SCHEDULED" },
+                { label: "Release manually", value: "MANUAL" },
+              ]}
+              value={resultReleaseMode}
+              width="100%"
+            />
+            {resultReleaseMode === "SCHEDULED" ? (
+              <CrudDateTimePicker
+                label="Publish results at"
+                minDate={availableFrom}
+                name="resultPublishAt"
+                onChange={setResultPublishAt}
+                placeholder="Choose result release date and time"
+                required
+                value={resultPublishAt}
+              />
+            ) : null}
+            <div className={styles.policyChecks}>
+              <label>
+                <input
+                  defaultChecked
+                  name="autoSubmitOnTimeout"
+                  type="checkbox"
+                />
+                Auto-submit on timeout
+              </label>
+              <label>
+                <input defaultChecked name="allowResume" type="checkbox" />
+                Allow resume
+              </label>
+              <label>
+                <input defaultChecked name="showScore" type="checkbox" />
+                Show score
+              </label>
+              <label>
+                <input name="showQuestionReview" type="checkbox" />
+                Show question review
+              </label>
+              <label>
+                <input name="showCorrectAnswers" type="checkbox" />
+                Show correct answers
+              </label>
+              <label>
+                <input name="showExplanations" type="checkbox" />
+                Show explanations
+              </label>
+            </div>
+          </section>
           <label>
             Instructions
             <textarea name="instructions" rows={3} />
           </label>
           <button
             className={styles.primaryButton}
-            disabled={!version || !courseIds.length}
+            disabled={
+              !version || !courseIds.length || !effectiveSelectedSlotIds.length
+            }
           >
             <CalendarClock size={16} />
             Schedule exam
@@ -2471,6 +3284,21 @@ function SchedulePanel({
                 </span>
               </div>
               <Status value={exam.status} />
+              {exam.resultReleaseMode === "MANUAL" &&
+              !exam.resultsReleasedAt ? (
+                <button
+                  className={styles.secondaryButton}
+                  onClick={() =>
+                    report(
+                      examsApi.scheduled.releaseResults(exam.id),
+                      `Results released for ${exam.title}`,
+                    )
+                  }
+                  type="button"
+                >
+                  Release results
+                </button>
+              ) : null}
               <dl>
                 <div>
                   <dt>Window</dt>

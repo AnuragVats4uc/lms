@@ -15,10 +15,14 @@ export interface Permission {
 export interface Role {
   id: number;
   uuid: string;
+  organizationId: number | null;
+  scope: string;
   name: string;
   code: string;
   description: string | null;
+  isSystem: boolean;
   isActive: boolean;
+  organization?: Organization | null;
   permissions?: Permission[];
   createdAt: string;
   updatedAt: string;
@@ -47,6 +51,7 @@ export interface PermissionQuery extends PaginationQuery {
 }
 
 export interface CreateRoleRequest {
+  organizationId?: number;
   name: string;
   code: string;
   description?: string;
@@ -54,11 +59,11 @@ export interface CreateRoleRequest {
   permissionIds?: number[];
 }
 
-export interface UpdateRoleRequest
-  extends Partial<Omit<CreateRoleRequest, "permissionIds">> {}
+export interface UpdateRoleRequest extends Partial<CreateRoleRequest> {}
 
 export interface RoleQuery extends PaginationQuery {
   isActive?: boolean;
+  organizationId?: number;
 }
 
 export interface AssignRolePermissionsRequest {

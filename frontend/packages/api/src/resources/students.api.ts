@@ -4,6 +4,7 @@ import type {
   CurrentStudent,
   Student,
   StudentCourseList,
+  StudentCourseFolders,
   StudentCoursesQuery,
   StudentDashboard,
   StudentResourceList,
@@ -12,6 +13,11 @@ import type {
   StudentVideoProgress,
   StudentVideoResourceDetail,
   StudentResourcesQuery,
+  StudentFolderResourceList,
+  StudentFolderResourcesQuery,
+  StudentExamResourceDetail,
+  StudentExamAttempt,
+  StudentExamReport,
   StudentList,
   StudentQuery,
   UpdateStudentRequest,
@@ -65,6 +71,103 @@ export const studentsApi = {
         {
           params: query,
         },
+      )
+      .then(unwrapApiData);
+  },
+
+  findMyCourseFolders(sessionCourseId: number) {
+    return api
+      .get<ApiResponse<StudentCourseFolders>>(
+        `${STUDENTS_ENDPOINT}/me/courses/${sessionCourseId}/folders`,
+      )
+      .then(unwrapApiData);
+  },
+
+  findMyFolderResources(
+    sessionCourseId: number,
+    folderId: number,
+    query?: StudentFolderResourcesQuery,
+  ) {
+    return api
+      .get<ApiResponse<StudentFolderResourceList>>(
+        `${STUDENTS_ENDPOINT}/me/courses/${sessionCourseId}/folders/${folderId}/resources`,
+        { params: query },
+      )
+      .then(unwrapApiData);
+  },
+
+  findMyExamResource(resourceId: number) {
+    return api
+      .get<ApiResponse<StudentExamResourceDetail>>(
+        `${STUDENTS_ENDPOINT}/me/resources/${resourceId}/exam`,
+      )
+      .then(unwrapApiData);
+  },
+
+  startMyExam(resourceId: number) {
+    return api
+      .post<
+        ApiResponse<{ attemptUuid: string; resumed: boolean }>
+      >(`${STUDENTS_ENDPOINT}/me/resources/${resourceId}/exam/start`)
+      .then(unwrapApiData);
+  },
+
+  findMyExamAttempt(attemptUuid: string) {
+    return api
+      .get<ApiResponse<StudentExamAttempt | { attemptUuid: string; status: string; submitted: true; reportAvailable: boolean }>>(
+        `${STUDENTS_ENDPOINT}/me/exam-attempts/${attemptUuid}`,
+      )
+      .then(unwrapApiData);
+  },
+
+  saveMyExamAnswer(
+    attemptUuid: string,
+    attemptQuestionId: number,
+    payload: {
+      selectedOptionIds?: number[];
+      textAnswer?: string | null;
+      numericAnswer?: number | null;
+      markedForReview?: boolean;
+      timeSpentSeconds?: number;
+    },
+  ) {
+    return api
+      .patch<ApiResponse<{ saved: boolean; savedAt: string }>>(
+        `${STUDENTS_ENDPOINT}/me/exam-attempts/${attemptUuid}/answers/${attemptQuestionId}`,
+        payload,
+      )
+      .then(unwrapApiData);
+  },
+
+  updateMyExamProgress(
+    attemptUuid: string,
+    payload: { attemptQuestionId: number; timeSpentSeconds?: number },
+  ) {
+    return api
+      .patch<ApiResponse<{ saved: boolean; savedAt: string }>>(
+        `${STUDENTS_ENDPOINT}/me/exam-attempts/${attemptUuid}/progress`,
+        payload,
+      )
+      .then(unwrapApiData);
+  },
+
+  submitMyExam(attemptUuid: string) {
+    return api
+      .post<
+        ApiResponse<{
+          attemptUuid: string;
+          status: string;
+          submittedAt: string | null;
+          reportAvailable: boolean;
+        }>
+      >(`${STUDENTS_ENDPOINT}/me/exam-attempts/${attemptUuid}/submit`)
+      .then(unwrapApiData);
+  },
+
+  findMyExamReport(attemptUuid: string) {
+    return api
+      .get<ApiResponse<StudentExamReport>>(
+        `${STUDENTS_ENDPOINT}/me/exam-attempts/${attemptUuid}/report`,
       )
       .then(unwrapApiData);
   },

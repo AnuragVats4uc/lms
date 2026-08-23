@@ -48,6 +48,8 @@ export const StatCard = memo(function StatCard({
   value,
   ...props
 }: StatCardProps) {
+  const isTextValue = typeof value === "string";
+  const isLongTextValue = isTextValue && value.length > 7;
   const themedIcon = isValidElement(icon)
     ? cloneElement(icon as ReactElement<{ color?: string }>, {
         color: iconColors[color],
@@ -85,23 +87,27 @@ export const StatCard = memo(function StatCard({
           <YStack gap="$0.5" style={{ minWidth: 0 }}>
             <AppText
               tone="muted"
-              fontSize="$caption"
-              lineHeight="$caption"
+              fontSize={11}
+              lineHeight={13}
+              numberOfLines={1}
             >
               {title}
             </AppText>
             <Text
               color="#0F1D3A"
-              fontSize={28}
+              fontSize={isLongTextValue ? 21 : 26}
               fontWeight="$heading"
-              lineHeight={30}
+              lineHeight={isLongTextValue ? 24 : 28}
+              numberOfLines={1}
+              style={{ maxWidth: "100%" }}
             >
               {loading ? "..." : value}
             </Text>
             <AppText
               color="#52627A"
-              fontSize="$caption"
-              lineHeight="$caption"
+              fontSize={11}
+              lineHeight={14}
+              numberOfLines={2}
             >
               {subtitle}
             </AppText>

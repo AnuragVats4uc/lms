@@ -66,6 +66,30 @@ export class ResourceRepository {
   findFolderById(folderId: number) {
     return this.prisma.folder.findUnique({
       where: { id: folderId },
+      include: {
+        sessionCourse: {
+          select: {
+            id: true,
+            session: { select: { organizationId: true } },
+          },
+        },
+      },
+    });
+  }
+
+  findExamForFolder(
+    examId: number,
+    organizationId: number,
+    sessionCourseId: number,
+  ) {
+    return this.prisma.exam.findFirst({
+      where: {
+        id: examId,
+        organizationId,
+        isActive: true,
+        courseAssignments: { some: { sessionCourseId } },
+      },
+      select: { id: true },
     });
   }
 

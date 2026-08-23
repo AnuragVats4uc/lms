@@ -3,10 +3,12 @@ import {
   Bell,
   BookOpen,
   Building2,
+  ClipboardList,
   FileText,
   GraduationCap,
   KeyRound,
   LayoutDashboard,
+  MapPin,
   Settings,
   ShieldCheck,
   CalendarRange,
@@ -24,6 +26,7 @@ export interface NavigationItem {
   }>;
   label: string;
   permission?: string;
+  superAdminOnly?: boolean;
 }
 
 export const adminNavigation: NavigationItem[] = [
@@ -39,13 +42,14 @@ export const adminNavigation: NavigationItem[] = [
     icon: Building2,
     label: "Organizations",
     permission: "organizations.read",
+    superAdminOnly: true,
   },
   {
     group: "User & Access",
     href: "/admin/users",
     icon: UsersRound,
     label: "Users",
-    permission: "students.read",
+    permission: "users.read",
   },
   {
     group: "User & Access",
@@ -88,6 +92,27 @@ export const adminNavigation: NavigationItem[] = [
     icon: CalendarRange,
     label: "Sessions",
     permission: "session.read",
+  },
+  {
+    group: "Learning Management",
+    href: "/admin/student-registration",
+    icon: ClipboardList,
+    label: "Student Registration",
+    permission: "organizations.read",
+  },
+  {
+    group: "Learning Management",
+    href: "/admin/education-options",
+    icon: GraduationCap,
+    label: "Education Options",
+    permission: "organizations.read",
+  },
+  {
+    group: "Learning Management",
+    href: "/admin/digital-library-locations",
+    icon: MapPin,
+    label: "Library Locations",
+    permission: "organizations.read",
   },
   {
     group: "Learning Management",
