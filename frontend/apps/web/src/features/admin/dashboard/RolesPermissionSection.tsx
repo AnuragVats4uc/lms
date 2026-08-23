@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
-import { AppCard, AppText } from "@repo/ui/primitives";
+import { ArrowRight, ShieldCheck } from "lucide-react";
+import { AppCard, AppEmptyState } from "@repo/ui/primitives";
 import { RoleGrid } from "@repo/ui/dashboard";
 import { Button, Text, XStack, YStack } from "@repo/ui";
 import type { RoleCardProps } from "@repo/ui/dashboard";
@@ -70,9 +70,47 @@ export function RolesPermissionSection({
         {roles.length ? (
           <RoleGrid roles={roles} />
         ) : (
-          <AppText color="#52627A" fontSize="$caption">
-            No active roles are available.
-          </AppText>
+          <AppEmptyState
+            action={
+              <Button
+                aria-label="Open roles"
+                background="#FFFFFF"
+                borderColor="#10B981"
+                borderWidth={1}
+                disabled={!onViewAllRoles}
+                height={38}
+                onPress={onViewAllRoles}
+                px="$4"
+                rounded="$3"
+              >
+                <Button.Text
+                  color="#047857"
+                  fontSize="$caption"
+                  fontWeight="$button"
+                >
+                  Open Roles
+                </Button.Text>
+                <ArrowRight aria-hidden="true" color="#047857" size={14} />
+              </Button>
+            }
+            description="Create organization roles and assign permissions to control access across the admin workspace."
+            icon={
+              <XStack
+                background="#ECFDF5"
+                height={52}
+                rounded="$10"
+                style={{
+                  alignItems: "center",
+                  color: "#059669",
+                  justifyContent: "center",
+                }}
+                width={52}
+              >
+                <ShieldCheck aria-hidden="true" size={26} strokeWidth={2.1} />
+              </XStack>
+            }
+            title="No roles yet"
+          />
         )}
       </YStack>
     </AppCard>

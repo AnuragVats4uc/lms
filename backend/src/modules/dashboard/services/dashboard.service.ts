@@ -1,10 +1,19 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { CurrentUser } from '../../auth/types/current-user.types';
 import { DashboardQueryDto } from '../dto/dashboard-query.dto';
-import { DashboardRepository, DashboardScope } from '../repositories/dashboard.repository';
+import {
+  DashboardRepository,
+  DashboardScope,
+} from '../repositories/dashboard.repository';
 
-type DashboardFolderRecord = Awaited<ReturnType<DashboardRepository['findFolders']>>[number];
+type DashboardFolderRecord = Awaited<
+  ReturnType<DashboardRepository['findFolders']>
+>[number];
 
 @Injectable()
 export class DashboardService {
@@ -15,7 +24,7 @@ export class DashboardService {
     const [context, metrics, roles] = await Promise.all([
       this.dashboardRepository.findContext(scope),
       this.dashboardRepository.countStatistics(scope),
-      this.dashboardRepository.findRoles(),
+      this.dashboardRepository.findRoles(scope),
     ]);
 
     if (this.hasRequestedContext(query) && !context) {
@@ -28,11 +37,19 @@ export class DashboardService {
       ? await this.dashboardRepository.findFolders(selectedSessionCourse.id)
       : [];
     const selectedFolder = query.folderId
-      ? folderRecords.find((folder) => folder.id === query.folderId) ?? null
+      ? (folderRecords.find((folder) => folder.id === query.folderId) ?? null)
       : null;
-    const tree = context && selectedSession && selectedSessionCourse
-      ? [this.buildContextTree(context, selectedSession, selectedSessionCourse, folderRecords)]
-      : [];
+    const tree =
+      context && selectedSession && selectedSessionCourse
+        ? [
+            this.buildContextTree(
+              context,
+              selectedSession,
+              selectedSessionCourse,
+              folderRecords,
+            ),
+          ]
+        : [];
 
     return {
       statistics: {
@@ -90,7 +107,10 @@ export class DashboardService {
     return this.dashboardRepository.findContextOptions(scope);
   }
 
-  private buildScope(user: CurrentUser, query: DashboardQueryDto): DashboardScope {
+  private buildScope(
+    user: CurrentUser,
+    query: DashboardQueryDto,
+  ): DashboardScope {
     if (
       user.organizationId &&
       query.organizationId &&
@@ -110,9 +130,9 @@ export class DashboardService {
   private hasRequestedContext(query: DashboardQueryDto) {
     return Boolean(
       query.organizationId ||
-        query.sessionId ||
-        query.sessionCourseId ||
-        query.folderId,
+      query.sessionId ||
+      query.sessionCourseId ||
+      query.folderId,
     );
   }
 
@@ -150,12 +170,23 @@ export class DashboardService {
   }
 
   private buildContextTree(
-    organization: NonNullable<Awaited<ReturnType<DashboardRepository['findContext']>>>,
-    session: NonNullable<Awaited<ReturnType<DashboardRepository['findContext']>>>['sessions'][number],
-    sessionCourse: NonNullable<NonNullable<Awaited<ReturnType<DashboardRepository['findContext']>>>['sessions'][number]['sessionCourses'][number]>,
+    organization: NonNullable<
+      Awaited<ReturnType<DashboardRepository['findContext']>>
+    >,
+    session: NonNullable<
+      Awaited<ReturnType<DashboardRepository['findContext']>>
+    >['sessions'][number],
+    sessionCourse: NonNullable<
+      NonNullable<
+        Awaited<ReturnType<DashboardRepository['findContext']>>
+      >['sessions'][number]['sessionCourses'][number]
+    >,
     folders: DashboardFolderRecord[],
   ) {
-    const folderNodes = new Map<number, { id: string; type: string; label: string; children: unknown[] }>();
+    const folderNodes = new Map<
+      number,
+      { id: string; type: string; label: string; children: unknown[] }
+    >();
 
     for (const folder of folders) {
       folderNodes.set(folder.id, {
@@ -166,7 +197,12 @@ export class DashboardService {
       });
     }
 
-    const rootFolders: Array<{ id: string; type: string; label: string; children: unknown[] }> = [];
+    const rootFolders: Array<{
+      id: string;
+      type: string;
+      label: string;
+      children: unknown[];
+    }> = [];
     for (const folder of folders) {
       const node = folderNodes.get(folder.id)!;
       if (folder.parentFolderId === null) {
@@ -180,17 +216,21 @@ export class DashboardService {
       id: `organization-${organization.id}`,
       type: 'organization',
       label: organization.name,
-      children: [{
-        id: `session-${session.id}`,
-        type: 'session',
-        label: session.name,
-        children: [{
-          id: `session-course-${sessionCourse.id}`,
-          type: 'course',
-          label: sessionCourse.displayName ?? sessionCourse.course.name,
-          children: rootFolders,
-        }],
-      }],
+      children: [
+        {
+          id: `session-${session.id}`,
+          type: 'session',
+          label: session.name,
+          children: [
+            {
+              id: `session-course-${sessionCourse.id}`,
+              type: 'course',
+              label: sessionCourse.displayName ?? sessionCourse.course.name,
+              children: rootFolders,
+            },
+          ],
+        },
+      ],
     };
   }
 }

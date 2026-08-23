@@ -17,7 +17,8 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import { Button, Text, YStack } from "@repo/ui";
+import { Button, Text, XStack, YStack } from "@repo/ui";
+import { AppCard } from "@repo/ui/primitives";
 import { PageContainer } from "@repo/ui/dashboard";
 import type {
   BreadcrumbItem,
@@ -25,11 +26,11 @@ import type {
   QuickActionsProps,
   RoleCardProps,
   StatCardProps,
-  SupportCardProps,
   TreeNodeItem,
   UploadDropzoneProps,
 } from "@repo/ui/dashboard";
 import { dashboardApi } from "@repo/api";
+import { useAuthSession } from "@repo/auth";
 import type {
   DashboardData,
   DashboardQuery,
@@ -78,35 +79,54 @@ const toTreeItem = (
 const buildStatistics = (
   data: DashboardData,
   navigate: (path: string) => void,
-): StatCardProps[] => [
-  {
-    color: "green",
-    icon: <Building2 aria-hidden="true" size={24} strokeWidth={2.2} />,
-    link: "Manage Organizations",
-    subtitle: `${data.statistics.organizations.active} active organizations`,
-    title: "Organizations",
-    value: data.statistics.organizations.total,
-    onPress: () => navigate("/admin/organizations"),
-  },
-  {
-    color: "purple",
-    icon: <CalendarDays aria-hidden="true" size={24} strokeWidth={2.2} />,
-    link: "Manage Sessions",
-    subtitle: `${data.statistics.sessions.active} active sessions`,
-    title: "Sessions",
-    value: data.statistics.sessions.total,
-    onPress: () => navigate("/admin/sessions"),
-  },
-  {
-    color: "blue",
-    icon: <BookOpen aria-hidden="true" size={24} strokeWidth={2.2} />,
-    link: "Manage Courses",
-    subtitle: `${data.statistics.courses.active} active courses`,
-    title: "Courses",
-    value: data.statistics.courses.total,
-    onPress: () => navigate("/admin/courses"),
-  },
-];
+  isSuperAdmin: boolean,
+): StatCardProps[] => {
+  const statistics: StatCardProps[] = [];
+
+  if (isSuperAdmin) {
+    statistics.push({
+        color: "green",
+        icon: <Building2 aria-hidden="true" size={24} strokeWidth={2.2} />,
+        link: "Manage Organizations",
+        subtitle: `${data.statistics.organizations.active} active organizations`,
+        title: "Organizations",
+        value: data.statistics.organizations.total,
+        onPress: () => navigate("/admin/organizations"),
+    });
+  }
+
+  statistics.push(
+    {
+      color: "purple",
+      icon: <CalendarDays aria-hidden="true" size={24} strokeWidth={2.2} />,
+      link: "Manage Sessions",
+      subtitle: `${data.statistics.sessions.active} active sessions`,
+      title: "Sessions",
+      value: data.statistics.sessions.total,
+      onPress: () => navigate("/admin/sessions"),
+    },
+    {
+      color: "blue",
+      icon: <BookOpen aria-hidden="true" size={24} strokeWidth={2.2} />,
+      link: "Manage Courses",
+      subtitle: `${data.statistics.courses.active} active courses`,
+      title: "Courses",
+      value: data.statistics.courses.total,
+      onPress: () => navigate("/admin/courses"),
+    },
+    {
+      color: "green",
+      icon: <FileText aria-hidden="true" size={24} strokeWidth={2.2} />,
+      link: "Manage Resources",
+      subtitle: `${data.statistics.resources.active} active resources`,
+      title: "Total Resources",
+      value: data.statistics.resources.total,
+      onPress: () => navigate("/admin/resources"),
+    },
+  );
+
+  return statistics;
+};
 
 const buildFolders = (
   data: DashboardData,
@@ -166,15 +186,20 @@ const buildRoles = (
 const buildQuickActions = (
   data: DashboardData,
   navigate: (path: string) => void,
+  isSuperAdmin: boolean,
 ): QuickActionsProps => ({
   icon: <Zap aria-hidden="true" size={18} strokeWidth={2.2} />,
   title: "Quick Actions",
   actions: [
-    {
-      icon: <Building2 size={22} strokeWidth={2.2} />,
-      label: "Add Organization",
-      onPress: () => navigate("/admin/organizations?action=create"),
-    },
+    ...(isSuperAdmin
+      ? [
+          {
+            icon: <Building2 size={22} strokeWidth={2.2} />,
+            label: "Add Organization",
+            onPress: () => navigate("/admin/organizations?action=create"),
+          },
+        ]
+      : []),
     {
       icon: <CalendarDays size={22} strokeWidth={2.2} />,
       label: "Add Session",
@@ -191,13 +216,6 @@ const buildQuickActions = (
       onPress: () => navigate(resourcePath(data, undefined, "create")),
     },
   ],
-});
-
-const buildSupport = (navigate: (path: string) => void): SupportCardProps => ({
-  actionLabel: "Contact Support",
-  description: "Our support team is here to help you.",
-  onPress: () => navigate("/admin/settings"),
-  title: "Need Help?",
 });
 
 const buildUpload = (
@@ -302,8 +320,152 @@ const buildBreadcrumbs = (data: DashboardData): BreadcrumbItem[] => {
   ];
 };
 
+function SkeletonBlock({
+  height,
+  rounded = 10,
+  width = "100%",
+}: {
+  height: number;
+  rounded?: number;
+  width?: number | string;
+}) {
+  return (
+    <XStack
+      className="lms-skeleton"
+      style={{ borderRadius: rounded, height, width }}
+    />
+  );
+}
+
+function AdminDashboardSkeleton({ statCount }: { statCount: number }) {
+  return (
+    <PageContainer>
+      <YStack gap="$4">
+        <YStack
+          className="lms-dashboard-stats-grid"
+          gap="$3"
+          style={{
+            display: "grid",
+            gridTemplateColumns: `repeat(${statCount}, minmax(160px, 1fr)) minmax(300px, 1.35fr)`,
+            width: "100%",
+          }}
+        >
+          {Array.from({ length: statCount }).map((_, index) => (
+            <AppCard
+              key={index}
+              background="#FFFFFF"
+              borderColor="#E1E7F0"
+              p="$4"
+              style={{
+                borderRadius: 12,
+                boxShadow: "0 8px 28px rgba(15, 23, 42, 0.04)",
+                minHeight: 136,
+                minWidth: 0,
+              }}
+            >
+              <XStack gap="$3" style={{ alignItems: "center" }}>
+                <SkeletonBlock height={52} rounded={14} width={52} />
+                <YStack gap="$2" style={{ flex: 1 }}>
+                  <SkeletonBlock height={12} width="56%" />
+                  <SkeletonBlock height={28} width="38%" />
+                  <SkeletonBlock height={12} width="78%" />
+                </YStack>
+              </XStack>
+              <SkeletonBlock height={14} width="46%" />
+            </AppCard>
+          ))}
+          <AppCard
+            background="#FFFFFF"
+            borderColor="#E1E7F0"
+            p="$4"
+            style={{
+              borderRadius: 12,
+              boxShadow: "0 8px 28px rgba(15, 23, 42, 0.04)",
+              minHeight: 136,
+              minWidth: 0,
+            }}
+          >
+            <YStack gap="$3">
+              <SkeletonBlock height={16} width={140} />
+              <XStack
+                gap="$2"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, minmax(72px, 1fr))",
+                }}
+              >
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <SkeletonBlock key={index} height={78} rounded={14} />
+                ))}
+              </XStack>
+            </YStack>
+          </AppCard>
+        </YStack>
+
+        <AppCard
+          background="#FFFFFF"
+          borderColor="#E1E7F0"
+          p="$4"
+          style={{
+            borderRadius: 12,
+            boxShadow: "0 10px 30px rgba(15, 23, 42, 0.04)",
+          }}
+        >
+          <YStack gap="$4">
+            <XStack
+              style={{
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <YStack gap="$2" style={{ flex: 1 }}>
+                <SkeletonBlock height={22} width={220} />
+                <SkeletonBlock height={12} width="46%" />
+              </YStack>
+              <XStack gap="$2">
+                <SkeletonBlock height={40} width={96} />
+                <SkeletonBlock height={40} width={112} />
+              </XStack>
+            </XStack>
+            <SkeletonBlock height={58} rounded={12} />
+            <XStack
+              className="lms-resource-management-grid"
+              gap="$4"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(240px, 280px) minmax(0, 1fr)",
+                minWidth: 0,
+              }}
+            >
+              <SkeletonBlock height={420} rounded={12} />
+              <SkeletonBlock height={420} rounded={12} />
+            </XStack>
+          </YStack>
+        </AppCard>
+
+        <AppCard
+          background="#FFFFFF"
+          borderColor="#E1E7F0"
+          p="$4"
+          style={{
+            borderRadius: 12,
+            boxShadow: "0 10px 30px rgba(15, 23, 42, 0.04)",
+          }}
+        >
+          <YStack gap="$3">
+            <SkeletonBlock height={18} width={180} />
+            <SkeletonBlock height={88} rounded={12} />
+          </YStack>
+        </AppCard>
+      </YStack>
+    </PageContainer>
+  );
+}
+
 export function AdminDashboardPage() {
   const router = useRouter();
+  const { currentUser } = useAuthSession();
+  const isSuperAdmin = Boolean(currentUser?.roles.includes("SUPER_ADMIN"));
   const [dashboardContext, setDashboardContext] = useState<DashboardQuery>({});
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const [collapsedTreeIds, setCollapsedTreeIds] = useState<Set<string>>(
@@ -362,19 +524,22 @@ export function AdminDashboardPage() {
 
     return {
       roles: buildRoles(dashboardQuery.data, router.push),
-      statistics: buildStatistics(dashboardQuery.data, router.push),
+      statistics: buildStatistics(
+        dashboardQuery.data,
+        router.push,
+        isSuperAdmin,
+      ),
     };
-  }, [dashboardQuery.data, router.push]);
+  }, [dashboardQuery.data, isSuperAdmin, router.push]);
 
   const resourceData = resourceQuery.data ?? dashboardQuery.data;
   const quickActions = useMemo(
     () =>
       dashboardQuery.data
-        ? buildQuickActions(dashboardQuery.data, router.push)
+        ? buildQuickActions(dashboardQuery.data, router.push, isSuperAdmin)
         : null,
-    [dashboardQuery.data, router.push],
+    [dashboardQuery.data, isSuperAdmin, router.push],
   );
-  const support = useMemo(() => buildSupport(router.push), [router.push]);
   const resourceViewModel = useMemo(() => {
     if (!resourceData) return null;
 
@@ -420,15 +585,7 @@ export function AdminDashboardPage() {
   };
 
   if (dashboardQuery.isPending) {
-    return (
-      <PageContainer>
-        <YStack gap="$2" py="$6">
-          <Text color="#52627A" fontSize="$body">
-            Loading dashboard data...
-          </Text>
-        </YStack>
-      </PageContainer>
-    );
+    return <AdminDashboardSkeleton statCount={isSuperAdmin ? 4 : 3} />;
   }
 
   if (dashboardQuery.isError || !overviewViewModel || !resourceViewModel) {
@@ -467,7 +624,6 @@ export function AdminDashboardPage() {
       folders={resourceViewModel.folders}
       roles={overviewViewModel.roles}
       statistics={overviewViewModel.statistics}
-      support={support}
       tree={resourceViewModel.tree}
       upload={buildUpload(resourceData!, router.push)}
       quickActions={quickActions!}

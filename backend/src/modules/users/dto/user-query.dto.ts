@@ -1,22 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import {
-  IsBoolean,
-  IsInt,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { UserStatus } from '@prisma/client';
 
-export class RoleQueryDto {
-  @ApiPropertyOptional({ example: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  organizationId?: number;
-
+export class UserQueryDto {
   @ApiPropertyOptional({ example: 1, default: 1 })
   @IsOptional()
   @Type(() => Number)
@@ -37,9 +24,15 @@ export class RoleQueryDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ example: true })
+  @ApiPropertyOptional({ enum: UserStatus })
   @IsOptional()
-  @Type(() => Boolean)
-  @IsBoolean()
-  isActive?: boolean;
+  @IsEnum(UserStatus)
+  status?: UserStatus;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  organizationId?: number;
 }

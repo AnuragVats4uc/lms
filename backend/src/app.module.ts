@@ -18,6 +18,7 @@ import { RolesModule } from './modules/roles/roles.module';
 import { RolesGuard } from './modules/auth/roles/roles.guard';
 import { SessionModule } from './modules/session/session.module';
 import { StudentsModule } from './modules/students/students.module';
+import { UsersModule } from './modules/users/users.module';
 import { CourseModule } from './modules/course/course.module';
 import { SessionCourseModule } from './modules/session-course/session-course.module';
 import { FolderModule } from './modules/folder/folder.module';
@@ -54,6 +55,7 @@ import { ExamModule } from './modules/exam/exam.module';
     ResourceModule,
     DashboardModule,
     StudentsModule,
+    UsersModule,
     ExamModule,
   ],
   controllers: [AppController],

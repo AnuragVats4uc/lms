@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -15,14 +16,18 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 
 import { Permissions } from '../../auth/permissions/permissions.decorator';
+import { CurrentUser } from '../../auth/types/current-user.types';
 import { AssignRolePermissionsDto } from '../dto/assign-role-permissions.dto';
 import { AssignUserRoleDto } from '../dto/assign-user-role.dto';
 import { CreateRoleDto } from '../dto/create-role.dto';
 import { RoleQueryDto } from '../dto/role-query.dto';
 import { UpdateRoleDto } from '../dto/update-role.dto';
 import { RolesService } from '../services/roles.service';
+
+type AuthenticatedRequest = Request & { user: CurrentUser };
 
 @ApiTags('Roles')
 @ApiBearerAuth('access-token')
@@ -34,24 +39,27 @@ export class RolesController {
   @Permissions('roles.create')
   @ApiOperation({ summary: 'Create role' })
   @ApiCreatedResponse({ description: 'Role created successfully' })
-  create(@Body() dto: CreateRoleDto) {
-    return this.rolesService.create(dto);
+  create(@Body() dto: CreateRoleDto, @Req() request: AuthenticatedRequest) {
+    return this.rolesService.create(dto, request.user);
   }
 
   @Get()
   @Permissions('roles.read')
   @ApiOperation({ summary: 'Get paginated role list' })
   @ApiOkResponse({ description: 'Role list fetched successfully' })
-  findAll(@Query() query: RoleQueryDto) {
-    return this.rolesService.findAll(query);
+  findAll(@Query() query: RoleQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.rolesService.findAll(query, request.user);
   }
 
   @Get(':id')
   @Permissions('roles.read')
   @ApiOperation({ summary: 'Get role details' })
   @ApiOkResponse({ description: 'Role details fetched successfully' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.rolesService.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.rolesService.findOne(id, request.user);
   }
 
   @Patch(':id')
@@ -61,8 +69,9 @@ export class RolesController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRoleDto,
+    @Req() request: AuthenticatedRequest,
   ) {
-    return this.rolesService.update(id, dto);
+    return this.rolesService.update(id, dto, request.user);
   }
 
   @Post(':id/permissions')
@@ -74,8 +83,9 @@ export class RolesController {
   assignPermissions(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AssignRolePermissionsDto,
+    @Req() request: AuthenticatedRequest,
   ) {
-    return this.rolesService.assignPermissions(id, dto);
+    return this.rolesService.assignPermissions(id, dto, request.user);
   }
 
   @Post(':id/users')
@@ -87,7 +97,8 @@ export class RolesController {
   assignToUser(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AssignUserRoleDto,
+    @Req() request: AuthenticatedRequest,
   ) {
-    return this.rolesService.assignToUser(id, dto);
+    return this.rolesService.assignToUser(id, dto, request.user);
   }
 }

@@ -49,7 +49,7 @@ export const QuickActionsCard = memo(function QuickActionsCard({
           style={{
             alignItems: "stretch",
             display: "grid",
-            gridTemplateColumns: "repeat(4, minmax(72px, 1fr))",
+            gridTemplateColumns: `repeat(${Math.max(actions.length, 1)}, minmax(72px, 1fr))`,
             width: "100%",
           }}
         >

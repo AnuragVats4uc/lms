@@ -21,6 +21,7 @@ model Organization {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   users                  User[]
+  roles                  Role[]
   userRoles              UserRole[]
   sessions               Session[]
   students               Student[]

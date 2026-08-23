@@ -113,17 +113,21 @@ async function main() {
   });
 
   const studentRole = await prisma.role.upsert({
-    where: { code: 'STUDENT' },
+    where: { scope_code: { scope: 'GLOBAL', code: 'STUDENT' } },
     update: {
       description: 'Learner access',
+      isSystem: true,
       isActive: true,
       name: 'Student',
+      scope: 'GLOBAL',
     },
     create: {
       code: 'STUDENT',
       description: 'Learner access',
+      isSystem: true,
       isActive: true,
       name: 'Student',
+      scope: 'GLOBAL',
     },
     select: { id: true },
   });

@@ -2,6 +2,7 @@ export * from "./organizations.api";
 export * from "./permissions.api";
 export * from "./roles.api";
 export * from "./students.api";
+export * from "./users.api";
 export * from "./sessions.api";
 export * from "./courses.api";
 export * from "./session-courses.api";

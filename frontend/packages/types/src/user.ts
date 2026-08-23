@@ -105,8 +105,7 @@ export interface CreateStudentRequest {
   emergencyContactPhone?: string;
 }
 
-export interface UpdateStudentRequest
-  extends Partial<CreateStudentRequest> {}
+export interface UpdateStudentRequest extends Partial<CreateStudentRequest> {}
 
 export interface StudentQuery extends PaginationQuery {
   organizationId?: number;
@@ -114,3 +113,22 @@ export interface StudentQuery extends PaginationQuery {
 }
 
 export type StudentList = PaginatedData<Student>;
+
+export interface CreateUserRequest {
+  organizationId?: number;
+  roleId: number;
+  firstName: string;
+  lastName?: string;
+  email: string;
+  password: string;
+  phone?: string;
+}
+
+export interface UpdateUserRequest extends Partial<CreateUserRequest> {}
+
+export interface UserQuery extends PaginationQuery {
+  organizationId?: number;
+  status?: UserStatus;
+}
+
+export type UserList = PaginatedData<User>;

@@ -26,7 +26,7 @@ interface WorkspaceLayoutProps {
   title: string;
 }
 
-const WorkspaceLayout = ({
+const   WorkspaceLayout = ({
   children,
   navigation,
   title,
@@ -37,11 +37,14 @@ const WorkspaceLayout = ({
   const pathname = usePathname();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const isStudentWorkspace = title.toLowerCase() === "student";
+  const isSuperAdmin = Boolean(currentUser?.roles.includes("SUPER_ADMIN"));
   const isStudentStandaloneRoute = pathname === "/student";
   const routePrefix = isStudentWorkspace ? "/student" : "/admin";
+  const adminSearchTarget = isSuperAdmin ? "organizations" : "users";
   const visibleNavigation = navigation.filter(
     (item) =>
-      !item.permission || userHasPermission(currentUser, item.permission),
+      (!item.superAdminOnly || isSuperAdmin) &&
+      (!item.permission || userHasPermission(currentUser, item.permission)),
   );
   const organizationQuery = useQuery({
     enabled: !isStudentWorkspace && currentUser?.organizationId != null,
@@ -52,9 +55,7 @@ const WorkspaceLayout = ({
   });
   const studentDashboardQuery = useQuery({
     enabled:
-      isStudentWorkspace &&
-      !isStudentStandaloneRoute &&
-      currentUser != null,
+      isStudentWorkspace && !isStudentStandaloneRoute && currentUser != null,
     queryFn: studentsApi.findMyDashboard,
     queryKey: ["student-dashboard"],
     staleTime: 60_000,
@@ -171,8 +172,8 @@ const WorkspaceLayout = ({
             const search = value.trim();
             router.push(
               search
-                ? `${routePrefix}/${isStudentWorkspace ? "resources" : "organizations"}?search=${encodeURIComponent(search)}`
-                : `${routePrefix}/${isStudentWorkspace ? "resources" : "organizations"}`,
+                ? `${routePrefix}/${isStudentWorkspace ? "resources" : adminSearchTarget}?search=${encodeURIComponent(search)}`
+                : `${routePrefix}/${isStudentWorkspace ? "resources" : adminSearchTarget}`,
             );
           }}
           organizationIcon={
@@ -188,7 +189,11 @@ const WorkspaceLayout = ({
           }
           organizationOnPress={() =>
             router.push(
-              isStudentWorkspace ? "/student/profile" : "/admin/organizations",
+              isStudentWorkspace
+                ? "/student/profile"
+                : isSuperAdmin
+                  ? "/admin/organizations"
+                  : "/admin/settings",
             )
           }
           profile={{
@@ -231,7 +236,9 @@ const WorkspaceLayout = ({
           searchPlaceholder={
             isStudentWorkspace
               ? "Search for courses, resources, or anything..."
-              : "Search organizations, courses, resources, users..."
+              : isSuperAdmin
+                ? "Search organizations, courses, resources, users..."
+                : "Search users, courses, resources..."
           }
           shortcutLabel="⌘ K"
         />

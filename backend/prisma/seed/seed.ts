@@ -51,6 +51,7 @@ const defaultRoles = [
 
 const permissionModules = [
   'organizations',
+  'users',
   'students',
   'roles',
   'permissions',
@@ -159,8 +160,10 @@ async function main() {
       defaultPermissions
         .filter(
           (permission) =>
-            !['organizations', 'roles', 'permissions'].includes(
-              permission.module,
+            permission.module !== 'organizations' &&
+            !(
+              permission.module === 'permissions' &&
+              permission.action !== 'read'
             ),
         )
         .map((permission) => permission.key),
@@ -198,8 +201,10 @@ async function main() {
     defaultPermissions
       .filter(
         (permission) =>
-          !['organizations', 'roles', 'permissions'].includes(
-            permission.module,
+          permission.module !== 'organizations' &&
+          !(
+            permission.module === 'permissions' &&
+            permission.action !== 'read'
           ),
       )
       .map((permission) => permission.key),
@@ -1533,13 +1538,15 @@ async function seedRoles() {
 
   for (const role of defaultRoles) {
     const seededRole = await prisma.role.upsert({
-      where: { code: role.code },
+      where: { scope_code: { scope: 'GLOBAL', code: role.code } },
       update: {
         name: role.name,
         description: role.description,
+        scope: 'GLOBAL',
+        isSystem: true,
         isActive: true,
       },
-      create: { ...role, isActive: true },
+      create: { ...role, scope: 'GLOBAL', isSystem: true, isActive: true },
       select: { id: true, code: true },
     });
     rolesByCode.set(seededRole.code, seededRole);

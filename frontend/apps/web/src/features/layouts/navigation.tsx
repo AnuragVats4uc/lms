@@ -24,6 +24,7 @@ export interface NavigationItem {
   }>;
   label: string;
   permission?: string;
+  superAdminOnly?: boolean;
 }
 
 export const adminNavigation: NavigationItem[] = [
@@ -39,13 +40,14 @@ export const adminNavigation: NavigationItem[] = [
     icon: Building2,
     label: "Organizations",
     permission: "organizations.read",
+    superAdminOnly: true,
   },
   {
     group: "User & Access",
     href: "/admin/users",
     icon: UsersRound,
     label: "Users",
-    permission: "students.read",
+    permission: "users.read",
   },
   {
     group: "User & Access",

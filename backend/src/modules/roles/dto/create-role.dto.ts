@@ -16,8 +16,15 @@ import {
 } from 'class-validator';
 
 export class CreateRoleDto {
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  organizationId?: number;
+
   @ApiProperty({ example: 'Organization Admin' })
-  @Transform(({ value }) =>
+  @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
   @IsString()
@@ -27,7 +34,7 @@ export class CreateRoleDto {
   name: string;
 
   @ApiProperty({ example: 'ORGANIZATION_ADMIN' })
-  @Transform(({ value }) =>
+  @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim().toUpperCase() : value,
   )
   @IsString()

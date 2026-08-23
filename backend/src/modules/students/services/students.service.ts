@@ -55,7 +55,11 @@ export class StudentsService {
     private readonly resourceService: ResourceService,
   ) {}
 
-  async create(dto: CreateStudentDto) {
+  async create(dto: CreateStudentDto, actor?: CurrentUser) {
+    const organizationId = await this.resolveManagedOrganizationId(
+      actor,
+      dto.organizationId,
+    );
     await this.ensureEmailIsUnique(dto.email);
 
     if (dto.phone) {
@@ -64,6 +68,7 @@ export class StudentsService {
 
     const student = await this.studentsRepository.create({
       ...dto,
+      organizationId: organizationId ?? undefined,
       dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
       password: await this.passwordService.hash(dto.password),
       isVerified: true,
@@ -77,8 +82,8 @@ export class StudentsService {
     return this.findOne(student.id);
   }
 
-  async findAll(query: StudentQueryDto) {
-    const normalized = this.normalizeQuery(query);
+  async findAll(query: StudentQueryDto, actor?: CurrentUser) {
+    const normalized = this.normalizeQuery(query, actor);
     const result = await this.studentsRepository.findMany(normalized);
 
     return {
@@ -92,8 +97,9 @@ export class StudentsService {
     };
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, actor?: CurrentUser) {
     const student = await this.findExisting(id);
+    this.assertCanAccessStudent(actor, student.organizationId);
 
     return this.toStudentResponse(student);
   }
@@ -134,8 +140,13 @@ export class StudentsService {
     };
   }
 
-  async update(id: number, dto: UpdateStudentDto) {
-    await this.findExisting(id);
+  async update(id: number, dto: UpdateStudentDto, actor?: CurrentUser) {
+    const existing = await this.findExisting(id);
+    this.assertCanAccessStudent(actor, existing.organizationId);
+    const organizationId = await this.resolveManagedOrganizationId(
+      actor,
+      dto.organizationId ?? existing.organizationId ?? undefined,
+    );
 
     if (dto.email) {
       await this.ensureEmailIsUnique(dto.email, id);
@@ -146,13 +157,15 @@ export class StudentsService {
     }
 
     const data = await this.toUpdateInput(dto);
+    data.organizationId = organizationId ?? undefined;
     const student = await this.studentsRepository.update(id, data);
 
     return this.toStudentResponse(student);
   }
 
-  async remove(id: number) {
-    await this.findExisting(id);
+  async remove(id: number, actor?: CurrentUser) {
+    const existing = await this.findExisting(id);
+    this.assertCanAccessStudent(actor, existing.organizationId);
     const student = await this.studentsRepository.softDelete(id);
 
     return this.toStudentResponse(student);
@@ -1183,13 +1196,52 @@ export class StudentsService {
     }
   }
 
-  private normalizeQuery(query: StudentQueryDto): NormalizedStudentQuery {
+  private async resolveManagedOrganizationId(
+    actor: CurrentUser | undefined,
+    requested?: number | null,
+  ) {
+    if (!actor || actor.roles?.includes('SUPER_ADMIN')) {
+      return requested;
+    }
+
+    if (!actor.organizationId) {
+      throw new ForbiddenException('Organization context is required');
+    }
+
+    if (requested && requested !== actor.organizationId) {
+      throw new ForbiddenException('Cannot manage another organization');
+    }
+
+    return actor.organizationId;
+  }
+
+  private assertCanAccessStudent(
+    actor: CurrentUser | undefined,
+    organizationId?: number | null,
+  ) {
+    if (!actor || actor.roles?.includes('SUPER_ADMIN')) {
+      return;
+    }
+
+    if (!actor.organizationId || actor.organizationId !== organizationId) {
+      throw new ForbiddenException(
+        'Cannot access another organization student',
+      );
+    }
+  }
+
+  private normalizeQuery(
+    query: StudentQueryDto,
+    actor?: CurrentUser,
+  ): NormalizedStudentQuery {
     return {
       page: query.page ?? 1,
       limit: query.limit ?? 10,
       search: query.search ?? '',
       status: query.status,
-      organizationId: query.organizationId,
+      organizationId: actor?.roles?.includes('SUPER_ADMIN')
+        ? query.organizationId
+        : (actor?.organizationId ?? query.organizationId),
     };
   }
 
