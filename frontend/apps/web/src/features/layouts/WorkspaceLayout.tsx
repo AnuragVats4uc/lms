@@ -37,6 +37,7 @@ const WorkspaceLayout = ({
   const pathname = usePathname();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const isStudentWorkspace = title.toLowerCase() === "student";
+  const isStudentStandaloneRoute = pathname === "/student";
   const routePrefix = isStudentWorkspace ? "/student" : "/admin";
   const visibleNavigation = navigation.filter(
     (item) =>
@@ -50,7 +51,10 @@ const WorkspaceLayout = ({
     staleTime: 60_000,
   });
   const studentDashboardQuery = useQuery({
-    enabled: isStudentWorkspace && currentUser != null,
+    enabled:
+      isStudentWorkspace &&
+      !isStudentStandaloneRoute &&
+      currentUser != null,
     queryFn: studentsApi.findMyDashboard,
     queryKey: ["student-dashboard"],
     staleTime: 60_000,
@@ -91,7 +95,10 @@ const WorkspaceLayout = ({
     void logoutMutation.mutateAsync();
   };
 
-  if (/^\/student\/exam-attempts\/[^/]+\/?$/.test(pathname)) {
+  if (
+    isStudentStandaloneRoute ||
+    /^\/student\/exam-attempts\/[^/]+\/?$/.test(pathname)
+  ) {
     return <>{children}</>;
   }
 
