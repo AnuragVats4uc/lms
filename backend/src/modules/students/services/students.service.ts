@@ -60,6 +60,7 @@ export class StudentsService {
       actor,
       dto.organizationId,
     );
+    const enrollment = await this.prepareEnrollment(dto, organizationId);
     await this.ensureEmailIsUnique(dto.email);
 
     if (dto.phone) {
@@ -79,7 +80,18 @@ export class StudentsService {
       organizationId: student.organizationId ?? undefined,
     });
 
-    return this.findOne(student.id);
+    if (enrollment) {
+      await this.studentsRepository.upsertEnrollment({
+        answers: enrollment.answers,
+        organizationId: enrollment.organizationId,
+        registrationPageId: enrollment.registrationPageId,
+        sessionCourseIds: enrollment.sessionCourseIds,
+        sessionId: enrollment.sessionId,
+        studentId: student.id,
+      });
+    }
+
+    return this.findOne(student.id, actor);
   }
 
   async findAll(query: StudentQueryDto, actor?: CurrentUser) {
@@ -1196,6 +1208,100 @@ export class StudentsService {
     }
   }
 
+  private async prepareEnrollment(
+    dto: CreateStudentDto,
+    organizationId?: number | null,
+  ) {
+    const sessionCourseIds = [
+      ...new Set((dto.sessionCourseIds ?? []).map((id) => Number(id))),
+    ];
+    const hasEnrollmentInput =
+      Boolean(dto.sessionId) ||
+      sessionCourseIds.length > 0 ||
+      Boolean(dto.educationOptionUuid) ||
+      Boolean(dto.digitalLibraryLocationUuid);
+
+    if (!hasEnrollmentInput) {
+      return null;
+    }
+
+    if (!organizationId) {
+      throw new BadRequestException('Organization is required');
+    }
+
+    if (!dto.sessionId) {
+      throw new BadRequestException('Session is required');
+    }
+
+    if (!sessionCourseIds.length) {
+      throw new BadRequestException('Select at least one course');
+    }
+
+    const session = await this.studentsRepository.findEnrollmentSession(
+      dto.sessionId,
+      organizationId,
+    );
+
+    if (!session) {
+      throw new BadRequestException('Session is invalid for this organization');
+    }
+
+    const selectedCourses =
+      await this.studentsRepository.findEnrollmentSessionCourses(
+        dto.sessionId,
+        sessionCourseIds,
+      );
+
+    if (selectedCourses.length !== sessionCourseIds.length) {
+      throw new BadRequestException('One or more selected courses are invalid');
+    }
+
+    const answers: Record<string, string> = {};
+
+    if (dto.educationOptionUuid) {
+      const educationOption = await this.studentsRepository.findEducationOption(
+        organizationId,
+        dto.educationOptionUuid,
+      );
+
+      if (!educationOption) {
+        throw new BadRequestException('Education option is invalid');
+      }
+
+      answers.education = educationOption.uuid;
+    }
+
+    if (dto.digitalLibraryLocationUuid) {
+      const digitalLibraryLocation =
+        await this.studentsRepository.findDigitalLibraryLocation(
+          organizationId,
+          dto.digitalLibraryLocationUuid,
+        );
+
+      if (!digitalLibraryLocation) {
+        throw new BadRequestException('Digital Library Location is invalid');
+      }
+
+      answers.digital_library_location = digitalLibraryLocation.uuid;
+    }
+
+    const registrationPage =
+      dto.educationOptionUuid || dto.digitalLibraryLocationUuid
+        ? await this.studentsRepository.findRegistrationPageForSession(
+            organizationId,
+            dto.sessionId,
+          )
+        : null;
+
+    return {
+      answers: Object.keys(answers).length ? answers : undefined,
+      organizationId,
+      registrationPageId: registrationPage?.id,
+      sessionCourseIds,
+      sessionId: dto.sessionId,
+    };
+  }
+
   private async resolveManagedOrganizationId(
     actor: CurrentUser | undefined,
     requested?: number | null,
@@ -1311,6 +1417,21 @@ export class StudentsService {
       createdAt: student.createdAt,
       updatedAt: student.updatedAt,
       organization: student.organization,
+      enrollments:
+        student.enrollments?.map((enrollment) => ({
+          id: enrollment.id,
+          session: enrollment.session,
+          courses: enrollment.courseEnrollments.map((courseEnrollment) => {
+            const sessionCourse = courseEnrollment.sessionCourse;
+            return {
+              id: sessionCourse.id,
+              courseId: sessionCourse.course.id,
+              name:
+                sessionCourse.displayName ?? sessionCourse.course.name,
+              code: sessionCourse.course.code,
+            };
+          }),
+        })) ?? [],
       profile,
       user: user
         ? {

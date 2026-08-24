@@ -5,5 +5,6 @@ export * from "./resource";
 export * from "./role";
 export * from "./session";
 export * from "./session-course";
+export * from "./student";
 export * from "./user";
 export * from "./organization";

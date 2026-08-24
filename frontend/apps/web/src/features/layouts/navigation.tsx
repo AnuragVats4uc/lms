@@ -46,10 +46,10 @@ export const adminNavigation: NavigationItem[] = [
   },
   {
     group: "User & Access",
-    href: "/admin/users",
+    href: "/admin/students",
     icon: UsersRound,
-    label: "Users",
-    permission: "users.read",
+    label: "Students",
+    permission: "students.read",
   },
   {
     group: "User & Access",

@@ -61,6 +61,7 @@ export interface Student {
   createdAt: string;
   updatedAt: string;
   organization?: Organization | null;
+  enrollments?: StudentEnrollment[];
   profile: StudentProfile | null;
   user: User | null;
   firstName: string;
@@ -68,6 +69,24 @@ export interface Student {
   email: string;
   phone: string | null;
   roles?: Role[];
+}
+
+export interface StudentEnrollmentCourse {
+  id: number;
+  courseId: number;
+  name: string;
+  code: string;
+}
+
+export interface StudentEnrollment {
+  id: number;
+  session: {
+    id: number;
+    name: string;
+    code: string | null;
+    status: string;
+  };
+  courses: StudentEnrollmentCourse[];
 }
 
 export interface CurrentStudent {
@@ -83,6 +102,10 @@ export interface CurrentStudent {
 
 export interface CreateStudentRequest {
   organizationId?: number;
+  sessionId?: number;
+  sessionCourseIds?: number[];
+  educationOptionUuid?: string;
+  digitalLibraryLocationUuid?: string;
   firstName: string;
   lastName?: string;
   email: string;
