@@ -26,6 +26,7 @@ import { ResourceModule } from './modules/resource/resource.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ExamModule } from './modules/exam/exam.module';
 import { RegistrationModule } from './modules/registration/registration.module';
+import { TeacherModule } from './modules/teacher/teacher.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { RegistrationModule } from './modules/registration/registration.module';
     FolderModule,
     ResourceModule,
     DashboardModule,
+    TeacherModule,
     StudentsModule,
     UsersModule,
     ExamModule,

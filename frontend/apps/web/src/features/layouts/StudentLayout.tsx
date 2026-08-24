@@ -12,6 +12,7 @@ export function StudentLayout({
     <WorkspaceLayout
       navigation={studentNavigation}
       title="Student"
+      workspace="student"
     >
       {children}
     </WorkspaceLayout>

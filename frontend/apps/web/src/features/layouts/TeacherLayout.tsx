@@ -1,18 +1,18 @@
 "use client";
 
 import WorkspaceLayout from "./WorkspaceLayout";
-import { adminNavigation } from "./navigation";
+import { teacherNavigation } from "./navigation";
 
-export function AdminLayout({
+export function TeacherLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
     <WorkspaceLayout
-      navigation={adminNavigation}
-      title="Admin"
-      workspace="admin"
+      navigation={teacherNavigation}
+      title="Teacher"
+      workspace="teacher"
     >
       {children}
     </WorkspaceLayout>

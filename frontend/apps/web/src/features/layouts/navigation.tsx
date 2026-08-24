@@ -173,3 +173,26 @@ export const studentNavigation: NavigationItem[] = [
     label: "Courses",
   },
 ];
+
+export const teacherNavigation: NavigationItem[] = [
+  {
+    href: "/teacher/dashboard",
+    icon: LayoutDashboard,
+    label: "Dashboard",
+  },
+  {
+    href: "/teacher/courses",
+    icon: BookOpen,
+    label: "My Courses",
+  },
+  {
+    href: "/teacher/resources",
+    icon: FileText,
+    label: "Resources",
+  },
+  {
+    href: "/teacher/students",
+    icon: UsersRound,
+    label: "Students",
+  },
+];

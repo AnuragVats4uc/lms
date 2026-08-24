@@ -24,30 +24,44 @@ interface WorkspaceLayoutProps {
   children: ReactNode;
   navigation: NavigationItem[];
   title: string;
+  workspace?: "admin" | "student" | "teacher";
 }
 
 const   WorkspaceLayout = ({
   children,
   navigation,
   title,
+  workspace,
 }: WorkspaceLayoutProps) => {
   const { currentUser } = useAuthSession();
   const logoutMutation = useLogout();
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const isStudentWorkspace = title.toLowerCase() === "student";
+  const workspaceKind = workspace ?? title.toLowerCase();
+  const isAdminWorkspace = workspaceKind === "admin";
+  const isStudentWorkspace = workspaceKind === "student";
+  const isTeacherWorkspace = workspaceKind === "teacher";
   const isSuperAdmin = Boolean(currentUser?.roles.includes("SUPER_ADMIN"));
   const isStudentStandaloneRoute = pathname === "/student";
-  const routePrefix = isStudentWorkspace ? "/student" : "/admin";
+  const routePrefix = isStudentWorkspace
+    ? "/student"
+    : isTeacherWorkspace
+      ? "/teacher"
+      : "/admin";
   const adminSearchTarget = isSuperAdmin ? "organizations" : "users";
+  const searchTarget = isStudentWorkspace
+    ? "resources"
+    : isTeacherWorkspace
+      ? "resources"
+      : adminSearchTarget;
   const visibleNavigation = navigation.filter(
     (item) =>
       (!item.superAdminOnly || isSuperAdmin) &&
       (!item.permission || userHasPermission(currentUser, item.permission)),
   );
   const organizationQuery = useQuery({
-    enabled: !isStudentWorkspace && currentUser?.organizationId != null,
+    enabled: isAdminWorkspace && currentUser?.organizationId != null,
     queryFn: () =>
       organizationsApi.findOne(currentUser?.organizationId as number),
     queryKey: ["workspace-organization", currentUser?.organizationId],
@@ -139,17 +153,27 @@ const   WorkspaceLayout = ({
             onPress: () => {
               if (action.label === "Open calendar") {
                 router.push(
-                  isStudentWorkspace ? "/student/schedule" : "/admin/sessions",
+                  isStudentWorkspace
+                    ? "/student/schedule"
+                    : isTeacherWorkspace
+                      ? "/teacher/courses"
+                      : "/admin/sessions",
                 );
               } else if (action.label === "View notifications") {
                 router.push(
                   isStudentWorkspace
                     ? "/student/notifications"
-                    : "/admin/settings",
+                    : isTeacherWorkspace
+                      ? "/teacher/dashboard"
+                      : "/admin/settings",
                 );
               } else {
                 router.push(
-                  isStudentWorkspace ? "/student/profile" : "/admin/settings",
+                  isStudentWorkspace
+                    ? "/student/profile"
+                    : isTeacherWorkspace
+                      ? "/teacher/dashboard"
+                      : "/admin/settings",
                 );
               }
             },
@@ -172,15 +196,15 @@ const   WorkspaceLayout = ({
             const search = value.trim();
             router.push(
               search
-                ? `${routePrefix}/${isStudentWorkspace ? "resources" : adminSearchTarget}?search=${encodeURIComponent(search)}`
-                : `${routePrefix}/${isStudentWorkspace ? "resources" : adminSearchTarget}`,
+                ? `${routePrefix}/${searchTarget}?search=${encodeURIComponent(search)}`
+                : `${routePrefix}/${searchTarget}`,
             );
           }}
           organizationIcon={
             <Building2 color="#52627A" size={20} strokeWidth={2} />
           }
           organizationLabel={
-            isStudentWorkspace
+            !isAdminWorkspace
               ? undefined
               : (organizationQuery.data?.name ??
                 (currentUser?.organizationId
@@ -191,9 +215,11 @@ const   WorkspaceLayout = ({
             router.push(
               isStudentWorkspace
                 ? "/student/profile"
-                : isSuperAdmin
-                  ? "/admin/organizations"
-                  : "/admin/settings",
+                : isTeacherWorkspace
+                  ? "/teacher/dashboard"
+                  : isSuperAdmin
+                    ? "/admin/organizations"
+                    : "/admin/settings",
             )
           }
           profile={{
@@ -207,7 +233,11 @@ const   WorkspaceLayout = ({
               label: "Profile",
               onPress: () =>
                 router.push(
-                  isStudentWorkspace ? "/student/profile" : "/admin/settings",
+                  isStudentWorkspace
+                    ? "/student/profile"
+                    : isTeacherWorkspace
+                      ? "/teacher/dashboard"
+                      : "/admin/settings",
                 ),
             },
             {
@@ -230,15 +260,21 @@ const   WorkspaceLayout = ({
           ]}
           profileOnPress={() =>
             router.push(
-              isStudentWorkspace ? "/student/profile" : "/admin/settings",
+              isStudentWorkspace
+                ? "/student/profile"
+                : isTeacherWorkspace
+                  ? "/teacher/dashboard"
+                  : "/admin/settings",
             )
           }
           searchPlaceholder={
             isStudentWorkspace
               ? "Search for courses, resources, or anything..."
-              : isSuperAdmin
-                ? "Search organizations, courses, resources, users..."
-                : "Search users, courses, resources..."
+              : isTeacherWorkspace
+                ? "Search your courses, resources, or students..."
+                : isSuperAdmin
+                  ? "Search organizations, courses, resources, users..."
+                  : "Search users, courses, resources..."
           }
           shortcutLabel="⌘ K"
         />
