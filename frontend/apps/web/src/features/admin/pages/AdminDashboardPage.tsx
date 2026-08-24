@@ -210,11 +210,6 @@ const buildQuickActions = (
       label: "Create Course",
       onPress: () => navigate("/admin/courses?action=create"),
     },
-    {
-      icon: <UploadCloud size={22} strokeWidth={2.2} />,
-      label: "Upload Resource",
-      onPress: () => navigate(resourcePath(data, undefined, "create")),
-    },
   ],
 });
 
@@ -346,7 +341,7 @@ function AdminDashboardSkeleton({ statCount }: { statCount: number }) {
           gap="$3"
           style={{
             display: "grid",
-            gridTemplateColumns: `repeat(${statCount}, minmax(160px, 1fr)) minmax(300px, 1.35fr)`,
+            gridTemplateColumns: `repeat(${statCount}, minmax(160px, 1fr)) minmax(260px, 0.9fr)`,
             width: "100%",
           }}
         >

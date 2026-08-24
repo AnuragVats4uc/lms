@@ -12,9 +12,9 @@ const QuickButton = styled(Button, {
   borderWidth: 1,
   color: "#059669",
   flex: 1,
-  height: 78,
+  height: 80,
   minW: 0,
-  px: "$1.5",
+  px: "$1",
   rounded: "$4",
   shadowColor: "#0F172A",
   shadowOffset: { width: 0, height: 1 },
@@ -63,16 +63,16 @@ export const QuickActionButton = memo(function QuickActionButton({
         {icon}
         <AppText
           tone="success"
-          fontSize={10}
+          fontSize={9}
           fontWeight="$button"
-          lineHeight={12}
+          lineHeight={11}
           numberOfLines={2}
           style={{
             maxWidth: "100%",
-            overflowWrap: "break-word",
+            overflowWrap: "anywhere",
             textAlign: "center",
             whiteSpace: "normal",
-            wordBreak: "normal",
+            wordBreak: "break-word",
           }}
         >
           {loading ? "Loading..." : label}

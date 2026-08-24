@@ -3897,7 +3897,7 @@ body {
 
 @media (max-width: 1199px) {
   .lms-dashboard-quick-actions-grid {
-    grid-template-columns: repeat(4, minmax(68px, 1fr)) !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
 
   .lms-sidebar-rail {

@@ -10,6 +10,8 @@ export interface CourseCreateData {
   description?: string;
   thumbnail?: string;
   durationInDays?: number;
+  price?: number;
+  discount?: number;
   status: CourseStatus;
   isActive?: boolean;
 }

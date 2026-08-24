@@ -14,6 +14,11 @@ export class PrismaService
   constructor() {
     super({
       log: ['query', 'info', 'warn', 'error'],
+      omit: {
+        course: {
+          type: true,
+        },
+      },
     });
   }
 

@@ -29,6 +29,12 @@ export class CourseDataDto {
   @ApiPropertyOptional({ example: 365 })
   durationInDays?: number | null;
 
+  @ApiPropertyOptional({ example: 9999 })
+  price?: string | null;
+
+  @ApiPropertyOptional({ example: 1000 })
+  discount?: string | null;
+
   @ApiProperty({ enum: CourseStatus })
   status: CourseStatus;
 
