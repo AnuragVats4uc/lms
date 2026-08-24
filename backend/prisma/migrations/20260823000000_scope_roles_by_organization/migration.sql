@@ -20,12 +20,12 @@ CREATE UNIQUE INDEX `roles_scope_name_unique` ON `roles`(`scope`, `name`);
 CREATE UNIQUE INDEX `roles_scope_code_unique` ON `roles`(`scope`, `code`);
 CREATE INDEX `roles_organization_id_idx` ON `roles`(`organization_id`);
 
-INSERT INTO `permissions` (`module`, `action`, `key`, `description`, `created_at`, `updated_at`)
+INSERT INTO `permissions` (`uuid`, `module`, `action`, `key`, `description`, `created_at`, `updated_at`)
 VALUES
-  ('users', 'create', 'users.create', 'Allows create access for users', NOW(), NOW()),
-  ('users', 'read', 'users.read', 'Allows read access for users', NOW(), NOW()),
-  ('users', 'update', 'users.update', 'Allows update access for users', NOW(), NOW()),
-  ('users', 'delete', 'users.delete', 'Allows delete access for users', NOW(), NOW())
+  (UUID(), 'users', 'create', 'users.create', 'Allows create access for users', NOW(), NOW()),
+  (UUID(), 'users', 'read', 'users.read', 'Allows read access for users', NOW(), NOW()),
+  (UUID(), 'users', 'update', 'users.update', 'Allows update access for users', NOW(), NOW()),
+  (UUID(), 'users', 'delete', 'users.delete', 'Allows delete access for users', NOW(), NOW())
 ON DUPLICATE KEY UPDATE
   `description` = VALUES(`description`),
   `updated_at` = NOW();
