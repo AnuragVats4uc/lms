@@ -11,3 +11,4 @@ export * from "./resources.api";
 export * from "./exams.api";
 export * from "./dashboard.api";
 export * from "./registration.api";
+export * from "./teacher.api";
