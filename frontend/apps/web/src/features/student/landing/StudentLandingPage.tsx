@@ -38,7 +38,7 @@ const destinations = [
     imageAlt: "Illustration of academic dashboard resources and progress",
     imageSrc: "/images/dashboard.png",
     isExternal: false,
-    title: "Dashboard",
+    title: "LMS",
   },
   {
     cta: "Explore App",
@@ -47,7 +47,7 @@ const destinations = [
     imageAlt: "Illustration of an external learning portal",
     imageSrc: "/images/external-links.png",
     isExternal: true,
-    title: externalDestination.name,
+    title: "Explore App",
   },
 ];
 
