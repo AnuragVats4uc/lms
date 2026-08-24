@@ -32,6 +32,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
         const res = exceptionResponse as any;
         message = res.message || res.error || 'Error';
       }
+    } else {
+      // Keep client responses generic while preserving the server-side stack trace.
+      console.error(exception);
     }
 
     response.status(status).json({
