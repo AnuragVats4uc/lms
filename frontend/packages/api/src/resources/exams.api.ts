@@ -146,5 +146,11 @@ export const examsApi = {
       api
         .get<Blob>("/exam-imports/template.docx", { responseType: "blob" })
         .then((response) => response.data),
+    downloadCodelessWordTemplate: () =>
+      api
+        .get<Blob>("/exam-imports/template-codeless.docx", {
+          responseType: "blob",
+        })
+        .then((response) => response.data),
   },
 };

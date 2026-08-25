@@ -30,6 +30,7 @@ import { CurrentUser } from '../../auth/types/current-user.types';
 import {
   CreateExamDto,
   CreateExamImportDto,
+  ExamImportMode,
   CreateExamTemplateDto,
   CreateQuestionDto,
   CreateSubjectDto,
@@ -116,6 +117,26 @@ type ExcelQuestionMapping = Pick<
   | 'isMandatory'
   | 'rawData'
 >;
+
+type CodelessWordQuestionContent = Omit<
+  WordQuestionContent,
+  'questionCode' | 'comprehensionCode'
+> & {
+  sectionTitle?: string;
+  slotTitle?: string;
+  subjectTitle?: string;
+  sectionCode?: string;
+  slotCode?: string;
+  subjectCode?: string;
+  questionNumber: number;
+  questionLabel: string;
+  comprehensionLabel?: string;
+  questionTypeLabel?: string;
+  marks?: number;
+  negativeMarks?: number;
+  sortOrder?: number;
+  isMandatory?: boolean;
+};
 
 type ImportJobWithRows = Prisma.ExamImportJobGetPayload<{
   include: {
@@ -836,17 +857,30 @@ export class ExamService {
   ) {
     const wordFile = files.wordFile;
     const excelFile = files.excelFile;
-    if (!wordFile || !excelFile)
+    const importMode =
+      dto.importMode ??
+      (excelFile
+        ? ExamImportMode.PAIRED_WORD_EXCEL
+        : ExamImportMode.CODELESS_WORD);
+    if (!wordFile)
+      throw new BadRequestException('A Word content file is required');
+    if (importMode === ExamImportMode.PAIRED_WORD_EXCEL && !excelFile)
       throw new BadRequestException(
         'Both a Word content file and an Excel mapping file are required',
       );
-    if (wordFile.size > 15 * 1024 * 1024 || excelFile.size > 15 * 1024 * 1024)
+    if (
+      wordFile.size > 15 * 1024 * 1024 ||
+      (excelFile?.size ?? 0) > 15 * 1024 * 1024
+    )
       throw new BadRequestException(
         'Each import file must be 15 MB or smaller',
       );
     if (extname(wordFile.originalname).toLowerCase() !== '.docx')
       throw new BadRequestException('The content file must be a .docx file');
-    if (extname(excelFile.originalname).toLowerCase() !== '.xlsx')
+    if (
+      excelFile &&
+      extname(excelFile.originalname).toLowerCase() !== '.xlsx'
+    )
       throw new BadRequestException('The mapping file must be a .xlsx file');
     const version = await this.prisma.examTemplateVersion.findUnique({
       where: { id: dto.examTemplateVersionId },
@@ -890,8 +924,9 @@ export class ExamService {
     }
 
     const wordFileHash = this.fileHash(wordFile.buffer);
-    const excelFileHash = this.fileHash(excelFile.buffer);
+    const excelFileHash = excelFile ? this.fileHash(excelFile.buffer) : '';
     const importFingerprint = this.importFingerprint({
+      importMode,
       organizationId: version.examTemplate.organizationId,
       examTemplateVersionId: version.id,
       scope: effectiveDto.scope,
@@ -907,15 +942,25 @@ export class ExamService {
     });
     if (duplicateImport)
       throw new ConflictException(
-        `This Word and Excel file pair has already been uploaded for this destination (import #${duplicateImport.id}, status: ${duplicateImport.status})`,
+        `This import has already been uploaded for this destination (import #${duplicateImport.id}, status: ${duplicateImport.status})`,
       );
 
-    const [wordRows, excelRows, questionTypes] = await Promise.all([
-      this.parseWordContent(wordFile.buffer),
-      Promise.resolve(this.parseWorkbookMappings(excelFile.buffer)),
-      this.prisma.questionType.findMany({ where: { isActive: true } }),
-    ]);
-    const rows = this.mergeImportFiles(wordRows, excelRows, questionTypes);
+    const questionTypes = await this.prisma.questionType.findMany({
+      where: { isActive: true },
+    });
+    const rows =
+      importMode === ExamImportMode.CODELESS_WORD
+        ? await this.buildCodelessWordRows(
+            wordFile.buffer,
+            version.id,
+            effectiveDto,
+            questionTypes,
+          )
+        : this.mergeImportFiles(
+            await this.parseWordContent(wordFile.buffer),
+            this.parseWorkbookMappings(excelFile!.buffer),
+            questionTypes,
+          );
     await this.validateImportDestinations(
       version.id,
       version.examTemplate.organizationId,
@@ -928,14 +973,15 @@ export class ExamService {
       directory,
       `${importFingerprint}.content.docx`,
     );
-    const excelStoragePath = join(
-      directory,
-      `${importFingerprint}.mapping.xlsx`,
+    const excelStoragePath = excelFile
+      ? join(directory, `${importFingerprint}.mapping.xlsx`)
+      : undefined;
+    await Promise.all(
+      [
+        writeFile(wordStoragePath, wordFile.buffer),
+        excelStoragePath && writeFile(excelStoragePath, excelFile!.buffer),
+      ].filter(Boolean) as Array<Promise<void>>,
     );
-    await Promise.all([
-      writeFile(wordStoragePath, wordFile.buffer),
-      writeFile(excelStoragePath, excelFile.buffer),
-    ]);
     const counts = this.importCounts(rows);
 
     try {
@@ -963,14 +1009,18 @@ export class ExamService {
                 mimeType: wordFile.mimetype,
                 sizeBytes: wordFile.size,
               },
-              {
-                kind: ExamImportFileKind.MAPPING_XLSX,
-                originalFileName: excelFile.originalname,
-                storagePath: excelStoragePath,
-                fileHash: excelFileHash,
-                mimeType: excelFile.mimetype,
-                sizeBytes: excelFile.size,
-              },
+              ...(excelFile && excelStoragePath
+                ? [
+                    {
+                      kind: ExamImportFileKind.MAPPING_XLSX,
+                      originalFileName: excelFile.originalname,
+                      storagePath: excelStoragePath,
+                      fileHash: excelFileHash,
+                      mimeType: excelFile.mimetype,
+                      sizeBytes: excelFile.size,
+                    },
+                  ]
+                : []),
             ],
           },
           rows: {
@@ -1300,6 +1350,79 @@ export class ExamService {
     return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
   }
 
+  createCodelessWordImportTemplate() {
+    const p = (text: string, style?: 'Heading1' | 'Heading2' | 'Heading3') =>
+      `<w:p>${style ? `<w:pPr><w:pStyle w:val="${style}"/></w:pPr>` : ''}<w:r><w:t xml:space="preserve">${this.escapeXml(text)}</w:t></w:r></w:p>`;
+    const table = (rows: Array<[string, string]>) =>
+      `<w:tbl><w:tblPr><w:tblBorders><w:top w:val="single" w:sz="4" w:color="D8E2E9"/><w:left w:val="single" w:sz="4" w:color="D8E2E9"/><w:bottom w:val="single" w:sz="4" w:color="D8E2E9"/><w:right w:val="single" w:sz="4" w:color="D8E2E9"/><w:insideH w:val="single" w:sz="4" w:color="D8E2E9"/><w:insideV w:val="single" w:sz="4" w:color="D8E2E9"/></w:tblBorders></w:tblPr>${rows
+        .map(([label, value]) => `<w:tr><w:tc>${p(label)}</w:tc><w:tc>${p(value)}</w:tc></w:tr>`)
+        .join('')}</w:tbl>`;
+    const answerRules = (
+      type: string,
+      marks: string,
+      negativeMarks: string,
+      correctOption: string,
+      acceptedAnswers: string,
+      tolerance: string,
+    ) =>
+      table([
+        ['Question Type', type],
+        ['Marks', marks],
+        ['Negative Marks', negativeMarks],
+        ['Correct Option', correctOption],
+        ['Accepted Answers', acceptedAnswers],
+        ['Numeric Tolerance', tolerance],
+        ['Case Sensitive', 'No'],
+        ['Mandatory', 'Yes'],
+      ]);
+    const body = [
+      p('Code-free Exam Import - Word Template'),
+      p('Use the same Heading styles. The system generates internal codes automatically.'),
+      p('English Language | Slot: Slot 1 | Section: English Language | Subject: English'),
+      p('Comprehension - 1 to 5', 'Heading1'),
+      p('Paste the passage text here. Images can be inserted directly in the passage.'),
+      p('Question - 1', 'Heading2'),
+      p('Choose the word closest in meaning to concise.'),
+      p('Options', 'Heading3'),
+      table([
+        ['A', 'Brief'],
+        ['B', 'Unclear'],
+        ['C', 'Lengthy'],
+        ['D', 'Complex'],
+      ]),
+      p('Answer Rules', 'Heading3'),
+      answerRules('Single Choice', '5', '1', 'A', '', ''),
+      p('Explanation', 'Heading3'),
+      p('Concise means brief and clear.'),
+      p('Standalone Questions', 'Heading1'),
+      p('Question - 2', 'Heading2'),
+      p('What is 15% of 240?'),
+      p('Answer Rules', 'Heading3'),
+      answerRules('Numeric', '5', '0', '', '36', '0'),
+      p('Explanation', 'Heading3'),
+      p('0.15 multiplied by 240 equals 36.'),
+    ].join('');
+    const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr/></w:body></w:document>`;
+    const stylesXml =
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:qFormat/></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:qFormat/></w:style><w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:qFormat/></w:style></w:styles>';
+    return this.createStoredZip([
+      {
+        name: '[Content_Types].xml',
+        data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>',
+      },
+      {
+        name: '_rels/.rels',
+        data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
+      },
+      { name: 'word/document.xml', data: documentXml },
+      { name: 'word/styles.xml', data: stylesXml },
+      {
+        name: 'word/_rels/document.xml.rels',
+        data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+      },
+    ]);
+  }
+
   createWordImportTemplate() {
     const p = (text: string, style?: 'Heading1' | 'Heading2' | 'Heading3') =>
       `<w:p>${style ? `<w:pPr><w:pStyle w:val="${style}"/></w:pPr>` : ''}<w:r><w:t xml:space="preserve">${this.escapeXml(text)}</w:t></w:r></w:p>`;
@@ -1560,6 +1683,256 @@ export class ExamService {
     return usesHeadingFormat
       ? this.parseHeadingWordContent(structuredBlocks)
       : this.parseLegacyWordContent(sanitizedHtml);
+  }
+
+  private async parseCodelessWordContent(
+    buffer: Buffer,
+  ): Promise<CodelessWordQuestionContent[]> {
+    const { value, messages } = await mammoth.convertToHtml(
+      { buffer },
+      { convertImage: mammoth.images.dataUri },
+    );
+    if (messages.some((message) => message.type === 'error'))
+      throw new BadRequestException(
+        'The Word content file could not be parsed',
+      );
+    const blocks = this.topLevelHtmlBlocks(this.sanitizeRichHtml(value));
+    type SectionContext = {
+      sectionTitle?: string;
+      slotTitle?: string;
+      subjectTitle?: string;
+      sectionCode?: string;
+      slotCode?: string;
+      subjectCode?: string;
+    };
+    type PendingQuestion = {
+      questionNumber: number;
+      questionLabel: string;
+      content: string[];
+      options: Array<{ code: string; content: string; isCorrect: boolean }>;
+      correctOption?: string;
+      acceptedAnswers: string[];
+      tolerance?: number;
+      caseSensitive: boolean;
+      explanation: string[];
+      questionTypeLabel?: string;
+      marks?: number;
+      negativeMarks?: number;
+      sortOrder?: number;
+      isMandatory?: boolean;
+      mode: 'question' | 'options' | 'answer-rules' | 'explanation';
+      answerRulesSeen: boolean;
+      explanationSeen: boolean;
+      parseErrors: string[];
+    };
+    const rows: CodelessWordQuestionContent[] = [];
+    let section: SectionContext | undefined;
+    let comprehension:
+      | { label: string; content: string[]; acceptingContent: boolean }
+      | undefined;
+    let question: PendingQuestion | undefined;
+
+    const finishQuestion = () => {
+      if (!question) return;
+      question.options.forEach((option) => {
+        option.isCorrect = option.code === question?.correctOption;
+      });
+      if (!question.answerRulesSeen)
+        question.parseErrors.push('Answer Rules table is required');
+      if (!question.explanationSeen)
+        question.parseErrors.push('Explanation heading is required');
+      rows.push({
+        sourceRowNumber: rows.length + 1,
+        ...section,
+        questionNumber: question.questionNumber,
+        questionLabel: question.questionLabel,
+        comprehensionLabel: comprehension?.label,
+        comprehensionContent:
+          comprehension?.content.join('\n').trim() || undefined,
+        questionContent: question.content.join('\n').trim(),
+        answer: question.correctOption,
+        tolerance: question.tolerance,
+        caseSensitive: question.caseSensitive,
+        explanation: question.explanation.join('\n').trim() || undefined,
+        options: question.options,
+        acceptedAnswers: question.acceptedAnswers,
+        questionTypeLabel: question.questionTypeLabel,
+        marks: question.marks,
+        negativeMarks: question.negativeMarks,
+        sortOrder: question.sortOrder,
+        isMandatory: question.isMandatory,
+        parseErrors: question.parseErrors,
+        rawData: {
+          source: 'word',
+          format: 'CODELESS_HEADING_TABLE_V1',
+          section,
+          questionLabel: question.questionLabel,
+          comprehensionLabel: comprehension?.label,
+          parseErrors: question.parseErrors,
+        },
+      });
+      question = undefined;
+    };
+
+    for (const block of blocks) {
+      const metadata = this.parseCodelessSectionMetadata(block.text);
+      if (metadata) {
+        finishQuestion();
+        section = metadata;
+        comprehension = undefined;
+        continue;
+      }
+      if (block.tag === 'h1') {
+        finishQuestion();
+        const comprehensionHeading = block.text.match(
+          /^comprehension\s*(?:[\u2013\u2014:|-])\s*(.+)$/i,
+        );
+        if (comprehensionHeading) {
+          comprehension = {
+            label: comprehensionHeading[1].trim(),
+            content: [],
+            acceptingContent: true,
+          };
+        } else if (/^standalone questions?$/i.test(block.text)) {
+          comprehension = undefined;
+        } else if (block.text.trim()) {
+          section = {
+            sectionTitle: block.text.trim(),
+            sectionCode: this.cleanImportCode(block.text),
+          };
+          comprehension = undefined;
+        }
+        continue;
+      }
+      if (block.tag === 'h2') {
+        finishQuestion();
+        const questionHeading = block.text.match(
+          /^question\s*(?:[\u2013\u2014:|-])\s*(.+)$/i,
+        );
+        if (!questionHeading)
+          throw new BadRequestException(
+            `Unrecognized Question heading: ${block.text}`,
+          );
+        if (comprehension) comprehension.acceptingContent = false;
+        const questionLabel = questionHeading[1].trim();
+        const numberMatch = questionLabel.match(/\d+/);
+        question = {
+          questionNumber: numberMatch
+            ? Number(numberMatch[0])
+            : rows.length + 1,
+          questionLabel,
+          content: [],
+          options: [],
+          acceptedAnswers: [],
+          caseSensitive: false,
+          explanation: [],
+          mode: 'question',
+          answerRulesSeen: false,
+          explanationSeen: false,
+          parseErrors: numberMatch
+            ? []
+            : ['Question heading must contain a visible question number'],
+        };
+        continue;
+      }
+      if (block.tag === 'h3' && question) {
+        const heading = block.text.trim().toLowerCase();
+        if (heading === 'options') question.mode = 'options';
+        else if (heading === 'answer rules') question.mode = 'answer-rules';
+        else if (heading === 'explanation') {
+          question.mode = 'explanation';
+          question.explanationSeen = true;
+        } else {
+          question.parseErrors.push(
+            `Unknown question subsection ${block.text}`,
+          );
+        }
+        continue;
+      }
+      if (question) {
+        if (question.mode === 'options' && block.tag === 'table') {
+          for (const cells of this.tableRows(block.innerHtml)) {
+            if (cells.length < 2) continue;
+            const code = this.htmlText(cells[0])
+              .replace(/^option\s*/i, '')
+              .replace(/[:.)-]+$/g, '')
+              .trim()
+              .toUpperCase();
+            if (!code) continue;
+            question.options.push({
+              code,
+              content: cells[1].trim(),
+              isCorrect: false,
+            });
+          }
+        } else if (question.mode === 'answer-rules' && block.tag === 'table') {
+          question.answerRulesSeen = true;
+          const rules = new Map(
+            this.tableRows(block.innerHtml)
+              .filter((cells) => cells.length >= 2)
+              .map((cells) => [
+                this.htmlText(cells[0]).trim().toLowerCase(),
+                this.htmlText(cells[1]).trim(),
+              ]),
+          );
+          question.questionTypeLabel =
+            rules.get('question type') || rules.get('type') || undefined;
+          question.correctOption =
+            rules.get('correct option')?.toUpperCase() || undefined;
+          question.acceptedAnswers = (rules.get('accepted answers') ?? '')
+            .split('|')
+            .map((answer) => answer.trim())
+            .filter(Boolean);
+          const toleranceText = rules.get('numeric tolerance') ?? '';
+          if (toleranceText) {
+            const tolerance = Number(toleranceText);
+            if (Number.isFinite(tolerance)) question.tolerance = tolerance;
+            else
+              question.parseErrors.push(
+                'Numeric Tolerance must be a valid number',
+              );
+          }
+          const marks = this.optionalNumberRule(rules.get('marks'));
+          const negativeMarks = this.optionalNumberRule(
+            rules.get('negative marks') ?? rules.get('negative_marks'),
+          );
+          const sortOrder = this.optionalIntegerRule(
+            rules.get('sort order') ?? rules.get('sort_order'),
+          );
+          if (marks.invalid) question.parseErrors.push('Marks must be a number');
+          else question.marks = marks.value;
+          if (negativeMarks.invalid)
+            question.parseErrors.push('Negative Marks must be a number');
+          else question.negativeMarks = negativeMarks.value;
+          if (sortOrder.invalid)
+            question.parseErrors.push('Sort Order must be an integer');
+          else question.sortOrder = sortOrder.value;
+          const mandatoryText =
+            rules.get('mandatory') ?? rules.get('is mandatory') ?? '';
+          const mandatory = this.strictBooleanValue(mandatoryText);
+          if (mandatory === undefined && mandatoryText)
+            question.parseErrors.push('Mandatory must be Yes or No');
+          question.isMandatory = mandatory ?? true;
+          const caseSensitiveText = rules.get('case sensitive') ?? '';
+          const caseSensitive = this.strictBooleanValue(caseSensitiveText);
+          if (caseSensitive === undefined && caseSensitiveText)
+            question.parseErrors.push('Case Sensitive must be Yes or No');
+          question.caseSensitive = caseSensitive ?? false;
+        } else if (question.mode === 'explanation') {
+          question.explanation.push(block.html);
+        } else if (question.mode === 'question') {
+          question.content.push(block.html);
+        }
+      } else if (comprehension?.acceptingContent) {
+        comprehension.content.push(block.html);
+      }
+    }
+    finishQuestion();
+    if (!rows.length)
+      throw new BadRequestException(
+        'No questions were found. Apply Heading 2 to headings such as Question - 1.',
+      );
+    return rows;
   }
 
   private parseHeadingWordContent(blocks: HtmlBlock[]): WordQuestionContent[] {
@@ -1896,6 +2269,188 @@ export class ExamService {
     );
   }
 
+  private parseCodelessSectionMetadata(value: string) {
+    const text = value.trim();
+    if (!text) return undefined;
+    if (!text.includes('|') && !/^(slot|section|subject)\s*:/i.test(text))
+      return undefined;
+    const metadata: {
+      sectionTitle?: string;
+      slotTitle?: string;
+      subjectTitle?: string;
+      sectionCode?: string;
+      slotCode?: string;
+      subjectCode?: string;
+    } = {};
+    for (const [index, rawPart] of text.split('|').entries()) {
+      const part = rawPart.trim();
+      if (!part) continue;
+      const field = part.match(/^(slot|section|subject)\s*:\s*(.+)$/i);
+      if (!field && index === 0) {
+        metadata.sectionTitle = part;
+        continue;
+      }
+      if (!field) continue;
+      const key = field[1].trim().toLowerCase();
+      const fieldValue = field[2].trim();
+      if (key === 'slot') {
+        metadata.slotTitle = fieldValue;
+        metadata.slotCode = this.cleanImportCode(fieldValue);
+      } else if (key === 'section') {
+        metadata.sectionTitle ??= fieldValue;
+        metadata.sectionCode = this.cleanImportCode(fieldValue);
+      } else {
+        metadata.subjectTitle = fieldValue;
+        metadata.subjectCode = this.cleanImportCode(fieldValue);
+      }
+    }
+    return metadata.sectionTitle ||
+      metadata.sectionCode ||
+      metadata.slotTitle ||
+      metadata.subjectTitle
+      ? metadata
+      : undefined;
+  }
+
+  private optionalNumberRule(value?: string) {
+    if (!value?.trim()) return { value: undefined, invalid: false };
+    const parsed = Number(value);
+    return Number.isFinite(parsed)
+      ? { value: parsed, invalid: false }
+      : { value: undefined, invalid: true };
+  }
+
+  private optionalIntegerRule(value?: string) {
+    if (!value?.trim()) return { value: undefined, invalid: false };
+    const parsed = Number(value);
+    return Number.isInteger(parsed)
+      ? { value: parsed, invalid: false }
+      : { value: undefined, invalid: true };
+  }
+
+  private resolveCodelessDestination(
+    structure: Array<{
+      code: string;
+      name: string;
+      sections: Array<{
+        code: string;
+        name: string;
+        subjects: Array<{
+          subject: {
+            id: number;
+            organizationId: number;
+            code: string;
+            name: string;
+          };
+        }>;
+      }>;
+    }>,
+    word: CodelessWordQuestionContent,
+  ) {
+    const slot =
+      structure.find((item) =>
+        this.matchesTemplateText(item, word.slotCode, word.slotTitle),
+      ) ?? (structure.length === 1 ? structure[0] : undefined);
+    const sectionPool = slot
+      ? slot.sections
+      : structure.flatMap((item) => item.sections);
+    const section = sectionPool.find((item) =>
+      this.matchesTemplateText(item, word.sectionCode, word.sectionTitle),
+    );
+    const resolvedSlot =
+      slot ??
+      (section
+        ? structure.find((item) =>
+            item.sections.some(
+              (sectionItem) => sectionItem.code === section.code,
+            ),
+          )
+        : undefined);
+    const subjectPool = section?.subjects ?? [];
+    const subject =
+      subjectPool.find((item) =>
+        this.matchesTemplateText(
+          item.subject,
+          word.subjectCode,
+          word.subjectTitle,
+        ),
+      )?.subject ??
+      (subjectPool.length === 1 ? subjectPool[0].subject : undefined);
+    return { slot: resolvedSlot, section, subject };
+  }
+
+  private matchesTemplateText(
+    item: { code: string; name: string },
+    code?: string,
+    title?: string,
+  ) {
+    const itemCode = item.code.trim().toUpperCase();
+    const itemName = this.normalizeLookupKey(item.name);
+    return (
+      Boolean(code && itemCode === code.trim().toUpperCase()) ||
+      Boolean(title && itemName === this.normalizeLookupKey(title)) ||
+      Boolean(title && itemCode === this.cleanImportCode(title))
+    );
+  }
+
+  private resolveCodelessQuestionType(
+    word: CodelessWordQuestionContent,
+    typeByCode: Map<string, { id: number; code: string; name: string }>,
+  ) {
+    const label = this.normalizeLookupKey(word.questionTypeLabel ?? '');
+    const code = [
+      'singlechoice',
+      'singleanswer',
+      'singlecorrect',
+      'mcq',
+      'multiplechoice',
+    ].includes(label)
+      ? QUESTION_TYPE_CODES.SINGLE_CHOICE
+      : ['numeric', 'numericanswer', 'number'].includes(label)
+        ? QUESTION_TYPE_CODES.NUMERIC
+        : ['oneword', 'onewordanswer', 'shortanswer', 'text'].includes(label)
+          ? QUESTION_TYPE_CODES.ONE_WORD
+          : undefined;
+    if (code) return typeByCode.get(code);
+    if (word.options.length)
+      return typeByCode.get(QUESTION_TYPE_CODES.SINGLE_CHOICE);
+    if (
+      word.acceptedAnswers.length &&
+      word.acceptedAnswers.every((answer) => Number.isFinite(Number(answer)))
+    )
+      return typeByCode.get(QUESTION_TYPE_CODES.NUMERIC);
+    if (word.acceptedAnswers.length)
+      return typeByCode.get(QUESTION_TYPE_CODES.ONE_WORD);
+    return undefined;
+  }
+
+  private codelessComprehensionCode(
+    existing: Map<string, string>,
+    nextIndex: number,
+    sectionPrefix: string,
+    label: string,
+  ) {
+    const key = `${sectionPrefix}:${this.normalizeLookupKey(label)}`;
+    const current = existing.get(key);
+    if (current) return current;
+    const code = `${sectionPrefix}-COMP-${String(nextIndex).padStart(3, '0')}`;
+    existing.set(key, code);
+    return code;
+  }
+
+  private cleanImportCode(value: string) {
+    return this.htmlText(value)
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 60);
+  }
+
+  private normalizeLookupKey(value: string) {
+    return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+  }
+
   private mergeImportFiles(
     wordRows: WordQuestionContent[],
     excelRows: ExcelQuestionMapping[],
@@ -2022,6 +2577,175 @@ export class ExamService {
         rawData: {
           word: word?.rawData ?? null,
           excel: mapping?.rawData ?? null,
+        },
+      };
+    });
+  }
+
+  private async buildCodelessWordRows(
+    buffer: Buffer,
+    versionId: number,
+    dto: CreateExamImportDto,
+    questionTypes: Array<{ id: number; code: string; name: string }>,
+  ): Promise<StagedRow[]> {
+    const wordRows = await this.parseCodelessWordContent(buffer);
+    const structure = await this.prisma.examTemplateSlot.findMany({
+      where: { examTemplateVersionId: versionId },
+      orderBy: { sortOrder: 'asc' },
+      include: {
+        sections: {
+          orderBy: { sortOrder: 'asc' },
+          include: { subjects: { include: { subject: true } } },
+        },
+      },
+    });
+    const typeByCode = new Map(
+      questionTypes.map((type) => [type.code.toUpperCase(), type]),
+    );
+    const selectedSlot =
+      dto.scope === ExamImportScope.SINGLE_SECTION
+        ? structure.find((slot) =>
+            slot.sections.some(
+              (section) => section.id === dto.examTemplateSectionId,
+            ),
+          )
+        : undefined;
+    const selectedSection = selectedSlot?.sections.find(
+      (section) => section.id === dto.examTemplateSectionId,
+    );
+    const selectedSubject = selectedSection?.subjects[0]?.subject;
+    const orderByDestination = new Map<string, number>();
+    const comprehensionCodes = new Map<string, string>();
+    let comprehensionIndex = 0;
+
+    return wordRows.map((word) => {
+      const destination =
+        dto.scope === ExamImportScope.SINGLE_SECTION
+          ? {
+              slot: selectedSlot,
+              section: selectedSection,
+              subject: selectedSubject,
+            }
+          : this.resolveCodelessDestination(structure, word);
+      const fallbackPrefix = this.cleanImportCode(
+        word.sectionCode ?? word.sectionTitle ?? 'SECTION',
+      );
+      const sectionPrefix =
+        destination.section?.code.toUpperCase() || fallbackPrefix || 'SECTION';
+      const questionCode = `${sectionPrefix}-Q${String(
+        word.questionNumber,
+      ).padStart(3, '0')}`;
+      const destinationKey = [
+        destination.slot?.code ?? word.slotCode ?? '',
+        destination.section?.code ?? word.sectionCode ?? '',
+      ].join(':');
+      const sortOrder = word.sortOrder ?? orderByDestination.get(destinationKey) ?? 1;
+      orderByDestination.set(destinationKey, sortOrder + 1);
+      const type = this.resolveCodelessQuestionType(
+        word,
+        typeByCode,
+      );
+      const errors: string[] = [...(word.parseErrors ?? [])];
+      if (
+        dto.scope === ExamImportScope.FULL_EXAM &&
+        !word.sectionTitle &&
+        !word.sectionCode
+      )
+        errors.push('Section heading or metadata is required');
+      if (!type)
+        errors.push(
+          'Question Type must be Single Choice, Numeric, or One Word',
+        );
+      if (!this.hasRichContent(word.questionContent))
+        errors.push('Word question content is required');
+      if (
+        word.comprehensionLabel &&
+        !this.hasRichContent(word.comprehensionContent ?? '')
+      )
+        errors.push('Comprehension content must contain text or an image');
+      if (!Number.isFinite(word.marks ?? 1) || (word.marks ?? 1) < 0)
+        errors.push('Marks must be a non-negative number');
+      if (
+        !Number.isFinite(word.negativeMarks ?? 0) ||
+        (word.negativeMarks ?? 0) < 0
+      )
+        errors.push('Negative Marks must be a non-negative number');
+      const optionCodes = word.options.map((option) => option.code);
+      if (new Set(optionCodes).size !== optionCodes.length)
+        errors.push('Option labels must be unique');
+      if (word.options.some((option) => !this.hasRichContent(option.content)))
+        errors.push('Every option must contain text or an image');
+      if (type?.code === QUESTION_TYPE_CODES.SINGLE_CHOICE) {
+        if (
+          word.options.length < 2 ||
+          word.options.filter((option) => option.isCorrect).length !== 1
+        )
+          errors.push(
+            'Single-choice questions require at least two options and one Correct Option value',
+          );
+        if (
+          word.answer &&
+          !word.options.some((option) => option.code === word.answer)
+        )
+          errors.push('Correct Option must reference an option-table label');
+      } else if (type?.code === QUESTION_TYPE_CODES.NUMERIC) {
+        if (!word.acceptedAnswers.length)
+          errors.push('Numeric questions require Accepted Answers');
+        if (
+          word.acceptedAnswers.some(
+            (answer) => !Number.isFinite(Number(answer)),
+          )
+        )
+          errors.push('Numeric accepted answers must be valid numbers');
+        if ((word.tolerance ?? 0) < 0)
+          errors.push('Numeric Tolerance cannot be negative');
+      } else if (
+        type?.code === QUESTION_TYPE_CODES.ONE_WORD &&
+        !word.acceptedAnswers.length
+      ) {
+        errors.push('One-word questions require Accepted Answers');
+      }
+      const comprehensionCode = word.comprehensionLabel
+        ? this.codelessComprehensionCode(
+            comprehensionCodes,
+            ++comprehensionIndex,
+            sectionPrefix,
+            word.comprehensionLabel,
+          )
+        : undefined;
+      return {
+        sourceRowNumber: word.sourceRowNumber,
+        slotCode: destination.slot?.code ?? word.slotCode,
+        sectionCode: destination.section?.code ?? word.sectionCode,
+        subjectCode: destination.subject?.code ?? word.subjectCode,
+        questionCode,
+        questionTypeId: type?.id,
+        rawQuestionTypeId: type?.id,
+        comprehensionCode,
+        comprehensionContent: word.comprehensionContent,
+        questionContent: word.questionContent,
+        marks: word.marks ?? 1,
+        negativeMarks: word.negativeMarks ?? 0,
+        sortOrder,
+        isMandatory: word.isMandatory ?? true,
+        answer: word.answer,
+        tolerance: word.tolerance,
+        caseSensitive: word.caseSensitive,
+        explanation: word.explanation,
+        options: word.options,
+        acceptedAnswers: word.acceptedAnswers,
+        status: errors.length
+          ? ExamImportRowStatus.ERROR
+          : ExamImportRowStatus.VALID,
+        validationMessage: errors.join('; ') || undefined,
+        rawData: {
+          word: word.rawData,
+          importMode: ExamImportMode.CODELESS_WORD,
+          generated: {
+            questionCode,
+            comprehensionCode,
+            sectionPrefix,
+          },
         },
       };
     });
@@ -2524,6 +3248,7 @@ export class ExamService {
   }
 
   private importFingerprint(input: {
+    importMode?: string;
     organizationId: number;
     examTemplateVersionId: number;
     scope: ExamImportScope;
@@ -2536,6 +3261,7 @@ export class ExamService {
     return createHash('sha256')
       .update(
         JSON.stringify([
+          input.importMode ?? ExamImportMode.PAIRED_WORD_EXCEL,
           input.organizationId,
           input.examTemplateVersionId,
           input.scope,

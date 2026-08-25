@@ -295,7 +295,7 @@ export const LoginCard = memo(function LoginCard({
 
 function LoginShell({ children }: PropsWithChildren) {
   return (
-    <LoginShellFrame style={loginShellStyle}>
+    <LoginShellFrame className="lms-login-card" style={loginShellStyle}>
       {children}
     </LoginShellFrame>
   );

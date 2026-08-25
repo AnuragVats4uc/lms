@@ -94,7 +94,10 @@ export default function LoginPage() {
 
   return (
     <PublicRoute>
-      <LoginPageShellFrame style={loginPageShellStyle}>
+      <LoginPageShellFrame
+        className="lms-login-shell"
+        style={loginPageShellStyle}
+      >
         <BackgroundGrid />
         <BackgroundGlow style={topGlowStyle} />
         <BackgroundGlow style={bottomGlowStyle} />
@@ -125,10 +128,13 @@ export default function LoginPage() {
                   Secure Learning Management Platform
                 </Text>
               </HeroKicker>
-              <HeroTitle style={heroTitleStyle}>
+              <HeroTitle
+                className="lms-login-hero-title"
+                style={heroTitleStyle}
+              >
                 One platform. Every learning experience.
               </HeroTitle>
-              <HeroText style={heroTextStyle}>
+              <HeroText className="lms-login-hero-text" style={heroTextStyle}>
                 Access your LMS workspace securely to learn, teach, manage
                 content, and keep your organization moving.
               </HeroText>
@@ -344,8 +350,12 @@ const heroTextStyle = {
 
 function PlatformVisual() {
   return (
-    <VisualFrame aria-hidden style={visualFrameStyle}>
-      <VisualCard style={visualMainCardStyle}>
+    <VisualFrame
+      aria-hidden
+      className="lms-login-visual"
+      style={visualFrameStyle}
+    >
+      <VisualCard className="lms-login-visual-card" style={visualMainCardStyle}>
         <VisualCardHeader>
           <VisualDot style={{ background: "#10B981" }} />
           <VisualDot style={{ background: "#60A5FA" }} />
