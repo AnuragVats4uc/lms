@@ -3,8 +3,11 @@
 import {
   CSSProperties,
   useCallback,
+  useEffect,
+  useMemo,
+  useState,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   BarChart3,
   BookOpen,
@@ -31,8 +34,13 @@ import {
   YStack,
 } from "@repo/ui";
 
+const LOGIN_PREFILL_STORAGE_KEY = "lms.registrationLoginPrefill";
+
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryEmail = searchParams.get("email")?.trim().toLowerCase() ?? "";
+  const [prefillPassword, setPrefillPassword] = useState("");
   const {
     error,
     isPending,
@@ -48,6 +56,41 @@ export default function LoginPage() {
     },
     [mutate]
   );
+  const defaultValues = useMemo(
+    () => ({
+      email: queryEmail,
+      password: prefillPassword,
+    }),
+    [prefillPassword, queryEmail],
+  );
+
+  useEffect(() => {
+    if (!queryEmail || typeof window === "undefined") return;
+
+    const raw = window.sessionStorage.getItem(LOGIN_PREFILL_STORAGE_KEY);
+    if (!raw) return;
+
+    try {
+      const parsed = JSON.parse(raw) as {
+        email?: string;
+        password?: string;
+        timestamp?: number;
+      };
+      const isFresh =
+        typeof parsed.timestamp === "number" &&
+        Date.now() - parsed.timestamp < 5 * 60 * 1000;
+
+      if (
+        isFresh &&
+        parsed.email?.trim().toLowerCase() === queryEmail &&
+        parsed.password
+      ) {
+        setPrefillPassword(parsed.password);
+      }
+    } finally {
+      window.sessionStorage.removeItem(LOGIN_PREFILL_STORAGE_KEY);
+    }
+  }, [queryEmail]);
 
   return (
     <PublicRoute>
@@ -99,10 +142,12 @@ export default function LoginPage() {
               apiError={
                 error ? getAuthErrorMessage(error) : undefined
               }
+              defaultValues={defaultValues}
               headerProps={{
                 subtitle: "Sign in to continue to your workspace.",
               }}
               isLoading={isPending}
+              key={`${defaultValues.email}:${defaultValues.password ? "prefilled" : "empty"}`}
               loginLabel="Login"
               onForgotPasswordPress={() =>
                 router.push("/forgot-password")

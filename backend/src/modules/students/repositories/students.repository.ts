@@ -39,6 +39,10 @@ export interface StudentCreateData {
 export type StudentUpdateData = Partial<StudentCreateData> & {
   status?: StudentStatus;
   isActive?: boolean;
+  sessionId?: number;
+  sessionCourseIds?: number[];
+  educationOptionUuid?: string;
+  digitalLibraryLocationUuid?: string;
 };
 
 export interface NormalizedStudentQuery extends Required<
@@ -922,6 +926,141 @@ export class StudentsRepository {
     });
   }
 
+  findEnrollmentSession(sessionId: number, organizationId: number) {
+    return this.prisma.session.findFirst({
+      where: {
+        id: sessionId,
+        organizationId,
+        isActive: true,
+        status: { not: 'ARCHIVED' },
+      },
+      select: { id: true, organizationId: true, name: true },
+    });
+  }
+
+  findEnrollmentSessionCourses(sessionId: number, ids: number[]) {
+    return this.prisma.sessionCourse.findMany({
+      where: {
+        id: { in: ids },
+        sessionId,
+        isActive: true,
+        isPublished: true,
+        status: 'ACTIVE',
+        course: {
+          isActive: true,
+          status: 'ACTIVE',
+        },
+      },
+      include: {
+        course: {
+          select: { id: true, code: true, name: true },
+        },
+      },
+    });
+  }
+
+  findEducationOption(organizationId: number, uuid: string) {
+    return this.prisma.organizationEducationOption.findFirst({
+      where: { organizationId, uuid, isActive: true },
+      select: { id: true, uuid: true, name: true },
+    });
+  }
+
+  findDigitalLibraryLocation(organizationId: number, uuid: string) {
+    return this.prisma.organizationDigitalLibraryLocation.findFirst({
+      where: { organizationId, uuid, isActive: true },
+      select: { id: true, uuid: true, name: true },
+    });
+  }
+
+  findRegistrationPageForSession(organizationId: number, sessionId: number) {
+    return this.prisma.organizationRegistrationPage.findFirst({
+      where: {
+        organizationId,
+        sessionId,
+        isActive: true,
+        status: { not: 'ARCHIVED' },
+      },
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+      select: { id: true },
+    });
+  }
+
+  async upsertEnrollment(data: {
+    studentId: number;
+    organizationId: number;
+    sessionId: number;
+    sessionCourseIds: number[];
+    registrationPageId?: number;
+    answers?: Record<string, string>;
+  }) {
+    return this.prisma.$transaction(async (tx) => {
+      const enrollment = await tx.studentEnrollment.upsert({
+        where: {
+          studentId_sessionId: {
+            studentId: data.studentId,
+            sessionId: data.sessionId,
+          },
+        },
+        create: {
+          organizationId: data.organizationId,
+          sessionId: data.sessionId,
+          studentId: data.studentId,
+        },
+        update: {
+          isActive: true,
+          status: 'ACTIVE',
+        },
+      });
+
+      await Promise.all(
+        data.sessionCourseIds.map((sessionCourseId) =>
+          tx.studentCourseEnrollment.upsert({
+            where: {
+              enrollmentId_sessionCourseId: {
+                enrollmentId: enrollment.id,
+                sessionCourseId,
+              },
+            },
+            create: {
+              enrollmentId: enrollment.id,
+              sessionCourseId,
+            },
+            update: {
+              isActive: true,
+              status: 'ACTIVE',
+            },
+          }),
+        ),
+      );
+
+      if (data.registrationPageId && data.answers) {
+        await Promise.all(
+          Object.entries(data.answers).map(([fieldKey, value]) =>
+            tx.organizationRegistrationAnswer.upsert({
+              where: {
+                registrationPageId_studentId_fieldKey: {
+                  registrationPageId: data.registrationPageId as number,
+                  studentId: data.studentId,
+                  fieldKey,
+                },
+              },
+              create: {
+                registrationPageId: data.registrationPageId as number,
+                studentId: data.studentId,
+                fieldKey,
+                value,
+              },
+              update: { value },
+            }),
+          ),
+        );
+      }
+
+      return enrollment;
+    });
+  }
+
   findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: { email },
@@ -984,6 +1123,10 @@ export class StudentsRepository {
       rollNumber,
       status,
       isActive,
+      sessionId: _sessionId,
+      sessionCourseIds: _sessionCourseIds,
+      educationOptionUuid: _educationOptionUuid,
+      digitalLibraryLocationUuid: _digitalLibraryLocationUuid,
       ...profileData
     } = data;
 
@@ -1049,6 +1192,29 @@ export class StudentsRepository {
 
   private includeRelations() {
     return {
+      enrollments: {
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' as const },
+        include: {
+          session: {
+            select: { id: true, name: true, code: true, status: true },
+          },
+          courseEnrollments: {
+            where: { isActive: true },
+            include: {
+              sessionCourse: {
+                select: {
+                  id: true,
+                  displayName: true,
+                  course: {
+                    select: { id: true, code: true, name: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       organization: true,
       profile: true,
       user: {

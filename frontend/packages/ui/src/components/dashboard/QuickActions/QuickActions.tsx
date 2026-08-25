@@ -21,7 +21,7 @@ export const QuickActionsCard = memo(function QuickActionsCard({
       {...props}
       style={{
         boxShadow: "0 8px 28px rgba(15, 23, 42, 0.04)",
-        minHeight: 136,
+        minHeight: 144,
         ...(props.style as object),
       }}
     >
@@ -49,7 +49,8 @@ export const QuickActionsCard = memo(function QuickActionsCard({
           style={{
             alignItems: "stretch",
             display: "grid",
-            gridTemplateColumns: `repeat(${Math.max(actions.length, 1)}, minmax(72px, 1fr))`,
+            gridTemplateColumns: `repeat(${Math.max(actions.length, 1)}, minmax(0, 1fr))`,
+            minWidth: 0,
             width: "100%",
           }}
         >

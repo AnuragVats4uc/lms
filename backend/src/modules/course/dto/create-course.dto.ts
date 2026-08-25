@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsInt,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   IsUrl,
@@ -66,6 +67,26 @@ export class CreateCourseDto {
   @IsInt()
   @Min(1)
   durationInDays?: number;
+
+  @ApiPropertyOptional({
+    example: 9999,
+    minimum: 0,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  price?: number;
+
+  @ApiPropertyOptional({
+    example: 1000,
+    minimum: 0,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  discount?: number;
 
   @ApiPropertyOptional({
     enum: CourseStatus,

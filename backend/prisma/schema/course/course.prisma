@@ -8,6 +8,9 @@ model Course {
 
   thumbnail      String?
   durationInDays Int?    @map("duration_in_days")
+  price          Decimal? @db.Decimal(10, 2)
+  discount       Decimal? @db.Decimal(10, 2)
+  type           String?  @db.VarChar(80)
 
   status   CourseStatus @default(DRAFT)
   isActive Boolean      @default(true) @map("is_active")

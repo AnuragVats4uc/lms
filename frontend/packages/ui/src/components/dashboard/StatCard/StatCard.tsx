@@ -64,7 +64,7 @@ export const StatCard = memo(function StatCard({
       {...props}
       style={{
         boxShadow: "0 8px 28px rgba(15, 23, 42, 0.04)",
-        minHeight: 136,
+        minHeight: 144,
         ...(props.style as object),
       }}
     >
@@ -79,17 +79,21 @@ export const StatCard = memo(function StatCard({
             color={color}
             style={{
               alignItems: "center",
+              flexShrink: 0,
               justifyContent: "center",
             }}
           >
             {themedIcon}
           </IconBubble>
-          <YStack gap="$0.5" style={{ minWidth: 0 }}>
+          <YStack
+            gap="$0.5"
+            style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden" }}
+          >
             <AppText
               tone="muted"
               fontSize={11}
               lineHeight={13}
-              numberOfLines={1}
+              numberOfLines={2}
             >
               {title}
             </AppText>
@@ -118,19 +122,32 @@ export const StatCard = memo(function StatCard({
             aria-label={link}
             background="transparent"
             chromeless
-            height={24}
+            height={34}
             onPress={onPress}
             p={0}
+            style={{
+              alignItems: "center",
+              justifyContent: "space-between",
+              minWidth: 0,
+              width: "100%",
+            }}
           >
             <AppText
               tone="success"
               fontSize="$caption"
               fontWeight="$button"
               lineHeight="$caption"
+              numberOfLines={2}
+              style={{ minWidth: 0, overflowWrap: "anywhere" }}
             >
               {link}
             </AppText>
-            <ArrowRight aria-hidden="true" color="#087F5B" size={14} />
+            <ArrowRight
+              aria-hidden="true"
+              color="#087F5B"
+              size={14}
+              style={{ flexShrink: 0 }}
+            />
           </Button>
         ) : null}
         {trend ? <AppText tone="muted">{trend}</AppText> : null}

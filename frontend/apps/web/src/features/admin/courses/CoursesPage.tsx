@@ -6,8 +6,10 @@ import {
   BookOpen,
   CalendarDays,
   Clock3,
+  DollarSign,
   FileText,
   Image as ImageIcon,
+  Percent,
   ShieldCheck,
 } from "lucide-react";
 import type {
@@ -40,8 +42,10 @@ type CourseForm = CourseFormValues;
 const initialForm: CourseForm = {
   code: "",
   description: "",
+  discount: "",
   durationInDays: "",
   name: "",
+  price: "",
   status: "DRAFT",
   thumbnail: "",
 };
@@ -63,6 +67,8 @@ function toPayload(form: CourseForm): CreateCourseRequest {
   if (form.thumbnail.trim()) payload.thumbnail = form.thumbnail.trim();
   if (form.durationInDays.trim())
     payload.durationInDays = Number(form.durationInDays);
+  if (form.price.trim()) payload.price = Number(form.price);
+  if (form.discount.trim()) payload.discount = Number(form.discount);
   return payload;
 }
 
@@ -118,6 +124,24 @@ function Form({ error }: ResourceFormContext<CourseForm>) {
           />
         </div>
       </XStack>
+      <XStack className="lms-organization-form-grid" gap="$3">
+        <div className="lms-form-field">
+          <FormInput
+            label="Price"
+            name="price"
+            placeholder="9999.00"
+            type="number"
+          />
+        </div>
+        <div className="lms-form-field">
+          <FormInput
+            label="Discount"
+            name="discount"
+            placeholder="1000.00"
+            type="number"
+          />
+        </div>
+      </XStack>
       <div className="lms-form-field">
         <FormInput
           label="Thumbnail URL"
@@ -146,6 +170,15 @@ function statusTone(status: CourseStatus) {
       : status === "ARCHIVED"
         ? ("neutral" as const)
         : ("warning" as const);
+}
+
+function formatAmount(value: string | null) {
+  if (!value) return "Not set";
+
+  return Number(value).toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  });
 }
 
 const columns: DataTableColumn<Course>[] = [
@@ -177,6 +210,19 @@ const columns: DataTableColumn<Course>[] = [
     header: "Duration",
     id: "duration",
     width: 150,
+  },
+  {
+    cell: ({ row }) => (
+      <DataTableTextCell
+        primary={formatAmount(row.price)}
+        secondary={
+          row.discount ? `Discount ${formatAmount(row.discount)}` : "No discount"
+        }
+      />
+    ),
+    header: "Pricing",
+    id: "pricing",
+    width: 160,
   },
   {
     cell: ({ row }) => <DataTableTextCell primary={row.description ?? "—"} />,
@@ -247,6 +293,16 @@ function details(course: Course) {
           value={
             course.durationInDays ? `${course.durationInDays} days` : "Not set"
           }
+        />
+        <CrudDetailField
+          icon={<DollarSign color="#059669" size={15} />}
+          label="Price"
+          value={formatAmount(course.price)}
+        />
+        <CrudDetailField
+          icon={<Percent color="#059669" size={15} />}
+          label="Discount"
+          value={formatAmount(course.discount)}
         />
         <CrudDetailField
           icon={<FileText color="#059669" size={15} />}
@@ -352,8 +408,10 @@ export function CoursesPage() {
       toForm={(course) => ({
         code: course.code,
         description: course.description ?? "",
+        discount: course.discount ?? "",
         durationInDays: course.durationInDays?.toString() ?? "",
         name: course.name,
+        price: course.price ?? "",
         status: course.status,
         thumbnail: course.thumbnail ?? "",
       })}

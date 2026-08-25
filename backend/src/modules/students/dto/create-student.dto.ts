@@ -2,11 +2,14 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   IsEmail,
+  ArrayMinSize,
+  IsArray,
   IsDateString,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   Min,
   MinLength,
@@ -19,6 +22,32 @@ export class CreateStudentDto {
   @IsInt()
   @Min(1)
   organizationId?: number;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  sessionId?: number;
+
+  @ApiPropertyOptional({ example: [1, 2], type: [Number] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @Type(() => Number)
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  sessionCourseIds?: number[];
+
+  @ApiPropertyOptional({ example: '6ff2a5a0-6637-4411-97ed-0e5ac642bba2' })
+  @IsOptional()
+  @IsUUID()
+  educationOptionUuid?: string;
+
+  @ApiPropertyOptional({ example: 'd95a1e3e-02bf-4c85-9d0e-812d64f08c25' })
+  @IsOptional()
+  @IsUUID()
+  digitalLibraryLocationUuid?: string;
 
   @ApiProperty({ example: 'Rahul' })
   @Transform(({ value }) =>

@@ -192,7 +192,8 @@ export interface PublicRegistrationSubmitRequest {
   gender: string;
   dateOfBirth: string;
   phone: string;
-  email?: string;
+  email: string;
+  password: string;
   educationOptionUuid: string;
   digitalLibraryLocationUuid: string;
   customAnswers?: Record<string, string>;
@@ -218,4 +219,5 @@ export interface PublicRegistrationSubmitResponse {
     name: string;
   }>;
   loginAvailable: boolean;
+  loginEmail: string;
 }

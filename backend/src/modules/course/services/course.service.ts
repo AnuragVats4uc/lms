@@ -144,6 +144,14 @@ export class CourseService {
       data.durationInDays = dto.durationInDays;
     }
 
+    if (dto.price !== undefined) {
+      data.price = dto.price;
+    }
+
+    if (dto.discount !== undefined) {
+      data.discount = dto.discount;
+    }
+
     if (dto.status !== undefined) {
       data.status = dto.status;
     }
@@ -160,6 +168,12 @@ export class CourseService {
   }
 
   private toResponse(course: Course) {
-    return course;
+    const response: Partial<Course & {
+      type?: string | null;
+    }> = { ...course };
+
+    delete response.type;
+
+    return response;
   }
 }

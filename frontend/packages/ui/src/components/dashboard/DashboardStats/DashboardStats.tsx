@@ -21,7 +21,7 @@ export const DashboardStats = memo(function DashboardStats({
       className="lms-dashboard-stats-grid"
       style={{
         display: "grid",
-        gridTemplateColumns: `repeat(${stats.length}, minmax(160px, 1fr)) minmax(300px, 1.35fr)`,
+        gridTemplateColumns: `repeat(${stats.length}, minmax(160px, 1fr)) minmax(260px, 0.9fr)`,
       }}
     >
       {stats.map((stat) => (

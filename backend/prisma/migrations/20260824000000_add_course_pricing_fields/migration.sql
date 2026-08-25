@@ -1,0 +1,4 @@
+ALTER TABLE `courses`
+  ADD COLUMN `price` DECIMAL(10, 2) NULL,
+  ADD COLUMN `discount` DECIMAL(10, 2) NULL,
+  ADD COLUMN `type` VARCHAR(80) NULL;

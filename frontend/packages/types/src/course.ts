@@ -10,6 +10,8 @@ export interface Course {
   description: string | null;
   thumbnail: string | null;
   durationInDays: number | null;
+  price: string | null;
+  discount: string | null;
   status: CourseStatus;
   isActive: boolean;
   createdAt: string;
@@ -22,6 +24,8 @@ export interface CreateCourseRequest {
   description?: string;
   thumbnail?: string;
   durationInDays?: number;
+  price?: number;
+  discount?: number;
   status?: CourseStatus;
 }
 
