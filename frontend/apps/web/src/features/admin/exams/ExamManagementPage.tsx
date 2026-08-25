@@ -55,7 +55,15 @@ import {
 } from "../components/crud";
 import styles from "./ExamManagementPage.module.css";
 
-type Tab = "templates" | "subjects" | "questions" | "imports" | "schedule";
+export type ExamManagementTab =
+  | "templates"
+  | "subjects"
+  | "questions"
+  | "imports"
+  | "schedule";
+type ExamManagementPageProps = {
+  activeTab?: ExamManagementTab;
+};
 type BuilderQuestion = {
   questionVersionId: number;
   marks: number;
@@ -123,7 +131,6 @@ const emptySlot = (): BuilderSlot => ({
 });
 
 const questionLimitOptions = [1, 5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100];
-
 const messageOf = (error: unknown) => {
   if (typeof error === "object" && error && "response" in error) {
     const response = (
@@ -703,10 +710,12 @@ const ImportQuestionDetails = ({ row }: { row: ExamImportRow }) => {
   );
 }
 
-export const ExamManagementPage = () => {
+export const ExamManagementPage = ({
+  activeTab = "templates",
+}: ExamManagementPageProps) => {
   const currentUser = useCurrentUser();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<Tab>("templates");
+  const tab = activeTab;
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<
     number | undefined
   >(currentUser?.organizationId ?? undefined);
@@ -816,38 +825,27 @@ export const ExamManagementPage = () => {
     );
   }
 
-  const tabs: Array<{
-    id: Tab;
-    label: string;
-    icon: typeof Layers3;
-    count?: number;
-  }> = [
-    {
-      id: "templates",
-      label: "Templates",
-      icon: Layers3,
-      count: templates.data?.length,
-    },
-    {
-      id: "subjects",
-      label: "Subjects",
-      icon: Library,
-      count: subjects.data?.length,
-    },
-    {
-      id: "questions",
-      label: "Question bank",
-      icon: ClipboardList,
-      count: questions.data?.length,
-    },
-    { id: "imports", label: "Word / Excel import", icon: FileUp },
-    {
-      id: "schedule",
-      label: "Schedule exams",
-      icon: CalendarClock,
-      count: scheduled.data?.length,
-    },
-  ];
+  if (tab === "subjects") {
+    return (
+      <main className={`${styles.page} ${styles.subjectManagementPage}`}>
+        {notice ? (
+          <div
+            className={
+              notice.kind === "success" ? styles.success : styles.error
+            }
+          >
+            {notice.text}
+          </div>
+        ) : null}
+        <SubjectsPanel
+          organizationId={organizationId}
+          questions={questions.data ?? []}
+          subjects={subjects.data ?? []}
+          report={report}
+        />
+      </main>
+    );
+  }
 
   return (
     <main className={styles.page}>
@@ -878,19 +876,6 @@ export const ExamManagementPage = () => {
           {notice.text}
         </div>
       ) : null}
-      <nav className={styles.tabs} aria-label="Exam module sections">
-        {tabs.map(({ id, label, icon: Icon, count }) => (
-          <button
-            key={id}
-            className={tab === id ? styles.activeTab : ""}
-            onClick={() => setTab(id)}
-          >
-            <Icon size={17} />
-            {label}
-            {count !== undefined ? <span>{count}</span> : null}
-          </button>
-        ))}
-      </nav>
       {tab === "templates" ? (
         <TemplatesPanel
           organizationId={organizationId}
@@ -898,13 +883,6 @@ export const ExamManagementPage = () => {
           subjects={subjects.data ?? []}
           questionTypes={questionTypes.data ?? []}
           clearNotice={() => setNotice(null)}
-          report={report}
-        />
-      ) : null}
-      {tab === "subjects" ? (
-        <SubjectsPanel
-          organizationId={organizationId}
-          subjects={subjects.data ?? []}
           report={report}
         />
       ) : null}
@@ -2064,83 +2042,179 @@ const TemplatesPanel = ({
   );
 }
 
-const SubjectsPanel =({
+const SubjectsPanel = ({
   organizationId,
+  questions,
   subjects,
   report,
 }: {
   organizationId: number;
+  questions: ExamQuestion[];
   subjects: ExamSubject[];
   report: Report;
-})  => {
+}) => {
+  const activeSubjects = subjects.filter((subject) => subject.isActive);
+  const activeCoverage = subjects.length
+    ? `${activeSubjects.length} / ${subjects.length}`
+    : "0 / 0";
+
   return (
-    <div className={styles.twoColumn}>
-      <section className={styles.panel}>
-        <div className={styles.panelTitle}>
+    <div className={styles.subjectManagement}>
+      <section className={styles.subjectHeroGrid} aria-label="Subject summary">
+        <div className={styles.subjectHeroCard}>
+          <img
+            alt=""
+            aria-hidden="true"
+            className={styles.subjectDotGrid}
+            src="/exam-subject-assets/dot-grid.png"
+          />
           <div>
-            <h2>Add subject</h2>
-            <p>Subjects are tenant-scoped and reused across templates.</p>
+            <p>Assessment Management</p>
+            <h1>Subject Management</h1>
+            <span>
+              Create and organize subjects for consistent question mapping
+              across exams.
+            </span>
           </div>
-          <UsersRound />
+          <img
+            alt=""
+            aria-hidden="true"
+            className={styles.subjectBookStack}
+            src="/exam-subject-assets/books-stack.png"
+          />
         </div>
-        <form
-          action={(form) =>
-            report(
-              examsApi.subjects.create({
-                organizationId,
-                code: String(form.get("code")),
-                name: String(form.get("name")),
-                description: String(form.get("description") || ""),
-              }),
-              "Subject created",
-            )
-          }
-          className={styles.form}
-        >
-          <label>
-            Subject name
-            <input name="name" required placeholder="Quantitative Aptitude" />
-          </label>
-          <label>
-            Stable code
-            <input name="code" required placeholder="MATHEMATICS" />
-          </label>
-          <label>
-            Description
-            <textarea
-              name="description"
-              placeholder="Coverage and intended use"
-            />
-          </label>
-          <button className={styles.primaryButton}>
-            <Plus size={16} />
-            Create subject
-          </button>
-        </form>
-      </section>
-      <section className={styles.panel}>
-        <div className={styles.panelTitle}>
-          <div>
-            <h2>Subject catalog</h2>
-            <p>{subjects.length} available for question mapping</p>
+
+        <div className={styles.subjectActiveCard}>
+          <span className={styles.subjectActiveDot} />
+          <img
+            alt=""
+            aria-hidden="true"
+            src="/exam-subject-assets/books-circle.png"
+          />
+          <strong>{activeSubjects.length}</strong>
+          <p>
+            Active
+            <span>subjects</span>
+          </p>
+        </div>
+
+        <div className={styles.subjectInsightCard}>
+          <img
+            alt=""
+            aria-hidden="true"
+            className={styles.subjectSparkles}
+            src="/exam-subject-assets/sparkles.png"
+          />
+          <img
+            alt=""
+            aria-hidden="true"
+            className={styles.subjectQuestionBook}
+            src="/exam-subject-assets/question-book.png"
+          />
+          <p>Subject Insights</p>
+          <h2>Question coverage</h2>
+          <div className={styles.subjectInsightStats}>
+            <span>
+              <img
+                alt=""
+                aria-hidden="true"
+                src="/exam-subject-assets/mapped-questions-icon.png"
+              />
+              <strong>{questions.length}</strong>
+              <small>Mapped questions</small>
+            </span>
+            <span>
+              <CheckCircle2 aria-hidden="true" size={24} />
+              <strong>{activeCoverage}</strong>
+              <small>Active</small>
+            </span>
           </div>
         </div>
-        <div className={styles.catalog}>
-          {subjects.map((subject) => (
-            <article key={subject.id}>
-              <div className={styles.subjectIcon}>
-                {subject.code.slice(0, 2)}
-              </div>
-              <div>
-                <strong>{subject.name}</strong>
-                <span>{subject.code}</span>
-                <p>{subject.description || "No description"}</p>
-              </div>
-              <Status value={subject.isActive ? "ACTIVE" : "INACTIVE"} />
-            </article>
-          ))}
-        </div>
       </section>
+
+      <div className={styles.subjectWorkspace}>
+        <section className={styles.subjectFormCard}>
+          <div className={styles.subjectPanelTitle}>
+            <div>
+              <h2>Add subject</h2>
+              <p>Subjects are tenant-scoped and reused across templates.</p>
+            </div>
+            <UsersRound aria-hidden="true" size={22} />
+          </div>
+          <form
+            action={(form) =>
+              report(
+                examsApi.subjects.create({
+                  organizationId,
+                  code: String(form.get("code")),
+                  name: String(form.get("name")),
+                  description: String(form.get("description") || ""),
+                }),
+                "Subject created",
+              )
+            }
+            className={`${styles.form} ${styles.subjectForm}`}
+          >
+            <label>
+              Subject name
+              <input name="name" required placeholder="Quantitative Aptitude" />
+            </label>
+            <label>
+              Stable code
+              <input name="code" required placeholder="MATHEMATICS" />
+            </label>
+            <label>
+              Description
+              <textarea
+                name="description"
+                placeholder="Coverage and intended use"
+              />
+            </label>
+            <button
+              className={`${styles.primaryButton} ${styles.subjectCreateButton}`}
+            >
+              <Plus size={18} />
+              Create subject
+            </button>
+          </form>
+        </section>
+
+        <section className={styles.subjectCatalogCard}>
+          <div className={styles.subjectPanelTitle}>
+            <div>
+              <h2>Subject catalog</h2>
+              <p>{subjects.length} available for question mapping</p>
+            </div>
+          </div>
+          <div className={styles.subjectCatalog}>
+            {subjects.map((subject) => (
+              <article key={subject.id}>
+                <div className={styles.subjectCatalogIcon}>
+                  {subject.code.slice(0, 2)}
+                </div>
+                <div className={styles.subjectCatalogCopy}>
+                  <strong>{subject.name}</strong>
+                  <span>{subject.code}</span>
+                  <p>{subject.description || "No description"}</p>
+                </div>
+                <span
+                  className={styles.subjectStatus}
+                  data-value={subject.isActive ? "ACTIVE" : "INACTIVE"}
+                >
+                  {subject.isActive ? "Active" : "Inactive"}
+                </span>
+              </article>
+            ))}
+            {!subjects.length ? (
+              <Empty
+                icon={Library}
+                title="No subjects yet"
+                text="Create the first subject to begin question mapping."
+              />
+            ) : null}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

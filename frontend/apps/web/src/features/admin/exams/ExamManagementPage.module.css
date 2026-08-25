@@ -67,43 +67,6 @@
 .headerBadge span {
   font-size: 11px;
 }
-.tabs {
-  display: flex;
-  gap: 4px;
-  overflow-x: auto;
-  padding: 5px;
-  margin-bottom: 18px;
-  border: 1px solid #dde6ed;
-  border-radius: 12px;
-  background: white;
-}
-.tabs button {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-width: max-content;
-  padding: 10px 14px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: #53627a;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.tabs button span {
-  min-width: 20px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  background: #edf2f5;
-  font-size: 10px;
-  text-align: center;
-}
-.tabs .activeTab {
-  background: #e8f7f1;
-  color: #087b58;
-}
 .success,
 .error {
   margin: -8px 0 16px;
@@ -121,6 +84,396 @@
   border: 1px solid #fecaca;
   background: #fff1f2;
   color: #b42318;
+}
+.subjectManagementPage {
+  color: #071c4f;
+}
+.subjectManagementPage .success,
+.subjectManagementPage .error {
+  margin: 0 0 16px;
+}
+.subjectManagement {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  zoom: 0.9;
+}
+.subjectHeroGrid {
+  display: grid;
+  grid-template-columns: minmax(390px, 1.45fr) minmax(190px, 0.55fr) minmax(330px, 1fr);
+  gap: 14px;
+  min-width: 0;
+}
+.subjectHeroCard,
+.subjectActiveCard,
+.subjectInsightCard,
+.subjectFormCard,
+.subjectCatalogCard {
+  border: 1px solid #cfe0ef;
+  box-shadow: 0 16px 42px rgba(6, 31, 82, 0.04);
+}
+.subjectHeroCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 128px;
+  align-items: center;
+  min-height: 190px;
+  overflow: hidden;
+  padding: 30px 30px 28px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 2% 10%, rgba(13, 153, 108, 0.1), transparent 34%),
+    linear-gradient(106deg, #fbfefd 0%, #ffffff 58%, #f5fbff 100%);
+}
+.subjectHeroCard > div {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 11px;
+  max-width: 510px;
+}
+.subjectHeroCard p,
+.subjectInsightCard > p {
+  margin: 0;
+  color: #008d61;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.subjectHeroCard h1 {
+  margin: 0;
+  color: #071c4f;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.08;
+}
+.subjectHeroCard span {
+  max-width: 430px;
+  color: #66749c;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.55;
+}
+.subjectDotGrid {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 220px;
+  height: 104px;
+  object-fit: cover;
+  opacity: 0.9;
+}
+.subjectBookStack {
+  position: relative;
+  z-index: 2;
+  justify-self: end;
+  width: 104px;
+  height: 104px;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 22px rgba(7, 28, 79, 0.14));
+}
+.subjectActiveCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-content: center;
+  align-items: center;
+  column-gap: 16px;
+  min-height: 190px;
+  padding: 28px 22px;
+  overflow: hidden;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 92% 5%, rgba(0, 153, 107, 0.15), transparent 25%),
+    linear-gradient(135deg, #f8fffc 0%, #e3f7ee 100%);
+}
+.subjectActiveCard img {
+  grid-row: span 2;
+  width: 62px;
+  height: 62px;
+  object-fit: contain;
+}
+.subjectActiveCard strong {
+  color: #009363;
+  font-size: 48px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 0.95;
+}
+.subjectActiveCard p {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  color: #60709a;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+.subjectActiveCard p span {
+  display: block;
+}
+.subjectActiveDot {
+  position: absolute;
+  top: 20px;
+  right: 18px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #009d6c;
+  box-shadow: 0 8px 18px rgba(0, 157, 108, 0.35);
+}
+.subjectInsightCard {
+  position: relative;
+  min-height: 190px;
+  overflow: hidden;
+  padding: 28px 24px 22px;
+  border-color: rgba(0, 132, 85, 0.38);
+  border-radius: 16px;
+  background:
+    linear-gradient(90deg, rgba(0, 146, 95, 0.98), rgba(0, 129, 89, 0.96)),
+    url("/exam-subject-assets/green-gradient-panel.png") center / cover;
+  color: #fff;
+}
+.subjectInsightCard h2 {
+  position: relative;
+  z-index: 2;
+  margin: 20px 0 16px;
+  color: #fff;
+  font-size: 23px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+.subjectInsightCard > p {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  padding: 8px 13px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #e5fff6;
+  font-size: 12px;
+}
+.subjectInsightStats {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.subjectInsightStats span {
+  display: grid;
+  grid-template-columns: 30px auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 10px;
+  min-width: 120px;
+  min-height: 70px;
+  padding: 11px 14px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #ffffff 0%, #e6f7f0 100%);
+  color: #071c4f;
+  box-shadow: 0 12px 24px rgba(0, 72, 51, 0.12);
+}
+.subjectInsightStats img,
+.subjectInsightStats svg {
+  grid-row: span 2;
+  width: 30px;
+  height: 30px;
+  color: #009363;
+}
+.subjectInsightStats strong {
+  color: #071c4f;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+.subjectInsightStats small {
+  color: #071c4f;
+  font-size: 10px;
+  font-weight: 600;
+}
+.subjectSparkles {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  opacity: 0.78;
+}
+.subjectQuestionBook {
+  position: absolute;
+  right: 28px;
+  bottom: 26px;
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  opacity: 0.42;
+}
+.subjectWorkspace {
+  display: grid;
+  grid-template-columns: minmax(290px, 370px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  min-width: 0;
+}
+.subjectFormCard,
+.subjectCatalogCard {
+  min-width: 0;
+  border-radius: 16px;
+  background: #fff;
+}
+.subjectFormCard {
+  padding: 26px 28px 28px;
+}
+.subjectCatalogCard {
+  padding: 26px 28px 28px;
+}
+.subjectPanelTitle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.subjectPanelTitle h2 {
+  margin: 0 0 8px;
+  color: #071c4f;
+  font-size: 23px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+.subjectPanelTitle p {
+  max-width: 310px;
+  margin: 0;
+  color: #69779c;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.subjectPanelTitle > svg {
+  flex: 0 0 auto;
+  color: #071c4f;
+}
+.subjectForm {
+  gap: 18px;
+}
+.subjectForm label {
+  gap: 8px;
+  color: #071c4f;
+  font-size: 12px;
+  font-weight: 800;
+}
+.subjectForm input,
+.subjectForm textarea {
+  min-height: 50px;
+  padding: 13px 15px;
+  border-color: #cddbeb;
+  border-radius: 10px;
+  color: #071c4f;
+  font-size: 14px;
+  font-weight: 600;
+}
+.subjectForm textarea {
+  min-height: 78px;
+  resize: vertical;
+}
+.subjectForm input::placeholder,
+.subjectForm textarea::placeholder {
+  color: #7080a8;
+  opacity: 1;
+}
+.subjectCreateButton {
+  min-height: 50px;
+  border: 0;
+  border-radius: 10px;
+  background:
+    linear-gradient(100deg, rgba(0, 148, 94, 0.97), rgba(0, 129, 86, 0.97)),
+    url("/exam-subject-assets/green-wave.png") center / cover;
+  box-shadow: 0 16px 28px rgba(0, 130, 87, 0.18);
+  font-size: 15px;
+  font-weight: 800;
+}
+.subjectCatalog {
+  display: grid;
+  gap: 11px;
+  max-height: calc(100vh - 390px);
+  min-height: 320px;
+  overflow: auto;
+  padding-right: 2px;
+}
+.subjectCatalog article {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 62px;
+  align-items: center;
+  gap: 14px;
+  min-height: 108px;
+  padding: 15px 17px;
+  border: 1px solid #dfe8f1;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(6, 31, 82, 0.025);
+}
+.subjectCatalogIcon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #e9faf3, #dff5ec);
+  color: #008b5f;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.subjectCatalogCopy {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.subjectCatalogCopy strong {
+  color: #071c4f;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.subjectCatalogCopy span {
+  color: #009363;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.subjectCatalogCopy p {
+  overflow: hidden;
+  margin: 0;
+  color: #69779c;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.subjectStatus {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  min-height: 74px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #e8f9f2, #ddf3eb);
+  color: #008b5f;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.subjectStatus[data-value="INACTIVE"] {
+  background: #f1f5f9;
+  color: #64748b;
 }
 .twoColumn {
   display: grid;
@@ -1528,6 +1881,13 @@
   line-height: 1.6;
 }
 @media (max-width: 1100px) {
+  .subjectHeroGrid,
+  .subjectWorkspace {
+    grid-template-columns: 1fr;
+  }
+  .subjectCatalog {
+    max-height: none;
+  }
   .twoColumn {
     grid-template-columns: 1fr;
   }
@@ -1555,6 +1915,52 @@
   }
 }
 @media (max-width: 700px) {
+  .subjectHeroCard {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    padding: 28px 22px;
+  }
+  .subjectHeroCard h1 {
+    font-size: 31px;
+  }
+  .subjectHeroCard span {
+    font-size: 15px;
+  }
+  .subjectBookStack {
+    justify-self: start;
+    width: 96px;
+    height: 96px;
+    margin-top: 10px;
+  }
+  .subjectActiveCard {
+    min-height: 150px;
+  }
+  .subjectInsightCard {
+    min-height: 0;
+  }
+  .subjectInsightStats {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .subjectInsightStats span {
+    width: 100%;
+  }
+  .subjectQuestionBook {
+    opacity: 0.25;
+  }
+  .subjectFormCard,
+  .subjectCatalogCard {
+    padding: 24px 18px;
+  }
+  .subjectCatalog article {
+    grid-template-columns: 50px minmax(0, 1fr);
+  }
+  .subjectStatus {
+    grid-column: 2;
+    width: max-content;
+    min-height: 0;
+    padding: 7px 10px;
+  }
   .header {
     align-items: flex-start;
     flex-direction: column;

@@ -12,6 +12,9 @@ import {
   Settings,
   ShieldCheck,
   CalendarRange,
+  FileUp,
+  Layers3,
+  Library,
   UsersRound,
 } from "lucide-react";
 
@@ -131,10 +134,37 @@ export const adminNavigation: NavigationItem[] = [
   },
   {
     group: "Assessment Management",
-    href: "/admin/exams",
+    href: "/admin/exams/templates",
     icon: FileText,
     label: "Exams",
     permission: "exam-template.read",
+    children: [
+      {
+        href: "/admin/exams/templates",
+        icon: Layers3,
+        label: "Templates",
+      },
+      {
+        href: "/admin/exams/subjects",
+        icon: Library,
+        label: "Subjects",
+      },
+      {
+        href: "/admin/exams/questions",
+        icon: ClipboardList,
+        label: "Question Bank",
+      },
+      {
+        href: "/admin/exams/imports",
+        icon: FileUp,
+        label: "Word / Excel Import",
+      },
+      {
+        href: "/admin/exams/schedule",
+        icon: CalendarRange,
+        label: "Schedule Exams",
+      },
+    ],
   },
   // {
   //   href: "/admin/attendance",

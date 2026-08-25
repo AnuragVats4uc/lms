@@ -1,5 +1,5 @@
-import { ExamManagementPage } from "@/features/admin/exams";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <ExamManagementPage />;
+  redirect("/admin/exams/templates");
 }
