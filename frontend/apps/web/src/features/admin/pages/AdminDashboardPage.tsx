@@ -210,6 +210,11 @@ const buildQuickActions = (
       label: "Create Course",
       onPress: () => navigate("/admin/courses?action=create"),
     },
+    {
+      icon: <UserRound size={22} strokeWidth={2.2} />,
+      label: "Register Student",
+      onPress: () => navigate("/admin/students?action=create"),
+    },
   ],
 });
 

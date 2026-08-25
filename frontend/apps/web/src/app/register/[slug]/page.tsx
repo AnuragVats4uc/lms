@@ -17,6 +17,8 @@ import {
   BookOpen,
   Check,
   CheckCircle2,
+  Eye,
+  EyeOff,
   GraduationCap,
   LifeBuoy,
 } from "lucide-react";
@@ -35,6 +37,8 @@ type FormState = {
   dateOfBirth: string;
   phone: string;
   email: string;
+  password: string;
+  confirmPassword: string;
   educationOptionUuid: string;
   digitalLibraryLocationUuid: string;
   customAnswers: Record<string, string>;
@@ -47,11 +51,15 @@ const initialForm: FormState = {
   dateOfBirth: "",
   phone: "",
   email: "",
+  password: "",
+  confirmPassword: "",
   educationOptionUuid: "",
   digitalLibraryLocationUuid: "",
   customAnswers: {},
   selectedSessionCourseUuids: [],
 };
+
+const LOGIN_PREFILL_STORAGE_KEY = "lms.registrationLoginPrefill";
 
 export default function PublicRegistrationRoute() {
   const params = useParams<{ slug: string }>();
@@ -110,7 +118,12 @@ export default function PublicRegistrationRoute() {
   if (success) {
     return (
       <main className="registration-public-shell" style={theme}>
-        <SuccessPanel page={page} result={success} />
+        <SuccessPanel
+          loginEmail={success.loginEmail || form.email.trim().toLowerCase()}
+          loginPassword={form.password}
+          page={page}
+          result={success}
+        />
       </main>
     );
   }
@@ -129,8 +142,9 @@ export default function PublicRegistrationRoute() {
       lastName: lastNameParts.join(" ") || undefined,
       gender: form.gender,
       dateOfBirth: form.dateOfBirth,
-      phone: form.phone,
-      email: form.email.trim() || undefined,
+      phone: form.phone.trim(),
+      email: form.email.trim().toLowerCase(),
+      password: form.password,
       educationOptionUuid: form.educationOptionUuid,
       digitalLibraryLocationUuid: form.digitalLibraryLocationUuid,
       customAnswers: form.customAnswers,
@@ -221,12 +235,13 @@ export default function PublicRegistrationRoute() {
                 }
               />
               <InputField
-                label="Date of Birth"
+                label="Email Address"
+                inputMode="email"
                 required
-                type="date"
-                value={form.dateOfBirth}
+                type="email"
+                value={form.email}
                 onChange={(value) =>
-                  setForm((current) => ({ ...current, dateOfBirth: value }))
+                  setForm((current) => ({ ...current, email: value }))
                 }
               />
               <InputField
@@ -239,12 +254,31 @@ export default function PublicRegistrationRoute() {
                 }
               />
               <InputField
-                label="Email Address"
-                inputMode="email"
-                type="email"
-                value={form.email}
+                label="Date of Birth"
+                required
+                type="date"
+                value={form.dateOfBirth}
                 onChange={(value) =>
-                  setForm((current) => ({ ...current, email: value }))
+                  setForm((current) => ({ ...current, dateOfBirth: value }))
+                }
+              />
+              <PasswordField
+                label="Password"
+                required
+                value={form.password}
+                onChange={(value) =>
+                  setForm((current) => ({ ...current, password: value }))
+                }
+              />
+              <PasswordField
+                label="Confirm Password"
+                required
+                value={form.confirmPassword}
+                onChange={(value) =>
+                  setForm((current) => ({
+                    ...current,
+                    confirmPassword: value,
+                  }))
                 }
               />
               <SelectField
@@ -405,6 +439,46 @@ function InputField({
   );
 }
 
+function PasswordField({
+  label,
+  onChange,
+  required,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  value: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  const Icon = visible ? EyeOff : Eye;
+
+  return (
+    <label className="registration-field">
+      <span>
+        {label}
+        {required ? <b>*</b> : null}
+      </span>
+      <div className="registration-password-field">
+        <input
+          autoComplete="new-password"
+          onChange={(event) => onChange(event.target.value)}
+          required={required}
+          type={visible ? "text" : "password"}
+          value={value}
+        />
+        <button
+          aria-label={visible ? `Hide ${label}` : `Show ${label}`}
+          onClick={() => setVisible((current) => !current)}
+          type="button"
+        >
+          <Icon size={16} />
+        </button>
+      </div>
+    </label>
+  );
+}
+
 function SelectField({
   label,
   onChange,
@@ -491,12 +565,18 @@ function CustomField({
 }
 
 function SuccessPanel({
+  loginEmail,
+  loginPassword,
   page,
   result,
 }: {
+  loginEmail: string;
+  loginPassword: string;
   page: PublicRegistrationPage;
   result: PublicRegistrationSubmitResponse;
 }) {
+  const loginHref = `/login?email=${encodeURIComponent(loginEmail)}&registered=1`;
+
   return (
     <section className="registration-success-panel">
       <div className="registration-success-icon">
@@ -516,7 +596,21 @@ function SuccessPanel({
         ))}
       </div>
       {result.loginAvailable ? (
-        <Link className="registration-login-link" href="/login">
+        <Link
+          className="registration-login-link"
+          href={loginHref}
+          onClick={() => {
+            if (typeof window === "undefined") return;
+            window.sessionStorage.setItem(
+              LOGIN_PREFILL_STORAGE_KEY,
+              JSON.stringify({
+                email: loginEmail,
+                password: loginPassword,
+                timestamp: Date.now(),
+              }),
+            );
+          }}
+        >
           Continue to Login
         </Link>
       ) : (
@@ -550,10 +644,26 @@ function StatePanel({
 function validateForm(page: PublicRegistrationPage, form: FormState) {
   if (form.fullName.trim().length < 2) return "Student name is required.";
   if (!form.gender) return "Gender is required.";
-  if (!form.dateOfBirth) return "Date of birth is required.";
-  if (!form.phone.trim()) return "Mobile number is required.";
-  if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+  if (!form.email.trim()) return "Email address is required.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
     return "Enter a valid email address.";
+  }
+  if (!form.phone.trim()) return "Mobile number is required.";
+  if (!/^[+\d()\s-]{7,20}$/.test(form.phone.trim())) {
+    return "Enter a valid mobile number.";
+  }
+  if (!form.dateOfBirth) return "Date of birth is required.";
+  if (new Date(form.dateOfBirth).getTime() > Date.now()) {
+    return "Date of birth cannot be in the future.";
+  }
+  if (form.password.length < 8) {
+    return "Password must be at least 8 characters.";
+  }
+  if (form.password.length > 72) {
+    return "Password must be 72 characters or fewer.";
+  }
+  if (form.password !== form.confirmPassword) {
+    return "Password and confirm password must match.";
   }
   if (!form.educationOptionUuid) return "Education is required.";
   if (!form.digitalLibraryLocationUuid) {

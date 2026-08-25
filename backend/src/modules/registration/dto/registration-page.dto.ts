@@ -42,9 +42,6 @@ const trimLowerString = (value: unknown) =>
 const trimUpperString = (value: unknown) =>
   typeof value === 'string' ? value.trim().toUpperCase() : value;
 
-const optionalLowerEmail = (value: unknown) =>
-  typeof value === 'string' ? value.trim().toLowerCase() || undefined : value;
-
 export class RegistrationFieldOptionDto {
   @ApiProperty({ example: 'GRADUATE' })
   @Transform(({ value }: { value: unknown }) => trimUpperString(value))
@@ -417,11 +414,17 @@ export class PublicRegistrationSubmitDto {
   @MaxLength(30)
   phone: string;
 
-  @ApiPropertyOptional({ example: 'rahul@example.com' })
-  @Transform(({ value }: { value: unknown }) => optionalLowerEmail(value))
-  @IsOptional()
+  @ApiProperty({ example: 'rahul@example.com' })
+  @Transform(({ value }: { value: unknown }) => trimLowerString(value))
   @IsEmail()
-  email?: string;
+  email: string;
+
+  @ApiProperty({ example: 'Student@123' })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  @MaxLength(72)
+  password: string;
 
   @ApiPropertyOptional({ example: { education: 'GRADUATE' } })
   @IsOptional()

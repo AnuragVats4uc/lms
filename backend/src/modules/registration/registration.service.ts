@@ -6,7 +6,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, RegistrationPageStatus } from '@prisma/client';
-import { randomBytes } from 'crypto';
 
 import { PasswordService } from '../auth/services/password.service';
 import { CurrentUser } from '../auth/types/current-user.types';
@@ -138,10 +137,8 @@ export class RegistrationService {
       throw new BadRequestException('Digital Library Location is invalid');
     }
 
-    const password = await this.passwordService.hash(
-      randomBytes(18).toString('base64url'),
-    );
-    const email = dto.email ?? this.placeholderEmail(page, dto.phone);
+    const password = await this.passwordService.hash(dto.password);
+    const email = dto.email;
     const result = await this.prisma.$transaction(async (tx) => {
       const user = await this.findOrCreateRegistrationUser(tx, page, dto, {
         email,
@@ -215,7 +212,8 @@ export class RegistrationService {
         uuid: sessionCourse.uuid,
         name: sessionCourse.displayName ?? sessionCourse.course.name,
       })),
-      loginAvailable: Boolean(dto.email),
+      loginAvailable: true,
+      loginEmail: email,
     };
   }
 
@@ -711,6 +709,7 @@ export class RegistrationService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         organizationId: existing.organizationId ?? page.organizationId,
+        password: account.password,
         phone: existing.phone ?? dto.phone,
       },
     });
@@ -1465,11 +1464,6 @@ export class RegistrationService {
       gender: dto.gender,
       phone: dto.phone,
     };
-  }
-
-  private placeholderEmail(page: RegistrationPageWithRelations, phone: string) {
-    const safePhone = phone.replace(/[^0-9a-zA-Z]/g, '').slice(-16);
-    return `phone.${safePhone}.${page.uuid}@registrations.local`.toLowerCase();
   }
 
   private successMessage(page: RegistrationPageWithRelations) {
