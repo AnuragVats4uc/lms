@@ -34,6 +34,7 @@ import {
   CirclePlus,
   Clock3,
   ClipboardList,
+  Eye,
   FileSpreadsheet,
   FileText,
   FileUp,
@@ -64,6 +65,8 @@ export type ExamManagementTab =
   | "schedule";
 type ExamManagementPageProps = {
   activeTab?: ExamManagementTab;
+  templateMode?: "builder";
+  templateId?: number;
 };
 type BuilderQuestion = {
   questionVersionId: number;
@@ -713,6 +716,8 @@ const ImportQuestionDetails = ({ row }: { row: ExamImportRow }) => {
 
 export const ExamManagementPage = ({
   activeTab = "templates",
+  templateMode,
+  templateId,
 }: ExamManagementPageProps) => {
   const currentUser = useCurrentUser();
   const queryClient = useQueryClient();
@@ -911,22 +916,28 @@ export const ExamManagementPage = ({
       <header className={styles.header}>
         <div>
           <p className={styles.eyebrow}>Assessment workspace</p>
-          <h1>Exam Management</h1>
+          <h1>
+            {templateMode === "builder"
+              ? "Exam Template Builder"
+              : "Exam Templates"}
+          </h1>
           <p>
-            Build reusable exam blueprints, validate questions, and schedule
-            controlled attempts.
+            Create the reusable blueprint first, then configure timing,
+            sections, question mapping, and publish a locked version.
           </p>
         </div>
-        <div className={styles.headerBadge}>
-          <BookOpenCheck size={22} />
-          <div>
-            <strong>
-              {templates.data?.filter((item) => item.status === "PUBLISHED")
-                .length ?? 0}
-            </strong>
-            <span>Published templates</span>
+        {templateMode === "builder" ? null : (
+          <div className={styles.headerBadge}>
+            <BookOpenCheck size={22} />
+            <div>
+              <strong>
+                {templates.data?.filter((item) => item.status === "PUBLISHED")
+                  .length ?? 0}
+              </strong>
+              <span>Published templates</span>
+            </div>
           </div>
-        </div>
+        )}
       </header>
       {notice ? (
         <div
@@ -940,6 +951,7 @@ export const ExamManagementPage = ({
           key={organizationId ?? "no-organization"}
           organizationId={organizationId}
           organizationSelector={organizationSelector}
+          initialTemplateId={templateId}
           templates={templates.data ?? []}
           subjects={subjects.data ?? []}
           questionTypes={questionTypes.data ?? []}
@@ -954,6 +966,7 @@ export const ExamManagementPage = ({
 const TemplatesPanel = ({
   organizationId,
   organizationSelector,
+  initialTemplateId,
   templates,
   subjects,
   questionTypes,
@@ -962,6 +975,7 @@ const TemplatesPanel = ({
 }: {
   organizationId?: number;
   organizationSelector?: ReactNode;
+  initialTemplateId?: number;
   templates: ExamTemplateListItem[];
   subjects: ExamSubject[];
   questionTypes: ExamQuestionType[];
@@ -978,11 +992,13 @@ const TemplatesPanel = ({
   const [slots, setSlots] = useState<BuilderSlot[]>([emptySlot()]);
   const [versionInstructions, setVersionInstructions] = useState("");
   const [defaultDurationMinutes, setDefaultDurationMinutes] = useState(90);
+  const [defaultAttemptLimit, setDefaultAttemptLimit] = useState(1);
   const [enforceSlotTimers, setEnforceSlotTimers] = useState(false);
   const [enforceSectionTimers, setEnforceSectionTimers] = useState(false);
   const [validationIssues, setValidationIssues] = useState<
     BuilderValidationIssue[]
   >([]);
+  const [wizardOverride, setWizardOverride] = useState<number | null>(null);
   const selected = templates.find((item) => item.id === selectedId);
   const hasDraft =
     selectedTemplate?.versions.some((item) => item.status === "DRAFT") ?? false;
@@ -996,6 +1012,7 @@ const TemplatesPanel = ({
     setSelectedVersionId(version.id);
     setVersionInstructions(version.instructions ?? "");
     setDefaultDurationMinutes(version.defaultDurationMinutes ?? 90);
+    setDefaultAttemptLimit(version.defaultAttemptLimit ?? 1);
     setEnforceSlotTimers(version.enforceSlotTimers);
     setEnforceSectionTimers(version.enforceSectionTimers);
     const versionSlots = version.slots ?? [];
@@ -1055,9 +1072,10 @@ const TemplatesPanel = ({
               (item) => item.id === preferredVersion,
             )
           : detailedTemplate.versions.find(
-              (item) => item.status === "DRAFT",
+          (item) => item.status === "DRAFT",
             )) ?? detailedTemplate.versions[0];
       if (version) showVersion(version);
+      setWizardOverride(2);
     } catch (error) {
       setSelectedId(null);
       setSelectedTemplate(null);
@@ -1068,14 +1086,28 @@ const TemplatesPanel = ({
 
   const create = (formData: FormData) => {
     if (!organizationId) return;
+    const primarySubjectId = Number(formData.get("primarySubjectId")) || undefined;
     report(
-      examsApi.templates.create({
-        organizationId,
-        code: String(formData.get("code")),
-        name: String(formData.get("name")),
-        description: String(formData.get("description") || ""),
-        defaultDurationMinutes: Number(formData.get("duration")) || undefined,
-      }),
+      examsApi.templates
+        .create({
+          organizationId,
+          primarySubjectId,
+          code: String(formData.get("code")),
+          name: String(formData.get("name")),
+          description: String(formData.get("description") || ""),
+          defaultDurationMinutes: Number(formData.get("duration")) || undefined,
+          defaultAttemptLimit: Number(formData.get("attemptLimit")) || 1,
+        })
+        .then(async (template) => {
+          setSelectedId(template.id);
+          const detailedTemplate = await examsApi.templates.get(template.id);
+          setSelectedTemplate(detailedTemplate);
+          const version =
+            detailedTemplate.versions.find((item) => item.status === "DRAFT") ??
+            detailedTemplate.versions[0];
+          if (version) showVersion(version);
+          setWizardOverride(2);
+        }),
       "Draft template created",
     );
   };
@@ -1113,6 +1145,7 @@ const TemplatesPanel = ({
   const buildPayload = (): SaveExamTemplateStructureRequest => ({
     instructions: versionInstructions || undefined,
     defaultDurationMinutes,
+    defaultAttemptLimit,
     enforceSlotTimers,
     enforceSectionTimers,
     slots: slots.map((slot) => ({
@@ -1157,6 +1190,12 @@ const TemplatesPanel = ({
       issues.push({
         target: "timing-configuration",
         message: "Default exam time must be at least 1 minute.",
+      });
+    }
+    if (!Number.isInteger(defaultAttemptLimit) || defaultAttemptLimit < 1) {
+      issues.push({
+        target: "timing-configuration",
+        message: "Attempt limit must be at least 1.",
       });
     }
     if (!slots.length) {
@@ -1338,14 +1377,92 @@ const TemplatesPanel = ({
   const publishedTemplateCount = templates.filter(
     (template) => template.status === "PUBLISHED",
   ).length;
+  const inferredWizardStep = !selected
+    ? 1
+    : selectedQuestionCount > 0
+      ? 3
+      : defaultDurationMinutes > 0
+        ? 2
+        : 1;
+  const wizardStep = wizardOverride ?? inferredWizardStep;
+
+  useEffect(() => {
+    if (!initialTemplateId || selectedId === initialTemplateId) return;
+    const template = templates.find((item) => item.id === initialTemplateId);
+    if (template) void loadBuilder(template);
+  }, [initialTemplateId, selectedId, templates]);
 
   return (
-    <div className={styles.twoColumn}>
+    <div className={styles.templateBuilderShell}>
+      <div className={styles.templateWizardStepper} aria-label="Template builder steps">
+        {[
+          "Template details",
+          "Timing & slots",
+          "Build sections",
+          "Review & publish",
+        ].map((label, index) => {
+          const step = index + 1;
+          return (
+            <span
+              data-active={wizardStep === step}
+              data-complete={wizardStep > step}
+              key={label}
+            >
+              <b>{step}</b>
+              {label}
+            </span>
+          );
+        })}
+      </div>
+      <div className={styles.builderActionBar}>
+        <CrudSelect
+          ariaLabel="Open exam template"
+          disabled={!organizationId || !templates.length}
+          onChange={(value) => {
+            const template = templates.find((item) => item.id === Number(value));
+            if (template) void loadBuilder(template);
+          }}
+          options={templates.map((template) => ({
+            label: template.name,
+            value: String(template.id),
+          }))}
+          placeholder={
+            organizationId ? "Open existing template" : "Choose organization first"
+          }
+          value={selectedId ? String(selectedId) : ""}
+          width="280px"
+        />
+        <div>
+          <button
+            className={styles.primaryButton}
+            disabled={!selected || !isSelectedDraft}
+            onClick={save}
+            type="button"
+          >
+            <Save size={16} />
+            Save draft
+          </button>
+          <button
+            className={styles.secondaryButton}
+            disabled={!selected}
+            onClick={() => setWizardOverride(4)}
+            type="button"
+          >
+            <Eye size={16} />
+            Preview
+          </button>
+        </div>
+      </div>
+      <div className={styles.twoColumn}>
       <section className={`${styles.panel} ${styles.templateListPanel}`}>
         <div className={styles.panelTitle}>
           <div>
-            <h2>Exam templates</h2>
-            <p>Published versions remain immutable when exams are scheduled.</p>
+            <span className={styles.stepLabel}>Step 1</span>
+            <h2>Organization & template</h2>
+            <p>
+              Choose the organization, open an existing template, or create a
+              new reusable exam blueprint.
+            </p>
           </div>
           <div className={styles.templateCounts} aria-label="Template counts">
             <span>
@@ -1358,8 +1475,47 @@ const TemplatesPanel = ({
             </span>
           </div>
         </div>
+        <div className={styles.templateInstructionCard}>
+          <strong>How this page works</strong>
+          <span>
+            A template is the reusable exam pattern. A draft version can be
+            edited. A published version is locked and can be scheduled safely.
+          </span>
+        </div>
+        <div className={styles.templateChooser}>
+          <CrudSelect
+            ariaLabel="Open exam template"
+            disabled={!organizationId || !templates.length}
+            label="Open template"
+            onChange={(value) => {
+              const template = templates.find(
+                (item) => item.id === Number(value),
+              );
+              if (template) void loadBuilder(template);
+            }}
+            options={templates.map((template) => ({
+              label: template.name,
+              value: String(template.id),
+            }))}
+            placeholder={
+              organizationId
+                ? "Choose template to edit"
+                : "Choose organization first"
+            }
+            value={selectedId ? String(selectedId) : ""}
+            variant="form"
+            width="100%"
+          />
+        </div>
         <form action={create} className={styles.compactForm}>
-          {organizationSelector}
+          <div className={styles.formSectionIntro}>
+            <span className={styles.stepLabel}>Create new</span>
+            <strong>Template details</strong>
+            <p>
+              Use a stable code and a clear name. The first draft version is
+              created automatically.
+            </p>
+          </div>
           <label>
             Template name
             <input name="name" placeholder="e.g., CUET General Test" required />
@@ -1377,6 +1533,17 @@ const TemplatesPanel = ({
               placeholder="e.g., 120"
             />
           </label>
+          <label>
+            Attempt limit
+            <input
+              name="attemptLimit"
+              type="number"
+              min="1"
+              max="100"
+              placeholder="e.g., 1"
+              defaultValue="1"
+            />
+          </label>
           <label className={styles.fullWidthField}>
             Purpose and exam pattern
             <textarea
@@ -1390,6 +1557,10 @@ const TemplatesPanel = ({
             Create template
           </button>
         </form>
+        <div className={styles.listHeader}>
+          <strong>Existing templates</strong>
+          <span>{templates.length} available</span>
+        </div>
         <div className={styles.list}>
           {templates.map((template) => (
             <button
@@ -1413,14 +1584,174 @@ const TemplatesPanel = ({
             </button>
           ))}
         </div>
+        {selected ? (
+          <aside className={styles.templateSidebarSummary}>
+            <div className={styles.panelTitle}>
+              <div>
+                <span className={styles.stepLabel}>Live summary</span>
+                <h2>Publish readiness</h2>
+                <p>Review the draft structure before saving or publishing.</p>
+              </div>
+            </div>
+            <dl>
+              <div>
+                <dt>Version</dt>
+                <dd>
+                  v{selectedVersion?.versionNumber ?? "-"}{" "}
+                  {selectedVersion ? (
+                    <Status value={selectedVersion.status} />
+                  ) : null}
+                </dd>
+              </div>
+              <div>
+                <dt>Slots</dt>
+                <dd>{slots.length}</dd>
+              </div>
+              <div>
+                <dt>Sections</dt>
+                <dd>{sectionCount}</dd>
+              </div>
+              <div>
+                <dt>Questions selected</dt>
+                <dd>{selectedQuestionCount}</dd>
+              </div>
+              <div>
+                <dt>Questions attempted</dt>
+                <dd>{totalQuestionsToAttempt}</dd>
+              </div>
+              <div>
+                <dt>Attempt rule</dt>
+                <dd>
+                  {defaultAttemptLimit}{" "}
+                  {defaultAttemptLimit === 1 ? "attempt" : "attempts"}
+                </dd>
+              </div>
+              <div>
+                <dt>Timing mode</dt>
+                <dd>{timingMode}</dd>
+              </div>
+            </dl>
+            <div
+              className={styles.templateReadiness}
+              data-ready={validationIssues.length === 0 && selectedQuestionCount > 0}
+            >
+              <CheckCircle2 size={16} />
+              <span>
+                {validationIssues.length
+                  ? `${validationIssues.length} issue${validationIssues.length === 1 ? "" : "s"} to resolve`
+                  : selectedQuestionCount
+                    ? "Ready to save or publish"
+                    : "Add questions before publishing"}
+              </span>
+            </div>
+          </aside>
+        ) : null}
+        {!selected ? (
+          <aside className={styles.templateSidebarSummary}>
+            <div className={styles.panelTitle}>
+              <div>
+                <h2>Template summary</h2>
+                <p>Complete Step 1 to start configuring this template.</p>
+              </div>
+            </div>
+            <dl>
+              <div>
+                <dt>Template name</dt>
+                <dd>Not set yet</dd>
+              </div>
+              <div>
+                <dt>Subject</dt>
+                <dd>Not selected</dd>
+              </div>
+              <div>
+                <dt>Duration</dt>
+                <dd>Not set yet</dd>
+              </div>
+              <div>
+                <dt>Slots</dt>
+                <dd>Not configured</dd>
+              </div>
+              <div>
+                <dt>Sections</dt>
+                <dd>Not configured</dd>
+              </div>
+              <div>
+                <dt>Questions</dt>
+                <dd>Not added</dd>
+              </div>
+            </dl>
+          </aside>
+        ) : null}
       </section>
       <section className={`${styles.panel} ${styles.editorPanel}`}>
         {!selected ? (
-          <Empty
-            icon={Layers3}
-            title="Select a template"
-            text="Choose a draft template to configure its slots, section timers, subjects, and question-wise marks."
-          />
+          <form action={create} className={styles.builderStepForm}>
+            <div className={styles.builderStepTitle}>
+              <h2>Step 1 - Name your exam template</h2>
+              <p>Give your template a clear identity and define the basics.</p>
+            </div>
+            {organizationSelector}
+            <div className={styles.builderFormGrid}>
+              <label>
+                Template name <span>*</span>
+                <input
+                  name="name"
+                  placeholder="CUET General Test 2026"
+                  required
+                />
+              </label>
+              <label>
+                Template code <span>*</span>
+                <input name="code" placeholder="CUET-GT-26" required />
+                <small>Use letters, numbers and hyphens only.</small>
+              </label>
+              <label className={styles.fullWidthField}>
+                Subject <span>*</span>
+                <select name="primarySubjectId" required>
+                  <option value="">Choose subject</option>
+                  {subjects.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.fullWidthField}>
+                Description
+                <textarea
+                  maxLength={500}
+                  name="description"
+                  placeholder="General aptitude and domain knowledge test for CUET applicants."
+                  rows={4}
+                />
+              </label>
+              <div className={styles.attemptRuleCard}>
+                <label>
+                  <input
+                    defaultChecked
+                    name="attemptLimit"
+                    type="radio"
+                    value="1"
+                  />
+                  <span>
+                    <strong>Students may attempt once</strong>
+                    <small>
+                      Each student can attempt this exam template only once.
+                    </small>
+                  </span>
+                  <CheckCircle2 size={18} />
+                </label>
+              </div>
+            </div>
+            <button
+              className={styles.summaryContinueButton}
+              disabled={!organizationId}
+              type="submit"
+            >
+              Continue: Timing & slots
+              <ChevronDown size={18} />
+            </button>
+          </form>
         ) : (
           <>
             <div
@@ -1428,11 +1759,12 @@ const TemplatesPanel = ({
               id="template-editor-actions"
             >
               <div>
+                <span className={styles.stepLabel}>Template workspace</span>
                 <h2>{selected.name}</h2>
                 <p>
                   {isSelectedDraft
-                    ? `Editing version ${selectedVersion?.versionNumber}`
-                    : `Version ${selectedVersion?.versionNumber} is published and read-only`}
+                    ? `Version ${selectedVersion?.versionNumber} is a draft. Save the structure before publishing.`
+                    : `Version ${selectedVersion?.versionNumber} is published and read-only.`}
                 </p>
               </div>
               <div className={styles.versionActions}>
@@ -1478,7 +1810,7 @@ const TemplatesPanel = ({
                     }
                   >
                     <CirclePlus size={15} />
-                    Slot
+                    Add slot
                   </button>
                   <button
                     className={styles.primaryButton}
@@ -1486,7 +1818,7 @@ const TemplatesPanel = ({
                     onClick={save}
                   >
                     <Save size={15} />
-                    Save
+                    Save draft structure
                   </button>
                   <button
                     className={styles.publishButton}
@@ -1494,7 +1826,7 @@ const TemplatesPanel = ({
                     onClick={publish}
                   >
                     <Send size={15} />
-                    Publish
+                    Publish version
                   </button>
                   {!hasDraft ? (
                     <button
@@ -1550,6 +1882,44 @@ const TemplatesPanel = ({
               <span>{totalQuestionsToAttempt} may be attempted</span>
               <span>{timingMode}</span>
             </div>
+            <section className={styles.templatePolicyCard}>
+              <div className={styles.sectionHeading}>
+                <div>
+                  <span>Step 2</span>
+                  <h3>Template details</h3>
+                </div>
+                <Status value={selectedVersion?.status ?? selected.status} />
+              </div>
+              <p className={styles.sectionInstruction}>
+                This identifies the reusable blueprint. The structure below is
+                saved against the selected draft version.
+              </p>
+              <dl className={styles.templateDetailGrid}>
+                <div>
+                  <dt>Template name</dt>
+                  <dd>{selected.name}</dd>
+                </div>
+                <div>
+                  <dt>Template code</dt>
+                  <dd>{selected.code}</dd>
+                </div>
+                <div>
+                  <dt>Selected version</dt>
+                  <dd>Version {selectedVersion?.versionNumber ?? "-"}</dd>
+                </div>
+                <div>
+                  <dt>Attempt rule</dt>
+                  <dd>
+                    {defaultAttemptLimit}{" "}
+                    {defaultAttemptLimit === 1 ? "attempt" : "attempts"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Description</dt>
+                  <dd>{selected.description || "No description added"}</dd>
+                </div>
+              </dl>
+            </section>
             {validationIssues.length ? (
               <section className={styles.validationSummary} role="alert">
                 <div>
@@ -1575,11 +1945,15 @@ const TemplatesPanel = ({
               >
                 <div className={styles.sectionHeading}>
                   <div>
-                    <span>Template timing</span>
-                    <h3>Timing configuration</h3>
+                    <span>Step 3</span>
+                    <h3>Exam timing</h3>
                   </div>
                   <strong>{timingMode}</strong>
                 </div>
+                <p className={styles.sectionInstruction}>
+                  Set the overall exam duration first. Slot and section timers
+                  are optional controls for stricter exam patterns.
+                </p>
                 <div className={styles.rowFields}>
                   <label>
                     Overall exam time (minutes)
@@ -1603,6 +1977,20 @@ const TemplatesPanel = ({
                       }
                       placeholder="Instructions shown before the attempt"
                       value={versionInstructions}
+                    />
+                  </label>
+                  <label>
+                    Attempts allowed
+                    <input
+                      disabled={!isSelectedDraft}
+                      min="1"
+                      max="100"
+                      onChange={(event) => {
+                        setValidationIssues([]);
+                        setDefaultAttemptLimit(Number(event.target.value));
+                      }}
+                      type="number"
+                      value={defaultAttemptLimit}
                     />
                   </label>
                 </div>
@@ -1642,6 +2030,35 @@ const TemplatesPanel = ({
                         : "One overall timer controls the entire exam; slot and section times remain available for future timed versions."}
                 </p>
               </section>
+              <section className={styles.templateGuideCard}>
+                <div>
+                  <span className={styles.stepLabel}>Step 4</span>
+                  <h3>Slots, sections & question mapping</h3>
+                  <p>
+                    Slots are major exam parts. Each slot contains sections.
+                    Each section uses one subject and the questions selected
+                    from that subject.
+                  </p>
+                </div>
+                <button
+                  className={styles.secondaryButton}
+                  disabled={!isSelectedDraft}
+                  onClick={() =>
+                    setSlots((current) => [
+                      ...current,
+                      {
+                        ...emptySlot(),
+                        code: `SLOT_${current.length + 1}`,
+                        name: `Slot ${current.length + 1}`,
+                      },
+                    ])
+                  }
+                  type="button"
+                >
+                  <CirclePlus size={15} />
+                  Add slot
+                </button>
+              </section>
               {slots.map((slot, slotIndex) => (
                 <article
                   className={styles.slot}
@@ -1660,6 +2077,10 @@ const TemplatesPanel = ({
                       {slot.durationMinutes} min
                     </span>
                   </div>
+                  <p className={styles.sectionInstruction}>
+                    Configure this major exam part. Slot time is used only when
+                    slot timers are enforced for the version.
+                  </p>
                   <div className={styles.slotHeader}>
                     <div className={styles.rowFields}>
                       <label>
@@ -1824,6 +2245,10 @@ const TemplatesPanel = ({
                           </button>
                         </div>
                       </div>
+                      <p className={styles.sectionInstruction}>
+                        Choose one subject for this section, set the attempt
+                        limit, then map questions from that subject.
+                      </p>
                       <div className={styles.rowFields}>
                         <label>
                           Section code
@@ -2016,6 +2441,19 @@ const TemplatesPanel = ({
                           }
                         />
                       </div>
+                      <div className={styles.questionAssignmentTitle}>
+                        <div>
+                          <strong>Question assignment</strong>
+                          <span>
+                            Select reusable questions and confirm marks for this
+                            section.
+                          </span>
+                        </div>
+                        <small>
+                          {section.questions.length} selected /{" "}
+                          {section.questionsToAttempt} attempted
+                        </small>
+                      </div>
                       {!isSelectedDraft ? (
                         <div className={styles.questionPicker}>
                           {section.questions.length ? (
@@ -2090,6 +2528,7 @@ const TemplatesPanel = ({
           </>
         )}
       </section>
+    </div>
     </div>
   );
 }

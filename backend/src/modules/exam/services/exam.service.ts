@@ -38,6 +38,8 @@ import {
   QuestionListQueryDto,
   QuestionListSort,
   SaveTemplateStructureDto,
+  TemplateListQueryDto,
+  UpdateExamTemplateDto,
   UpdateSubjectDto,
 } from '../dto/exam.dto';
 import { ExamRepository } from '../repositories/exam.repository';
@@ -147,6 +149,7 @@ type ImportJobWithRows = Prisma.ExamImportJobGetPayload<{
 }>;
 
 const templateInclude = {
+  primarySubject: true,
   versions: {
     orderBy: { versionNumber: 'desc' as const },
     include: {
@@ -377,21 +380,84 @@ export class ExamService {
     }
   }
 
-  async listTemplates(user: CurrentUser, query: OrganizationScopedQueryDto) {
+  async listTemplates(user: CurrentUser, query: TemplateListQueryDto) {
     const organizationId = this.organizationId(user, query.organizationId);
-    return this.prisma.examTemplate.findMany({
-      where: { organizationId, isActive: true },
+    const search = query.search?.trim();
+    const where: Prisma.ExamTemplateWhereInput = {
+      organizationId,
+      isActive: true,
+      status: query.status,
+      primarySubjectId: query.subjectId,
+      OR: search
+        ? [
+            { name: { contains: search } },
+            { code: { contains: search } },
+            { description: { contains: search } },
+          ]
+        : undefined,
+    };
+    const templates = await this.prisma.examTemplate.findMany({
+      where,
       include: {
+        primarySubject: true,
         _count: { select: { versions: true } },
         versions: {
           orderBy: { versionNumber: 'desc' },
           take: 1,
           include: {
             _count: { select: { slots: true, exams: true, importJobs: true } },
+            slots: {
+              orderBy: { sortOrder: 'asc' },
+              include: {
+                sections: {
+                  orderBy: { sortOrder: 'asc' },
+                  include: {
+                    subjects: {
+                      include: {
+                        subject: true,
+                        questions: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },
       orderBy: { updatedAt: 'desc' },
+      skip: (query.page - 1) * query.limit,
+      take: query.limit,
+    });
+    return templates.map((template) => {
+      const latestVersion = template.versions[0];
+      const sections =
+        latestVersion?.slots.flatMap((slot) => slot.sections) ?? [];
+      const questionCount = sections.reduce(
+        (total, section) =>
+          total +
+          section.subjects.reduce(
+            (subjectTotal, subject) => subjectTotal + subject.questions.length,
+            0,
+          ),
+        0,
+      );
+      const derivedSubject =
+        template.primarySubject ??
+        sections.flatMap((section) => section.subjects)[0]?.subject ??
+        null;
+      return {
+        ...template,
+        _summary: {
+          durationMinutes: latestVersion?.defaultDurationMinutes ?? null,
+          defaultAttemptLimit: latestVersion?.defaultAttemptLimit ?? 1,
+          slotCount: latestVersion?.slots.length ?? 0,
+          sectionCount: sections.length,
+          questionCount,
+          latestVersionStatus: latestVersion?.status ?? template.status,
+          subject: derivedSubject,
+        },
+      };
     });
   }
 
@@ -407,10 +473,15 @@ export class ExamService {
 
   async createTemplate(user: CurrentUser, dto: CreateExamTemplateDto) {
     const organizationId = this.organizationId(user, dto.organizationId);
+    await this.ensureSubjectBelongsToOrganization(
+      organizationId,
+      dto.primarySubjectId,
+    );
     try {
       return await this.prisma.examTemplate.create({
         data: {
           organizationId,
+          primarySubjectId: dto.primarySubjectId,
           code: dto.code.toUpperCase(),
           name: dto.name,
           description: dto.description,
@@ -419,10 +490,40 @@ export class ExamService {
               versionNumber: 1,
               instructions: dto.instructions,
               defaultDurationMinutes: dto.defaultDurationMinutes,
+              defaultAttemptLimit: dto.defaultAttemptLimit ?? 1,
               enforceSlotTimers: dto.enforceSlotTimers ?? false,
               enforceSectionTimers: dto.enforceSectionTimers ?? false,
             },
           },
+        },
+        include: templateInclude,
+      });
+    } catch (error) {
+      this.rethrowUnique(
+        error,
+        'Exam template code already exists in this organization',
+      );
+    }
+  }
+
+  async updateTemplate(
+    user: CurrentUser,
+    templateId: number,
+    dto: UpdateExamTemplateDto,
+  ) {
+    const template = await this.getTemplate(user, templateId);
+    await this.ensureSubjectBelongsToOrganization(
+      template.organizationId,
+      dto.primarySubjectId,
+    );
+    try {
+      return await this.prisma.examTemplate.update({
+        where: { id: template.id },
+        data: {
+          primarySubjectId: dto.primarySubjectId,
+          code: dto.code ? dto.code.toUpperCase() : undefined,
+          name: dto.name,
+          description: dto.description,
         },
         include: templateInclude,
       });
@@ -518,6 +619,7 @@ export class ExamService {
         data: {
           instructions: dto.instructions,
           defaultDurationMinutes: dto.defaultDurationMinutes,
+          defaultAttemptLimit: dto.defaultAttemptLimit ?? 1,
           enforceSlotTimers: dto.enforceSlotTimers ?? false,
           enforceSectionTimers: dto.enforceSectionTimers ?? false,
         },
@@ -637,6 +739,7 @@ export class ExamService {
         versionNumber: source.versionNumber + 1,
         instructions: source.instructions,
         defaultDurationMinutes: source.defaultDurationMinutes,
+        defaultAttemptLimit: source.defaultAttemptLimit,
         enforceSlotTimers: source.enforceSlotTimers,
         enforceSectionTimers: source.enforceSectionTimers,
         slots: {
@@ -1533,6 +1636,21 @@ export class ExamService {
     if (!subject) throw new NotFoundException('Subject not found');
     this.assertOrganization(user, subject.organizationId);
     return subject;
+  }
+
+  private async ensureSubjectBelongsToOrganization(
+    organizationId: number,
+    subjectId?: number,
+  ) {
+    if (!subjectId) return;
+    const subject = await this.prisma.subject.findFirst({
+      where: { id: subjectId, organizationId, isActive: true },
+      select: { id: true },
+    });
+    if (!subject)
+      throw new BadRequestException(
+        'Primary subject does not belong to this organization',
+      );
   }
 
   private organizationId(user: CurrentUser, requested?: number) {

@@ -147,6 +147,7 @@ export interface ExamTemplateVersion {
   versionNumber: number;
   status: ExamTemplateVersionStatus;
   defaultDurationMinutes: number | null;
+  defaultAttemptLimit: number;
   instructions: string | null;
   enforceSlotTimers: boolean;
   enforceSectionTimers: boolean;
@@ -161,6 +162,8 @@ export interface ExamTemplate {
   code: string;
   name: string;
   description: string | null;
+  primarySubjectId?: number | null;
+  primarySubject?: ExamSubject | null;
   status: ExamTemplateStatus;
   isActive: boolean;
   versions: ExamTemplateVersion[];
@@ -169,7 +172,25 @@ export interface ExamTemplate {
 export type ExamTemplateListItem = Omit<ExamTemplate, "versions"> & {
   _count?: { versions: number };
   versions: Array<Omit<ExamTemplateVersion, "slots">>;
+  _summary?: {
+    durationMinutes: number | null;
+    defaultAttemptLimit: number;
+    slotCount: number;
+    sectionCount: number;
+    questionCount: number;
+    latestVersionStatus: ExamTemplateVersionStatus | ExamTemplateStatus;
+    subject: ExamSubject | null;
+  };
 };
+
+export interface ExamTemplateListParams {
+  organizationId?: number;
+  search?: string;
+  subjectId?: number;
+  status?: ExamTemplateStatus;
+  page?: number;
+  limit?: number;
+}
 
 export interface ScheduledExam {
   id: number;
@@ -254,6 +275,7 @@ export interface ExamImportJob {
 export interface SaveExamTemplateStructureRequest {
   instructions?: string;
   defaultDurationMinutes?: number;
+  defaultAttemptLimit?: number;
   enforceSlotTimers?: boolean;
   enforceSectionTimers?: boolean;
   slots: Array<{

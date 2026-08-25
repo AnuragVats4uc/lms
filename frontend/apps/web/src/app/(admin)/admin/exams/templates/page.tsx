@@ -1,5 +1,5 @@
-import { ExamManagementPage } from "@/features/admin/exams";
+import { ExamTemplatesListPage } from "@/features/admin/exams/ExamTemplatesListPage";
 
 export default function Page() {
-  return <ExamManagementPage activeTab="templates" />;
+  return <ExamTemplatesListPage />;
 }

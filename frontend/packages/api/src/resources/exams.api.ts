@@ -6,6 +6,7 @@ import type {
   ExamQuestionType,
   ExamSubject,
   ExamTemplate,
+  ExamTemplateListParams,
   ExamTemplateListItem,
   SaveExamTemplateStructureRequest,
   ScheduledExam,
@@ -68,10 +69,11 @@ export const examsApi = {
         .then(unwrapApiData),
   },
   templates: {
-    list: (organizationId?: number) =>
+    list: (params?: number | ExamTemplateListParams) =>
       api
         .get<ApiResponse<ExamTemplateListItem[]>>("/exam-templates", {
-          params: { organizationId },
+          params:
+            typeof params === "number" ? { organizationId: params } : params,
         })
         .then(unwrapApiData),
     get: (id: number) =>
@@ -80,16 +82,30 @@ export const examsApi = {
         .then(unwrapApiData),
     create: (payload: {
       organizationId?: number;
+      primarySubjectId?: number;
       code: string;
       name: string;
       description?: string;
       instructions?: string;
       defaultDurationMinutes?: number;
+      defaultAttemptLimit?: number;
       enforceSlotTimers?: boolean;
       enforceSectionTimers?: boolean;
     }) =>
       api
         .post<ApiResponse<ExamTemplate>>("/exam-templates", payload)
+        .then(unwrapApiData),
+    update: (
+      id: number,
+      payload: {
+        primarySubjectId?: number;
+        code?: string;
+        name?: string;
+        description?: string;
+      },
+    ) =>
+      api
+        .patch<ApiResponse<ExamTemplate>>(`/exam-templates/${id}`, payload)
         .then(unwrapApiData),
     saveStructure: (id: number, payload: SaveExamTemplateStructureRequest) =>
       api

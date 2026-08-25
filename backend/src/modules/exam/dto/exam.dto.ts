@@ -21,6 +21,7 @@ import {
   ExamNavigationMode,
   ExamResultReleaseMode,
   ExamStatus,
+  ExamTemplateStatus,
   ExamVirtualKeyboardMode,
   QuestionStatus,
 } from '@prisma/client';
@@ -81,6 +82,37 @@ export class QuestionListQueryDto extends OrganizationScopedQueryDto {
   @Min(1)
   @Max(100)
   limit = 20;
+}
+
+export class TemplateListQueryDto extends OrganizationScopedQueryDto {
+  @IsOptional()
+  @Transform(trimmed)
+  @IsString()
+  @MaxLength(200)
+  search?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  subjectId?: number;
+
+  @IsOptional()
+  @IsEnum(ExamTemplateStatus)
+  status?: ExamTemplateStatus;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 50;
 }
 
 export class CreateSubjectDto extends OrganizationScopedQueryDto {
@@ -219,6 +251,12 @@ export class CreateQuestionDto extends OrganizationScopedQueryDto {
 }
 
 export class CreateExamTemplateDto extends OrganizationScopedQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  primarySubjectId?: number;
+
   @Transform(trimmed)
   @IsString()
   @IsNotEmpty()
@@ -246,12 +284,45 @@ export class CreateExamTemplateDto extends OrganizationScopedQueryDto {
   defaultDurationMinutes?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  defaultAttemptLimit?: number;
+
+  @IsOptional()
   @IsBoolean()
   enforceSlotTimers?: boolean;
 
   @IsOptional()
   @IsBoolean()
   enforceSectionTimers?: boolean;
+}
+
+export class UpdateExamTemplateDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  primarySubjectId?: number;
+
+  @IsOptional()
+  @Transform(trimmed)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(60)
+  code?: string;
+
+  @IsOptional()
+  @Transform(trimmed)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(180)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
 }
 
 export class TemplateQuestionDto {
@@ -402,6 +473,13 @@ export class SaveTemplateStructureDto {
   @IsInt()
   @Min(1)
   defaultDurationMinutes?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  defaultAttemptLimit?: number;
 
   @IsOptional()
   @IsBoolean()

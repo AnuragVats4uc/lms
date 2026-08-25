@@ -27,6 +27,8 @@ import {
   OrganizationScopedQueryDto,
   QuestionListQueryDto,
   SaveTemplateStructureDto,
+  TemplateListQueryDto,
+  UpdateExamTemplateDto,
   UpdateSubjectDto,
 } from '../dto/exam.dto';
 import { ExamImportFile, ExamService } from '../services/exam.service';
@@ -110,7 +112,7 @@ export class ExamTemplateController {
   @Permissions('exam-template.read')
   list(
     @Req() request: AuthenticatedRequest,
-    @Query() query: OrganizationScopedQueryDto,
+    @Query() query: TemplateListQueryDto,
   ) {
     return this.service.listTemplates(request.user, query);
   }
@@ -131,6 +133,16 @@ export class ExamTemplateController {
     @Body() dto: CreateExamTemplateDto,
   ) {
     return this.service.createTemplate(request.user, dto);
+  }
+
+  @Patch(':id')
+  @Permissions('exam-template.update')
+  update(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateExamTemplateDto,
+  ) {
+    return this.service.updateTemplate(request.user, id, dto);
   }
 
   @Patch(':id/structure')
