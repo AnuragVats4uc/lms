@@ -217,6 +217,16 @@ export class ExamImportController {
     });
   }
 
+  @Get('template-codeless.docx')
+  @Permissions('exam-import.read')
+  codelessWordTemplate() {
+    return new StreamableFile(this.service.createCodelessWordImportTemplate(), {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      disposition:
+        'attachment; filename="exam-question-code-free-template.docx"',
+    });
+  }
+
   @Post()
   @Permissions('exam-import.create')
   @UseInterceptors(

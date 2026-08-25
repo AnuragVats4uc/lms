@@ -28,6 +28,11 @@ import {
 const trimmed = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
 
+export enum ExamImportMode {
+  PAIRED_WORD_EXCEL = 'PAIRED_WORD_EXCEL',
+  CODELESS_WORD = 'CODELESS_WORD',
+}
+
 export class OrganizationScopedQueryDto {
   @IsOptional()
   @Type(() => Number)
@@ -511,6 +516,10 @@ export class CreateExamDto extends OrganizationScopedQueryDto {
 }
 
 export class CreateExamImportDto {
+  @IsOptional()
+  @IsEnum(ExamImportMode)
+  importMode?: ExamImportMode;
+
   @Type(() => Number)
   @IsInt()
   @Min(1)

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   examsApi,
@@ -27,6 +27,7 @@ import type {
 import {
   AlertTriangle,
   BookOpenCheck,
+  Building2,
   CalendarClock,
   CheckCircle2,
   ChevronDown,
@@ -782,48 +783,33 @@ export const ExamManagementPage = ({
       })
       .catch((error) => setNotice({ kind: "error", text: messageOf(error) }));
   };
-
-  if (!organizationId) {
-    return (
-      <main className={styles.page}>
-        <header className={styles.header}>
-          <div>
-            <p className={styles.eyebrow}>Assessment workspace</p>
-            <h1>Exam Management</h1>
-            <p>Select an organization to work within its isolated exam data.</p>
-          </div>
-        </header>
-        <section className={styles.organizationCard}>
-          <div className={styles.organizationField}>
-            <label
-              className={styles.organizationLabel}
-              htmlFor="exam-organization"
-            >
-              Organization
-            </label>
-            <CrudSelect
-              ariaLabel="Organization"
-              id="exam-organization"
-              loading={organizations.isLoading}
-              onChange={(value) =>
-                setSelectedOrganizationId(Number(value) || undefined)
-              }
-              options={
-                organizations.data?.items.map((organization) => ({
-                  label: organization.name,
-                  value: String(organization.id),
-                })) ?? []
-              }
-              placeholder="Choose organization"
-              value={selectedOrganizationId?.toString() ?? ""}
-              variant="form"
-              width="100%"
-            />
-          </div>
-        </section>
-      </main>
-    );
-  }
+  const organizationSelectId = `exam-${tab}-organization`;
+  const organizationSelector = !currentUser?.organizationId ? (
+    <div className={styles.embeddedOrganizationField}>
+      <label className={styles.organizationLabel} htmlFor={organizationSelectId}>
+        Organization
+      </label>
+      <CrudSelect
+        ariaLabel="Organization"
+        id={organizationSelectId}
+        loading={organizations.isLoading}
+        onChange={(value) => {
+          setNotice(null);
+          setSelectedOrganizationId(Number(value) || undefined);
+        }}
+        options={
+          organizations.data?.items.map((organization) => ({
+            label: organization.name,
+            value: String(organization.id),
+          })) ?? []
+        }
+        placeholder="Choose organization"
+        value={selectedOrganizationId?.toString() ?? ""}
+        variant="form"
+        width="100%"
+      />
+    </div>
+  ) : null;
 
   if (tab === "subjects") {
     return (
@@ -838,9 +824,82 @@ export const ExamManagementPage = ({
           </div>
         ) : null}
         <SubjectsPanel
+          key={organizationId ?? "no-organization"}
           organizationId={organizationId}
+          organizationSelector={organizationSelector}
           questions={questions.data ?? []}
           subjects={subjects.data ?? []}
+          report={report}
+        />
+      </main>
+    );
+  }
+
+  if (tab === "imports") {
+    return (
+      <main className={`${styles.page} ${styles.importManagementPage}`}>
+        {notice ? (
+          <div
+            className={
+              notice.kind === "success" ? styles.success : styles.error
+            }
+          >
+            {notice.text}
+          </div>
+        ) : null}
+        <ImportsPanel
+          key={organizationId ?? "no-organization"}
+          organizationSelector={organizationSelector}
+          templates={templates.data ?? []}
+          report={report}
+        />
+      </main>
+    );
+  }
+
+  if (tab === "questions") {
+    return (
+      <main className={`${styles.page} ${styles.questionBankPage}`}>
+        {notice ? (
+          <div
+            className={
+              notice.kind === "success" ? styles.success : styles.error
+            }
+          >
+            {notice.text}
+          </div>
+        ) : null}
+        <QuestionsPanel
+          key={organizationId ?? "no-organization"}
+          organizationId={organizationId}
+          organizationSelector={organizationSelector}
+          subjects={subjects.data ?? []}
+          questions={questions.data ?? []}
+          questionTypes={questionTypes.data ?? []}
+          report={report}
+        />
+      </main>
+    );
+  }
+
+  if (tab === "schedule") {
+    return (
+      <main className={`${styles.page} ${styles.scheduleExamsPage}`}>
+        {notice ? (
+          <div
+            className={
+              notice.kind === "success" ? styles.success : styles.error
+            }
+          >
+            {notice.text}
+          </div>
+        ) : null}
+        <SchedulePanel
+          key={organizationId ?? "no-organization"}
+          organizationId={organizationId}
+          organizationSelector={organizationSelector}
+          templates={templates.data ?? []}
+          exams={scheduled.data ?? []}
           report={report}
         />
       </main>
@@ -878,31 +937,13 @@ export const ExamManagementPage = ({
       ) : null}
       {tab === "templates" ? (
         <TemplatesPanel
+          key={organizationId ?? "no-organization"}
           organizationId={organizationId}
+          organizationSelector={organizationSelector}
           templates={templates.data ?? []}
           subjects={subjects.data ?? []}
           questionTypes={questionTypes.data ?? []}
           clearNotice={() => setNotice(null)}
-          report={report}
-        />
-      ) : null}
-      {tab === "questions" ? (
-        <QuestionsPanel
-          organizationId={organizationId}
-          subjects={subjects.data ?? []}
-          questions={questions.data ?? []}
-          questionTypes={questionTypes.data ?? []}
-          report={report}
-        />
-      ) : null}
-      {tab === "imports" ? (
-        <ImportsPanel templates={templates.data ?? []} report={report} />
-      ) : null}
-      {tab === "schedule" ? (
-        <SchedulePanel
-          organizationId={organizationId}
-          templates={templates.data ?? []}
-          exams={scheduled.data ?? []}
           report={report}
         />
       ) : null}
@@ -912,13 +953,15 @@ export const ExamManagementPage = ({
 
 const TemplatesPanel = ({
   organizationId,
+  organizationSelector,
   templates,
   subjects,
   questionTypes,
   clearNotice,
   report,
 }: {
-  organizationId: number;
+  organizationId?: number;
+  organizationSelector?: ReactNode;
   templates: ExamTemplateListItem[];
   subjects: ExamSubject[];
   questionTypes: ExamQuestionType[];
@@ -1023,7 +1066,8 @@ const TemplatesPanel = ({
     }
   };
 
-  const create = (formData: FormData) =>
+  const create = (formData: FormData) => {
+    if (!organizationId) return;
     report(
       examsApi.templates.create({
         organizationId,
@@ -1034,6 +1078,7 @@ const TemplatesPanel = ({
       }),
       "Draft template created",
     );
+  };
 
   const updateSlot = (slotIndex: number, patch: Partial<BuilderSlot>) => {
     setValidationIssues([]);
@@ -1314,6 +1359,7 @@ const TemplatesPanel = ({
           </div>
         </div>
         <form action={create} className={styles.compactForm}>
+          {organizationSelector}
           <label>
             Template name
             <input name="name" placeholder="e.g., CUET General Test" required />
@@ -1339,7 +1385,7 @@ const TemplatesPanel = ({
               rows={3}
             />
           </label>
-          <button className={styles.primaryButton}>
+          <button className={styles.primaryButton} disabled={!organizationId}>
             <Plus size={16} />
             Create template
           </button>
@@ -1998,7 +2044,7 @@ const TemplatesPanel = ({
                             </div>
                           )}
                         </div>
-                      ) : (
+                      ) : organizationId ? (
                         <SectionQuestionPicker
                           organizationId={organizationId}
                           onSelectionChange={(nextQuestions) =>
@@ -2010,6 +2056,12 @@ const TemplatesPanel = ({
                           questionsToAttempt={section.questionsToAttempt}
                           selectedQuestions={section.questions}
                           subjectId={section.subjectId}
+                        />
+                      ) : (
+                        <Empty
+                          icon={Building2}
+                          title="Choose an organization"
+                          text="Select an organization before mapping questions into this section."
                         />
                       )}
                     </div>
@@ -2044,11 +2096,13 @@ const TemplatesPanel = ({
 
 const SubjectsPanel = ({
   organizationId,
+  organizationSelector,
   questions,
   subjects,
   report,
 }: {
-  organizationId: number;
+  organizationId?: number;
+  organizationSelector?: ReactNode;
   questions: ExamQuestion[];
   subjects: ExamSubject[];
   report: Report;
@@ -2142,7 +2196,8 @@ const SubjectsPanel = ({
             <UsersRound aria-hidden="true" size={22} />
           </div>
           <form
-            action={(form) =>
+            action={(form) => {
+              if (!organizationId) return;
               report(
                 examsApi.subjects.create({
                   organizationId,
@@ -2151,10 +2206,11 @@ const SubjectsPanel = ({
                   description: String(form.get("description") || ""),
                 }),
                 "Subject created",
-              )
-            }
+              );
+            }}
             className={`${styles.form} ${styles.subjectForm}`}
           >
+            {organizationSelector}
             <label>
               Subject name
               <input name="name" required placeholder="Quantitative Aptitude" />
@@ -2172,6 +2228,7 @@ const SubjectsPanel = ({
             </label>
             <button
               className={`${styles.primaryButton} ${styles.subjectCreateButton}`}
+              disabled={!organizationId}
             >
               <Plus size={18} />
               Create subject
@@ -2221,12 +2278,14 @@ const SubjectsPanel = ({
 
 const QuestionsPanel =({
   organizationId,
+  organizationSelector,
   subjects,
   questions,
   questionTypes,
   report,
 }: {
-  organizationId: number;
+  organizationId?: number;
+  organizationSelector?: ReactNode;
   subjects: ExamSubject[];
   questions: ExamQuestion[];
   questionTypes: ExamQuestionType[];
@@ -2263,7 +2322,14 @@ const QuestionsPanel =({
       (statusFilter === "all" || question.status === statusFilter)
     );
   });
+  const publishedQuestions = questions.filter(
+    (question) => question.status === "PUBLISHED",
+  ).length;
+  const draftQuestions = questions.filter(
+    (question) => question.status === "DRAFT",
+  ).length;
   const create = (form: FormData) => {
+    if (!organizationId) return;
     const answer = String(form.get("answer") || "").trim();
     const options = ["A", "B", "C", "D"]
       .map((code) => ({
@@ -2302,8 +2368,77 @@ const QuestionsPanel =({
     );
   };
   return (
-    <div className={styles.twoColumn}>
-      <section className={styles.panel}>
+    <div className={styles.questionBankManagement}>
+      <section className={styles.questionBankHeroGrid}>
+        <div className={styles.questionBankHeroCard}>
+          <img
+            alt=""
+            aria-hidden="true"
+            className={styles.questionBankOutline}
+            src="/exam-question-bank-assets/hero-question-outline.png"
+          />
+          <img
+            alt=""
+            aria-hidden="true"
+            className={styles.questionBankDotGrid}
+            src="/exam-question-bank-assets/hero-dot-grid.png"
+          />
+          <div>
+            <p>Assessment Management</p>
+            <h1>Question Bank</h1>
+            <span>
+              Create, organize, and maintain reusable questions across every
+              assessment.
+            </span>
+          </div>
+          <img
+            alt=""
+            aria-hidden="true"
+            className={styles.questionBankDocument}
+            src="/exam-question-bank-assets/hero-question-document.png"
+          />
+        </div>
+        <div className={styles.reusableQuestionCard}>
+          <img
+            alt=""
+            aria-hidden="true"
+            src="/exam-question-bank-assets/reusable-questions-stack.png"
+          />
+          <strong>{questions.length}</strong>
+          <p>Reusable questions</p>
+        </div>
+        <div className={styles.questionInsightsCard}>
+          <img
+            alt=""
+            aria-hidden="true"
+            className={styles.questionInsightsDots}
+            src="/exam-question-bank-assets/insights-dot-grid.png"
+          />
+          <div>
+            <p>Question Insights</p>
+            <h2>Ready for assignment</h2>
+            <div>
+              <span>
+                <strong>{publishedQuestions}</strong>
+                Published
+              </span>
+              <span>
+                <strong>{draftQuestions}</strong>
+                Drafts
+              </span>
+            </div>
+          </div>
+          <img
+            alt=""
+            aria-hidden="true"
+            className={styles.questionInsightsDocument}
+            src="/exam-question-bank-assets/insights-question-document.png"
+          />
+        </div>
+      </section>
+
+      <div className={styles.questionBankWorkspace}>
+      <section className={`${styles.panel} ${styles.questionCreatePanel}`}>
         <div className={styles.panelTitle}>
           <div>
             <h2>Create question</h2>
@@ -2314,6 +2449,7 @@ const QuestionsPanel =({
           </div>
         </div>
         <form action={create} className={styles.form}>
+          {organizationSelector}
           <div className={styles.rowFields}>
             <label>
               Code
@@ -2490,14 +2626,14 @@ const QuestionsPanel =({
           </label>
           <button
             className={styles.primaryButton}
-            disabled={!newQuestionSubjectId || !questionTypeId}
+            disabled={!organizationId || !newQuestionSubjectId || !questionTypeId}
           >
             <Plus size={16} />
             Add question
           </button>
         </form>
       </section>
-      <section className={styles.panel}>
+      <section className={`${styles.panel} ${styles.questionBankPanel}`}>
         <div className={styles.panelTitle}>
           <div>
             <h2>Question bank</h2>
@@ -2655,18 +2791,23 @@ const QuestionsPanel =({
           })}
         </div>
       </section>
+      </div>
     </div>
   );
 }
 
 const ImportsPanel =({
+  organizationSelector,
   templates,
   report,
 }: {
+  organizationSelector?: ReactNode;
   templates: ExamTemplateListItem[];
   report: Report;
 })  => {
+  type ImportMode = "CODELESS_WORD" | "PAIRED_WORD_EXCEL";
   const [templateId, setTemplateId] = useState(0);
+  const [importMode, setImportMode] = useState<ImportMode>("CODELESS_WORD");
   const [scope, setScope] = useState<"SINGLE_SECTION" | "FULL_EXAM">(
     "SINGLE_SECTION",
   );
@@ -2697,14 +2838,18 @@ const ImportsPanel =({
     try {
       const blob =
         kind === "word"
-          ? await examsApi.imports.downloadWordTemplate()
+          ? importMode === "CODELESS_WORD"
+            ? await examsApi.imports.downloadCodelessWordTemplate()
+            : await examsApi.imports.downloadWordTemplate()
           : await examsApi.imports.downloadTemplate();
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
       anchor.download =
         kind === "word"
-          ? "exam-question-content-template.docx"
+          ? importMode === "CODELESS_WORD"
+            ? "exam-question-code-free-template.docx"
+            : "exam-question-content-template.docx"
           : "exam-question-mapping-template.xlsx";
       anchor.click();
       URL.revokeObjectURL(url);
@@ -2715,11 +2860,14 @@ const ImportsPanel =({
   const stage = async (form: FormData) => {
     const wordFile = form.get("wordFile");
     const excelFile = form.get("excelFile");
-    if (!(wordFile instanceof File) || !(excelFile instanceof File) || !version)
-      return;
+    if (!(wordFile instanceof File) || !version) return;
+    if (importMode === "PAIRED_WORD_EXCEL" && !(excelFile instanceof File)) return;
     const payload = new FormData();
+    payload.set("importMode", importMode);
     payload.set("wordFile", wordFile);
-    payload.set("excelFile", excelFile);
+    if (importMode === "PAIRED_WORD_EXCEL" && excelFile instanceof File) {
+      payload.set("excelFile", excelFile);
+    }
     payload.set("examTemplateVersionId", String(version.id));
     payload.set("scope", scope);
     if (scope === "SINGLE_SECTION") {
@@ -2748,8 +2896,56 @@ const ImportsPanel =({
     }
   };
   return (
-    <div className={styles.twoColumn}>
-      <section className={styles.panel}>
+    <div className={styles.importManagement}>
+      <section className={styles.importHeroGrid}>
+        <div className={styles.importHeroCard}>
+          <div>
+            <p>Assessment Management</p>
+            <h1>Question Import Center</h1>
+            <span>
+              Stage Word or Excel question files, validate every row, and
+              commit only when ready.
+            </span>
+          </div>
+          <img
+            alt=""
+            aria-hidden="true"
+            className={styles.importDocument}
+            src="/exam-import-assets/import-document-illustration.png"
+          />
+        </div>
+        <div className={styles.importStageCard}>
+          <span className={styles.importStageDot} />
+          <img
+            alt=""
+            aria-hidden="true"
+            src="/exam-import-assets/staged-imports-icon.png"
+          />
+          <strong>{job ? 1 : 0}</strong>
+          <p>Staged imports</p>
+        </div>
+        <div className={styles.importWorkflowCard}>
+          <div>
+            <p>Import Workflow</p>
+            <h2>Ready for review</h2>
+            <span>
+              <CheckCircle2 size={15} />
+              Row-level validation
+            </span>
+            <span>
+              <CheckCircle2 size={15} />
+              Safe atomic commit
+            </span>
+          </div>
+          <img
+            alt=""
+            aria-hidden="true"
+            src="/exam-import-assets/review-document-check.png"
+          />
+        </div>
+      </section>
+      <div className={styles.importWorkspace}>
+      <section className={`${styles.panel} ${styles.importControlPanel}`}>
         <div className={styles.panelTitle}>
           <div>
             <h2>Controlled question import</h2>
@@ -2761,7 +2957,29 @@ const ImportsPanel =({
           <FileSpreadsheet />
         </div>
         <div className={styles.guide}>
-          <strong>Two files form one controlled import</strong>
+          {importMode === "CODELESS_WORD" ? (
+            <>
+              <strong>Code-free Word import</strong>
+              <code>
+                Section name | Slot: Slot 1 | Section: Section name | Subject:
+                Subject name
+              </code>
+              <code>Heading 1: Comprehension - 1 to 5</code>
+              <code>Passage text and/or embedded images</code>
+              <code>Heading 2: Question - 1</code>
+              <code>Question text and/or diagram images</code>
+              <code>Heading 3: Options - two-column Label / Content table</code>
+              <code>Heading 3: Answer Rules - Field / Value table</code>
+              <code>Heading 3: Explanation - text and/or images</code>
+              <p>
+                Word can use visible section names and question numbers.
+                Internal question and comprehension codes are generated during
+                staging.
+              </p>
+            </>
+          ) : (
+            <>
+              <strong>Two files form one controlled import</strong>
           <code>Heading 1: Comprehension - RC-001</code>
           <code>Passage text and/or embedded images</code>
           <code>Heading 2: Question - ENG-RC-001</code>
@@ -2778,6 +2996,8 @@ const ImportsPanel =({
             question codes to slot, section, its single subject, question type
             ID, marks, order, and mandatory status.
           </p>
+            </>
+          )}
         </div>
         <div className={styles.templateActions}>
           <button
@@ -2786,7 +3006,9 @@ const ImportsPanel =({
             onClick={() => downloadTemplate("word")}
           >
             <FileText size={16} />
-            Download Word template
+            {importMode === "CODELESS_WORD"
+              ? "Download code-free Word"
+              : "Download Word template"}
           </button>
           <button
             type="button"
@@ -2794,10 +3016,25 @@ const ImportsPanel =({
             onClick={() => downloadTemplate("excel")}
           >
             <FileSpreadsheet size={16} />
-            Download Excel mapping
+            {importMode === "CODELESS_WORD"
+              ? "Download sample Excel"
+              : "Download Excel mapping"}
           </button>
         </div>
         <form action={stage} className={styles.form}>
+          {organizationSelector}
+          <CrudSelectField
+            label="Import format"
+            onChange={(value) => setImportMode(value as ImportMode)}
+            options={[
+              { label: "Code-free Word", value: "CODELESS_WORD" },
+              {
+                label: "Word + Excel mapping",
+                value: "PAIRED_WORD_EXCEL",
+              },
+            ]}
+            value={importMode}
+          />
           <CrudSelectField
             description={
               version
@@ -2828,7 +3065,10 @@ const ImportsPanel =({
             options={[
               { label: "One section", value: "SINGLE_SECTION" },
               {
-                label: "Full exam (destinations from Excel)",
+                label:
+                  importMode === "CODELESS_WORD"
+                    ? "Full exam (sections from Word)"
+                    : "Full exam (destinations from Excel)",
                 value: "FULL_EXAM",
               },
             ]}
@@ -2862,10 +3102,12 @@ const ImportsPanel =({
             Word content file
             <input type="file" name="wordFile" accept=".docx" required />
           </label>
-          <label>
-            Excel mapping file
-            <input type="file" name="excelFile" accept=".xlsx" required />
-          </label>
+          {importMode === "PAIRED_WORD_EXCEL" ? (
+            <label>
+              Excel mapping file
+              <input type="file" name="excelFile" accept=".xlsx" required />
+            </label>
+          ) : null}
           <button
             className={styles.primaryButton}
             disabled={!version || (scope === "SINGLE_SECTION" && !sectionId)}
@@ -2875,7 +3117,7 @@ const ImportsPanel =({
           </button>
         </form>
       </section>
-      <section className={styles.panel}>
+      <section className={`${styles.panel} ${styles.importPreviewPanel}`}>
         <div className={styles.panelTitle}>
           <div>
             <h2>Import preview</h2>
@@ -2886,8 +3128,12 @@ const ImportsPanel =({
         {!job ? (
           <Empty
             icon={FileUp}
-            title="No staged file pair"
-            text="Upload one .docx content file and one .xlsx mapping file to validate their matching question codes."
+            title="No staged import"
+            text={
+              importMode === "CODELESS_WORD"
+                ? "Upload one .docx file to validate generated question codes before import."
+                : "Upload one .docx content file and one .xlsx mapping file to validate their matching question codes."
+            }
           />
         ) : (
           <>
@@ -2986,17 +3232,20 @@ const ImportsPanel =({
           </>
         )}
       </section>
+      </div>
     </div>
   );
 }
 
 const SchedulePanel = ({
   organizationId,
+  organizationSelector,
   templates,
   exams,
   report,
 }: {
-  organizationId: number;
+  organizationId?: number;
+  organizationSelector?: ReactNode;
   templates: ExamTemplateListItem[];
   exams: ScheduledExam[];
   report: Report;
@@ -3015,7 +3264,9 @@ const SchedulePanel = ({
   const [resultPublishAt, setResultPublishAt] = useState<Date | null>(null);
   const sessions = useQuery({
     queryKey: ["exam-sessions", organizationId],
-    queryFn: () => sessionsApi.findAll(organizationId, { page: 1, limit: 100 }),
+    queryFn: () =>
+      sessionsApi.findAll(organizationId!, { page: 1, limit: 100 }),
+    enabled: Boolean(organizationId),
   });
   const courses = useQuery({
     queryKey: ["exam-session-courses", sessionId],
@@ -3044,7 +3295,7 @@ const SchedulePanel = ({
   const effectiveSelectedSlotIds =
     selectedSlotIds ?? version?.slots.map((slot) => slot.id) ?? [];
   const create = (form: FormData) => {
-    if (!version) return;
+    if (!organizationId || !version) return;
     report(
       examsApi.scheduled.create({
         organizationId,
@@ -3081,8 +3332,53 @@ const SchedulePanel = ({
     );
   };
   return (
-    <div className={styles.twoColumn}>
-      <section className={styles.panel}>
+    <div className={styles.scheduleExamsManagement}>
+      <section className={styles.scheduleHeroGrid}>
+        <div className={styles.scheduleHeroCard}>
+          <div>
+            <p>Assessment Management</p>
+            <h1>Schedule Exams</h1>
+            <span>
+              Set exam windows, timing, attempts, and result releases with
+              complete control.
+            </span>
+          </div>
+          <img
+            alt=""
+            aria-hidden="true"
+            src="/exam-schedule-assets/schedule-calendar-illustration.png"
+          />
+        </div>
+        <div className={styles.scheduledCountCard}>
+          <img
+            alt=""
+            aria-hidden="true"
+            src="/exam-schedule-assets/scheduled-exams-calendar-icon.png"
+          />
+          <strong>{exams.length}</strong>
+          <p>Scheduled exams</p>
+        </div>
+        <div className={styles.scheduleInsightsCard}>
+          <p>Schedule Insights</p>
+          <h2>
+            <CheckCircle2 aria-hidden="true" size={27} />
+            Exam windows on track
+          </h2>
+          <div>
+            <span>
+              <CheckCircle2 aria-hidden="true" size={15} />
+              {exams.length} Active windows
+            </span>
+            <span>
+              <CheckCircle2 aria-hidden="true" size={15} />
+              Results release ready
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <div className={styles.scheduleWorkspace}>
+      <section className={`${styles.panel} ${styles.scheduleFormPanel}`}>
         <div className={styles.panelTitle}>
           <div>
             <h2>Schedule an exam</h2>
@@ -3094,6 +3390,7 @@ const SchedulePanel = ({
           <CalendarClock />
         </div>
         <form action={create} className={styles.form}>
+          {organizationSelector}
           <div className={styles.rowFields}>
             <label>
               Exam title
@@ -3332,7 +3629,10 @@ const SchedulePanel = ({
           <button
             className={styles.primaryButton}
             disabled={
-              !version || !courseIds.length || !effectiveSelectedSlotIds.length
+              !organizationId ||
+              !version ||
+              !courseIds.length ||
+              !effectiveSelectedSlotIds.length
             }
           >
             <CalendarClock size={16} />
@@ -3340,7 +3640,7 @@ const SchedulePanel = ({
           </button>
         </form>
       </section>
-      <section className={styles.panel}>
+      <section className={`${styles.panel} ${styles.scheduledExamPanel}`}>
         <div className={styles.panelTitle}>
           <div>
             <h2>Scheduled exams</h2>
@@ -3405,6 +3705,7 @@ const SchedulePanel = ({
           ))}
         </div>
       </section>
+      </div>
     </div>
   );
 }

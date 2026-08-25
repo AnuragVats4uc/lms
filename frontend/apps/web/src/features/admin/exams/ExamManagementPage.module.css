@@ -35,6 +35,13 @@
   border-radius: 12px;
   background: #fff;
 }
+.routeOrganizationCard {
+  margin: 0;
+  padding: 14px 18px;
+  border-color: #cfe0ef;
+  border-radius: 16px;
+  box-shadow: 0 16px 42px rgba(6, 31, 82, 0.04);
+}
 .organizationField {
   display: grid;
   gap: 7px;
@@ -45,6 +52,11 @@
   font-size: 12px;
   font-weight: 700;
   line-height: 16px;
+}
+.embeddedOrganizationField {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
 }
 .headerBadge {
   display: flex;
@@ -94,7 +106,7 @@
 }
 .subjectManagement {
   display: grid;
-  gap: 20px;
+  gap: 16px;
   min-width: 0;
   zoom: 0.9;
 }
@@ -115,11 +127,11 @@
 .subjectHeroCard {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 128px;
+  grid-template-columns: minmax(0, 1fr) 110px;
   align-items: center;
-  min-height: 190px;
+  min-height: 126px;
   overflow: hidden;
-  padding: 30px 30px 28px;
+  padding: 18px 24px;
   border-radius: 16px;
   background:
     radial-gradient(circle at 2% 10%, rgba(13, 153, 108, 0.1), transparent 34%),
@@ -129,14 +141,14 @@
   position: relative;
   z-index: 2;
   display: grid;
-  gap: 11px;
+  gap: 7px;
   max-width: 510px;
 }
 .subjectHeroCard p,
 .subjectInsightCard > p {
   margin: 0;
   color: #008d61;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.18em;
   line-height: 1;
@@ -145,7 +157,7 @@
 .subjectHeroCard h1 {
   margin: 0;
   color: #071c4f;
-  font-size: 32px;
+  font-size: 27px;
   font-weight: 800;
   letter-spacing: 0;
   line-height: 1.08;
@@ -153,16 +165,16 @@
 .subjectHeroCard span {
   max-width: 430px;
   color: #66749c;
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 500;
-  line-height: 1.55;
+  line-height: 1.45;
 }
 .subjectDotGrid {
   position: absolute;
   top: 0;
   right: 0;
-  width: 220px;
-  height: 104px;
+  width: 170px;
+  height: 82px;
   object-fit: cover;
   opacity: 0.9;
 }
@@ -170,20 +182,20 @@
   position: relative;
   z-index: 2;
   justify-self: end;
-  width: 104px;
-  height: 104px;
+  width: 86px;
+  height: 86px;
   object-fit: contain;
   filter: drop-shadow(0 18px 22px rgba(7, 28, 79, 0.14));
 }
 .subjectActiveCard {
   position: relative;
   display: grid;
-  grid-template-columns: 62px minmax(0, 1fr);
+  grid-template-columns: 48px minmax(0, 1fr);
   align-content: center;
   align-items: center;
-  column-gap: 16px;
-  min-height: 190px;
-  padding: 28px 22px;
+  column-gap: 14px;
+  min-height: 126px;
+  padding: 18px 22px;
   overflow: hidden;
   border-radius: 16px;
   background:
@@ -192,13 +204,13 @@
 }
 .subjectActiveCard img {
   grid-row: span 2;
-  width: 62px;
-  height: 62px;
+  width: 42px;
+  height: 42px;
   object-fit: contain;
 }
 .subjectActiveCard strong {
   color: #009363;
-  font-size: 48px;
+  font-size: 32px;
   font-weight: 900;
   letter-spacing: 0;
   line-height: 0.95;
@@ -208,7 +220,7 @@
   gap: 4px;
   margin: 0;
   color: #60709a;
-  font-size: 17px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.15;
 }
@@ -227,9 +239,9 @@
 }
 .subjectInsightCard {
   position: relative;
-  min-height: 190px;
+  min-height: 126px;
   overflow: hidden;
-  padding: 28px 24px 22px;
+  padding: 18px 22px;
   border-color: rgba(0, 132, 85, 0.38);
   border-radius: 16px;
   background:
@@ -240,9 +252,9 @@
 .subjectInsightCard h2 {
   position: relative;
   z-index: 2;
-  margin: 20px 0 16px;
+  margin: 12px 0 10px;
   color: #fff;
-  font-size: 23px;
+  font-size: 20px;
   font-weight: 600;
   letter-spacing: 0;
   line-height: 1.1;
@@ -251,28 +263,28 @@
   position: relative;
   z-index: 2;
   display: inline-flex;
-  padding: 8px 13px;
+  padding: 7px 11px;
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.14);
   color: #e5fff6;
-  font-size: 12px;
+  font-size: 11px;
 }
 .subjectInsightStats {
   position: relative;
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 9px;
 }
 .subjectInsightStats span {
   display: grid;
-  grid-template-columns: 30px auto;
+  grid-template-columns: 24px auto;
   grid-template-rows: auto auto;
   align-items: center;
   column-gap: 10px;
-  min-width: 120px;
-  min-height: 70px;
-  padding: 11px 14px;
+  min-width: 104px;
+  min-height: 52px;
+  padding: 9px 12px;
   border-radius: 11px;
   background: linear-gradient(135deg, #ffffff 0%, #e6f7f0 100%);
   color: #071c4f;
@@ -281,36 +293,36 @@
 .subjectInsightStats img,
 .subjectInsightStats svg {
   grid-row: span 2;
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   color: #009363;
 }
 .subjectInsightStats strong {
   color: #071c4f;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 900;
   line-height: 1;
 }
 .subjectInsightStats small {
   color: #071c4f;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
 }
 .subjectSparkles {
   position: absolute;
-  top: 24px;
-  right: 24px;
-  width: 28px;
-  height: 28px;
+  top: 18px;
+  right: 20px;
+  width: 22px;
+  height: 22px;
   object-fit: contain;
   opacity: 0.78;
 }
 .subjectQuestionBook {
   position: absolute;
-  right: 28px;
-  bottom: 26px;
-  width: 88px;
-  height: 88px;
+  right: 24px;
+  bottom: 18px;
+  width: 68px;
+  height: 68px;
   object-fit: contain;
   opacity: 0.42;
 }
@@ -475,6 +487,712 @@
   background: #f1f5f9;
   color: #64748b;
 }
+.importManagementPage {
+  color: #071c4f;
+}
+.importManagementPage .success,
+.importManagementPage .error {
+  margin: 0 0 16px;
+}
+.importManagement {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  zoom: 0.9;
+}
+.importHeroGrid {
+  display: grid;
+  grid-template-columns: minmax(390px, 1.35fr) minmax(170px, 0.4fr) minmax(330px, 0.95fr);
+  gap: 14px;
+  min-width: 0;
+}
+.importHeroCard,
+.importStageCard,
+.importWorkflowCard,
+.importControlPanel,
+.importPreviewPanel {
+  border: 1px solid #cfe0ef;
+  box-shadow: 0 16px 42px rgba(6, 31, 82, 0.04);
+}
+.importHeroCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px;
+  align-items: center;
+  min-height: 126px;
+  overflow: hidden;
+  padding: 18px 24px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 4% 8%, rgba(13, 153, 108, 0.09), transparent 34%),
+    linear-gradient(106deg, #fbfefd 0%, #ffffff 58%, #f6fbff 100%);
+}
+.importHeroCard > div {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 7px;
+  max-width: 520px;
+}
+.importHeroCard p,
+.importWorkflowCard p {
+  margin: 0;
+  color: #008d61;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.importHeroCard h1 {
+  margin: 0;
+  color: #071c4f;
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.08;
+}
+.importHeroCard span {
+  max-width: 500px;
+  color: #66749c;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.importDocument {
+  position: relative;
+  z-index: 2;
+  justify-self: end;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+}
+.importStageCard {
+  position: relative;
+  display: grid;
+  align-content: center;
+  min-height: 126px;
+  overflow: hidden;
+  padding: 18px 22px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 88% 6%, rgba(0, 153, 107, 0.15), transparent 25%),
+    linear-gradient(135deg, #f8fffc 0%, #e3f7ee 100%);
+}
+.importStageCard img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  margin-bottom: 12px;
+}
+.importStageCard strong {
+  color: #009363;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 0.95;
+}
+.importStageCard p {
+  margin: 6px 0 0;
+  color: #60709a;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.importStageDot {
+  position: absolute;
+  top: 20px;
+  right: 18px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #009d6c;
+  box-shadow: 0 8px 18px rgba(0, 157, 108, 0.35);
+}
+.importWorkflowCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 106px;
+  align-items: center;
+  min-height: 126px;
+  overflow: hidden;
+  padding: 18px 22px;
+  border-color: rgba(0, 132, 85, 0.38);
+  border-radius: 16px;
+  background:
+    linear-gradient(90deg, rgba(0, 126, 91, 0.98), rgba(0, 105, 83, 0.96)),
+    url("/exam-subject-assets/green-gradient-panel.png") center / cover;
+  color: #fff;
+}
+.importWorkflowCard > div {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 8px;
+}
+.importWorkflowCard p {
+  display: inline-flex;
+  width: max-content;
+  padding: 7px 11px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #e5fff6;
+  font-size: 11px;
+}
+.importWorkflowCard h2 {
+  margin: 4px 0 2px;
+  color: #fff;
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+.importWorkflowCard span {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  width: max-content;
+  padding: 6px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5fffb;
+  font-size: 11px;
+  font-weight: 700;
+}
+.importWorkflowCard img {
+  position: relative;
+  z-index: 2;
+  justify-self: end;
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  opacity: 0.92;
+}
+.importWorkspace {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.45fr) minmax(0, 1.55fr);
+  gap: 18px;
+  align-items: start;
+  min-width: 0;
+}
+.importControlPanel {
+  padding: 20px 22px;
+  border-radius: 16px;
+}
+.importControlPanel .panelTitle h2,
+.importPreviewPanel .panelTitle h2 {
+  color: #071c4f;
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+.importControlPanel .panelTitle p,
+.importPreviewPanel .panelTitle p {
+  color: #66749c;
+  font-size: 12px;
+}
+.importControlPanel .guide {
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 14px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f8fafc 0%, #edf3f8 100%);
+}
+.importControlPanel .guide strong {
+  color: #071c4f;
+  font-size: 12px;
+}
+.importControlPanel .guide code {
+  color: #233454;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.35;
+  white-space: normal;
+}
+.importControlPanel .guide p {
+  color: #233454;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.importPreviewPanel {
+  min-height: 500px;
+  padding: 20px 24px;
+  border-radius: 16px;
+}
+.importPreviewPanel .empty {
+  min-height: 410px;
+}
+.questionBankPage {
+  color: #071c4f;
+}
+.questionBankPage .success,
+.questionBankPage .error {
+  margin: 0 0 16px;
+}
+.questionBankManagement {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  zoom: 0.9;
+}
+.questionBankHeroGrid {
+  display: grid;
+  grid-template-columns: minmax(410px, 1.25fr) minmax(170px, 0.36fr) minmax(340px, 0.92fr);
+  gap: 14px;
+  min-width: 0;
+}
+.questionBankHeroCard,
+.reusableQuestionCard,
+.questionInsightsCard,
+.questionCreatePanel,
+.questionBankPanel {
+  border: 1px solid #cfe0ef;
+  box-shadow: 0 16px 42px rgba(6, 31, 82, 0.04);
+}
+.questionBankHeroCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  align-items: center;
+  min-height: 126px;
+  overflow: hidden;
+  padding: 18px 24px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 4% 10%, rgba(13, 153, 108, 0.11), transparent 34%),
+    linear-gradient(106deg, #fbfefd 0%, #ffffff 57%, #ecf8f2 100%);
+}
+.questionBankHeroCard > div {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 7px;
+  max-width: 520px;
+}
+.questionBankHeroCard p,
+.questionInsightsCard p {
+  margin: 0;
+  color: #008d61;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.questionBankHeroCard h1 {
+  margin: 0;
+  color: #071c4f;
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.05;
+}
+.questionBankHeroCard span {
+  max-width: 520px;
+  color: #071c4f;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.questionBankOutline {
+  position: absolute;
+  right: 74px;
+  bottom: -20px;
+  width: 160px;
+  height: 126px;
+  object-fit: contain;
+  opacity: 0.48;
+}
+.questionBankDotGrid {
+  position: absolute;
+  right: 18px;
+  top: 24px;
+  width: 82px;
+  height: 72px;
+  object-fit: cover;
+  opacity: 0.85;
+}
+.questionBankDocument {
+  position: relative;
+  z-index: 2;
+  justify-self: end;
+  width: 98px;
+  height: 98px;
+  object-fit: contain;
+}
+.reusableQuestionCard {
+  display: grid;
+  align-content: center;
+  min-height: 126px;
+  overflow: hidden;
+  padding: 18px 22px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 90% 5%, rgba(0, 153, 107, 0.13), transparent 26%),
+    linear-gradient(135deg, #f8fffc 0%, #e3f7ee 100%);
+}
+.reusableQuestionCard img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  margin-bottom: 12px;
+}
+.reusableQuestionCard strong {
+  color: #009363;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 0.95;
+}
+.reusableQuestionCard p {
+  margin: 6px 0 0;
+  color: #006346;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.questionInsightsCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  align-items: center;
+  min-height: 126px;
+  overflow: hidden;
+  padding: 18px 22px;
+  border-color: rgba(0, 132, 85, 0.38);
+  border-radius: 16px;
+  background:
+    linear-gradient(90deg, rgba(0, 126, 91, 0.98), rgba(0, 105, 83, 0.96)),
+    url("/exam-subject-assets/green-gradient-panel.png") center / cover;
+  color: #fff;
+}
+.questionInsightsCard > div {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 9px;
+}
+.questionInsightsCard p {
+  color: #e5fff6;
+}
+.questionInsightsCard h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+.questionInsightsCard > div > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.questionInsightsCard span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 98px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.questionInsightsCard span strong {
+  font-size: 15px;
+  font-weight: 850;
+}
+.questionInsightsDocument {
+  position: relative;
+  z-index: 2;
+  justify-self: end;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  opacity: 0.82;
+}
+.questionInsightsDots {
+  position: absolute;
+  right: 6px;
+  bottom: 14px;
+  width: 86px;
+  height: 74px;
+  object-fit: cover;
+  opacity: 0.65;
+}
+.questionBankWorkspace {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.42fr) minmax(0, 1.58fr);
+  gap: 18px;
+  align-items: start;
+  min-width: 0;
+}
+.questionCreatePanel,
+.questionBankPanel {
+  padding: 20px 22px;
+  border-radius: 16px;
+}
+.questionCreatePanel .panelTitle h2,
+.questionBankPanel .panelTitle h2 {
+  color: #071c4f;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+.questionCreatePanel .panelTitle p,
+.questionBankPanel .panelTitle p {
+  color: #465a83;
+  font-size: 12px;
+}
+.questionCreatePanel .rowFields,
+.questionCreatePanel .optionGrid {
+  grid-template-columns: 1fr;
+}
+.questionCreatePanel textarea[name="content"] {
+  min-height: 116px;
+}
+.questionBankPanel .questionToolbar {
+  gap: 10px;
+}
+.questionBankPanel .questionSearch {
+  font-size: 11px;
+}
+.questionBankPanel .questionSearch > div {
+  min-height: 40px;
+  border-radius: 10px;
+}
+.questionBankPanel .questionList {
+  max-height: 430px;
+  gap: 10px;
+}
+.questionBankPanel .questionList article {
+  border-radius: 10px;
+}
+.questionBankPanel .questionSummary {
+  grid-template-columns: minmax(140px, 0.65fr) minmax(250px, 1fr) auto;
+  padding: 14px 16px;
+}
+.questionBankPanel .questionIdentity strong {
+  color: #008d61;
+  font-size: 12px;
+  font-weight: 850;
+}
+.questionBankPanel .questionIdentity span,
+.questionBankPanel .questionSummary > p {
+  color: #172d58;
+  font-size: 13px;
+}
+.scheduleExamsPage {
+  color: #071c4f;
+}
+.scheduleExamsPage .success,
+.scheduleExamsPage .error {
+  margin: 0 0 16px;
+}
+.scheduleExamsManagement {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  zoom: 0.9;
+}
+.scheduleHeroGrid {
+  display: grid;
+  grid-template-columns: minmax(410px, 1.25fr) minmax(170px, 0.36fr) minmax(340px, 0.92fr);
+  gap: 14px;
+  min-width: 0;
+}
+.scheduleHeroCard,
+.scheduledCountCard,
+.scheduleInsightsCard,
+.scheduleFormPanel,
+.scheduledExamPanel {
+  border: 1px solid #cfe0ef;
+  box-shadow: 0 16px 42px rgba(6, 31, 82, 0.04);
+}
+.scheduleHeroCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  align-items: center;
+  min-height: 126px;
+  overflow: hidden;
+  padding: 18px 24px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 4% 10%, rgba(13, 153, 108, 0.11), transparent 34%),
+    linear-gradient(106deg, #fbfefd 0%, #ffffff 57%, #eaf8f1 100%);
+}
+.scheduleHeroCard > div {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 7px;
+  max-width: 520px;
+}
+.scheduleHeroCard p,
+.scheduleInsightsCard > p {
+  margin: 0;
+  color: #008d61;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.scheduleHeroCard h1 {
+  margin: 0;
+  color: #071c4f;
+  font-size: 27px;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.05;
+}
+.scheduleHeroCard span {
+  max-width: 500px;
+  color: #071c4f;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.scheduleHeroCard img {
+  position: relative;
+  z-index: 2;
+  justify-self: end;
+  width: 122px;
+  height: 106px;
+  object-fit: contain;
+}
+.scheduledCountCard {
+  display: grid;
+  align-content: center;
+  min-height: 126px;
+  overflow: hidden;
+  padding: 18px 22px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 90% 5%, rgba(0, 153, 107, 0.13), transparent 26%),
+    linear-gradient(135deg, #f8fffc 0%, #e3f7ee 100%);
+}
+.scheduledCountCard img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  margin-bottom: 12px;
+}
+.scheduledCountCard strong {
+  color: #009363;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 0.95;
+}
+.scheduledCountCard p {
+  margin: 6px 0 0;
+  color: #006346;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.scheduleInsightsCard {
+  display: grid;
+  align-content: center;
+  min-height: 126px;
+  overflow: hidden;
+  padding: 18px 22px;
+  border-color: rgba(0, 132, 85, 0.38);
+  border-radius: 16px;
+  background:
+    linear-gradient(90deg, rgba(0, 126, 91, 0.98), rgba(0, 105, 83, 0.96)),
+    url("/exam-subject-assets/green-gradient-panel.png") center / cover;
+  color: #fff;
+}
+.scheduleInsightsCard > p {
+  color: #e5fff6;
+}
+.scheduleInsightsCard h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0 18px;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+.scheduleInsightsCard > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.scheduleInsightsCard span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 144px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.scheduleWorkspace {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.42fr) minmax(0, 1.58fr);
+  gap: 18px;
+  align-items: start;
+  min-width: 0;
+}
+.scheduleFormPanel,
+.scheduledExamPanel {
+  padding: 20px 22px;
+  border-radius: 16px;
+}
+.scheduleFormPanel .panelTitle h2,
+.scheduledExamPanel .panelTitle h2 {
+  color: #071c4f;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+.scheduleFormPanel .panelTitle p,
+.scheduledExamPanel .panelTitle p {
+  color: #465a83;
+  font-size: 12px;
+}
+.scheduleFormPanel .rowFields {
+  grid-template-columns: 1fr;
+}
+.scheduledExamPanel .examList {
+  max-height: 520px;
+  gap: 10px;
+}
+.scheduledExamPanel .examList article {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 16px 18px;
+  border-radius: 10px;
+}
+.scheduledExamPanel .examList article > div:first-child strong {
+  color: #071c4f;
+  font-size: 17px;
+}
+.scheduledExamPanel .examList article > div:first-child span {
+  color: #62719a;
+  font-size: 11px;
+  font-weight: 650;
+}
+.scheduledExamPanel .examList dl {
+  grid-column: 1 / -1;
+  padding-top: 14px;
+  border-top: 1px solid #edf1f4;
+}
 .twoColumn {
   display: grid;
   grid-template-columns: minmax(280px, 0.62fr) minmax(0, 1.75fr);
@@ -566,6 +1284,9 @@
   grid-column: 1 / -1;
 }
 .compactForm .fullWidthField {
+  grid-column: 1 / -1;
+}
+.compactForm .embeddedOrganizationField {
   grid-column: 1 / -1;
 }
 .form label,
@@ -1882,7 +2603,13 @@
 }
 @media (max-width: 1100px) {
   .subjectHeroGrid,
-  .subjectWorkspace {
+  .subjectWorkspace,
+  .importHeroGrid,
+  .importWorkspace,
+  .questionBankHeroGrid,
+  .questionBankWorkspace,
+  .scheduleHeroGrid,
+  .scheduleWorkspace {
     grid-template-columns: 1fr;
   }
   .subjectCatalog {
@@ -1915,6 +2642,104 @@
   }
 }
 @media (max-width: 700px) {
+  .questionBankManagement {
+    zoom: 1;
+  }
+  .questionBankHeroCard {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    padding: 28px 22px;
+  }
+  .questionBankHeroCard h1 {
+    font-size: 31px;
+  }
+  .questionBankDocument {
+    justify-self: start;
+    width: 112px;
+    height: 112px;
+    margin-top: 8px;
+  }
+  .questionBankOutline {
+    right: -20px;
+    width: 170px;
+    opacity: 0.25;
+  }
+  .reusableQuestionCard,
+  .questionInsightsCard {
+    min-height: 150px;
+  }
+  .questionInsightsCard {
+    grid-template-columns: 1fr;
+  }
+  .questionInsightsDocument {
+    justify-self: start;
+    width: 104px;
+    height: 104px;
+    opacity: 0.45;
+  }
+  .questionCreatePanel,
+  .questionBankPanel {
+    padding: 24px 18px;
+  }
+  .scheduleExamsManagement {
+    zoom: 1;
+  }
+  .scheduleHeroCard {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    padding: 28px 22px;
+  }
+  .scheduleHeroCard h1 {
+    font-size: 31px;
+  }
+  .scheduleHeroCard img {
+    justify-self: start;
+    width: 118px;
+    height: 104px;
+    margin-top: 8px;
+  }
+  .scheduledCountCard,
+  .scheduleInsightsCard {
+    min-height: 150px;
+  }
+  .scheduleFormPanel,
+  .scheduledExamPanel {
+    padding: 24px 18px;
+  }
+  .importManagement {
+    zoom: 1;
+  }
+  .importHeroCard {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    padding: 28px 22px;
+  }
+  .importHeroCard h1 {
+    font-size: 31px;
+  }
+  .importDocument {
+    justify-self: start;
+    width: 118px;
+    height: 118px;
+    margin-top: 10px;
+  }
+  .importStageCard,
+  .importWorkflowCard {
+    min-height: 150px;
+  }
+  .importWorkflowCard {
+    grid-template-columns: 1fr;
+  }
+  .importWorkflowCard img {
+    justify-self: start;
+    width: 104px;
+    height: 104px;
+    opacity: 0.45;
+  }
+  .importControlPanel,
+  .importPreviewPanel {
+    padding: 24px 18px;
+  }
   .subjectHeroCard {
     grid-template-columns: 1fr;
     min-height: 0;
