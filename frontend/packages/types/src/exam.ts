@@ -159,11 +159,10 @@ export interface ExamTemplateVersion {
 
 export interface ExamTemplate {
   id: number;
+  organizationId?: number;
   code: string;
   name: string;
   description: string | null;
-  primarySubjectId?: number | null;
-  primarySubject?: ExamSubject | null;
   status: ExamTemplateStatus;
   isActive: boolean;
   versions: ExamTemplateVersion[];
@@ -179,14 +178,12 @@ export type ExamTemplateListItem = Omit<ExamTemplate, "versions"> & {
     sectionCount: number;
     questionCount: number;
     latestVersionStatus: ExamTemplateVersionStatus | ExamTemplateStatus;
-    subject: ExamSubject | null;
   };
 };
 
 export interface ExamTemplateListParams {
   organizationId?: number;
   search?: string;
-  subjectId?: number;
   status?: ExamTemplateStatus;
   page?: number;
   limit?: number;
@@ -279,7 +276,7 @@ export interface SaveExamTemplateStructureRequest {
   enforceSlotTimers?: boolean;
   enforceSectionTimers?: boolean;
   slots: Array<{
-    code: string;
+    code?: string;
     name: string;
     description?: string;
     instructions?: string;
@@ -287,7 +284,7 @@ export interface SaveExamTemplateStructureRequest {
     navigationMode?: ExamNavigationMode;
     autoSubmitOnTimeout?: boolean;
     sections: Array<{
-      code: string;
+      code?: string;
       name: string;
       instructions?: string;
       durationMinutes: number;

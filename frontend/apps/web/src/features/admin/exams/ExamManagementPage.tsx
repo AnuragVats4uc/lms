@@ -58,11 +58,7 @@ import {
 import styles from "./ExamManagementPage.module.css";
 
 export type ExamManagementTab =
-  | "templates"
-  | "subjects"
-  | "questions"
-  | "imports"
-  | "schedule";
+  "templates" | "subjects" | "questions" | "imports" | "schedule";
 type ExamManagementPageProps = {
   activeTab?: ExamManagementTab;
   templateMode?: "builder";
@@ -81,7 +77,7 @@ type Report = (
   afterSuccess?: () => void | Promise<void>,
 ) => void;
 type BuilderSection = {
-  code: string;
+  code?: string;
   name: string;
   durationMinutes: number;
   questionsToAttempt: number;
@@ -95,7 +91,7 @@ type BuilderSection = {
   questions: BuilderQuestion[];
 };
 type BuilderSlot = {
-  code: string;
+  code?: string;
   name: string;
   durationMinutes: number;
   description: string;
@@ -110,7 +106,6 @@ type BuilderValidationIssue = {
 };
 
 const emptySection = (): BuilderSection => ({
-  code: "SECTION_1",
   name: "New section",
   durationMinutes: 30,
   questionsToAttempt: 1,
@@ -124,7 +119,6 @@ const emptySection = (): BuilderSection => ({
   questions: [],
 });
 const emptySlot = (): BuilderSlot => ({
-  code: "SLOT_1",
   name: "Slot 1",
   durationMinutes: 30,
   description: "",
@@ -150,7 +144,7 @@ const messageOf = (error: unknown) => {
       : (message ?? "Request failed");
   }
   return error instanceof Error ? error.message : "Request failed";
-}
+};
 
 const RichContent = ({ value }: { value?: string | null }) => {
   if (!value) return <span>No content</span>;
@@ -166,7 +160,7 @@ const RichContent = ({ value }: { value?: string | null }) => {
       dangerouslySetInnerHTML={{ __html: value }}
     />
   );
-}
+};
 
 const contentSummary = (value?: string | null) => {
   if (!value) return "No question content";
@@ -180,7 +174,7 @@ const contentSummary = (value?: string | null) => {
     .trim();
   if (!text) return hasImage ? "Image-based question" : "No question content";
   return `${text.slice(0, 150)}${text.length > 150 ? "…" : ""}${hasImage ? " · Includes image" : ""}`;
-}
+};
 
 const questionStatusOptions = [
   { label: "All statuses", value: "all" },
@@ -528,7 +522,7 @@ const SectionQuestionPicker = ({
       </div>
     </div>
   );
-}
+};
 
 type QuestionDetailOption = {
   code: string;
@@ -680,7 +674,7 @@ const QuestionDetails = ({
       ) : null}
     </div>
   );
-}
+};
 
 const ImportQuestionDetails = ({ row }: { row: ExamImportRow }) => {
   return (
@@ -712,7 +706,7 @@ const ImportQuestionDetails = ({ row }: { row: ExamImportRow }) => {
       validationMessage={row.validationMessage}
     />
   );
-}
+};
 
 export const ExamManagementPage = ({
   activeTab = "templates",
@@ -791,7 +785,10 @@ export const ExamManagementPage = ({
   const organizationSelectId = `exam-${tab}-organization`;
   const organizationSelector = !currentUser?.organizationId ? (
     <div className={styles.embeddedOrganizationField}>
-      <label className={styles.organizationLabel} htmlFor={organizationSelectId}>
+      <label
+        className={styles.organizationLabel}
+        htmlFor={organizationSelectId}
+      >
         Organization
       </label>
       <CrudSelect
@@ -913,20 +910,73 @@ export const ExamManagementPage = ({
 
   return (
     <main className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.eyebrow}>Assessment workspace</p>
-          <h1>
-            {templateMode === "builder"
-              ? "Exam Template Builder"
-              : "Exam Templates"}
-          </h1>
-          <p>
-            Create the reusable blueprint first, then configure timing,
-            sections, question mapping, and publish a locked version.
-          </p>
-        </div>
-        {templateMode === "builder" ? null : (
+      {templateMode === "builder" ? (
+        <section
+          className={styles.templateBuilderHeroGrid}
+          aria-label="Template builder summary"
+        >
+          <div className={styles.templateHeroCard}>
+            <div>
+              <p>Assessment Management</p>
+              <h1>Exam Template Builder</h1>
+              <span>
+                Build reusable exam blueprints with timing, slots, sections, and
+                controlled question assignment.
+              </span>
+            </div>
+            <span className={styles.templateHeroIcon}>
+              <Layers3 size={52} />
+            </span>
+          </div>
+
+          <div className={styles.templateCountCard}>
+            <span className={styles.templateCountDot} />
+            <span className={styles.templateCountIcon}>
+              <BookOpenCheck size={28} />
+            </span>
+            <strong>{templates.data?.length ?? 0}</strong>
+            <p>
+              Available
+              <span>templates</span>
+            </p>
+          </div>
+
+          <div className={styles.templateInsightCard}>
+            <div>
+              <p>Builder Workflow</p>
+              <h2>Draft to publish</h2>
+              <div className={styles.templateInsightStats}>
+                <span>
+                  <Save size={22} />
+                  <strong>
+                    {templates.data?.filter((item) => item.status === "DRAFT")
+                      .length ?? 0}
+                  </strong>
+                  <small>Draft</small>
+                </span>
+                <span>
+                  <CheckCircle2 size={22} />
+                  <strong>
+                    {templates.data?.filter(
+                      (item) => item.status === "PUBLISHED",
+                    ).length ?? 0}
+                  </strong>
+                  <small>Published</small>
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <header className={styles.header}>
+          <div>
+            <p className={styles.eyebrow}>Assessment workspace</p>
+            <h1>Exam Templates</h1>
+            <p>
+              Create the reusable blueprint first, then configure timing,
+              sections, question mapping, and publish a locked version.
+            </p>
+          </div>
           <div className={styles.headerBadge}>
             <BookOpenCheck size={22} />
             <div>
@@ -937,8 +987,8 @@ export const ExamManagementPage = ({
               <span>Published templates</span>
             </div>
           </div>
-        )}
-      </header>
+        </header>
+      )}
       {notice ? (
         <div
           className={notice.kind === "success" ? styles.success : styles.error}
@@ -961,7 +1011,7 @@ export const ExamManagementPage = ({
       ) : null}
     </main>
   );
-}
+};
 
 const TemplatesPanel = ({
   organizationId,
@@ -981,7 +1031,7 @@ const TemplatesPanel = ({
   questionTypes: ExamQuestionType[];
   clearNotice: () => void;
   report: Report;
-})  => {
+}) => {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<ExamTemplate | null>(
     null,
@@ -999,7 +1049,10 @@ const TemplatesPanel = ({
     BuilderValidationIssue[]
   >([]);
   const [wizardOverride, setWizardOverride] = useState<number | null>(null);
-  const selected = templates.find((item) => item.id === selectedId);
+  const selectedListItem = templates.find((item) => item.id === selectedId);
+  const selected = selectedTemplate ?? selectedListItem ?? null;
+  const effectiveOrganizationId =
+    organizationId ?? selectedTemplate?.organizationId;
   const hasDraft =
     selectedTemplate?.versions.some((item) => item.status === "DRAFT") ?? false;
   const selectedVersion = selectedTemplate?.versions.find(
@@ -1058,7 +1111,7 @@ const TemplatesPanel = ({
   };
 
   const loadBuilder = async (
-    template: ExamTemplateListItem,
+    template: Pick<ExamTemplateListItem, "id">,
     preferredVersion: number | "draft" = "draft",
   ) => {
     clearNotice();
@@ -1072,7 +1125,7 @@ const TemplatesPanel = ({
               (item) => item.id === preferredVersion,
             )
           : detailedTemplate.versions.find(
-          (item) => item.status === "DRAFT",
+              (item) => item.status === "DRAFT",
             )) ?? detailedTemplate.versions[0];
       if (version) showVersion(version);
       setWizardOverride(2);
@@ -1086,13 +1139,10 @@ const TemplatesPanel = ({
 
   const create = (formData: FormData) => {
     if (!organizationId) return;
-    const primarySubjectId = Number(formData.get("primarySubjectId")) || undefined;
     report(
       examsApi.templates
         .create({
           organizationId,
-          primarySubjectId,
-          code: String(formData.get("code")),
           name: String(formData.get("name")),
           description: String(formData.get("description") || ""),
           defaultDurationMinutes: Number(formData.get("duration")) || undefined,
@@ -1149,7 +1199,6 @@ const TemplatesPanel = ({
     enforceSlotTimers,
     enforceSectionTimers,
     slots: slots.map((slot) => ({
-      code: slot.code,
       name: slot.name,
       description: slot.description || undefined,
       instructions: slot.instructions || undefined,
@@ -1157,7 +1206,6 @@ const TemplatesPanel = ({
       navigationMode: slot.navigationMode,
       autoSubmitOnTimeout: slot.autoSubmitOnTimeout,
       sections: slot.sections.map((section) => ({
-        code: section.code,
         name: section.name,
         durationMinutes: section.durationMinutes,
         questionsToAttempt: section.questionsToAttempt,
@@ -1206,23 +1254,14 @@ const TemplatesPanel = ({
       return issues;
     }
 
-    const slotCodes = new Set<string>();
     slots.forEach((slot, slotIndex) => {
       const slotTarget = `exam-slot-${slotIndex + 1}`;
-      const normalizedSlotCode = slot.code.trim().toUpperCase();
-      if (!normalizedSlotCode || !slot.name.trim()) {
+      if (!slot.name.trim()) {
         issues.push({
           target: slotTarget,
-          message: `Slot ${slotIndex + 1} requires a code and name.`,
+          message: `Slot ${slotIndex + 1} requires a name.`,
         });
       }
-      if (normalizedSlotCode && slotCodes.has(normalizedSlotCode)) {
-        issues.push({
-          target: slotTarget,
-          message: `Slot code ${normalizedSlotCode} is duplicated.`,
-        });
-      }
-      slotCodes.add(normalizedSlotCode);
       if (!Number.isInteger(slot.durationMinutes) || slot.durationMinutes < 1) {
         issues.push({
           target: slotTarget,
@@ -1247,23 +1286,14 @@ const TemplatesPanel = ({
         });
       }
 
-      const sectionCodes = new Set<string>();
       slot.sections.forEach((section, sectionIndex) => {
         const sectionTarget = `${slotTarget}-section-${sectionIndex + 1}`;
-        const normalizedSectionCode = section.code.trim().toUpperCase();
-        if (!normalizedSectionCode || !section.name.trim()) {
+        if (!section.name.trim()) {
           issues.push({
             target: sectionTarget,
-            message: `${slot.name || `Slot ${slotIndex + 1}`}, section ${sectionIndex + 1} requires a code and name.`,
+            message: `${slot.name || `Slot ${slotIndex + 1}`}, section ${sectionIndex + 1} requires a name.`,
           });
         }
-        if (normalizedSectionCode && sectionCodes.has(normalizedSectionCode)) {
-          issues.push({
-            target: sectionTarget,
-            message: `Section code ${normalizedSectionCode} is duplicated inside ${slot.name || `Slot ${slotIndex + 1}`}.`,
-          });
-        }
-        sectionCodes.add(normalizedSectionCode);
         if (
           !Number.isInteger(section.durationMinutes) ||
           section.durationMinutes < 1
@@ -1367,6 +1397,29 @@ const TemplatesPanel = ({
       ),
     0,
   );
+  const totalSlotMinutes = slots.reduce(
+    (total, slot) => total + Math.max(0, slot.durationMinutes),
+    0,
+  );
+  const slotTimingStats = slots.map((slot) => {
+    const sectionMinutes = slot.sections.reduce(
+      (total, section) => total + Math.max(0, section.durationMinutes),
+      0,
+    );
+    const remainingMinutes = slot.durationMinutes - sectionMinutes;
+
+    return {
+      sectionMinutes,
+      remainingMinutes,
+      utilization:
+        slot.durationMinutes > 0
+          ? Math.min(
+              100,
+              Math.round((sectionMinutes / slot.durationMinutes) * 100),
+            )
+          : 100,
+    };
+  });
   const timingMode = enforceSlotTimers
     ? enforceSectionTimers
       ? "Overall + slot + section timers"
@@ -1374,6 +1427,12 @@ const TemplatesPanel = ({
     : enforceSectionTimers
       ? "Overall + section timers"
       : "Overall exam timer";
+  const liveValidationIssues = selected ? validateBuilder() : [];
+  const hasAnySubject = slots.some((slot) =>
+    slot.sections.some((section) => section.subjectId),
+  );
+  const isPublishReady =
+    selectedQuestionCount > 0 && liveValidationIssues.length === 0;
   const publishedTemplateCount = templates.filter(
     (template) => template.status === "PUBLISHED",
   ).length;
@@ -1389,12 +1448,22 @@ const TemplatesPanel = ({
   useEffect(() => {
     if (!initialTemplateId || selectedId === initialTemplateId) return;
     const template = templates.find((item) => item.id === initialTemplateId);
-    if (template) void loadBuilder(template);
+    const timeoutId = window.setTimeout(() => {
+      void loadBuilder(template ?? { id: initialTemplateId });
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+    // loadBuilder intentionally remains event-like here; adding it would reload
+    // the selected template whenever this component re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTemplateId, selectedId, templates]);
 
   return (
     <div className={styles.templateBuilderShell}>
-      <div className={styles.templateWizardStepper} aria-label="Template builder steps">
+      <div
+        className={styles.templateWizardStepper}
+        aria-label="Template builder steps"
+      >
         {[
           "Template details",
           "Timing & slots",
@@ -1415,23 +1484,6 @@ const TemplatesPanel = ({
         })}
       </div>
       <div className={styles.builderActionBar}>
-        <CrudSelect
-          ariaLabel="Open exam template"
-          disabled={!organizationId || !templates.length}
-          onChange={(value) => {
-            const template = templates.find((item) => item.id === Number(value));
-            if (template) void loadBuilder(template);
-          }}
-          options={templates.map((template) => ({
-            label: template.name,
-            value: String(template.id),
-          }))}
-          placeholder={
-            organizationId ? "Open existing template" : "Choose organization first"
-          }
-          value={selectedId ? String(selectedId) : ""}
-          width="280px"
-        />
         <div>
           <button
             className={styles.primaryButton}
@@ -1454,347 +1506,749 @@ const TemplatesPanel = ({
         </div>
       </div>
       <div className={styles.twoColumn}>
-      <section className={`${styles.panel} ${styles.templateListPanel}`}>
-        <div className={styles.panelTitle}>
-          <div>
-            <span className={styles.stepLabel}>Step 1</span>
-            <h2>Organization & template</h2>
-            <p>
-              Choose the organization, open an existing template, or create a
-              new reusable exam blueprint.
-            </p>
-          </div>
-          <div className={styles.templateCounts} aria-label="Template counts">
-            <span>
-              <strong>{templates.length}</strong>
-              Total
-            </span>
-            <span>
-              <strong>{publishedTemplateCount}</strong>
-              Published
-            </span>
-          </div>
-        </div>
-        <div className={styles.templateInstructionCard}>
-          <strong>How this page works</strong>
-          <span>
-            A template is the reusable exam pattern. A draft version can be
-            edited. A published version is locked and can be scheduled safely.
-          </span>
-        </div>
-        <div className={styles.templateChooser}>
-          <CrudSelect
-            ariaLabel="Open exam template"
-            disabled={!organizationId || !templates.length}
-            label="Open template"
-            onChange={(value) => {
-              const template = templates.find(
-                (item) => item.id === Number(value),
-              );
-              if (template) void loadBuilder(template);
-            }}
-            options={templates.map((template) => ({
-              label: template.name,
-              value: String(template.id),
-            }))}
-            placeholder={
-              organizationId
-                ? "Choose template to edit"
-                : "Choose organization first"
-            }
-            value={selectedId ? String(selectedId) : ""}
-            variant="form"
-            width="100%"
-          />
-        </div>
-        <form action={create} className={styles.compactForm}>
-          <div className={styles.formSectionIntro}>
-            <span className={styles.stepLabel}>Create new</span>
-            <strong>Template details</strong>
-            <p>
-              Use a stable code and a clear name. The first draft version is
-              created automatically.
-            </p>
-          </div>
-          <label>
-            Template name
-            <input name="name" placeholder="e.g., CUET General Test" required />
-          </label>
-          <label>
-            Template code
-            <input name="code" placeholder="e.g., CUET-GT" required />
-          </label>
-          <label>
-            Default duration (minutes)
-            <input
-              name="duration"
-              type="number"
-              min="1"
-              placeholder="e.g., 120"
-            />
-          </label>
-          <label>
-            Attempt limit
-            <input
-              name="attemptLimit"
-              type="number"
-              min="1"
-              max="100"
-              placeholder="e.g., 1"
-              defaultValue="1"
-            />
-          </label>
-          <label className={styles.fullWidthField}>
-            Purpose and exam pattern
-            <textarea
-              name="description"
-              placeholder="e.g., Reusable CUET mock-test pattern with English, General Knowledge, and Quantitative Aptitude sections."
-              rows={3}
-            />
-          </label>
-          <button className={styles.primaryButton} disabled={!organizationId}>
-            <Plus size={16} />
-            Create template
-          </button>
-        </form>
-        <div className={styles.listHeader}>
-          <strong>Existing templates</strong>
-          <span>{templates.length} available</span>
-        </div>
-        <div className={styles.list}>
-          {templates.map((template) => (
-            <button
-              type="button"
-              key={template.id}
-              onClick={() => void loadBuilder(template)}
-              className={`${styles.listRow} ${selectedId === template.id ? styles.selectedRow : ""}`}
-            >
-              <div>
-                <strong>{template.name}</strong>
-                <span>
-                  {template.code} · latest v
-                  {template.versions[0]?.versionNumber ?? 1} ·{" "}
-                  {template._count?.versions ?? template.versions.length}{" "}
-                  {(template._count?.versions ?? template.versions.length) === 1
-                    ? "version"
-                    : "versions"}
-                </span>
-              </div>
-              <Status value={template.versions[0]?.status ?? template.status} />
-            </button>
-          ))}
-        </div>
-        {selected ? (
-          <aside className={styles.templateSidebarSummary}>
-            <div className={styles.panelTitle}>
-              <div>
-                <span className={styles.stepLabel}>Live summary</span>
-                <h2>Publish readiness</h2>
-                <p>Review the draft structure before saving or publishing.</p>
-              </div>
+        <section className={`${styles.panel} ${styles.templateListPanel}`}>
+          <div className={styles.panelTitle}>
+            <div>
+              <span className={styles.stepLabel}>Step 1</span>
+              <h2>Organization & template</h2>
+              <p>
+                Choose the organization, open an existing template, or create a
+                new reusable exam blueprint.
+              </p>
             </div>
-            <dl>
-              <div>
-                <dt>Version</dt>
-                <dd>
-                  v{selectedVersion?.versionNumber ?? "-"}{" "}
-                  {selectedVersion ? (
-                    <Status value={selectedVersion.status} />
-                  ) : null}
-                </dd>
-              </div>
-              <div>
-                <dt>Slots</dt>
-                <dd>{slots.length}</dd>
-              </div>
-              <div>
-                <dt>Sections</dt>
-                <dd>{sectionCount}</dd>
-              </div>
-              <div>
-                <dt>Questions selected</dt>
-                <dd>{selectedQuestionCount}</dd>
-              </div>
-              <div>
-                <dt>Questions attempted</dt>
-                <dd>{totalQuestionsToAttempt}</dd>
-              </div>
-              <div>
-                <dt>Attempt rule</dt>
-                <dd>
-                  {defaultAttemptLimit}{" "}
-                  {defaultAttemptLimit === 1 ? "attempt" : "attempts"}
-                </dd>
-              </div>
-              <div>
-                <dt>Timing mode</dt>
-                <dd>{timingMode}</dd>
-              </div>
-            </dl>
-            <div
-              className={styles.templateReadiness}
-              data-ready={validationIssues.length === 0 && selectedQuestionCount > 0}
-            >
-              <CheckCircle2 size={16} />
+            <div className={styles.templateCounts} aria-label="Template counts">
               <span>
-                {validationIssues.length
-                  ? `${validationIssues.length} issue${validationIssues.length === 1 ? "" : "s"} to resolve`
-                  : selectedQuestionCount
-                    ? "Ready to save or publish"
-                    : "Add questions before publishing"}
+                <strong>{templates.length}</strong>
+                Total
+              </span>
+              <span>
+                <strong>{publishedTemplateCount}</strong>
+                Published
               </span>
             </div>
-          </aside>
-        ) : null}
-        {!selected ? (
-          <aside className={styles.templateSidebarSummary}>
-            <div className={styles.panelTitle}>
-              <div>
-                <h2>Template summary</h2>
-                <p>Complete Step 1 to start configuring this template.</p>
-              </div>
+          </div>
+          <div className={styles.templateInstructionCard}>
+            <strong>How this page works</strong>
+            <span>
+              A template is the reusable exam pattern. A draft version can be
+              edited. A published version is locked and can be scheduled safely.
+            </span>
+          </div>
+          <div className={styles.templateChooser}>
+            <CrudSelect
+              ariaLabel="Open exam template"
+              disabled={!organizationId || !templates.length}
+              label="Open template"
+              onChange={(value) => {
+                const template = templates.find(
+                  (item) => item.id === Number(value),
+                );
+                if (template) void loadBuilder(template);
+              }}
+              options={templates.map((template) => ({
+                label: template.name,
+                value: String(template.id),
+              }))}
+              placeholder={
+                organizationId
+                  ? "Choose template to edit"
+                  : "Choose organization first"
+              }
+              value={selectedId ? String(selectedId) : ""}
+              variant="form"
+              width="100%"
+            />
+          </div>
+          <form action={create} className={styles.compactForm}>
+            <div className={styles.formSectionIntro}>
+              <span className={styles.stepLabel}>Create new</span>
+              <strong>Template details</strong>
+              <p>
+                Enter a clear template name. The first draft version and
+                internal code are created automatically.
+              </p>
             </div>
-            <dl>
-              <div>
-                <dt>Template name</dt>
-                <dd>Not set yet</dd>
-              </div>
-              <div>
-                <dt>Subject</dt>
-                <dd>Not selected</dd>
-              </div>
-              <div>
-                <dt>Duration</dt>
-                <dd>Not set yet</dd>
-              </div>
-              <div>
-                <dt>Slots</dt>
-                <dd>Not configured</dd>
-              </div>
-              <div>
-                <dt>Sections</dt>
-                <dd>Not configured</dd>
-              </div>
-              <div>
-                <dt>Questions</dt>
-                <dd>Not added</dd>
-              </div>
-            </dl>
-          </aside>
-        ) : null}
-      </section>
-      <section className={`${styles.panel} ${styles.editorPanel}`}>
-        {!selected ? (
-          <form action={create} className={styles.builderStepForm}>
-            <div className={styles.builderStepTitle}>
-              <h2>Step 1 - Name your exam template</h2>
-              <p>Give your template a clear identity and define the basics.</p>
-            </div>
-            {organizationSelector}
-            <div className={styles.builderFormGrid}>
-              <label>
-                Template name <span>*</span>
-                <input
-                  name="name"
-                  placeholder="CUET General Test 2026"
-                  required
-                />
-              </label>
-              <label>
-                Template code <span>*</span>
-                <input name="code" placeholder="CUET-GT-26" required />
-                <small>Use letters, numbers and hyphens only.</small>
-              </label>
-              <label className={styles.fullWidthField}>
-                Subject <span>*</span>
-                <select name="primarySubjectId" required>
-                  <option value="">Choose subject</option>
-                  {subjects.map((subject) => (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.fullWidthField}>
-                Description
-                <textarea
-                  maxLength={500}
-                  name="description"
-                  placeholder="General aptitude and domain knowledge test for CUET applicants."
-                  rows={4}
-                />
-              </label>
-              <div className={styles.attemptRuleCard}>
-                <label>
-                  <input
-                    defaultChecked
-                    name="attemptLimit"
-                    type="radio"
-                    value="1"
-                  />
-                  <span>
-                    <strong>Students may attempt once</strong>
-                    <small>
-                      Each student can attempt this exam template only once.
-                    </small>
-                  </span>
-                  <CheckCircle2 size={18} />
-                </label>
-              </div>
-            </div>
-            <button
-              className={styles.summaryContinueButton}
-              disabled={!organizationId}
-              type="submit"
-            >
-              Continue: Timing & slots
-              <ChevronDown size={18} />
+            <label>
+              Template name
+              <input
+                name="name"
+                placeholder="e.g., CUET General Test"
+                required
+              />
+            </label>
+            <label>
+              Default duration (minutes)
+              <input
+                name="duration"
+                type="number"
+                min="1"
+                placeholder="e.g., 120"
+              />
+            </label>
+            <label>
+              Attempt limit
+              <input
+                name="attemptLimit"
+                type="number"
+                min="1"
+                max="100"
+                placeholder="e.g., 1"
+                defaultValue="1"
+              />
+            </label>
+            <label className={styles.fullWidthField}>
+              Purpose and exam pattern
+              <textarea
+                name="description"
+                placeholder="e.g., Reusable CUET mock-test pattern with English, General Knowledge, and Quantitative Aptitude sections."
+                rows={3}
+              />
+            </label>
+            <button className={styles.primaryButton} disabled={!organizationId}>
+              <Plus size={16} />
+              Create template
             </button>
           </form>
-        ) : (
-          <>
-            <div
-              className={`${styles.panelTitle} ${styles.editorHeader}`}
-              id="template-editor-actions"
-            >
-              <div>
-                <span className={styles.stepLabel}>Template workspace</span>
-                <h2>{selected.name}</h2>
+          <div className={styles.listHeader}>
+            <strong>Existing templates</strong>
+            <span>{templates.length} available</span>
+          </div>
+          <div className={styles.list}>
+            {templates.map((template) => (
+              <button
+                type="button"
+                key={template.id}
+                onClick={() => void loadBuilder(template)}
+                className={`${styles.listRow} ${selectedId === template.id ? styles.selectedRow : ""}`}
+              >
+                <div>
+                  <strong>{template.name}</strong>
+                  <span>
+                    Latest v{template.versions[0]?.versionNumber ?? 1} ·{" "}
+                    {template._count?.versions ?? template.versions.length}{" "}
+                    {(template._count?.versions ?? template.versions.length) ===
+                    1
+                      ? "version"
+                      : "versions"}
+                  </span>
+                </div>
+                <Status
+                  value={template.versions[0]?.status ?? template.status}
+                />
+              </button>
+            ))}
+          </div>
+          {selected ? (
+            <aside className={styles.templateSidebarSummary}>
+              <div className={styles.builderSidebarCard}>
+                <div>
+                  <span className={styles.stepLabel}>Live summary</span>
+                  <h2>Publish readiness</h2>
+                  <p>
+                    {isPublishReady
+                      ? "This draft has the required timing, sections, subjects, and questions."
+                      : "Complete the required setup before publishing this template."}
+                  </p>
+                </div>
+
+                <div
+                  className={styles.sidebarStatusBanner}
+                  data-ready={isPublishReady}
+                >
+                  <CheckCircle2 size={18} />
+                  <strong>
+                    {isPublishReady
+                      ? "Ready to publish"
+                      : `${liveValidationIssues.length} item${liveValidationIssues.length === 1 ? "" : "s"} pending`}
+                  </strong>
+                </div>
+
+                <div className={styles.sidebarStatGrid}>
+                  <span>
+                    <b>{slots.length}</b>
+                    Slots
+                  </span>
+                  <span>
+                    <b>{sectionCount}</b>
+                    Sections
+                  </span>
+                  <span>
+                    <b>{selectedQuestionCount}</b>
+                    Selected
+                  </span>
+                  <span>
+                    <b>{totalQuestionsToAttempt}</b>
+                    Attempted
+                  </span>
+                </div>
+
+                <div className={styles.readinessChecklist}>
+                  <span data-complete={Boolean(selected.name)}>
+                    <CheckCircle2 size={15} />
+                    Template named
+                  </span>
+                  <span data-complete={defaultDurationMinutes > 0}>
+                    <CheckCircle2 size={15} />
+                    Timing configured
+                  </span>
+                  <span data-complete={slots.length > 0 && sectionCount > 0}>
+                    <CheckCircle2 size={15} />
+                    Slots and sections added
+                  </span>
+                  <span data-complete={hasAnySubject}>
+                    <CheckCircle2 size={15} />
+                    Section subject selected
+                  </span>
+                  <span data-complete={selectedQuestionCount > 0}>
+                    <CheckCircle2 size={15} />
+                    Questions mapped
+                  </span>
+                </div>
+
+                <dl className={styles.sidebarMetaList}>
+                  <div>
+                    <dt>Version</dt>
+                    <dd>
+                      v{selectedVersion?.versionNumber ?? "-"}{" "}
+                      {selectedVersion ? (
+                        <Status value={selectedVersion.status} />
+                      ) : null}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Attempt rule</dt>
+                    <dd>
+                      {defaultAttemptLimit}{" "}
+                      {defaultAttemptLimit === 1 ? "attempt" : "attempts"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Timing mode</dt>
+                    <dd>{timingMode}</dd>
+                  </div>
+                </dl>
+              </div>
+            </aside>
+          ) : null}
+          {!selected ? (
+            <aside className={styles.templateSidebarSummary}>
+              <div className={styles.panelTitle}>
+                <div>
+                  <h2>Template summary</h2>
+                  <p>Complete Step 1 to start configuring this template.</p>
+                </div>
+              </div>
+              <dl>
+                <div>
+                  <dt>Template name</dt>
+                  <dd>Not set yet</dd>
+                </div>
+                <div>
+                  <dt>Subject</dt>
+                  <dd>Assigned in sections</dd>
+                </div>
+                <div>
+                  <dt>Duration</dt>
+                  <dd>Not set yet</dd>
+                </div>
+                <div>
+                  <dt>Slots</dt>
+                  <dd>Not configured</dd>
+                </div>
+                <div>
+                  <dt>Sections</dt>
+                  <dd>Not configured</dd>
+                </div>
+                <div>
+                  <dt>Questions</dt>
+                  <dd>Not added</dd>
+                </div>
+              </dl>
+            </aside>
+          ) : null}
+        </section>
+        <section className={`${styles.panel} ${styles.editorPanel}`}>
+          {!selected ? (
+            <form action={create} className={styles.builderStepForm}>
+              <div className={styles.builderStepTitle}>
+                <h2>Step 1 - Name your exam template</h2>
                 <p>
-                  {isSelectedDraft
-                    ? `Version ${selectedVersion?.versionNumber} is a draft. Save the structure before publishing.`
-                    : `Version ${selectedVersion?.versionNumber} is published and read-only.`}
+                  Give your template a clear identity and define the basics.
                 </p>
               </div>
-              <div className={styles.versionActions}>
-                <div className={styles.versionPickerRow}>
-                  <div className={styles.versionSelect}>
-                    <CrudSelect
-                      ariaLabel="Choose template version"
-                      label="Version"
-                      onChange={(value) => {
-                        const version = selectedTemplate?.versions.find(
-                          (item) => item.id === Number(value),
-                        );
-                        if (version) showVersion(version);
-                      }}
-                      options={(selectedTemplate?.versions ?? []).map(
-                        (version) => ({
-                          label: `v${version.versionNumber} — ${version.status}`,
-                          value: String(version.id),
-                        }),
-                      )}
-                      value={selectedVersionId ? String(selectedVersionId) : ""}
-                      variant="form"
-                      width="100%"
-                    />
-                  </div>
-                  {selectedVersion ? (
-                    <Status value={selectedVersion.status} />
-                  ) : null}
+              {organizationSelector}
+              <div className={styles.builderFormGrid}>
+                <label>
+                  <span className={styles.builderFieldLabel}>
+                    Template name <em>*</em>
+                  </span>
+                  <input
+                    name="name"
+                    placeholder="CUET General Test 2026"
+                    required
+                  />
+                </label>
+                <label className={styles.fullWidthField}>
+                  Description
+                  <textarea
+                    maxLength={500}
+                    name="description"
+                    placeholder="General aptitude and domain knowledge test for CUET applicants."
+                    rows={4}
+                  />
+                </label>
+              </div>
+              <button
+                className={styles.summaryContinueButton}
+                disabled={!organizationId}
+                type="submit"
+              >
+                Continue: Timing & slots
+                <ChevronDown size={18} />
+              </button>
+            </form>
+          ) : (
+            <>
+              <div
+                className={`${styles.panelTitle} ${styles.editorHeader}`}
+                id="template-editor-actions"
+              >
+                <div>
+                  <span className={styles.stepLabel}>Template workspace</span>
+                  <h2>{selected.name}</h2>
+                  <p>
+                    {isSelectedDraft
+                      ? `Version ${selectedVersion?.versionNumber} is a draft. Save the structure before publishing.`
+                      : `Version ${selectedVersion?.versionNumber} is published and read-only.`}
+                  </p>
                 </div>
-                <div className={styles.inlineActions}>
+                <div className={styles.versionActions}>
+                  <div className={styles.versionPickerRow}>
+                    <div className={styles.versionSelect}>
+                      <CrudSelect
+                        ariaLabel="Choose template version"
+                        label="Version"
+                        onChange={(value) => {
+                          const version = selectedTemplate?.versions.find(
+                            (item) => item.id === Number(value),
+                          );
+                          if (version) showVersion(version);
+                        }}
+                        options={(selectedTemplate?.versions ?? []).map(
+                          (version) => ({
+                            label: `v${version.versionNumber} — ${version.status}`,
+                            value: String(version.id),
+                          }),
+                        )}
+                        value={
+                          selectedVersionId ? String(selectedVersionId) : ""
+                        }
+                        variant="form"
+                        width="100%"
+                      />
+                    </div>
+                    {selectedVersion ? (
+                      <Status value={selectedVersion.status} />
+                    ) : null}
+                  </div>
+                  <div className={styles.inlineActions}>
+                    <button
+                      className={styles.secondaryButton}
+                      disabled={!isSelectedDraft}
+                      onClick={() =>
+                        setSlots((current) => [
+                          ...current,
+                          {
+                            ...emptySlot(),
+                            name: `Slot ${current.length + 1}`,
+                          },
+                        ])
+                      }
+                    >
+                      <CirclePlus size={15} />
+                      Add slot
+                    </button>
+                    <button
+                      className={styles.primaryButton}
+                      disabled={!isSelectedDraft}
+                      onClick={save}
+                    >
+                      <Save size={15} />
+                      Save draft structure
+                    </button>
+                    <button
+                      className={styles.publishButton}
+                      disabled={!isSelectedDraft}
+                      onClick={publish}
+                    >
+                      <Send size={15} />
+                      Publish version
+                    </button>
+                    {!hasDraft ? (
+                      <button
+                        className={styles.secondaryButton}
+                        onClick={() =>
+                          report(
+                            examsApi.templates.createVersion(selected.id),
+                            "New editable template version created",
+                            () => loadBuilder(selected, "draft"),
+                          )
+                        }
+                      >
+                        <Plus size={15} />
+                        New version
+                      </button>
+                    ) : null}
+                    {hasDraft && !isSelectedDraft ? (
+                      <button
+                        className={styles.secondaryButton}
+                        onClick={() => {
+                          const draft = selectedTemplate?.versions.find(
+                            (version) => version.status === "DRAFT",
+                          );
+                          if (draft) showVersion(draft);
+                        }}
+                      >
+                        Open draft
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+              <section className={styles.builderOverviewCard}>
+                <div className={styles.builderOverviewTitle}>
+                  <span className={styles.stepLabel}>Blueprint overview</span>
+                  <h3>{selected.name}</h3>
+                  <p>{selected.description || "No description added"}</p>
+                </div>
+                <div className={styles.builderOverviewMetrics}>
+                  <span>
+                    <Clock3 size={15} />
+                    <b>{defaultDurationMinutes}</b>
+                    min
+                  </span>
+                  <span>
+                    <Layers3 size={15} />
+                    <b>{slots.length}</b>
+                    {slots.length === 1 ? "slot" : "slots"}
+                  </span>
+                  <span>
+                    <ListChecks size={15} />
+                    <b>{sectionCount}</b>
+                    {sectionCount === 1 ? "section" : "sections"}
+                  </span>
+                  <span>
+                    <ClipboardList size={15} />
+                    <b>{selectedQuestionCount}</b>
+                    questions
+                  </span>
+                </div>
+              </section>
+              {validationIssues.length ? (
+                <section className={styles.validationSummary} role="alert">
+                  <div>
+                    <AlertTriangle size={18} aria-hidden="true" />
+                    <div>
+                      <strong>Cannot save or publish yet</strong>
+                      <span>Resolve these configuration issues first.</span>
+                    </div>
+                  </div>
+                  <ul>
+                    {validationIssues.map((issue, index) => (
+                      <li key={`${issue.target}-${index}`}>
+                        <a href={`#${issue.target}`}>{issue.message}</a>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+              <div className={styles.builder}>
+                <section
+                  className={styles.timingPanel}
+                  id="timing-configuration"
+                >
+                  <div className={styles.timingPanelHeader}>
+                    <div className={styles.timingTitleGroup}>
+                      <span className={styles.timingIcon}>
+                        <Clock3 size={22} aria-hidden="true" />
+                      </span>
+                      <div>
+                        <span className={styles.stepLabel}>
+                          Step 2 · Timing
+                        </span>
+                        <h3>Choose how exam time is controlled</h3>
+                        <p>
+                          The overall timer always runs. Add slot or section
+                          timers only when each part needs its own deadline.
+                        </p>
+                      </div>
+                    </div>
+                    <span className={styles.timingModeBadge}>{timingMode}</span>
+                  </div>
+
+                  <div
+                    className={styles.timerHierarchy}
+                    aria-label="Timer hierarchy"
+                  >
+                    <div
+                      className={styles.timerHierarchyItem}
+                      data-level="exam"
+                    >
+                      <span className={styles.timerHierarchyIcon}>
+                        <Clock3 size={18} aria-hidden="true" />
+                      </span>
+                      <div>
+                        <small>Level 1 · Always active</small>
+                        <strong>Overall exam</strong>
+                        <span>{defaultDurationMinutes || 0} min maximum</span>
+                      </div>
+                    </div>
+                    <span
+                      className={styles.timerHierarchyArrow}
+                      aria-hidden="true"
+                    >
+                      →
+                    </span>
+                    <div
+                      className={styles.timerHierarchyItem}
+                      data-active={enforceSlotTimers}
+                      data-over={
+                        enforceSlotTimers &&
+                        totalSlotMinutes > defaultDurationMinutes
+                      }
+                      data-level="slot"
+                    >
+                      <span className={styles.timerHierarchyIcon}>
+                        <Layers3 size={18} aria-hidden="true" />
+                      </span>
+                      <div>
+                        <small>
+                          Level 2 · {enforceSlotTimers ? "Active" : "Optional"}
+                        </small>
+                        <strong>Slots</strong>
+                        <span>
+                          {slots.length} configured · {totalSlotMinutes} min
+                          {enforceSlotTimers &&
+                          totalSlotMinutes > defaultDurationMinutes
+                            ? ` · ${totalSlotMinutes - defaultDurationMinutes} min beyond overall limit`
+                            : ""}
+                        </span>
+                      </div>
+                    </div>
+                    <span
+                      className={styles.timerHierarchyArrow}
+                      aria-hidden="true"
+                    >
+                      →
+                    </span>
+                    <div
+                      className={styles.timerHierarchyItem}
+                      data-active={enforceSectionTimers}
+                      data-level="section"
+                    >
+                      <span className={styles.timerHierarchyIcon}>
+                        <ListChecks size={18} aria-hidden="true" />
+                      </span>
+                      <div>
+                        <small>
+                          Level 3 ·{" "}
+                          {enforceSectionTimers ? "Active" : "Optional"}
+                        </small>
+                        <strong>Sections</strong>
+                        <span>{sectionCount} configured</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={styles.timingSettingsGrid}>
+                    <div className={styles.timingBasicsCard}>
+                      <div className={styles.timingSubheading}>
+                        <span>1</span>
+                        <div>
+                          <strong>Set the exam limits</strong>
+                          <small>
+                            These rules apply to every student attempt.
+                          </small>
+                        </div>
+                      </div>
+                      <div className={styles.timingRuleGrid}>
+                        <label className={styles.settingTile}>
+                          <span>Overall duration</span>
+                          <div className={styles.minuteInput}>
+                            <input
+                              aria-label="Overall exam duration in minutes"
+                              disabled={!isSelectedDraft}
+                              min="1"
+                              onChange={(event) => {
+                                setValidationIssues([]);
+                                setDefaultDurationMinutes(
+                                  Number(event.target.value),
+                                );
+                              }}
+                              type="number"
+                              value={defaultDurationMinutes}
+                            />
+                            <span>minutes</span>
+                          </div>
+                          <small>The hard limit for the complete exam</small>
+                        </label>
+                        <label className={styles.settingTile}>
+                          <span>Attempts allowed</span>
+                          <div className={styles.minuteInput}>
+                            <input
+                              aria-label="Attempts allowed per student"
+                              disabled={!isSelectedDraft}
+                              min="1"
+                              max="100"
+                              onChange={(event) => {
+                                setValidationIssues([]);
+                                setDefaultAttemptLimit(
+                                  Number(event.target.value),
+                                );
+                              }}
+                              type="number"
+                              value={defaultAttemptLimit}
+                            />
+                            <span>
+                              {defaultAttemptLimit === 1
+                                ? "attempt"
+                                : "attempts"}
+                            </span>
+                          </div>
+                          <small>Maximum attempts for each student</small>
+                        </label>
+                        <label
+                          className={`${styles.settingTile} ${styles.instructionTile}`}
+                        >
+                          <span>Instructions before starting</span>
+                          <input
+                            disabled={!isSelectedDraft}
+                            onChange={(event) =>
+                              setVersionInstructions(event.target.value)
+                            }
+                            placeholder="e.g., Complete every section before submitting"
+                            value={versionInstructions}
+                          />
+                          <small>
+                            Students see this before the first timer begins
+                          </small>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className={styles.timerPoliciesCard}>
+                      <div className={styles.timingSubheading}>
+                        <span>2</span>
+                        <div>
+                          <strong>Add optional timer layers</strong>
+                          <small>
+                            Turn on only the control your exam pattern needs.
+                          </small>
+                        </div>
+                      </div>
+                      <div className={styles.timerPolicyList}>
+                        <label
+                          className={styles.timerPolicyCard}
+                          data-active={enforceSlotTimers}
+                          data-level="slot"
+                        >
+                          <input
+                            checked={enforceSlotTimers}
+                            disabled={!isSelectedDraft}
+                            onChange={(event) => {
+                              setValidationIssues([]);
+                              setEnforceSlotTimers(event.target.checked);
+                            }}
+                            type="checkbox"
+                          />
+                          <span
+                            className={styles.toggleTrack}
+                            aria-hidden="true"
+                          >
+                            <span />
+                          </span>
+                          <span className={styles.timerPolicyIcon}>
+                            <Layers3 size={18} aria-hidden="true" />
+                          </span>
+                          <span className={styles.timerPolicyCopy}>
+                            <strong>Slot timers</strong>
+                            <small>
+                              Each major exam part gets its own countdown.
+                            </small>
+                          </span>
+                          <b>{enforceSlotTimers ? "On" : "Off"}</b>
+                        </label>
+                        <label
+                          className={styles.timerPolicyCard}
+                          data-active={enforceSectionTimers}
+                          data-level="section"
+                        >
+                          <input
+                            checked={enforceSectionTimers}
+                            disabled={!isSelectedDraft}
+                            onChange={(event) => {
+                              setValidationIssues([]);
+                              setEnforceSectionTimers(event.target.checked);
+                            }}
+                            type="checkbox"
+                          />
+                          <span
+                            className={styles.toggleTrack}
+                            aria-hidden="true"
+                          >
+                            <span />
+                          </span>
+                          <span className={styles.timerPolicyIcon}>
+                            <ListChecks size={18} aria-hidden="true" />
+                          </span>
+                          <span className={styles.timerPolicyCopy}>
+                            <strong>Section timers</strong>
+                            <small>
+                              Every section ends at its configured time.
+                            </small>
+                          </span>
+                          <b>{enforceSectionTimers ? "On" : "Off"}</b>
+                        </label>
+                      </div>
+                      <div className={styles.studentTimerNote}>
+                        <CheckCircle2 size={17} aria-hidden="true" />
+                        <p>
+                          <strong>What students experience</strong>
+                          <span>
+                            {enforceSlotTimers && enforceSectionTimers
+                              ? "Three countdowns can apply. The earliest active deadline controls the current section."
+                              : enforceSlotTimers
+                                ? "The overall countdown continues while the current slot has its own deadline."
+                                : enforceSectionTimers
+                                  ? "The overall countdown continues while each section has its own deadline."
+                                  : "Students see one countdown for the entire exam and can move at their own pace."}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+                <section className={styles.mappingHeaderCard}>
+                  <div className={styles.mappingHeaderCopy}>
+                    <span className={styles.stepLabel}>Step 3 · Structure</span>
+                    <h3>Build the exam flow</h3>
+                    <p>
+                      A slot is a major exam part. Add sections inside it, then
+                      assign a subject and questions to every section.
+                    </p>
+                    <div
+                      className={styles.structureLegend}
+                      aria-label="Structure guide"
+                    >
+                      <span data-level="exam">Exam</span>
+                      <b aria-hidden="true">→</b>
+                      <span data-level="slot">Slot</span>
+                      <b aria-hidden="true">→</b>
+                      <span data-level="section">Section</span>
+                      <b aria-hidden="true">→</b>
+                      <span data-level="questions">Questions</span>
+                    </div>
+                  </div>
                   <button
                     className={styles.secondaryButton}
                     disabled={!isSelectedDraft}
@@ -1803,513 +2257,155 @@ const TemplatesPanel = ({
                         ...current,
                         {
                           ...emptySlot(),
-                          code: `SLOT_${current.length + 1}`,
                           name: `Slot ${current.length + 1}`,
                         },
                       ])
                     }
+                    type="button"
                   >
                     <CirclePlus size={15} />
                     Add slot
                   </button>
-                  <button
-                    className={styles.primaryButton}
-                    disabled={!isSelectedDraft}
-                    onClick={save}
+                </section>
+                {slots.map((slot, slotIndex) => (
+                  <article
+                    className={styles.slotBlueprintCard}
+                    id={`exam-slot-${slotIndex + 1}`}
+                    key={slotIndex}
                   >
-                    <Save size={15} />
-                    Save draft structure
-                  </button>
-                  <button
-                    className={styles.publishButton}
-                    disabled={!isSelectedDraft}
-                    onClick={publish}
-                  >
-                    <Send size={15} />
-                    Publish version
-                  </button>
-                  {!hasDraft ? (
-                    <button
-                      className={styles.secondaryButton}
-                      onClick={() =>
-                        report(
-                          examsApi.templates.createVersion(selected.id),
-                          "New editable template version created",
-                          () => loadBuilder(selected, "draft"),
-                        )
-                      }
-                    >
-                      <Plus size={15} />
-                      New version
-                    </button>
-                  ) : null}
-                  {hasDraft && !isSelectedDraft ? (
-                    <button
-                      className={styles.secondaryButton}
-                      onClick={() => {
-                        const draft = selectedTemplate?.versions.find(
-                          (version) => version.status === "DRAFT",
-                        );
-                        if (draft) showVersion(draft);
-                      }}
-                    >
-                      Open draft
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-            <div
-              className={styles.configurationSummary}
-              aria-label="Exam configuration summary"
-            >
-              <span>
-                <Clock3 size={14} />
-                {defaultDurationMinutes} min
-              </span>
-              <span>
-                <Layers3 size={14} />
-                {slots.length} {slots.length === 1 ? "slot" : "slots"}
-              </span>
-              <span>
-                <ListChecks size={14} />
-                {sectionCount} {sectionCount === 1 ? "section" : "sections"}
-              </span>
-              <span>
-                <ClipboardList size={14} />
-                {selectedQuestionCount} selected
-              </span>
-              <span>{totalQuestionsToAttempt} may be attempted</span>
-              <span>{timingMode}</span>
-            </div>
-            <section className={styles.templatePolicyCard}>
-              <div className={styles.sectionHeading}>
-                <div>
-                  <span>Step 2</span>
-                  <h3>Template details</h3>
-                </div>
-                <Status value={selectedVersion?.status ?? selected.status} />
-              </div>
-              <p className={styles.sectionInstruction}>
-                This identifies the reusable blueprint. The structure below is
-                saved against the selected draft version.
-              </p>
-              <dl className={styles.templateDetailGrid}>
-                <div>
-                  <dt>Template name</dt>
-                  <dd>{selected.name}</dd>
-                </div>
-                <div>
-                  <dt>Template code</dt>
-                  <dd>{selected.code}</dd>
-                </div>
-                <div>
-                  <dt>Selected version</dt>
-                  <dd>Version {selectedVersion?.versionNumber ?? "-"}</dd>
-                </div>
-                <div>
-                  <dt>Attempt rule</dt>
-                  <dd>
-                    {defaultAttemptLimit}{" "}
-                    {defaultAttemptLimit === 1 ? "attempt" : "attempts"}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Description</dt>
-                  <dd>{selected.description || "No description added"}</dd>
-                </div>
-              </dl>
-            </section>
-            {validationIssues.length ? (
-              <section className={styles.validationSummary} role="alert">
-                <div>
-                  <AlertTriangle size={18} aria-hidden="true" />
-                  <div>
-                    <strong>Cannot save or publish yet</strong>
-                    <span>Resolve these configuration issues first.</span>
-                  </div>
-                </div>
-                <ul>
-                  {validationIssues.map((issue, index) => (
-                    <li key={`${issue.target}-${index}`}>
-                      <a href={`#${issue.target}`}>{issue.message}</a>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-            <div className={styles.builder}>
-              <section
-                className={styles.templatePolicyCard}
-                id="timing-configuration"
-              >
-                <div className={styles.sectionHeading}>
-                  <div>
-                    <span>Step 3</span>
-                    <h3>Exam timing</h3>
-                  </div>
-                  <strong>{timingMode}</strong>
-                </div>
-                <p className={styles.sectionInstruction}>
-                  Set the overall exam duration first. Slot and section timers
-                  are optional controls for stricter exam patterns.
-                </p>
-                <div className={styles.rowFields}>
-                  <label>
-                    Overall exam time (minutes)
-                    <input
-                      disabled={!isSelectedDraft}
-                      min="1"
-                      onChange={(event) => {
-                        setValidationIssues([]);
-                        setDefaultDurationMinutes(Number(event.target.value));
-                      }}
-                      type="number"
-                      value={defaultDurationMinutes}
-                    />
-                  </label>
-                  <label>
-                    Version instructions
-                    <input
-                      disabled={!isSelectedDraft}
-                      onChange={(event) =>
-                        setVersionInstructions(event.target.value)
-                      }
-                      placeholder="Instructions shown before the attempt"
-                      value={versionInstructions}
-                    />
-                  </label>
-                  <label>
-                    Attempts allowed
-                    <input
-                      disabled={!isSelectedDraft}
-                      min="1"
-                      max="100"
-                      onChange={(event) => {
-                        setValidationIssues([]);
-                        setDefaultAttemptLimit(Number(event.target.value));
-                      }}
-                      type="number"
-                      value={defaultAttemptLimit}
-                    />
-                  </label>
-                </div>
-                <div className={styles.policyChecks}>
-                  <label>
-                    <input
-                      checked={enforceSlotTimers}
-                      disabled={!isSelectedDraft}
-                      onChange={(event) => {
-                        setValidationIssues([]);
-                        setEnforceSlotTimers(event.target.checked);
-                      }}
-                      type="checkbox"
-                    />
-                    Enforce slot timers
-                  </label>
-                  <label>
-                    <input
-                      checked={enforceSectionTimers}
-                      disabled={!isSelectedDraft}
-                      onChange={(event) => {
-                        setValidationIssues([]);
-                        setEnforceSectionTimers(event.target.checked);
-                      }}
-                      type="checkbox"
-                    />
-                    Enforce section timers
-                  </label>
-                </div>
-                <p className={styles.helperText}>
-                  {enforceSlotTimers && enforceSectionTimers
-                    ? "The overall timer always caps the attempt. Active slot and section timers also run, and the earliest deadline ends the current scope."
-                    : enforceSlotTimers
-                      ? "The overall timer caps the attempt. Each active slot also uses its configured slot time."
-                      : enforceSectionTimers
-                        ? "The overall timer caps the attempt. Each active section also uses its configured section time."
-                        : "One overall timer controls the entire exam; slot and section times remain available for future timed versions."}
-                </p>
-              </section>
-              <section className={styles.templateGuideCard}>
-                <div>
-                  <span className={styles.stepLabel}>Step 4</span>
-                  <h3>Slots, sections & question mapping</h3>
-                  <p>
-                    Slots are major exam parts. Each slot contains sections.
-                    Each section uses one subject and the questions selected
-                    from that subject.
-                  </p>
-                </div>
-                <button
-                  className={styles.secondaryButton}
-                  disabled={!isSelectedDraft}
-                  onClick={() =>
-                    setSlots((current) => [
-                      ...current,
-                      {
-                        ...emptySlot(),
-                        code: `SLOT_${current.length + 1}`,
-                        name: `Slot ${current.length + 1}`,
-                      },
-                    ])
-                  }
-                  type="button"
-                >
-                  <CirclePlus size={15} />
-                  Add slot
-                </button>
-              </section>
-              {slots.map((slot, slotIndex) => (
-                <article
-                  className={styles.slot}
-                  id={`exam-slot-${slotIndex + 1}`}
-                  key={slotIndex}
-                >
-                  <div className={styles.hierarchyHeader}>
-                    <div>
-                      <span>Slot {slotIndex + 1}</span>
-                      <h3>{slot.name || `Untitled slot ${slotIndex + 1}`}</h3>
-                      <code>{slot.code || "NO_CODE"}</code>
-                    </div>
-                    <span className={styles.hierarchyMeta}>
-                      {slot.sections.length}{" "}
-                      {slot.sections.length === 1 ? "section" : "sections"} ·{" "}
-                      {slot.durationMinutes} min
-                    </span>
-                  </div>
-                  <p className={styles.sectionInstruction}>
-                    Configure this major exam part. Slot time is used only when
-                    slot timers are enforced for the version.
-                  </p>
-                  <div className={styles.slotHeader}>
-                    <div className={styles.rowFields}>
-                      <label>
-                        Slot code
-                        <input
-                          disabled={!isSelectedDraft}
-                          value={slot.code}
-                          onChange={(e) =>
-                            updateSlot(slotIndex, {
-                              code: e.target.value.toUpperCase(),
-                            })
-                          }
-                        />
-                      </label>
-                      <label>
-                        Slot name
-                        <input
-                          disabled={!isSelectedDraft}
-                          value={slot.name}
-                          onChange={(e) =>
-                            updateSlot(slotIndex, { name: e.target.value })
-                          }
-                        />
-                      </label>
-                      <label>
-                        Slot time (min)
-                        <input
-                          disabled={!isSelectedDraft}
-                          type="number"
-                          min="1"
-                          value={slot.durationMinutes}
-                          onChange={(e) =>
-                            updateSlot(slotIndex, {
-                              durationMinutes: Number(e.target.value),
-                            })
-                          }
-                        />
-                      </label>
-                    </div>
-                    <button
-                      className={styles.dangerButton}
-                      disabled={!isSelectedDraft || slots.length === 1}
-                      onClick={() =>
-                        setSlots((current) =>
-                          current.length > 1
-                            ? current.filter((_, index) => index !== slotIndex)
-                            : current,
-                        )
-                      }
-                      title={
-                        slots.length === 1
-                          ? "A template must contain at least one slot"
-                          : `Remove ${slot.name}`
-                      }
-                      type="button"
-                    >
-                      <Trash2 size={14} />
-                      Remove slot
-                    </button>
-                  </div>
-                  <div className={styles.policyGrid}>
-                    <CrudSelect
-                      ariaLabel={`${slot.name} navigation mode`}
-                      disabled={!isSelectedDraft}
-                      label="Slot navigation"
-                      onChange={(value) =>
-                        updateSlot(slotIndex, {
-                          navigationMode: value as ExamNavigationMode,
-                        })
-                      }
-                      options={[
-                        { label: "Free navigation", value: "FREE" },
-                        { label: "Sequential", value: "SEQUENTIAL" },
-                        {
-                          label: "Lock after submit",
-                          value: "LOCKED_AFTER_SUBMIT",
-                        },
-                      ]}
-                      value={slot.navigationMode}
-                      width="100%"
-                    />
-                    <label>
-                      Slot instructions
-                      <input
-                        disabled={!isSelectedDraft}
-                        onChange={(event) =>
-                          updateSlot(slotIndex, {
-                            instructions: event.target.value,
-                          })
-                        }
-                        placeholder="Optional slot instructions"
-                        value={slot.instructions}
-                      />
-                    </label>
-                    <label className={styles.inlineCheck}>
-                      <input
-                        checked={slot.autoSubmitOnTimeout}
-                        disabled={!isSelectedDraft || !enforceSlotTimers}
-                        onChange={(event) =>
-                          updateSlot(slotIndex, {
-                            autoSubmitOnTimeout: event.target.checked,
-                          })
-                        }
-                        type="checkbox"
-                      />
-                      Auto-submit when slot time ends
-                    </label>
-                    {!enforceSlotTimers ? (
-                      <span className={styles.inlineHelper}>
-                        Enable slot timers to use slot auto-submit.
-                      </span>
-                    ) : null}
-                  </div>
-                  {slot.sections.map((section, sectionIndex) => (
-                    <div
-                      className={styles.sectionCard}
-                      id={`exam-slot-${slotIndex + 1}-section-${sectionIndex + 1}`}
-                      key={sectionIndex}
-                    >
-                      <div className={styles.sectionHeader}>
+                    <div className={styles.slotBlueprintHeader}>
+                      <div>
+                        <span className={styles.sequenceBadge}>
+                          {slotIndex + 1}
+                        </span>
                         <div>
-                          <span>Section {sectionIndex + 1}</span>
-                          <h4>
-                            {section.name ||
-                              `Untitled section ${sectionIndex + 1}`}
-                          </h4>
-                          <code>{section.code || "NO_CODE"}</code>
-                        </div>
-                        <div className={styles.sectionHeaderActions}>
-                          <span
-                            className={styles.questionLimitBadge}
-                            data-invalid={
-                              section.questionsToAttempt < 1 ||
-                              section.questionsToAttempt >
-                                section.questions.length
-                            }
-                          >
-                            {section.questions.length} selected ·{" "}
-                            {section.questionsToAttempt} allowed
-                          </span>
-                          <button
-                            className={styles.dangerButton}
-                            disabled={
-                              !isSelectedDraft || slot.sections.length === 1
-                            }
-                            onClick={() =>
-                              updateSlot(slotIndex, {
-                                sections: slot.sections.filter(
-                                  (_, index) => index !== sectionIndex,
-                                ),
-                              })
-                            }
-                            title={
-                              slot.sections.length === 1
-                                ? "A slot must contain at least one section"
-                                : `Remove ${section.name}`
-                            }
-                            type="button"
-                          >
-                            <Trash2 size={13} />
-                            Remove
-                          </button>
+                          <strong>Slot {slotIndex + 1}</strong>
+                          <h3>
+                            {slot.name || `Untitled slot ${slotIndex + 1}`}
+                          </h3>
                         </div>
                       </div>
-                      <p className={styles.sectionInstruction}>
-                        Choose one subject for this section, set the attempt
-                        limit, then map questions from that subject.
-                      </p>
-                      <div className={styles.rowFields}>
+                      <div className={styles.slotBlueprintMeta}>
+                        <span>
+                          <ListChecks size={13} aria-hidden="true" />
+                          {slot.sections.length}{" "}
+                          {slot.sections.length === 1 ? "section" : "sections"}
+                        </span>
+                        <span data-timed={enforceSlotTimers}>
+                          <Clock3 size={13} aria-hidden="true" />
+                          {enforceSlotTimers
+                            ? `${slot.durationMinutes} min timer`
+                            : "Timer off"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className={styles.slotPurposeNote}>
+                      <Layers3 size={17} aria-hidden="true" />
+                      <span>
+                        <strong>What is a slot?</strong>{" "}
+                        A major part of the
+                        exam. Students complete its sections before continuing
+                        to the next slot.
+                      </span>
+                    </div>
+                    <div className={styles.slotSetupPanel}>
+                      <div className={styles.slotSetupGrid}>
                         <label>
-                          Section code
+                          Slot name
                           <input
                             disabled={!isSelectedDraft}
-                            value={section.code}
+                            value={slot.name}
                             onChange={(e) =>
-                              updateSection(slotIndex, sectionIndex, {
-                                code: e.target.value.toUpperCase(),
-                              })
+                              updateSlot(slotIndex, { name: e.target.value })
                             }
                           />
                         </label>
                         <label>
-                          Section name
-                          <input
-                            disabled={!isSelectedDraft}
-                            value={section.name}
-                            onChange={(e) =>
-                              updateSection(slotIndex, sectionIndex, {
-                                name: e.target.value,
-                              })
-                            }
-                          />
-                        </label>
-                        <label>
-                          Time (min)
+                          Slot time (min)
                           <input
                             disabled={!isSelectedDraft}
                             type="number"
                             min="1"
-                            value={section.durationMinutes}
+                            value={slot.durationMinutes}
                             onChange={(e) =>
-                              updateSection(slotIndex, sectionIndex, {
+                              updateSlot(slotIndex, {
                                 durationMinutes: Number(e.target.value),
                               })
                             }
                           />
                         </label>
-                        <label>
-                          Questions to attempt
-                          <input
-                            disabled={!isSelectedDraft}
-                            type="number"
-                            min="1"
-                            value={section.questionsToAttempt}
-                            onChange={(e) =>
-                              updateSection(slotIndex, sectionIndex, {
-                                questionsToAttempt: Number(e.target.value),
-                              })
-                            }
-                          />
-                        </label>
+                      </div>
+                      <button
+                        className={styles.dangerButton}
+                        disabled={!isSelectedDraft || slots.length === 1}
+                        onClick={() =>
+                          setSlots((current) =>
+                            current.length > 1
+                              ? current.filter(
+                                  (_, index) => index !== slotIndex,
+                                )
+                              : current,
+                          )
+                        }
+                        title={
+                          slots.length === 1
+                            ? "A template must contain at least one slot"
+                            : `Remove ${slot.name}`
+                        }
+                        type="button"
+                      >
+                        <Trash2 size={14} />
+                        Remove slot
+                      </button>
+                    </div>
+                    <div
+                      className={styles.slotTimeBudget}
+                      data-over={
+                        slotTimingStats[slotIndex].remainingMinutes < 0
+                      }
+                    >
+                      <div className={styles.slotTimeBudgetHeader}>
+                        <span>
+                          <Clock3 size={16} aria-hidden="true" />
+                          <strong>Section time allocation</strong>
+                        </span>
+                        <b>
+                          {slotTimingStats[slotIndex].sectionMinutes} /{" "}
+                          {slot.durationMinutes} min used
+                        </b>
+                      </div>
+                      <div
+                        className={styles.slotTimeProgress}
+                        aria-hidden="true"
+                      >
+                        <span
+                          style={{
+                            width: `${slotTimingStats[slotIndex].utilization}%`,
+                          }}
+                        />
+                      </div>
+                      <p>
+                        {slotTimingStats[slotIndex].remainingMinutes < 0
+                          ? `Reduce section times by ${Math.abs(slotTimingStats[slotIndex].remainingMinutes)} minutes or increase this slot's duration.`
+                          : slotTimingStats[slotIndex].remainingMinutes === 0
+                            ? "Perfect fit — section times use the complete slot."
+                            : `${slotTimingStats[slotIndex].remainingMinutes} minutes remain available in this slot.`}
+                      </p>
+                    </div>
+                    <div className={styles.slotRulesPanel}>
+                      <div className={styles.slotRulesHeading}>
+                        <strong>Slot behavior</strong>
+                        <span>
+                          Control movement and what happens at the deadline.
+                        </span>
                       </div>
                       <div className={styles.policyGrid}>
                         <CrudSelect
-                          ariaLabel={`${section.name} navigation mode`}
+                          ariaLabel={`${slot.name} navigation mode`}
                           disabled={!isSelectedDraft}
-                          label="Question navigation"
+                          label="Student navigation"
                           onChange={(value) =>
-                            updateSection(slotIndex, sectionIndex, {
+                            updateSlot(slotIndex, {
                               navigationMode: value as ExamNavigationMode,
                             })
                           }
@@ -2321,217 +2417,391 @@ const TemplatesPanel = ({
                               value: "LOCKED_AFTER_SUBMIT",
                             },
                           ]}
-                          value={section.navigationMode}
+                          value={slot.navigationMode}
                           width="100%"
                         />
                         <label>
-                          Section instructions
+                          Instructions shown on entry
                           <input
                             disabled={!isSelectedDraft}
                             onChange={(event) =>
-                              updateSection(slotIndex, sectionIndex, {
+                              updateSlot(slotIndex, {
                                 instructions: event.target.value,
                               })
                             }
-                            placeholder="Optional section instructions"
-                            value={section.instructions}
+                            placeholder="Optional guidance for this slot"
+                            value={slot.instructions}
                           />
                         </label>
                       </div>
                       <div
-                        className={styles.questionLimitSummary}
-                        data-invalid={
-                          section.questionsToAttempt < 1 ||
-                          section.questionsToAttempt > section.questions.length
-                        }
+                        className={styles.slotTimeoutRule}
+                        data-disabled={!enforceSlotTimers}
                       >
-                        <strong>
-                          {section.questions.length} questions selected
-                        </strong>
-                        <span>
-                          Students may answer {section.questionsToAttempt} of{" "}
-                          {section.questions.length}.
-                        </span>
-                        {section.questionsToAttempt < 1 ? (
-                          <em>Choose a question limit of at least 1.</em>
-                        ) : section.questionsToAttempt >
-                          section.questions.length ? (
-                          <em>
-                            Select at least {section.questionsToAttempt}{" "}
-                            questions or lower the limit.
-                          </em>
-                        ) : null}
-                      </div>
-                      <div className={styles.policyChecks}>
-                        <label>
+                        <label className={styles.inlineCheck}>
                           <input
-                            checked={section.randomizeQuestions}
-                            disabled={!isSelectedDraft}
+                            checked={slot.autoSubmitOnTimeout}
+                            disabled={!isSelectedDraft || !enforceSlotTimers}
                             onChange={(event) =>
-                              updateSection(slotIndex, sectionIndex, {
-                                randomizeQuestions: event.target.checked,
-                              })
-                            }
-                            type="checkbox"
-                          />
-                          Randomize questions
-                        </label>
-                        <label>
-                          <input
-                            checked={section.randomizeOptions}
-                            disabled={!isSelectedDraft}
-                            onChange={(event) =>
-                              updateSection(slotIndex, sectionIndex, {
-                                randomizeOptions: event.target.checked,
-                              })
-                            }
-                            type="checkbox"
-                          />
-                          Randomize options
-                        </label>
-                        <label>
-                          <input
-                            checked={section.allowReview}
-                            disabled={!isSelectedDraft}
-                            onChange={(event) =>
-                              updateSection(slotIndex, sectionIndex, {
-                                allowReview: event.target.checked,
-                              })
-                            }
-                            type="checkbox"
-                          />
-                          Allow mark for review
-                        </label>
-                        <label>
-                          <input
-                            checked={section.autoSubmitOnTimeout}
-                            disabled={!isSelectedDraft || !enforceSectionTimers}
-                            onChange={(event) =>
-                              updateSection(slotIndex, sectionIndex, {
+                              updateSlot(slotIndex, {
                                 autoSubmitOnTimeout: event.target.checked,
                               })
                             }
                             type="checkbox"
                           />
-                          Auto-submit on section timeout
+                          <span>
+                            <strong>Auto-submit at the slot deadline</strong>
+                            <small>
+                              {enforceSlotTimers
+                                ? "Student answers in this slot are submitted when its timer reaches zero."
+                                : "Turn on slot timers above to activate this rule."}
+                            </small>
+                          </span>
                         </label>
                       </div>
-                      {!enforceSectionTimers ? (
-                        <span className={styles.inlineHelper}>
-                          Enable section timers to use section auto-submit.
-                        </span>
-                      ) : null}
-                      <div className={styles.sectionSubjectField}>
-                        <CrudSelectField
-                          disabled={!isSelectedDraft}
-                          label="Subject"
-                          onChange={(value) =>
-                            updateSection(slotIndex, sectionIndex, {
-                              subjectId: Number(value),
-                              questions: [],
-                            })
-                          }
-                          options={subjects.map((subject) => ({
-                            label: subject.name,
-                            value: String(subject.id),
-                          }))}
-                          placeholder="Choose subject"
-                          value={
-                            section.subjectId ? String(section.subjectId) : ""
-                          }
-                        />
-                      </div>
-                      <div className={styles.questionAssignmentTitle}>
-                        <div>
-                          <strong>Question assignment</strong>
-                          <span>
-                            Select reusable questions and confirm marks for this
-                            section.
-                          </span>
-                        </div>
-                        <small>
-                          {section.questions.length} selected /{" "}
-                          {section.questionsToAttempt} attempted
-                        </small>
-                      </div>
-                      {!isSelectedDraft ? (
-                        <div className={styles.questionPicker}>
-                          {section.questions.length ? (
-                            section.questions.map((question) => (
-                              <div
-                                className={styles.versionQuestion}
-                                key={question.questionVersionId}
-                              >
-                                <CheckCircle2 size={15} aria-hidden="true" />
-                                <div className={styles.versionQuestionContent}>
-                                  <strong>{question.code}</strong>
-                                  <RichContent value={question.content} />
-                                </div>
-                                <small>+{question.marks}</small>
-                                <small>−{question.negativeMarks}</small>
-                              </div>
-                            ))
-                          ) : (
-                            <div className={styles.questionEmpty} role="status">
-                              <ClipboardList size={20} aria-hidden="true" />
-                              <strong>No questions in this version</strong>
-                              <span>
-                                This published section does not contain any
-                                mapped questions.
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ) : organizationId ? (
-                        <SectionQuestionPicker
-                          organizationId={organizationId}
-                          onSelectionChange={(nextQuestions) =>
-                            updateSection(slotIndex, sectionIndex, {
-                              questions: nextQuestions,
-                            })
-                          }
-                          questionTypes={questionTypes}
-                          questionsToAttempt={section.questionsToAttempt}
-                          selectedQuestions={section.questions}
-                          subjectId={section.subjectId}
-                        />
-                      ) : (
-                        <Empty
-                          icon={Building2}
-                          title="Choose an organization"
-                          text="Select an organization before mapping questions into this section."
-                        />
-                      )}
                     </div>
-                  ))}
-                  <button
-                    className={styles.textButton}
-                    disabled={!isSelectedDraft}
-                    onClick={() =>
-                      updateSlot(slotIndex, {
-                        sections: [
-                          ...slot.sections,
-                          {
-                            ...emptySection(),
-                            code: `SECTION_${slot.sections.length + 1}`,
-                          },
-                        ],
-                      })
-                    }
-                  >
-                    <Plus size={14} />
-                    Add timed section
-                  </button>
-                </article>
-              ))}
-            </div>
-          </>
-        )}
-      </section>
-    </div>
+                    {slot.sections.map((section, sectionIndex) => (
+                      <div
+                        className={styles.sectionCard}
+                        id={`exam-slot-${slotIndex + 1}-section-${sectionIndex + 1}`}
+                        key={sectionIndex}
+                      >
+                        <div className={styles.sectionHeader}>
+                          <div>
+                            <span>Section {sectionIndex + 1}</span>
+                            <h4>
+                              {section.name ||
+                                `Untitled section ${sectionIndex + 1}`}
+                            </h4>
+                          </div>
+                          <div className={styles.sectionHeaderActions}>
+                            <span
+                              className={styles.sectionTimerBadge}
+                              data-active={enforceSectionTimers}
+                            >
+                              <Clock3 size={12} aria-hidden="true" />
+                              {enforceSectionTimers
+                                ? `${section.durationMinutes} min`
+                                : "Timer off"}
+                            </span>
+                            <span
+                              className={styles.questionLimitBadge}
+                              data-invalid={
+                                section.questionsToAttempt < 1 ||
+                                section.questionsToAttempt >
+                                  section.questions.length
+                              }
+                            >
+                              {section.questions.length} selected ·{" "}
+                              {section.questionsToAttempt} allowed
+                            </span>
+                            <button
+                              className={styles.dangerButton}
+                              disabled={
+                                !isSelectedDraft || slot.sections.length === 1
+                              }
+                              onClick={() =>
+                                updateSlot(slotIndex, {
+                                  sections: slot.sections.filter(
+                                    (_, index) => index !== sectionIndex,
+                                  ),
+                                })
+                              }
+                              title={
+                                slot.sections.length === 1
+                                  ? "A slot must contain at least one section"
+                                  : `Remove ${section.name}`
+                              }
+                              type="button"
+                            >
+                              <Trash2 size={13} />
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                        <p className={styles.sectionInstruction}>
+                          Choose one subject for this section, set the attempt
+                          limit, then map questions from that subject.
+                        </p>
+                        <div className={styles.rowFields}>
+                          <label>
+                            Section name
+                            <input
+                              disabled={!isSelectedDraft}
+                              value={section.name}
+                              onChange={(e) =>
+                                updateSection(slotIndex, sectionIndex, {
+                                  name: e.target.value,
+                                })
+                              }
+                            />
+                          </label>
+                          <label>
+                            Time (min)
+                            <input
+                              disabled={!isSelectedDraft}
+                              type="number"
+                              min="1"
+                              value={section.durationMinutes}
+                              onChange={(e) =>
+                                updateSection(slotIndex, sectionIndex, {
+                                  durationMinutes: Number(e.target.value),
+                                })
+                              }
+                            />
+                          </label>
+                          <label>
+                            Questions to attempt
+                            <input
+                              disabled={!isSelectedDraft}
+                              type="number"
+                              min="1"
+                              value={section.questionsToAttempt}
+                              onChange={(e) =>
+                                updateSection(slotIndex, sectionIndex, {
+                                  questionsToAttempt: Number(e.target.value),
+                                })
+                              }
+                            />
+                          </label>
+                        </div>
+                        <div className={styles.policyGrid}>
+                          <CrudSelect
+                            ariaLabel={`${section.name} navigation mode`}
+                            disabled={!isSelectedDraft}
+                            label="Question navigation"
+                            onChange={(value) =>
+                              updateSection(slotIndex, sectionIndex, {
+                                navigationMode: value as ExamNavigationMode,
+                              })
+                            }
+                            options={[
+                              { label: "Free navigation", value: "FREE" },
+                              { label: "Sequential", value: "SEQUENTIAL" },
+                              {
+                                label: "Lock after submit",
+                                value: "LOCKED_AFTER_SUBMIT",
+                              },
+                            ]}
+                            value={section.navigationMode}
+                            width="100%"
+                          />
+                          <label>
+                            Section instructions
+                            <input
+                              disabled={!isSelectedDraft}
+                              onChange={(event) =>
+                                updateSection(slotIndex, sectionIndex, {
+                                  instructions: event.target.value,
+                                })
+                              }
+                              placeholder="Optional section instructions"
+                              value={section.instructions}
+                            />
+                          </label>
+                        </div>
+                        <div
+                          className={styles.questionLimitSummary}
+                          data-invalid={
+                            section.questionsToAttempt < 1 ||
+                            section.questionsToAttempt >
+                              section.questions.length
+                          }
+                        >
+                          <strong>
+                            {section.questions.length} questions selected
+                          </strong>
+                          <span>
+                            Students may answer {section.questionsToAttempt} of{" "}
+                            {section.questions.length}.
+                          </span>
+                          {section.questionsToAttempt < 1 ? (
+                            <em>Choose a question limit of at least 1.</em>
+                          ) : section.questionsToAttempt >
+                            section.questions.length ? (
+                            <em>
+                              Select at least {section.questionsToAttempt}{" "}
+                              questions or lower the limit.
+                            </em>
+                          ) : null}
+                        </div>
+                        <div className={styles.policyChecks}>
+                          <label>
+                            <input
+                              checked={section.randomizeQuestions}
+                              disabled={!isSelectedDraft}
+                              onChange={(event) =>
+                                updateSection(slotIndex, sectionIndex, {
+                                  randomizeQuestions: event.target.checked,
+                                })
+                              }
+                              type="checkbox"
+                            />
+                            Randomize questions
+                          </label>
+                          <label>
+                            <input
+                              checked={section.randomizeOptions}
+                              disabled={!isSelectedDraft}
+                              onChange={(event) =>
+                                updateSection(slotIndex, sectionIndex, {
+                                  randomizeOptions: event.target.checked,
+                                })
+                              }
+                              type="checkbox"
+                            />
+                            Randomize options
+                          </label>
+                          <label>
+                            <input
+                              checked={section.allowReview}
+                              disabled={!isSelectedDraft}
+                              onChange={(event) =>
+                                updateSection(slotIndex, sectionIndex, {
+                                  allowReview: event.target.checked,
+                                })
+                              }
+                              type="checkbox"
+                            />
+                            Allow mark for review
+                          </label>
+                          <label>
+                            <input
+                              checked={section.autoSubmitOnTimeout}
+                              disabled={
+                                !isSelectedDraft || !enforceSectionTimers
+                              }
+                              onChange={(event) =>
+                                updateSection(slotIndex, sectionIndex, {
+                                  autoSubmitOnTimeout: event.target.checked,
+                                })
+                              }
+                              type="checkbox"
+                            />
+                            Auto-submit on section timeout
+                          </label>
+                        </div>
+                        {!enforceSectionTimers ? (
+                          <span className={styles.inlineHelper}>
+                            Enable section timers to use section auto-submit.
+                          </span>
+                        ) : null}
+                        <div className={styles.sectionSubjectField}>
+                          <CrudSelectField
+                            disabled={!isSelectedDraft}
+                            label="Subject"
+                            onChange={(value) =>
+                              updateSection(slotIndex, sectionIndex, {
+                                subjectId: Number(value),
+                                questions: [],
+                              })
+                            }
+                            options={subjects.map((subject) => ({
+                              label: subject.name,
+                              value: String(subject.id),
+                            }))}
+                            placeholder="Choose subject"
+                            value={
+                              section.subjectId ? String(section.subjectId) : ""
+                            }
+                          />
+                        </div>
+                        <div className={styles.questionAssignmentTitle}>
+                          <div>
+                            <strong>Question assignment</strong>
+                            <span>
+                              Select reusable questions and confirm marks for
+                              this section.
+                            </span>
+                          </div>
+                          <small>
+                            {section.questions.length} selected /{" "}
+                            {section.questionsToAttempt} attempted
+                          </small>
+                        </div>
+                        {!isSelectedDraft ? (
+                          <div className={styles.questionPicker}>
+                            {section.questions.length ? (
+                              section.questions.map((question) => (
+                                <div
+                                  className={styles.versionQuestion}
+                                  key={question.questionVersionId}
+                                >
+                                  <CheckCircle2 size={15} aria-hidden="true" />
+                                  <div
+                                    className={styles.versionQuestionContent}
+                                  >
+                                    <strong>{question.code}</strong>
+                                    <RichContent value={question.content} />
+                                  </div>
+                                  <small>+{question.marks}</small>
+                                  <small>−{question.negativeMarks}</small>
+                                </div>
+                              ))
+                            ) : (
+                              <div
+                                className={styles.questionEmpty}
+                                role="status"
+                              >
+                                <ClipboardList size={20} aria-hidden="true" />
+                                <strong>No questions in this version</strong>
+                                <span>
+                                  This published section does not contain any
+                                  mapped questions.
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ) : effectiveOrganizationId ? (
+                          <SectionQuestionPicker
+                            organizationId={effectiveOrganizationId}
+                            onSelectionChange={(nextQuestions) =>
+                              updateSection(slotIndex, sectionIndex, {
+                                questions: nextQuestions,
+                              })
+                            }
+                            questionTypes={questionTypes}
+                            questionsToAttempt={section.questionsToAttempt}
+                            selectedQuestions={section.questions}
+                            subjectId={section.subjectId}
+                          />
+                        ) : (
+                          <Empty
+                            icon={Building2}
+                            title="Choose an organization"
+                            text="Select an organization before mapping questions into this section."
+                          />
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      className={`${styles.textButton} ${styles.addSectionButton}`}
+                      disabled={!isSelectedDraft}
+                      onClick={() =>
+                        updateSlot(slotIndex, {
+                          sections: [
+                            ...slot.sections,
+                            {
+                              ...emptySection(),
+                              name: `Section ${slot.sections.length + 1}`,
+                            },
+                          ],
+                        })
+                      }
+                    >
+                      <Plus size={14} />
+                      Add timed section
+                    </button>
+                  </article>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      </div>
     </div>
   );
-}
+};
 
 const SubjectsPanel = ({
   organizationId,
@@ -2713,9 +2983,9 @@ const SubjectsPanel = ({
       </div>
     </div>
   );
-}
+};
 
-const QuestionsPanel =({
+const QuestionsPanel = ({
   organizationId,
   organizationSelector,
   subjects,
@@ -2877,365 +3147,368 @@ const QuestionsPanel =({
       </section>
 
       <div className={styles.questionBankWorkspace}>
-      <section className={`${styles.panel} ${styles.questionCreatePanel}`}>
-        <div className={styles.panelTitle}>
-          <div>
-            <h2>Create question</h2>
-            <p>
-              Each change is stored as a version so scheduled exams remain
-              stable.
-            </p>
-          </div>
-        </div>
-        <form action={create} className={styles.form}>
-          {organizationSelector}
-          <div className={styles.rowFields}>
-            <label>
-              Code
-              <input name="code" required placeholder="MAT-SC-002" />
-            </label>
-            <CrudSelectField
-              label="Subject"
-              onChange={(value) => setNewQuestionSubjectId(Number(value))}
-              options={subjects.map((subject) => ({
-                label: subject.name,
-                value: String(subject.id),
-              }))}
-              placeholder="Choose subject"
-              value={newQuestionSubjectId ? String(newQuestionSubjectId) : ""}
-            />
-            <CrudSelectField
-              label="Answer type"
-              onChange={(value) => {
-                const nextType = questionTypes.find(
-                  (item) => item.id === Number(value),
-                );
-                setQuestionTypeId(Number(value));
-                setVirtualKeyboardMode(
-                  nextType?.code === "NUMERIC"
-                    ? "NUMERIC"
-                    : nextType?.code === "ONE_WORD"
-                      ? "ALPHANUMERIC"
-                      : "NONE",
-                );
-              }}
-              options={questionTypes.map((item) => ({
-                label: `${item.name} (ID ${item.id})`,
-                value: String(item.id),
-              }))}
-              placeholder="Choose answer type"
-              value={questionTypeId ? String(questionTypeId) : ""}
-            />
-          </div>
-          <label>
-            Question
-            <textarea
-              name="content"
-              required
-              rows={4}
-              placeholder="Enter the complete question statement"
-            />
-          </label>
-          {typeCode === "SINGLE_CHOICE" ? (
-            <div className={styles.optionGrid}>
-              {["A", "B", "C", "D"].map((code) => (
-                <label key={code}>
-                  Option {code}
-                  <input
-                    name={`option_${code}`}
-                    required
-                    placeholder={`Option ${code}`}
-                  />
-                </label>
-              ))}
+        <section className={`${styles.panel} ${styles.questionCreatePanel}`}>
+          <div className={styles.panelTitle}>
+            <div>
+              <h2>Create question</h2>
+              <p>
+                Each change is stored as a version so scheduled exams remain
+                stable.
+              </p>
             </div>
-          ) : null}
-          <div className={styles.rowFields}>
+          </div>
+          <form action={create} className={styles.form}>
+            {organizationSelector}
+            <div className={styles.rowFields}>
+              <label>
+                Code
+                <input name="code" required placeholder="MAT-SC-002" />
+              </label>
+              <CrudSelectField
+                label="Subject"
+                onChange={(value) => setNewQuestionSubjectId(Number(value))}
+                options={subjects.map((subject) => ({
+                  label: subject.name,
+                  value: String(subject.id),
+                }))}
+                placeholder="Choose subject"
+                value={newQuestionSubjectId ? String(newQuestionSubjectId) : ""}
+              />
+              <CrudSelectField
+                label="Answer type"
+                onChange={(value) => {
+                  const nextType = questionTypes.find(
+                    (item) => item.id === Number(value),
+                  );
+                  setQuestionTypeId(Number(value));
+                  setVirtualKeyboardMode(
+                    nextType?.code === "NUMERIC"
+                      ? "NUMERIC"
+                      : nextType?.code === "ONE_WORD"
+                        ? "ALPHANUMERIC"
+                        : "NONE",
+                  );
+                }}
+                options={questionTypes.map((item) => ({
+                  label: `${item.name} (ID ${item.id})`,
+                  value: String(item.id),
+                }))}
+                placeholder="Choose answer type"
+                value={questionTypeId ? String(questionTypeId) : ""}
+              />
+            </div>
             <label>
-              {typeCode === "SINGLE_CHOICE"
-                ? "Correct option code"
-                : "Accepted answer(s)"}
-              <input
-                name="answer"
+              Question
+              <textarea
+                name="content"
                 required
-                placeholder={
-                  typeCode === "SINGLE_CHOICE"
-                    ? "A"
-                    : "Use | between alternatives"
-                }
+                rows={4}
+                placeholder="Enter the complete question statement"
               />
             </label>
-            {typeCode === "NUMERIC" ? (
+            {typeCode === "SINGLE_CHOICE" ? (
+              <div className={styles.optionGrid}>
+                {["A", "B", "C", "D"].map((code) => (
+                  <label key={code}>
+                    Option {code}
+                    <input
+                      name={`option_${code}`}
+                      required
+                      placeholder={`Option ${code}`}
+                    />
+                  </label>
+                ))}
+              </div>
+            ) : null}
+            <div className={styles.rowFields}>
               <label>
-                Tolerance
+                {typeCode === "SINGLE_CHOICE"
+                  ? "Correct option code"
+                  : "Accepted answer(s)"}
                 <input
-                  name="tolerance"
-                  type="number"
-                  step="0.000001"
-                  defaultValue="0"
+                  name="answer"
+                  required
+                  placeholder={
+                    typeCode === "SINGLE_CHOICE"
+                      ? "A"
+                      : "Use | between alternatives"
+                  }
                 />
               </label>
+              {typeCode === "NUMERIC" ? (
+                <label>
+                  Tolerance
+                  <input
+                    name="tolerance"
+                    type="number"
+                    step="0.000001"
+                    defaultValue="0"
+                  />
+                </label>
+              ) : null}
+              <label>
+                Marks
+                <input
+                  name="marks"
+                  type="number"
+                  step="0.25"
+                  min="0"
+                  defaultValue="5"
+                  required
+                />
+              </label>
+              <label>
+                Negative marks
+                <input
+                  name="negativeMarks"
+                  type="number"
+                  step="0.25"
+                  min="0"
+                  defaultValue="1"
+                  required
+                />
+              </label>
+            </div>
+            {typeCode && typeCode !== "SINGLE_CHOICE" ? (
+              <div className={styles.templatePolicyCard}>
+                <div className={styles.rowFields}>
+                  <CrudSelect
+                    ariaLabel="On-screen keyboard"
+                    label="On-screen keyboard"
+                    onChange={(value) =>
+                      setVirtualKeyboardMode(
+                        value as "NONE" | "NUMERIC" | "ALPHANUMERIC",
+                      )
+                    }
+                    options={[
+                      { label: "None", value: "NONE" },
+                      { label: "Numeric", value: "NUMERIC" },
+                      { label: "Alphanumeric", value: "ALPHANUMERIC" },
+                    ]}
+                    value={virtualKeyboardMode}
+                    width="100%"
+                  />
+                  <label>
+                    Maximum answer length
+                    <input
+                      max="5000"
+                      min="1"
+                      name="maxAnswerLength"
+                      placeholder={typeCode === "NUMERIC" ? "20" : "100"}
+                      type="number"
+                    />
+                  </label>
+                </div>
+                <div className={styles.policyChecks}>
+                  <label>
+                    <input
+                      defaultChecked
+                      name="allowPhysicalKeyboard"
+                      type="checkbox"
+                    />
+                    Allow physical keyboard
+                  </label>
+                  <label>
+                    <input defaultChecked name="allowPaste" type="checkbox" />
+                    Allow paste
+                  </label>
+                  <label>
+                    <input
+                      defaultChecked
+                      name="normalizeWhitespace"
+                      type="checkbox"
+                    />
+                    Normalize whitespace
+                  </label>
+                  {typeCode === "ONE_WORD" ? (
+                    <label>
+                      <input name="caseSensitive" type="checkbox" />
+                      Case-sensitive answer
+                    </label>
+                  ) : null}
+                </div>
+              </div>
             ) : null}
             <label>
-              Marks
-              <input
-                name="marks"
-                type="number"
-                step="0.25"
-                min="0"
-                defaultValue="5"
-                required
-              />
+              Explanation
+              <textarea name="explanation" rows={2} />
             </label>
-            <label>
-              Negative marks
-              <input
-                name="negativeMarks"
-                type="number"
-                step="0.25"
-                min="0"
-                defaultValue="1"
-                required
-              />
-            </label>
-          </div>
-          {typeCode && typeCode !== "SINGLE_CHOICE" ? (
-            <div className={styles.templatePolicyCard}>
-              <div className={styles.rowFields}>
-                <CrudSelect
-                  ariaLabel="On-screen keyboard"
-                  label="On-screen keyboard"
-                  onChange={(value) =>
-                    setVirtualKeyboardMode(
-                      value as "NONE" | "NUMERIC" | "ALPHANUMERIC",
-                    )
-                  }
-                  options={[
-                    { label: "None", value: "NONE" },
-                    { label: "Numeric", value: "NUMERIC" },
-                    { label: "Alphanumeric", value: "ALPHANUMERIC" },
-                  ]}
-                  value={virtualKeyboardMode}
-                  width="100%"
-                />
-                <label>
-                  Maximum answer length
-                  <input
-                    max="5000"
-                    min="1"
-                    name="maxAnswerLength"
-                    placeholder={typeCode === "NUMERIC" ? "20" : "100"}
-                    type="number"
-                  />
-                </label>
-              </div>
-              <div className={styles.policyChecks}>
-                <label>
-                  <input
-                    defaultChecked
-                    name="allowPhysicalKeyboard"
-                    type="checkbox"
-                  />
-                  Allow physical keyboard
-                </label>
-                <label>
-                  <input defaultChecked name="allowPaste" type="checkbox" />
-                  Allow paste
-                </label>
-                <label>
-                  <input
-                    defaultChecked
-                    name="normalizeWhitespace"
-                    type="checkbox"
-                  />
-                  Normalize whitespace
-                </label>
-                {typeCode === "ONE_WORD" ? (
-                  <label>
-                    <input name="caseSensitive" type="checkbox" />
-                    Case-sensitive answer
-                  </label>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-          <label>
-            Explanation
-            <textarea name="explanation" rows={2} />
-          </label>
-          <button
-            className={styles.primaryButton}
-            disabled={!organizationId || !newQuestionSubjectId || !questionTypeId}
-          >
-            <Plus size={16} />
-            Add question
-          </button>
-        </form>
-      </section>
-      <section className={`${styles.panel} ${styles.questionBankPanel}`}>
-        <div className={styles.panelTitle}>
-          <div>
-            <h2>Question bank</h2>
-            <p>
-              {filteredQuestions.length} of {questions.length} reusable
-              questions
-            </p>
-          </div>
-        </div>
-        <div className={styles.questionToolbar}>
-          <label className={styles.questionSearch}>
-            <span>Search questions</span>
+            <button
+              className={styles.primaryButton}
+              disabled={
+                !organizationId || !newQuestionSubjectId || !questionTypeId
+              }
+            >
+              <Plus size={16} />
+              Add question
+            </button>
+          </form>
+        </section>
+        <section className={`${styles.panel} ${styles.questionBankPanel}`}>
+          <div className={styles.panelTitle}>
             <div>
-              <Search aria-hidden="true" size={15} />
-              <input
-                aria-label="Search question bank"
-                onChange={(event) => setQuestionSearch(event.target.value)}
-                placeholder="Code, subject, or question"
-                type="search"
-                value={questionSearch}
-              />
+              <h2>Question bank</h2>
+              <p>
+                {filteredQuestions.length} of {questions.length} reusable
+                questions
+              </p>
             </div>
-          </label>
-          <CrudSelect
-            ariaLabel="Filter question bank by subject"
-            label="Subject"
-            onChange={setSubjectFilter}
-            options={[
-              { label: "All subjects", value: "all" },
-              ...subjects.map((subject) => ({
-                label: subject.name,
-                value: String(subject.id),
-              })),
-            ]}
-            value={subjectFilter}
-            width="100%"
-          />
-          <CrudSelect
-            ariaLabel="Filter question bank by answer type"
-            label="Answer type"
-            onChange={setTypeFilter}
-            options={[
-              { label: "All types", value: "all" },
-              ...questionTypes.map((item) => ({
-                label: item.name,
-                value: String(item.id),
-              })),
-            ]}
-            value={typeFilter}
-            width="100%"
-          />
-          <CrudSelect
-            ariaLabel="Filter question bank by status"
-            label="Status"
-            onChange={setStatusFilter}
-            options={[
-              { label: "All statuses", value: "all" },
-              { label: "Draft", value: "DRAFT" },
-              { label: "Published", value: "PUBLISHED" },
-              { label: "Archived", value: "ARCHIVED" },
-            ]}
-            value={statusFilter}
-            width="100%"
-          />
-        </div>
-        <div className={styles.questionList}>
-          {!filteredQuestions.length ? (
-            <div className={styles.questionEmpty} role="status">
-              <ClipboardList size={20} aria-hidden="true" />
-              <strong>
-                {questions.length
-                  ? "No matching questions"
-                  : "No questions yet"}
-              </strong>
-              <span>
-                {questions.length
-                  ? "Adjust the search or filters to see more questions."
-                  : "Create a question manually or import a Word and Excel file pair."}
-              </span>
-            </div>
-          ) : null}
-          {filteredQuestions.map((question) => {
-            const version = question.versions[0];
-            const isExpanded = expandedQuestionId === question.id;
-            const acceptedAnswers =
-              version?.acceptedAnswers
-                .map((answer) => answer.textValue ?? answer.numericValue)
-                .filter((answer): answer is string => Boolean(answer)) ?? [];
-            return (
-              <article data-expanded={isExpanded} key={question.id}>
-                <button
-                  aria-controls={`question-bank-detail-${question.id}`}
-                  aria-expanded={isExpanded}
-                  className={styles.questionSummary}
-                  onClick={() =>
-                    setExpandedQuestionId(isExpanded ? null : question.id)
-                  }
-                  type="button"
-                >
-                  <div className={styles.questionIdentity}>
-                    <strong>{question.code}</strong>
-                    <span>{question.subject.name}</span>
-                  </div>
-                  <p>{contentSummary(version?.content)}</p>
-                  <div className={styles.questionSummaryMeta}>
-                    <span className={styles.typeBadge}>
-                      {version?.questionType.name ?? "Unknown type"}
-                    </span>
-                    <Status value={question.status} />
-                    <span className={styles.markingSummary}>
-                      +{version?.defaultMarks ?? "—"} / −
-                      {version?.defaultNegativeMarks ?? "—"}
-                    </span>
-                    <ChevronDown
-                      aria-hidden="true"
-                      className={styles.expandIcon}
-                      size={17}
+          </div>
+          <div className={styles.questionToolbar}>
+            <label className={styles.questionSearch}>
+              <span>Search questions</span>
+              <div>
+                <Search aria-hidden="true" size={15} />
+                <input
+                  aria-label="Search question bank"
+                  onChange={(event) => setQuestionSearch(event.target.value)}
+                  placeholder="Code, subject, or question"
+                  type="search"
+                  value={questionSearch}
+                />
+              </div>
+            </label>
+            <CrudSelect
+              ariaLabel="Filter question bank by subject"
+              label="Subject"
+              onChange={setSubjectFilter}
+              options={[
+                { label: "All subjects", value: "all" },
+                ...subjects.map((subject) => ({
+                  label: subject.name,
+                  value: String(subject.id),
+                })),
+              ]}
+              value={subjectFilter}
+              width="100%"
+            />
+            <CrudSelect
+              ariaLabel="Filter question bank by answer type"
+              label="Answer type"
+              onChange={setTypeFilter}
+              options={[
+                { label: "All types", value: "all" },
+                ...questionTypes.map((item) => ({
+                  label: item.name,
+                  value: String(item.id),
+                })),
+              ]}
+              value={typeFilter}
+              width="100%"
+            />
+            <CrudSelect
+              ariaLabel="Filter question bank by status"
+              label="Status"
+              onChange={setStatusFilter}
+              options={[
+                { label: "All statuses", value: "all" },
+                { label: "Draft", value: "DRAFT" },
+                { label: "Published", value: "PUBLISHED" },
+                { label: "Archived", value: "ARCHIVED" },
+              ]}
+              value={statusFilter}
+              width="100%"
+            />
+          </div>
+          <div className={styles.questionList}>
+            {!filteredQuestions.length ? (
+              <div className={styles.questionEmpty} role="status">
+                <ClipboardList size={20} aria-hidden="true" />
+                <strong>
+                  {questions.length
+                    ? "No matching questions"
+                    : "No questions yet"}
+                </strong>
+                <span>
+                  {questions.length
+                    ? "Adjust the search or filters to see more questions."
+                    : "Create a question manually or import a Word and Excel file pair."}
+                </span>
+              </div>
+            ) : null}
+            {filteredQuestions.map((question) => {
+              const version = question.versions[0];
+              const isExpanded = expandedQuestionId === question.id;
+              const acceptedAnswers =
+                version?.acceptedAnswers
+                  .map((answer) => answer.textValue ?? answer.numericValue)
+                  .filter((answer): answer is string => Boolean(answer)) ?? [];
+              return (
+                <article data-expanded={isExpanded} key={question.id}>
+                  <button
+                    aria-controls={`question-bank-detail-${question.id}`}
+                    aria-expanded={isExpanded}
+                    className={styles.questionSummary}
+                    onClick={() =>
+                      setExpandedQuestionId(isExpanded ? null : question.id)
+                    }
+                    type="button"
+                  >
+                    <div className={styles.questionIdentity}>
+                      <strong>{question.code}</strong>
+                      <span>{question.subject.name}</span>
+                    </div>
+                    <p>{contentSummary(version?.content)}</p>
+                    <div className={styles.questionSummaryMeta}>
+                      <span className={styles.typeBadge}>
+                        {version?.questionType.name ?? "Unknown type"}
+                      </span>
+                      <Status value={question.status} />
+                      <span className={styles.markingSummary}>
+                        +{version?.defaultMarks ?? "—"} / −
+                        {version?.defaultNegativeMarks ?? "—"}
+                      </span>
+                      <ChevronDown
+                        aria-hidden="true"
+                        className={styles.expandIcon}
+                        size={17}
+                      />
+                    </div>
+                  </button>
+                  {isExpanded ? (
+                    <QuestionDetails
+                      acceptedAnswers={acceptedAnswers}
+                      caseSensitive={version?.caseSensitive}
+                      comprehensionCode={version?.comprehension?.code}
+                      comprehensionContent={version?.comprehension?.content}
+                      correctAnswer={
+                        version?.options.find((option) => option.isCorrect)
+                          ?.code
+                      }
+                      explanation={version?.explanation}
+                      id={`question-bank-detail-${question.id}`}
+                      numericTolerance={
+                        version?.acceptedAnswers.find(
+                          (answer) => answer.numericTolerance !== null,
+                        )?.numericTolerance
+                      }
+                      options={version?.options}
+                      placement={[
+                        {
+                          label: "Version",
+                          value: version ? `v${version.versionNumber}` : null,
+                        },
+                        {
+                          label: "Default marking",
+                          value: version
+                            ? `+${version.defaultMarks} / −${version.defaultNegativeMarks}`
+                            : null,
+                        },
+                      ]}
+                      questionContent={version?.content}
                     />
-                  </div>
-                </button>
-                {isExpanded ? (
-                  <QuestionDetails
-                    acceptedAnswers={acceptedAnswers}
-                    caseSensitive={version?.caseSensitive}
-                    comprehensionCode={version?.comprehension?.code}
-                    comprehensionContent={version?.comprehension?.content}
-                    correctAnswer={
-                      version?.options.find((option) => option.isCorrect)?.code
-                    }
-                    explanation={version?.explanation}
-                    id={`question-bank-detail-${question.id}`}
-                    numericTolerance={
-                      version?.acceptedAnswers.find(
-                        (answer) => answer.numericTolerance !== null,
-                      )?.numericTolerance
-                    }
-                    options={version?.options}
-                    placement={[
-                      {
-                        label: "Version",
-                        value: version ? `v${version.versionNumber}` : null,
-                      },
-                      {
-                        label: "Default marking",
-                        value: version
-                          ? `+${version.defaultMarks} / −${version.defaultNegativeMarks}`
-                          : null,
-                      },
-                    ]}
-                    questionContent={version?.content}
-                  />
-                ) : null}
-              </article>
-            );
-          })}
-        </div>
-      </section>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+        </section>
       </div>
     </div>
   );
-}
+};
 
-const ImportsPanel =({
+const ImportsPanel = ({
   organizationSelector,
   templates,
   report,
@@ -3243,7 +3516,7 @@ const ImportsPanel =({
   organizationSelector?: ReactNode;
   templates: ExamTemplateListItem[];
   report: Report;
-})  => {
+}) => {
   type ImportMode = "CODELESS_WORD" | "PAIRED_WORD_EXCEL";
   const [templateId, setTemplateId] = useState(0);
   const [importMode, setImportMode] = useState<ImportMode>("CODELESS_WORD");
@@ -3300,7 +3573,8 @@ const ImportsPanel =({
     const wordFile = form.get("wordFile");
     const excelFile = form.get("excelFile");
     if (!(wordFile instanceof File) || !version) return;
-    if (importMode === "PAIRED_WORD_EXCEL" && !(excelFile instanceof File)) return;
+    if (importMode === "PAIRED_WORD_EXCEL" && !(excelFile instanceof File))
+      return;
     const payload = new FormData();
     payload.set("importMode", importMode);
     payload.set("wordFile", wordFile);
@@ -3342,8 +3616,8 @@ const ImportsPanel =({
             <p>Assessment Management</p>
             <h1>Question Import Center</h1>
             <span>
-              Stage Word or Excel question files, validate every row, and
-              commit only when ready.
+              Stage Word or Excel question files, validate every row, and commit
+              only when ready.
             </span>
           </div>
           <img
@@ -3384,297 +3658,302 @@ const ImportsPanel =({
         </div>
       </section>
       <div className={styles.importWorkspace}>
-      <section className={`${styles.panel} ${styles.importControlPanel}`}>
-        <div className={styles.panelTitle}>
-          <div>
-            <h2>Controlled question import</h2>
-            <p>
-              Files are parsed into staging rows; nothing reaches the question
-              bank until you confirm.
-            </p>
-          </div>
-          <FileSpreadsheet />
-        </div>
-        <div className={styles.guide}>
-          {importMode === "CODELESS_WORD" ? (
-            <>
-              <strong>Code-free Word import</strong>
-              <code>
-                Section name | Slot: Slot 1 | Section: Section name | Subject:
-                Subject name
-              </code>
-              <code>Heading 1: Comprehension - 1 to 5</code>
-              <code>Passage text and/or embedded images</code>
-              <code>Heading 2: Question - 1</code>
-              <code>Question text and/or diagram images</code>
-              <code>Heading 3: Options - two-column Label / Content table</code>
-              <code>Heading 3: Answer Rules - Field / Value table</code>
-              <code>Heading 3: Explanation - text and/or images</code>
+        <section className={`${styles.panel} ${styles.importControlPanel}`}>
+          <div className={styles.panelTitle}>
+            <div>
+              <h2>Controlled question import</h2>
               <p>
-                Word can use visible section names and question numbers.
-                Internal question and comprehension codes are generated during
-                staging.
+                Files are parsed into staging rows; nothing reaches the question
+                bank until you confirm.
               </p>
-            </>
+            </div>
+            <FileSpreadsheet />
+          </div>
+          <div className={styles.guide}>
+            {importMode === "CODELESS_WORD" ? (
+              <>
+                <strong>Code-free Word import</strong>
+                <code>
+                  Section name | Slot: Slot 1 | Section: Section name | Subject:
+                  Subject name
+                </code>
+                <code>Heading 1: Comprehension - 1 to 5</code>
+                <code>Passage text and/or embedded images</code>
+                <code>Heading 2: Question - 1</code>
+                <code>Question text and/or diagram images</code>
+                <code>
+                  Heading 3: Options - two-column Label / Content table
+                </code>
+                <code>Heading 3: Answer Rules - Field / Value table</code>
+                <code>Heading 3: Explanation - text and/or images</code>
+                <p>
+                  Word can use visible section names and question numbers.
+                  Internal question and comprehension codes are generated during
+                  staging.
+                </p>
+              </>
+            ) : (
+              <>
+                <strong>Two files form one controlled import</strong>
+                <code>Heading 1: Comprehension - RC-001</code>
+                <code>Passage text and/or embedded images</code>
+                <code>Heading 2: Question - ENG-RC-001</code>
+                <code>Question text and/or diagram images</code>
+                <code>
+                  Heading 3: Options → two-column Code / Content table
+                </code>
+                <code>Heading 3: Answer Rules → Field / Value table</code>
+                <code>Heading 3: Explanation → text and/or images</code>
+                <code>Heading 1: Standalone Questions</code>
+                <p>
+                  Word owns content, options, answer rules, and explanations.
+                  The next Heading 2 starts the next question, so no END markers
+                  are needed. A comprehension applies to consecutive questions
+                  until another Comprehension heading or Standalone Questions.
+                  Excel maps matching question codes to slot, section, its
+                  single subject, question type ID, marks, order, and mandatory
+                  status.
+                </p>
+              </>
+            )}
+          </div>
+          <div className={styles.templateActions}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => downloadTemplate("word")}
+            >
+              <FileText size={16} />
+              {importMode === "CODELESS_WORD"
+                ? "Download code-free Word"
+                : "Download Word template"}
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => downloadTemplate("excel")}
+            >
+              <FileSpreadsheet size={16} />
+              {importMode === "CODELESS_WORD"
+                ? "Download sample Excel"
+                : "Download Excel mapping"}
+            </button>
+          </div>
+          <form action={stage} className={styles.form}>
+            {organizationSelector}
+            <CrudSelectField
+              label="Import format"
+              onChange={(value) => setImportMode(value as ImportMode)}
+              options={[
+                { label: "Code-free Word", value: "CODELESS_WORD" },
+                {
+                  label: "Word + Excel mapping",
+                  value: "PAIRED_WORD_EXCEL",
+                },
+              ]}
+              value={importMode}
+            />
+            <CrudSelectField
+              description={
+                version
+                  ? `Questions will be imported into version ${version.versionNumber}, which is the active draft.`
+                  : undefined
+              }
+              label="Draft template"
+              onChange={(value) => {
+                setTemplateId(Number(value));
+                setSectionId(0);
+              }}
+              options={templates
+                .filter((item) =>
+                  item.versions.some(
+                    (versionItem) => versionItem.status === "DRAFT",
+                  ),
+                )
+                .map((item) => ({
+                  label: `${item.name} - v${item.versions.find((versionItem) => versionItem.status === "DRAFT")?.versionNumber} Draft`,
+                  value: String(item.id),
+                }))}
+              placeholder="Choose template"
+              value={templateId ? String(templateId) : ""}
+            />
+            <CrudSelectField
+              label="Import scope"
+              onChange={(value) => setScope(value as typeof scope)}
+              options={[
+                { label: "One section", value: "SINGLE_SECTION" },
+                {
+                  label:
+                    importMode === "CODELESS_WORD"
+                      ? "Full exam (sections from Word)"
+                      : "Full exam (destinations from Excel)",
+                  value: "FULL_EXAM",
+                },
+              ]}
+              value={scope}
+            />
+            {scope === "SINGLE_SECTION" ? (
+              <>
+                <CrudSelectField
+                  label="Destination section"
+                  onChange={(value) => setSectionId(Number(value))}
+                  options={sections.map((section) => ({
+                    label: `${section.slotName} / ${section.name}`,
+                    value: String(section.id),
+                  }))}
+                  placeholder="Choose section"
+                  value={sectionId ? String(sectionId) : ""}
+                />
+                <label>
+                  Section subject
+                  <input
+                    readOnly
+                    value={
+                      selectedSection?.subjects[0]?.subject.name ??
+                      "Choose a section"
+                    }
+                  />
+                </label>
+              </>
+            ) : null}
+            <label>
+              Word content file
+              <input type="file" name="wordFile" accept=".docx" required />
+            </label>
+            {importMode === "PAIRED_WORD_EXCEL" ? (
+              <label>
+                Excel mapping file
+                <input type="file" name="excelFile" accept=".xlsx" required />
+              </label>
+            ) : null}
+            <button
+              className={styles.primaryButton}
+              disabled={!version || (scope === "SINGLE_SECTION" && !sectionId)}
+            >
+              <FileUp size={16} />
+              Stage and validate
+            </button>
+          </form>
+        </section>
+        <section className={`${styles.panel} ${styles.importPreviewPanel}`}>
+          <div className={styles.panelTitle}>
+            <div>
+              <h2>Import preview</h2>
+              <p>Review row-level validation before the atomic commit.</p>
+            </div>
+            {job ? <Status value={job.status} /> : null}
+          </div>
+          {!job ? (
+            <Empty
+              icon={FileUp}
+              title="No staged import"
+              text={
+                importMode === "CODELESS_WORD"
+                  ? "Upload one .docx file to validate generated question codes before import."
+                  : "Upload one .docx content file and one .xlsx mapping file to validate their matching question codes."
+              }
+            />
           ) : (
             <>
-              <strong>Two files form one controlled import</strong>
-          <code>Heading 1: Comprehension - RC-001</code>
-          <code>Passage text and/or embedded images</code>
-          <code>Heading 2: Question - ENG-RC-001</code>
-          <code>Question text and/or diagram images</code>
-          <code>Heading 3: Options → two-column Code / Content table</code>
-          <code>Heading 3: Answer Rules → Field / Value table</code>
-          <code>Heading 3: Explanation → text and/or images</code>
-          <code>Heading 1: Standalone Questions</code>
-          <p>
-            Word owns content, options, answer rules, and explanations. The next
-            Heading 2 starts the next question, so no END markers are needed. A
-            comprehension applies to consecutive questions until another
-            Comprehension heading or Standalone Questions. Excel maps matching
-            question codes to slot, section, its single subject, question type
-            ID, marks, order, and mandatory status.
-          </p>
-            </>
-          )}
-        </div>
-        <div className={styles.templateActions}>
-          <button
-            type="button"
-            className={styles.secondaryButton}
-            onClick={() => downloadTemplate("word")}
-          >
-            <FileText size={16} />
-            {importMode === "CODELESS_WORD"
-              ? "Download code-free Word"
-              : "Download Word template"}
-          </button>
-          <button
-            type="button"
-            className={styles.secondaryButton}
-            onClick={() => downloadTemplate("excel")}
-          >
-            <FileSpreadsheet size={16} />
-            {importMode === "CODELESS_WORD"
-              ? "Download sample Excel"
-              : "Download Excel mapping"}
-          </button>
-        </div>
-        <form action={stage} className={styles.form}>
-          {organizationSelector}
-          <CrudSelectField
-            label="Import format"
-            onChange={(value) => setImportMode(value as ImportMode)}
-            options={[
-              { label: "Code-free Word", value: "CODELESS_WORD" },
-              {
-                label: "Word + Excel mapping",
-                value: "PAIRED_WORD_EXCEL",
-              },
-            ]}
-            value={importMode}
-          />
-          <CrudSelectField
-            description={
-              version
-                ? `Questions will be imported into version ${version.versionNumber}, which is the active draft.`
-                : undefined
-            }
-            label="Draft template"
-            onChange={(value) => {
-              setTemplateId(Number(value));
-              setSectionId(0);
-            }}
-            options={templates
-              .filter((item) =>
-                item.versions.some(
-                  (versionItem) => versionItem.status === "DRAFT",
-                ),
-              )
-              .map((item) => ({
-                label: `${item.name} - v${item.versions.find((versionItem) => versionItem.status === "DRAFT")?.versionNumber} Draft`,
-                value: String(item.id),
-              }))}
-            placeholder="Choose template"
-            value={templateId ? String(templateId) : ""}
-          />
-          <CrudSelectField
-            label="Import scope"
-            onChange={(value) => setScope(value as typeof scope)}
-            options={[
-              { label: "One section", value: "SINGLE_SECTION" },
-              {
-                label:
-                  importMode === "CODELESS_WORD"
-                    ? "Full exam (sections from Word)"
-                    : "Full exam (destinations from Excel)",
-                value: "FULL_EXAM",
-              },
-            ]}
-            value={scope}
-          />
-          {scope === "SINGLE_SECTION" ? (
-            <>
-              <CrudSelectField
-                label="Destination section"
-                onChange={(value) => setSectionId(Number(value))}
-                options={sections.map((section) => ({
-                  label: `${section.slotName} / ${section.name}`,
-                  value: String(section.id),
-                }))}
-                placeholder="Choose section"
-                value={sectionId ? String(sectionId) : ""}
-              />
-              <label>
-                Section subject
-                <input
-                  readOnly
-                  value={
-                    selectedSection?.subjects[0]?.subject.name ??
-                    "Choose a section"
-                  }
-                />
-              </label>
-            </>
-          ) : null}
-          <label>
-            Word content file
-            <input type="file" name="wordFile" accept=".docx" required />
-          </label>
-          {importMode === "PAIRED_WORD_EXCEL" ? (
-            <label>
-              Excel mapping file
-              <input type="file" name="excelFile" accept=".xlsx" required />
-            </label>
-          ) : null}
-          <button
-            className={styles.primaryButton}
-            disabled={!version || (scope === "SINGLE_SECTION" && !sectionId)}
-          >
-            <FileUp size={16} />
-            Stage and validate
-          </button>
-        </form>
-      </section>
-      <section className={`${styles.panel} ${styles.importPreviewPanel}`}>
-        <div className={styles.panelTitle}>
-          <div>
-            <h2>Import preview</h2>
-            <p>Review row-level validation before the atomic commit.</p>
-          </div>
-          {job ? <Status value={job.status} /> : null}
-        </div>
-        {!job ? (
-          <Empty
-            icon={FileUp}
-            title="No staged import"
-            text={
-              importMode === "CODELESS_WORD"
-                ? "Upload one .docx file to validate generated question codes before import."
-                : "Upload one .docx content file and one .xlsx mapping file to validate their matching question codes."
-            }
-          />
-        ) : (
-          <>
-            <div className={styles.importStats}>
-              <span>
-                <strong>{job.totalRows}</strong>Total
-              </span>
-              <span>
-                <strong>{job.validRows}</strong>Valid
-              </span>
-              <span>
-                <strong>{job.warningRows}</strong>Warnings
-              </span>
-              <span>
-                <strong>{job.errorRows}</strong>Errors
-              </span>
-            </div>
-            <div className={styles.previewTable}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>View</th>
-                    <th>Row</th>
-                    <th>Code</th>
-                    <th>Type</th>
-                    <th>Marks</th>
-                    <th>Validation</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {job.rows.map((row) => {
-                    const isExpanded = expandedImportRowId === row.id;
-                    return (
-                      <Fragment key={row.id}>
-                        <tr data-expanded={isExpanded}>
-                          <td>
-                            <button
-                              aria-controls={`import-question-detail-${row.id}`}
-                              aria-expanded={isExpanded}
-                              aria-label={`${isExpanded ? "Hide" : "View"} ${row.questionCode ?? `row ${row.sourceIndex}`} details`}
-                              className={styles.rowExpandButton}
-                              onClick={() =>
-                                setExpandedImportRowId(
-                                  isExpanded ? null : row.id,
-                                )
-                              }
-                              type="button"
-                            >
-                              <ChevronDown aria-hidden="true" size={16} />
-                            </button>
-                          </td>
-                          <td>{row.sourceIndex}</td>
-                          <td>
-                            <strong className={styles.questionCode}>
-                              {row.questionCode ?? "Missing code"}
-                            </strong>
-                          </td>
-                          <td>
-                            {row.questionType
-                              ? `${row.questionType.name} (ID ${row.questionType.id})`
-                              : row.rawQuestionTypeId
-                                ? `Unknown ID ${row.rawQuestionTypeId}`
-                                : "—"}
-                          </td>
-                          <td>
-                            {row.marks ?? "—"} / −{row.negativeMarks ?? "—"}
-                          </td>
-                          <td>
-                            <Status value={row.status} />
-                            {row.validationMessage ? (
-                              <small>{row.validationMessage}</small>
-                            ) : null}
-                          </td>
-                        </tr>
-                        {isExpanded ? (
-                          <tr className={styles.previewDetailRow}>
-                            <td colSpan={6}>
-                              <ImportQuestionDetails row={row} />
+              <div className={styles.importStats}>
+                <span>
+                  <strong>{job.totalRows}</strong>Total
+                </span>
+                <span>
+                  <strong>{job.validRows}</strong>Valid
+                </span>
+                <span>
+                  <strong>{job.warningRows}</strong>Warnings
+                </span>
+                <span>
+                  <strong>{job.errorRows}</strong>Errors
+                </span>
+              </div>
+              <div className={styles.previewTable}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>View</th>
+                      <th>Row</th>
+                      <th>Code</th>
+                      <th>Type</th>
+                      <th>Marks</th>
+                      <th>Validation</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {job.rows.map((row) => {
+                      const isExpanded = expandedImportRowId === row.id;
+                      return (
+                        <Fragment key={row.id}>
+                          <tr data-expanded={isExpanded}>
+                            <td>
+                              <button
+                                aria-controls={`import-question-detail-${row.id}`}
+                                aria-expanded={isExpanded}
+                                aria-label={`${isExpanded ? "Hide" : "View"} ${row.questionCode ?? `row ${row.sourceIndex}`} details`}
+                                className={styles.rowExpandButton}
+                                onClick={() =>
+                                  setExpandedImportRowId(
+                                    isExpanded ? null : row.id,
+                                  )
+                                }
+                                type="button"
+                              >
+                                <ChevronDown aria-hidden="true" size={16} />
+                              </button>
+                            </td>
+                            <td>{row.sourceIndex}</td>
+                            <td>
+                              <strong className={styles.questionCode}>
+                                {row.questionCode ?? "Missing code"}
+                              </strong>
+                            </td>
+                            <td>
+                              {row.questionType
+                                ? `${row.questionType.name} (ID ${row.questionType.id})`
+                                : row.rawQuestionTypeId
+                                  ? `Unknown ID ${row.rawQuestionTypeId}`
+                                  : "—"}
+                            </td>
+                            <td>
+                              {row.marks ?? "—"} / −{row.negativeMarks ?? "—"}
+                            </td>
+                            <td>
+                              <Status value={row.status} />
+                              {row.validationMessage ? (
+                                <small>{row.validationMessage}</small>
+                              ) : null}
                             </td>
                           </tr>
-                        ) : null}
-                      </Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <button
-              className={styles.publishButton}
-              disabled={job.status !== "READY_FOR_REVIEW" || isCommitting}
-              onClick={commit}
-            >
-              <CheckCircle2 size={16} />
-              {isCommitting ? "Importing…" : "Confirm import"}
-            </button>
-          </>
-        )}
-      </section>
+                          {isExpanded ? (
+                            <tr className={styles.previewDetailRow}>
+                              <td colSpan={6}>
+                                <ImportQuestionDetails row={row} />
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <button
+                className={styles.publishButton}
+                disabled={job.status !== "READY_FOR_REVIEW" || isCommitting}
+                onClick={commit}
+              >
+                <CheckCircle2 size={16} />
+                {isCommitting ? "Importing…" : "Confirm import"}
+              </button>
+            </>
+          )}
+        </section>
       </div>
     </div>
   );
-}
+};
 
 const SchedulePanel = ({
   organizationId,
@@ -3817,337 +4096,337 @@ const SchedulePanel = ({
       </section>
 
       <div className={styles.scheduleWorkspace}>
-      <section className={`${styles.panel} ${styles.scheduleFormPanel}`}>
-        <div className={styles.panelTitle}>
-          <div>
-            <h2>Schedule an exam</h2>
-            <p>
-              Availability, overall time, slot time, section time, and attempts
-              are enforced independently.
-            </p>
+        <section className={`${styles.panel} ${styles.scheduleFormPanel}`}>
+          <div className={styles.panelTitle}>
+            <div>
+              <h2>Schedule an exam</h2>
+              <p>
+                Availability, overall time, slot time, section time, and
+                attempts are enforced independently.
+              </p>
+            </div>
+            <CalendarClock />
           </div>
-          <CalendarClock />
-        </div>
-        <form action={create} className={styles.form}>
-          {organizationSelector}
-          <div className={styles.rowFields}>
-            <label>
-              Exam title
-              <input name="title" required placeholder="CUET Mock Test 02" />
-            </label>
-            <label>
-              Code
-              <input name="code" required placeholder="CUET-MOCK-02" />
-            </label>
-          </div>
-          <CrudSelectField
-            label="Published template"
-            onChange={(value) => {
-              setTemplateId(Number(value));
-              setVersionId(0);
-              setSelectedSlotIds(null);
-            }}
-            options={templates
-              .filter((item) =>
-                item.versions.some((child) => child.status === "PUBLISHED"),
-              )
-              .map((item) => ({
-                label: item.name,
-                value: String(item.id),
-              }))}
-            placeholder="Choose template"
-            value={templateId ? String(templateId) : ""}
-          />
-          <CrudSelectField
-            description="Scheduled attempts remain permanently linked to this version."
-            disabled={!publishedVersions.length}
-            label="Published version"
-            onChange={(value) => {
-              setVersionId(Number(value));
-              setSelectedSlotIds(null);
-            }}
-            options={publishedVersions.map((publishedVersion) => ({
-              label: `Version ${publishedVersion.versionNumber} - Published`,
-              value: String(publishedVersion.id),
-            }))}
-            placeholder="Choose version"
-            value={version ? String(version.id) : ""}
-          />
-          {version?.slots.length ? (
-            <fieldset className={styles.slotSelection}>
-              <legend>Slots included in this exam</legend>
-              {version.slots.map((slot) => (
-                <label key={slot.id}>
-                  <input
-                    checked={effectiveSelectedSlotIds.includes(slot.id)}
-                    onChange={(event) =>
-                      setSelectedSlotIds((current) =>
-                        event.target.checked
-                          ? [
-                              ...(current ?? effectiveSelectedSlotIds),
-                              slot.id,
-                            ].filter(
-                              (id, index, values) =>
-                                values.indexOf(id) === index,
-                            )
-                          : (current ?? effectiveSelectedSlotIds).filter(
-                              (id) => id !== slot.id,
-                            ),
-                      )
-                    }
-                    type="checkbox"
-                  />
-                  <span>{slot.name}</span>
-                  <small>{slot.durationMinutes} min</small>
-                </label>
-              ))}
-            </fieldset>
-          ) : null}
-          <CrudSelectField
-            label="Session"
-            loading={sessions.isLoading}
-            onChange={(value) => {
-              setSessionId(Number(value));
-              setCourseIds([]);
-              setFolderId(0);
-            }}
-            options={(sessions.data?.items ?? []).map((session) => ({
-              label: session.name,
-              value: String(session.id),
-            }))}
-            placeholder="Choose session"
-            value={sessionId ? String(sessionId) : ""}
-          />
-          <CrudMultiSelectField
-            disabled={!sessionId}
-            label="Available to courses"
-            loading={courses.isLoading}
-            onChange={(values) => {
-              setCourseIds(values.map(Number));
-              setFolderId(0);
-            }}
-            options={(courses.data?.items ?? []).map((course) => ({
-              label: course.displayName || course.course.name,
-              value: String(course.id),
-            }))}
-            placeholder={
-              sessionId ? "Select courses" : "Choose a session first"
-            }
-            selectedLabel={(count) => `${count} courses selected`}
-            value={courseIds.map(String)}
-          />
-          <CrudSelectField
-            description="Choose a folder to expose this exam through the existing Resource Type 3 relationship."
-            disabled={!firstCourseId}
-            label="Resource folder (optional)"
-            loading={folders.isLoading}
-            onChange={(value) =>
-              setFolderId(value === "none" ? 0 : Number(value))
-            }
-            options={[
-              { label: "Do not create resource card", value: "none" },
-              ...(folders.data?.items ?? []).map((folder) => ({
-                label: folder.name,
-                value: String(folder.id),
-              })),
-            ]}
-            value={folderId ? String(folderId) : "none"}
-          />
-          <div className={`${styles.rowFields} ${styles.scheduleTimingGrid}`}>
-            <CrudDateTimePicker
-              label="Available from"
-              name="availableFrom"
-              onChange={(value) => {
-                setAvailableFrom(value);
-                if (
-                  value &&
-                  availableUntil &&
-                  availableUntil.getTime() <= value.getTime()
-                ) {
-                  setAvailableUntil(null);
-                }
-              }}
-              placeholder="Choose start date and time"
-              required
-              value={availableFrom}
-            />
-            <CrudDateTimePicker
-              label="Available until"
-              minDate={availableFrom}
-              name="availableUntil"
-              onChange={setAvailableUntil}
-              placeholder="Choose end date and time"
-              required
-              value={availableUntil}
-            />
-            <label>
-              Exam time (min)
-              <input
-                name="duration"
-                type="number"
-                min="1"
-                defaultValue={version?.defaultDurationMinutes ?? 90}
-                required
-              />
-            </label>
-            <label>
-              Attempt limit
-              <input
-                name="attemptLimit"
-                type="number"
-                min="1"
-                max="100"
-                defaultValue="1"
-                required
-              />
-            </label>
-          </div>
-          <section className={styles.templatePolicyCard}>
-            <CrudSelect
-              ariaLabel="Result release"
-              label="Result release"
-              onChange={(value) =>
-                setResultReleaseMode(
-                  value as "IMMEDIATE" | "SCHEDULED" | "MANUAL",
-                )
-              }
-              options={[
-                { label: "Immediately after submission", value: "IMMEDIATE" },
-                { label: "At a scheduled time", value: "SCHEDULED" },
-                { label: "Release manually", value: "MANUAL" },
-              ]}
-              value={resultReleaseMode}
-              width="100%"
-            />
-            {resultReleaseMode === "SCHEDULED" ? (
-              <CrudDateTimePicker
-                label="Publish results at"
-                minDate={availableFrom}
-                name="resultPublishAt"
-                onChange={setResultPublishAt}
-                placeholder="Choose result release date and time"
-                required
-                value={resultPublishAt}
-              />
-            ) : null}
-            <div className={styles.policyChecks}>
+          <form action={create} className={styles.form}>
+            {organizationSelector}
+            <div className={styles.rowFields}>
               <label>
-                <input
-                  defaultChecked
-                  name="autoSubmitOnTimeout"
-                  type="checkbox"
-                />
-                Auto-submit on timeout
+                Exam title
+                <input name="title" required placeholder="CUET Mock Test 02" />
               </label>
               <label>
-                <input defaultChecked name="allowResume" type="checkbox" />
-                Allow resume
-              </label>
-              <label>
-                <input defaultChecked name="showScore" type="checkbox" />
-                Show score
-              </label>
-              <label>
-                <input name="showQuestionReview" type="checkbox" />
-                Show question review
-              </label>
-              <label>
-                <input name="showCorrectAnswers" type="checkbox" />
-                Show correct answers
-              </label>
-              <label>
-                <input name="showExplanations" type="checkbox" />
-                Show explanations
+                Code
+                <input name="code" required placeholder="CUET-MOCK-02" />
               </label>
             </div>
-          </section>
-          <label>
-            Instructions
-            <textarea name="instructions" rows={3} />
-          </label>
-          <button
-            className={styles.primaryButton}
-            disabled={
-              !organizationId ||
-              !version ||
-              !courseIds.length ||
-              !effectiveSelectedSlotIds.length
-            }
-          >
-            <CalendarClock size={16} />
-            Schedule exam
-          </button>
-        </form>
-      </section>
-      <section className={`${styles.panel} ${styles.scheduledExamPanel}`}>
-        <div className={styles.panelTitle}>
-          <div>
-            <h2>Scheduled exams</h2>
-            <p>{exams.length} exam instances</p>
-          </div>
-        </div>
-        <div className={styles.examList}>
-          {exams.map((exam) => (
-            <article key={exam.id}>
-              <div>
-                <strong>{exam.title}</strong>
-                <span>
-                  {exam.code} · {exam.templateVersion.examTemplate.name} · v
-                  {exam.templateVersion.versionNumber}
-                </span>
-              </div>
-              <Status value={exam.status} />
-              {exam.resultReleaseMode === "MANUAL" &&
-              !exam.resultsReleasedAt ? (
-                <button
-                  className={styles.secondaryButton}
-                  onClick={() =>
-                    report(
-                      examsApi.scheduled.releaseResults(exam.id),
-                      `Results released for ${exam.title}`,
-                    )
+            <CrudSelectField
+              label="Published template"
+              onChange={(value) => {
+                setTemplateId(Number(value));
+                setVersionId(0);
+                setSelectedSlotIds(null);
+              }}
+              options={templates
+                .filter((item) =>
+                  item.versions.some((child) => child.status === "PUBLISHED"),
+                )
+                .map((item) => ({
+                  label: item.name,
+                  value: String(item.id),
+                }))}
+              placeholder="Choose template"
+              value={templateId ? String(templateId) : ""}
+            />
+            <CrudSelectField
+              description="Scheduled attempts remain permanently linked to this version."
+              disabled={!publishedVersions.length}
+              label="Published version"
+              onChange={(value) => {
+                setVersionId(Number(value));
+                setSelectedSlotIds(null);
+              }}
+              options={publishedVersions.map((publishedVersion) => ({
+                label: `Version ${publishedVersion.versionNumber} - Published`,
+                value: String(publishedVersion.id),
+              }))}
+              placeholder="Choose version"
+              value={version ? String(version.id) : ""}
+            />
+            {version?.slots.length ? (
+              <fieldset className={styles.slotSelection}>
+                <legend>Slots included in this exam</legend>
+                {version.slots.map((slot) => (
+                  <label key={slot.id}>
+                    <input
+                      checked={effectiveSelectedSlotIds.includes(slot.id)}
+                      onChange={(event) =>
+                        setSelectedSlotIds((current) =>
+                          event.target.checked
+                            ? [
+                                ...(current ?? effectiveSelectedSlotIds),
+                                slot.id,
+                              ].filter(
+                                (id, index, values) =>
+                                  values.indexOf(id) === index,
+                              )
+                            : (current ?? effectiveSelectedSlotIds).filter(
+                                (id) => id !== slot.id,
+                              ),
+                        )
+                      }
+                      type="checkbox"
+                    />
+                    <span>{slot.name}</span>
+                    <small>{slot.durationMinutes} min</small>
+                  </label>
+                ))}
+              </fieldset>
+            ) : null}
+            <CrudSelectField
+              label="Session"
+              loading={sessions.isLoading}
+              onChange={(value) => {
+                setSessionId(Number(value));
+                setCourseIds([]);
+                setFolderId(0);
+              }}
+              options={(sessions.data?.items ?? []).map((session) => ({
+                label: session.name,
+                value: String(session.id),
+              }))}
+              placeholder="Choose session"
+              value={sessionId ? String(sessionId) : ""}
+            />
+            <CrudMultiSelectField
+              disabled={!sessionId}
+              label="Available to courses"
+              loading={courses.isLoading}
+              onChange={(values) => {
+                setCourseIds(values.map(Number));
+                setFolderId(0);
+              }}
+              options={(courses.data?.items ?? []).map((course) => ({
+                label: course.displayName || course.course.name,
+                value: String(course.id),
+              }))}
+              placeholder={
+                sessionId ? "Select courses" : "Choose a session first"
+              }
+              selectedLabel={(count) => `${count} courses selected`}
+              value={courseIds.map(String)}
+            />
+            <CrudSelectField
+              description="Choose a folder to expose this exam through the existing Resource Type 3 relationship."
+              disabled={!firstCourseId}
+              label="Resource folder (optional)"
+              loading={folders.isLoading}
+              onChange={(value) =>
+                setFolderId(value === "none" ? 0 : Number(value))
+              }
+              options={[
+                { label: "Do not create resource card", value: "none" },
+                ...(folders.data?.items ?? []).map((folder) => ({
+                  label: folder.name,
+                  value: String(folder.id),
+                })),
+              ]}
+              value={folderId ? String(folderId) : "none"}
+            />
+            <div className={`${styles.rowFields} ${styles.scheduleTimingGrid}`}>
+              <CrudDateTimePicker
+                label="Available from"
+                name="availableFrom"
+                onChange={(value) => {
+                  setAvailableFrom(value);
+                  if (
+                    value &&
+                    availableUntil &&
+                    availableUntil.getTime() <= value.getTime()
+                  ) {
+                    setAvailableUntil(null);
                   }
-                  type="button"
-                >
-                  Release results
-                </button>
+                }}
+                placeholder="Choose start date and time"
+                required
+                value={availableFrom}
+              />
+              <CrudDateTimePicker
+                label="Available until"
+                minDate={availableFrom}
+                name="availableUntil"
+                onChange={setAvailableUntil}
+                placeholder="Choose end date and time"
+                required
+                value={availableUntil}
+              />
+              <label>
+                Exam time (min)
+                <input
+                  name="duration"
+                  type="number"
+                  min="1"
+                  defaultValue={version?.defaultDurationMinutes ?? 90}
+                  required
+                />
+              </label>
+              <label>
+                Attempt limit
+                <input
+                  name="attemptLimit"
+                  type="number"
+                  min="1"
+                  max="100"
+                  defaultValue="1"
+                  required
+                />
+              </label>
+            </div>
+            <section className={styles.templatePolicyCard}>
+              <CrudSelect
+                ariaLabel="Result release"
+                label="Result release"
+                onChange={(value) =>
+                  setResultReleaseMode(
+                    value as "IMMEDIATE" | "SCHEDULED" | "MANUAL",
+                  )
+                }
+                options={[
+                  { label: "Immediately after submission", value: "IMMEDIATE" },
+                  { label: "At a scheduled time", value: "SCHEDULED" },
+                  { label: "Release manually", value: "MANUAL" },
+                ]}
+                value={resultReleaseMode}
+                width="100%"
+              />
+              {resultReleaseMode === "SCHEDULED" ? (
+                <CrudDateTimePicker
+                  label="Publish results at"
+                  minDate={availableFrom}
+                  name="resultPublishAt"
+                  onChange={setResultPublishAt}
+                  placeholder="Choose result release date and time"
+                  required
+                  value={resultPublishAt}
+                />
               ) : null}
-              <dl>
+              <div className={styles.policyChecks}>
+                <label>
+                  <input
+                    defaultChecked
+                    name="autoSubmitOnTimeout"
+                    type="checkbox"
+                  />
+                  Auto-submit on timeout
+                </label>
+                <label>
+                  <input defaultChecked name="allowResume" type="checkbox" />
+                  Allow resume
+                </label>
+                <label>
+                  <input defaultChecked name="showScore" type="checkbox" />
+                  Show score
+                </label>
+                <label>
+                  <input name="showQuestionReview" type="checkbox" />
+                  Show question review
+                </label>
+                <label>
+                  <input name="showCorrectAnswers" type="checkbox" />
+                  Show correct answers
+                </label>
+                <label>
+                  <input name="showExplanations" type="checkbox" />
+                  Show explanations
+                </label>
+              </div>
+            </section>
+            <label>
+              Instructions
+              <textarea name="instructions" rows={3} />
+            </label>
+            <button
+              className={styles.primaryButton}
+              disabled={
+                !organizationId ||
+                !version ||
+                !courseIds.length ||
+                !effectiveSelectedSlotIds.length
+              }
+            >
+              <CalendarClock size={16} />
+              Schedule exam
+            </button>
+          </form>
+        </section>
+        <section className={`${styles.panel} ${styles.scheduledExamPanel}`}>
+          <div className={styles.panelTitle}>
+            <div>
+              <h2>Scheduled exams</h2>
+              <p>{exams.length} exam instances</p>
+            </div>
+          </div>
+          <div className={styles.examList}>
+            {exams.map((exam) => (
+              <article key={exam.id}>
                 <div>
-                  <dt>Window</dt>
-                  <dd>
-                    {new Date(exam.availableFrom).toLocaleString()} –{" "}
-                    {new Date(exam.availableUntil).toLocaleString()}
-                  </dd>
+                  <strong>{exam.title}</strong>
+                  <span>
+                    {exam.code} · {exam.templateVersion.examTemplate.name} · v
+                    {exam.templateVersion.versionNumber}
+                  </span>
                 </div>
-                <div>
-                  <dt>Timing</dt>
-                  <dd>
-                    {exam.durationMinutes} min · {exam.selectedSlots.length}{" "}
-                    slot(s)
-                  </dd>
-                </div>
-                <div>
-                  <dt>Attempts</dt>
-                  <dd>{exam.attemptLimit}</dd>
-                </div>
-                <div>
-                  <dt>Courses</dt>
-                  <dd>
-                    {exam.courseAssignments
-                      .map((item) => item.sessionCourse.course.name)
-                      .join(", ")}
-                  </dd>
-                </div>
-              </dl>
-            </article>
-          ))}
-        </div>
-      </section>
+                <Status value={exam.status} />
+                {exam.resultReleaseMode === "MANUAL" &&
+                !exam.resultsReleasedAt ? (
+                  <button
+                    className={styles.secondaryButton}
+                    onClick={() =>
+                      report(
+                        examsApi.scheduled.releaseResults(exam.id),
+                        `Results released for ${exam.title}`,
+                      )
+                    }
+                    type="button"
+                  >
+                    Release results
+                  </button>
+                ) : null}
+                <dl>
+                  <div>
+                    <dt>Window</dt>
+                    <dd>
+                      {new Date(exam.availableFrom).toLocaleString()} –{" "}
+                      {new Date(exam.availableUntil).toLocaleString()}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Timing</dt>
+                    <dd>
+                      {exam.durationMinutes} min · {exam.selectedSlots.length}{" "}
+                      slot(s)
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Attempts</dt>
+                    <dd>{exam.attemptLimit}</dd>
+                  </div>
+                  <div>
+                    <dt>Courses</dt>
+                    <dd>
+                      {exam.courseAssignments
+                        .map((item) => item.sessionCourse.course.name)
+                        .join(", ")}
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );
-}
+};
 
 function Status({ value }: { value: string }) {
   return (

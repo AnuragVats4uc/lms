@@ -85,6 +85,259 @@
   color: #071c4f;
   zoom: 0.9;
 }
+.templateHeroGrid,
+.templateBuilderHeroGrid {
+  display: grid;
+  grid-template-columns: minmax(390px, 1.35fr) minmax(180px, 0.45fr) minmax(
+      340px,
+      0.95fr
+    );
+  gap: 14px;
+  min-width: 0;
+}
+.templateBuilderHeroGrid {
+  margin-bottom: 16px;
+  zoom: 0.9;
+}
+.templateHeroCard,
+.templateCountCard,
+.templateInsightCard {
+  border: 1px solid #cfe0ef;
+  border-radius: 16px;
+  box-shadow: 0 16px 42px rgba(6, 31, 82, 0.04);
+}
+.templateHeroCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  align-items: center;
+  min-height: 126px;
+  overflow: hidden;
+  padding: 18px 24px;
+  background:
+    radial-gradient(
+      circle at 4% 10%,
+      rgba(13, 153, 108, 0.11),
+      transparent 34%
+    ),
+    linear-gradient(106deg, #fbfefd 0%, #ffffff 57%, #ecf8f2 100%);
+}
+.templateHeroCard::after {
+  position: absolute;
+  top: 16px;
+  right: 132px;
+  width: 112px;
+  height: 76px;
+  opacity: 0.35;
+  background-image: radial-gradient(#0a9d70 1.4px, transparent 1.4px);
+  background-size: 14px 14px;
+  content: "";
+}
+.templateHeroCard > div {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 7px;
+  max-width: 520px;
+}
+.templateHeroCard p,
+.templateInsightCard p {
+  margin: 0;
+  color: #008d61;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.templateHeroCard h1 {
+  margin: 0;
+  color: #071c4f;
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.08;
+}
+.templateHeroCard span {
+  color: #66749c;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.templateHeroIcon {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  justify-self: end;
+  width: 88px;
+  height: 88px;
+  border-radius: 18px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.95),
+    rgba(229, 248, 241, 0.95)
+  );
+  color: #07875f !important;
+  box-shadow: 0 18px 28px rgba(7, 28, 79, 0.12);
+}
+.templateCountCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-content: center;
+  align-items: center;
+  column-gap: 14px;
+  min-height: 126px;
+  overflow: hidden;
+  padding: 18px 22px;
+  background:
+    radial-gradient(circle at 92% 5%, rgba(0, 153, 107, 0.15), transparent 25%),
+    linear-gradient(135deg, #f8fffc 0%, #e3f7ee 100%);
+}
+.templateCountIcon {
+  display: grid;
+  grid-row: span 2;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #07875f;
+}
+.templateCountCard strong {
+  color: #009363;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 0.95;
+}
+.templateCountCard p {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  color: #60709a;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+.templateCountCard p span {
+  display: block;
+}
+.templateCountDot {
+  position: absolute;
+  top: 20px;
+  right: 18px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #009d6c;
+  box-shadow: 0 8px 18px rgba(0, 157, 108, 0.35);
+}
+.templateInsightCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 126px;
+  overflow: hidden;
+  padding: 18px 22px;
+  border-color: rgba(0, 132, 85, 0.38);
+  background:
+    linear-gradient(90deg, rgba(0, 146, 95, 0.98), rgba(0, 129, 89, 0.96)),
+    url("/exam-subject-assets/green-gradient-panel.png") center / cover;
+  color: #fff;
+}
+.templateInsightCard::after {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  width: 86px;
+  height: 68px;
+  opacity: 0.18;
+  border: 2px solid #dffcf1;
+  border-radius: 16px;
+  content: "";
+}
+.templateInsightCard > div {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 9px;
+}
+.templateInsightCard p {
+  display: inline-flex;
+  width: max-content;
+  padding: 7px 11px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #e5fff6;
+}
+.templateInsightCard h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+.templateInsightStats {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.templateInsightStats span {
+  display: grid;
+  grid-template-columns: 22px auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 9px;
+  min-width: 96px;
+  min-height: 50px;
+  padding: 8px 11px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #ffffff 0%, #e6f7f0 100%);
+  color: #071c4f;
+  box-shadow: 0 12px 24px rgba(0, 72, 51, 0.12);
+}
+.templateInsightStats svg {
+  grid-row: span 2;
+  color: #009363;
+}
+.templateInsightStats strong {
+  color: #071c4f;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
+.templateInsightStats small {
+  color: #071c4f;
+  font-size: 9px;
+  font-weight: 600;
+}
+.templateHeroButton {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.templateHeroButton:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
 .templateListHeader {
   display: flex;
   align-items: flex-start;
@@ -194,7 +447,10 @@
 }
 .templateTableToolbar {
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) minmax(180px, 0.32fr) minmax(180px, 0.32fr);
+  grid-template-columns: minmax(220px, 0.32fr) minmax(280px, 1fr) minmax(
+      180px,
+      0.28fr
+    );
   gap: 10px;
   align-items: end;
 }
@@ -365,7 +621,10 @@
 }
 .subjectHeroGrid {
   display: grid;
-  grid-template-columns: minmax(390px, 1.45fr) minmax(190px, 0.55fr) minmax(330px, 1fr);
+  grid-template-columns: minmax(390px, 1.45fr) minmax(190px, 0.55fr) minmax(
+      330px,
+      1fr
+    );
   gap: 14px;
   min-width: 0;
 }
@@ -755,7 +1014,10 @@
 }
 .importHeroGrid {
   display: grid;
-  grid-template-columns: minmax(390px, 1.35fr) minmax(170px, 0.4fr) minmax(330px, 0.95fr);
+  grid-template-columns: minmax(390px, 1.35fr) minmax(170px, 0.4fr) minmax(
+      330px,
+      0.95fr
+    );
   gap: 14px;
   min-width: 0;
 }
@@ -992,7 +1254,10 @@
 }
 .questionBankHeroGrid {
   display: grid;
-  grid-template-columns: minmax(410px, 1.25fr) minmax(170px, 0.36fr) minmax(340px, 0.92fr);
+  grid-template-columns: minmax(410px, 1.25fr) minmax(170px, 0.36fr) minmax(
+      340px,
+      0.92fr
+    );
   gap: 14px;
   min-width: 0;
 }
@@ -1014,7 +1279,11 @@
   padding: 18px 24px;
   border-radius: 16px;
   background:
-    radial-gradient(circle at 4% 10%, rgba(13, 153, 108, 0.11), transparent 34%),
+    radial-gradient(
+      circle at 4% 10%,
+      rgba(13, 153, 108, 0.11),
+      transparent 34%
+    ),
     linear-gradient(106deg, #fbfefd 0%, #ffffff 57%, #ecf8f2 100%);
 }
 .questionBankHeroCard > div {
@@ -1255,7 +1524,10 @@
 }
 .scheduleHeroGrid {
   display: grid;
-  grid-template-columns: minmax(410px, 1.25fr) minmax(170px, 0.36fr) minmax(340px, 0.92fr);
+  grid-template-columns: minmax(410px, 1.25fr) minmax(170px, 0.36fr) minmax(
+      340px,
+      0.92fr
+    );
   gap: 14px;
   min-width: 0;
 }
@@ -1277,7 +1549,11 @@
   padding: 18px 24px;
   border-radius: 16px;
   background:
-    radial-gradient(circle at 4% 10%, rgba(13, 153, 108, 0.11), transparent 34%),
+    radial-gradient(
+      circle at 4% 10%,
+      rgba(13, 153, 108, 0.11),
+      transparent 34%
+    ),
     linear-gradient(106deg, #fbfefd 0%, #ffffff 57%, #eaf8f1 100%);
 }
 .scheduleHeroCard > div {
@@ -1455,7 +1731,7 @@
   order: -1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 14px;
 }
 .builderActionBar > div {
@@ -1572,8 +1848,8 @@
 }
 .builderStepForm {
   display: grid;
-  gap: 22px;
-  padding: 8px 8px 10px;
+  gap: 20px;
+  padding: 8px 6px 10px;
 }
 .builderStepTitle {
   display: grid;
@@ -1596,27 +1872,37 @@
 .builderFormGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px 28px;
+  align-items: start;
+  gap: 18px 26px;
 }
 .builderFormGrid label,
 .builderStepForm .embeddedOrganizationField {
   display: grid;
-  gap: 8px;
+  grid-template-rows: auto 46px 16px;
+  gap: 7px;
   color: #243653;
   font-size: 13px;
   font-weight: 750;
 }
-.builderFormGrid label > span {
-  display: inline;
+.builderFormGrid .fullWidthField {
+  grid-template-rows: auto minmax(92px, auto);
+}
+.builderFieldLabel {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+}
+.builderFieldLabel em {
   color: #e5484d;
+  font-style: normal;
 }
 .builderFormGrid input,
 .builderFormGrid select,
 .builderFormGrid textarea {
   width: 100%;
-  min-height: 46px;
+  height: 46px;
   box-sizing: border-box;
-  padding: 11px 14px;
+  padding: 10px 14px;
   border: 1px solid #d8e2ea;
   border-radius: 8px;
   background: #fff;
@@ -1626,7 +1912,7 @@
   outline: none;
 }
 .builderFormGrid textarea {
-  min-height: 92px;
+  height: 96px;
   resize: vertical;
 }
 .builderFormGrid input:focus,
@@ -1639,6 +1925,7 @@
   color: #627287;
   font-size: 11px;
   font-weight: 500;
+  line-height: 16px;
 }
 .attemptRuleCard {
   grid-column: 1 / -1;
@@ -2460,6 +2747,953 @@
   background: #ecf9f4;
   color: #087b58;
 }
+.builderSidebarCard {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #dce8e3;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fcfa 100%);
+}
+.builderSidebarCard h2 {
+  margin: 4px 0 5px;
+  color: #172a45;
+  font-size: 15px;
+}
+.builderSidebarCard p {
+  margin: 0;
+  color: #607083;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.sidebarStatusBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 11px;
+  border: 1px solid #f0d39b;
+  border-radius: 9px;
+  background: #fff8e8;
+  color: #9a6700;
+  font-size: 12px;
+  font-weight: 850;
+}
+.sidebarStatusBanner[data-ready="true"] {
+  border-color: #a9ddc8;
+  background: #eaf8f2;
+  color: #087b58;
+}
+.sidebarStatGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.sidebarStatGrid span {
+  display: grid;
+  gap: 2px;
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid #e0e8ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #607083;
+  font-size: 10px;
+  font-weight: 750;
+}
+.sidebarStatGrid b {
+  color: #082354;
+  font-size: 18px;
+  line-height: 1;
+}
+.readinessChecklist {
+  display: grid;
+  gap: 8px;
+}
+.readinessChecklist span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #607083;
+  font-size: 11px;
+  font-weight: 750;
+}
+.readinessChecklist svg {
+  padding: 2px;
+  border-radius: 50%;
+  background: #eef2f6;
+  color: #7b8798;
+}
+.readinessChecklist span[data-complete="true"] {
+  color: #087b58;
+}
+.readinessChecklist span[data-complete="true"] svg {
+  background: #dff6ed;
+  color: #07966a;
+}
+.sidebarMetaList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid #e3ece8;
+}
+.sidebarMetaList div {
+  display: grid;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.builderOverviewCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.82fr);
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid #d8e7e2;
+  border-radius: 11px;
+  background: #f7fcfa;
+}
+.builderOverviewTitle {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.builderOverviewTitle h3 {
+  margin: 0;
+  color: #082354;
+  font-size: 17px;
+}
+.builderOverviewTitle p {
+  margin: 0;
+  color: #607083;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.builderOverviewMetrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.builderOverviewMetrics span {
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  min-height: 62px;
+  padding: 8px;
+  border: 1px solid #dfe9e5;
+  border-radius: 9px;
+  background: #fff;
+  color: #607083;
+  font-size: 10px;
+  font-weight: 750;
+  text-align: center;
+}
+.builderOverviewMetrics svg {
+  color: #07966a;
+}
+.builderOverviewMetrics b {
+  color: #082354;
+  font-size: 16px;
+  line-height: 1;
+}
+.timingPanel,
+.mappingHeaderCard,
+.slotBlueprintCard {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #dce8e3;
+  border-radius: 11px;
+  background: #fff;
+  scroll-margin-top: 92px;
+}
+.timingPanel {
+  gap: 18px;
+  padding: 20px;
+  border-color: #cdddf8;
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(69, 104, 220, 0.09),
+      transparent 32%
+    ),
+    linear-gradient(180deg, #fbfcff 0%, #f7f9ff 100%);
+}
+.timingPanelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.timingTitleGroup {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+.timingTitleGroup > div {
+  display: grid;
+  gap: 4px;
+}
+.timingIcon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #526ee8, #3451c8);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(52, 81, 200, 0.2);
+}
+.timingTitleGroup h3 {
+  margin: 0;
+  color: #10245a;
+  font-size: 18px;
+  line-height: 1.25;
+}
+.timingTitleGroup p {
+  max-width: 580px;
+  margin: 0;
+  color: #607092;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.timingModeBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 11px;
+  border: 1px solid #c9d7fb;
+  border-radius: 999px;
+  background: #edf2ff;
+  color: #3451b2;
+  font-size: 10px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.timerHierarchy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+.timerHierarchyItem {
+  --timer-color: #64748b;
+  --timer-soft: #f1f5f9;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 72px;
+  padding: 11px 12px;
+  border: 1px solid #dce3eb;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--timer-color);
+}
+.timerHierarchyItem[data-level="exam"] {
+  --timer-color: #3451c8;
+  --timer-soft: #eaf0ff;
+  border-color: #bdccf5;
+  background: #f7f9ff;
+}
+.timerHierarchyItem[data-level="slot"][data-active="true"] {
+  --timer-color: #7048b6;
+  --timer-soft: #f1eaff;
+  border-color: #d5c2f0;
+  background: #fcfaff;
+}
+.timerHierarchyItem[data-level="slot"][data-over="true"] {
+  --timer-color: #b42318;
+  --timer-soft: #fff0ee;
+  border-color: #f0b8b3;
+  background: #fff8f7;
+}
+.timerHierarchyItem[data-level="section"][data-active="true"] {
+  --timer-color: #b35c12;
+  --timer-soft: #fff0dd;
+  border-color: #f1cf9d;
+  background: #fffaf3;
+}
+.timerHierarchyIcon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--timer-soft);
+  color: var(--timer-color);
+}
+.timerHierarchyItem > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.timerHierarchyItem small {
+  color: var(--timer-color);
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.timerHierarchyItem strong {
+  color: #15254b;
+  font-size: 12px;
+}
+.timerHierarchyItem > div > span {
+  overflow: hidden;
+  color: #6c7890;
+  font-size: 9px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.timerHierarchyArrow {
+  color: #9aa8bd;
+  font-size: 18px;
+  font-weight: 800;
+}
+.timingSettingsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(300px, 0.88fr);
+  gap: 12px;
+  align-items: stretch;
+}
+.timingBasicsCard,
+.timerPoliciesCard {
+  display: grid;
+  align-content: start;
+  gap: 13px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #dce4f0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+}
+.timingSubheading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.timingSubheading > span {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #e9efff;
+  color: #3451c8;
+  font-size: 10px;
+  font-weight: 900;
+}
+.timingSubheading > div {
+  display: grid;
+  gap: 2px;
+}
+.timingSubheading strong {
+  color: #15254b;
+  font-size: 12px;
+}
+.timingSubheading small {
+  color: #748198;
+  font-size: 9px;
+  font-weight: 600;
+}
+.timingRuleGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.settingTile {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid #dfe6f1;
+  border-radius: 9px;
+  background: #fbfcff;
+  color: #40506a;
+  font-size: 11px;
+  font-weight: 800;
+}
+.settingTile > span {
+  color: #172a45;
+}
+.settingTile small {
+  color: #77869a;
+  font-size: 10px;
+  font-weight: 600;
+}
+.settingTile input {
+  width: 100%;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 9px 10px;
+  border: 1px solid #d5deea;
+  border-radius: 8px;
+  outline: none;
+  background: #fff;
+  color: #142440;
+  font: inherit;
+  font-size: 12px;
+}
+.settingTile input:focus {
+  border-color: #5872dc;
+  box-shadow: 0 0 0 3px rgba(73, 99, 211, 0.11);
+}
+.instructionTile {
+  grid-column: 1 / -1;
+}
+.minuteInput {
+  position: relative;
+  min-width: 0;
+}
+.minuteInput input {
+  padding-right: 74px;
+}
+.minuteInput > span {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  color: #77849a;
+  font-size: 9px;
+  font-weight: 750;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+.timerPolicyList {
+  display: grid;
+  gap: 8px;
+}
+.timerPolicyCard {
+  --policy-color: #64748b;
+  --policy-soft: #f1f5f9;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #dde4ec;
+  border-radius: 10px;
+  background: #fbfcfd;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+.timerPolicyCard[data-level="slot"][data-active="true"] {
+  --policy-color: #7048b6;
+  --policy-soft: #f1eaff;
+  border-color: #cdb8ed;
+  background: #fcfaff;
+}
+.timerPolicyCard[data-level="section"][data-active="true"] {
+  --policy-color: #b35c12;
+  --policy-soft: #fff0dd;
+  border-color: #efc888;
+  background: #fffaf3;
+}
+.timerPolicyCard > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.toggleTrack {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  border-radius: 99px;
+  background: #cbd4df;
+  transition: background 160ms ease;
+}
+.toggleTrack > span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(20, 36, 64, 0.25);
+  transition: transform 160ms ease;
+}
+.timerPolicyCard[data-active="true"] .toggleTrack {
+  background: var(--policy-color);
+}
+.timerPolicyCard[data-active="true"] .toggleTrack > span {
+  transform: translateX(14px);
+}
+.timerPolicyCard > input:focus-visible + .toggleTrack {
+  outline: 3px solid rgba(73, 99, 211, 0.2);
+  outline-offset: 2px;
+}
+.timerPolicyIcon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--policy-soft);
+  color: var(--policy-color);
+}
+.timerPolicyCopy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.timerPolicyCopy strong {
+  color: #1b2b4d;
+  font-size: 11px;
+}
+.timerPolicyCopy small {
+  color: #748198;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.timerPolicyCard > b {
+  min-width: 26px;
+  color: var(--policy-color);
+  font-size: 9px;
+  text-align: right;
+  text-transform: uppercase;
+}
+.studentTimerNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 9px;
+  background: #eef8f4;
+  color: #087b58;
+}
+.studentTimerNote > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+.studentTimerNote p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+.studentTimerNote strong {
+  font-size: 10px;
+}
+.studentTimerNote span {
+  color: #4e6e65;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.mappingHeaderCard {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 18px 20px;
+  border-color: #d7e2f2;
+  background:
+    radial-gradient(
+      circle at 80% 0%,
+      rgba(112, 72, 182, 0.08),
+      transparent 34%
+    ),
+    linear-gradient(135deg, #f8fbff 0%, #fbf9ff 100%);
+}
+.mappingHeaderCopy {
+  display: grid;
+  gap: 4px;
+}
+.mappingHeaderCard h3 {
+  margin: 2px 0 5px;
+  color: #082354;
+  font-size: 16px;
+}
+.mappingHeaderCard p {
+  margin: 0;
+  color: #607083;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.structureLegend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.structureLegend span {
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 850;
+}
+.structureLegend span[data-level="exam"] {
+  background: #eaf0ff;
+  color: #3451c8;
+}
+.structureLegend span[data-level="slot"] {
+  background: #f1eaff;
+  color: #7048b6;
+}
+.structureLegend span[data-level="section"] {
+  background: #fff0dd;
+  color: #b35c12;
+}
+.structureLegend span[data-level="questions"] {
+  background: #e5f7f0;
+  color: #087b58;
+}
+.structureLegend b {
+  color: #97a5b8;
+  font-size: 11px;
+}
+.slotBlueprintCard {
+  position: relative;
+  gap: 12px;
+  padding: 18px;
+  border-color: #dbd2ec;
+  background:
+    linear-gradient(90deg, rgba(112, 72, 182, 0.045), transparent 32%), #fefeff;
+  box-shadow: 0 10px 28px rgba(54, 33, 89, 0.045);
+}
+.slotBlueprintCard::before {
+  position: absolute;
+  inset: 18px auto 18px 18px;
+  width: 3px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, #7048b6 0%, #a98bd8 58%, #efae56 100%);
+  content: "";
+}
+.slotBlueprintHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-left: 18px;
+}
+.slotBlueprintHeader > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.sequenceBadge {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8057c5, #5f3ba1);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+}
+.slotBlueprintHeader strong {
+  color: #7048b6;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.slotBlueprintHeader h3 {
+  margin: 1px 0 0;
+  color: #082354;
+  font-size: 16px;
+}
+.slotBlueprintMeta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 850;
+}
+.slotBlueprintMeta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #f1eaff;
+  color: #7048b6;
+}
+.slotBlueprintMeta span[data-timed="true"] {
+  background: #eaf0ff;
+  color: #3451c8;
+}
+.slotBlueprintMeta span[data-timed="false"] {
+  background: #eef2f6;
+  color: #68778c;
+}
+.slotPurposeNote {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-left: 18px;
+  padding: 9px 11px;
+  border: 1px solid #e7e0f2;
+  border-radius: 9px;
+  background: #faf8fd;
+  color: #7048b6;
+}
+.slotPurposeNote > svg {
+  flex: 0 0 auto;
+}
+.slotPurposeNote > span {
+  color: #68758a;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.slotPurposeNote strong {
+  margin-right: 5px;
+  color: #5f3ba1;
+}
+.slotSetupPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-left: 18px;
+  padding: 12px;
+  border: 1px solid #e4deed;
+  border-radius: 10px;
+  background: #fff;
+}
+.slotSetupGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+.slotTimeBudget,
+.slotRulesPanel {
+  display: grid;
+  gap: 9px;
+  margin-left: 18px;
+  padding: 12px;
+  border: 1px solid #e2e7ee;
+  border-radius: 10px;
+  background: #fff;
+}
+.slotTimeBudget {
+  border-color: #f0d5ad;
+  background: #fffaf3;
+}
+.slotTimeBudget[data-over="true"] {
+  border-color: #f3c3bf;
+  background: #fff7f6;
+}
+.slotTimeBudgetHeader,
+.slotTimeBudgetHeader > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.slotTimeBudgetHeader > span {
+  justify-content: flex-start;
+  color: #b35c12;
+}
+.slotTimeBudgetHeader strong,
+.slotTimeBudgetHeader b {
+  color: #5a3b20;
+  font-size: 10px;
+}
+.slotTimeBudgetHeader b {
+  white-space: nowrap;
+}
+.slotTimeProgress {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #f1dfca;
+}
+.slotTimeProgress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #dc8b2f, #efae56);
+  transition: width 180ms ease;
+}
+.slotTimeBudget[data-over="true"] .slotTimeProgress {
+  background: #f2d5d2;
+}
+.slotTimeBudget[data-over="true"] .slotTimeProgress span {
+  background: #d94b48;
+}
+.slotTimeBudget[data-over="true"] .slotTimeBudgetHeader > span,
+.slotTimeBudget[data-over="true"] .slotTimeBudgetHeader b {
+  color: #b42318;
+}
+.slotTimeBudget p {
+  margin: 0;
+  color: #7b5b3c;
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+.slotTimeBudget[data-over="true"] p {
+  color: #a13832;
+}
+.slotRulesHeading {
+  display: grid;
+  gap: 2px;
+}
+.slotRulesHeading strong {
+  color: #283a5a;
+  font-size: 11px;
+}
+.slotRulesHeading span {
+  color: #78869a;
+  font-size: 9px;
+}
+.slotRulesPanel .policyGrid {
+  margin: 0;
+}
+.slotTimeoutRule {
+  padding-top: 9px;
+  border-top: 1px solid #edf0f4;
+}
+.slotTimeoutRule .inlineCheck {
+  align-items: flex-start;
+}
+.slotTimeoutRule .inlineCheck > span {
+  display: grid;
+  gap: 2px;
+}
+.slotTimeoutRule .inlineCheck strong {
+  color: #2c3c58;
+  font-size: 10px;
+}
+.slotTimeoutRule .inlineCheck small {
+  color: #748198;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.slotTimeoutRule[data-disabled="true"] {
+  opacity: 0.68;
+}
+.slotBlueprintCard .sectionCard {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.82fr) minmax(360px, 1.18fr);
+  gap: 12px 14px;
+  margin-left: 18px;
+  padding: 14px;
+  border: 1px solid #dfe9e5;
+  border-left: 3px solid #dc8b2f;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(8, 35, 84, 0.035);
+}
+.slotBlueprintCard .sectionHeader,
+.slotBlueprintCard .sectionInstruction {
+  grid-column: 1 / -1;
+}
+.slotBlueprintCard .sectionHeader {
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ecf1ef;
+}
+.slotBlueprintCard .sectionHeader h4 {
+  font-size: 15px;
+}
+.sectionTimerBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #eef2f6;
+  color: #68778c;
+  font-size: 9px;
+  font-weight: 800;
+}
+.sectionTimerBadge[data-active="true"] {
+  background: #fff0dd;
+  color: #b35c12;
+}
+.slotBlueprintCard .sectionInstruction {
+  margin: -4px 0 0;
+}
+.slotBlueprintCard .sectionCard > .rowFields,
+.slotBlueprintCard .sectionCard > .policyGrid,
+.slotBlueprintCard .sectionCard > .questionLimitSummary,
+.slotBlueprintCard .sectionCard > .policyChecks,
+.slotBlueprintCard .sectionCard > .inlineHelper,
+.slotBlueprintCard .sectionCard > .sectionSubjectField {
+  grid-column: 1;
+}
+.slotBlueprintCard .sectionCard > .questionAssignmentTitle,
+.slotBlueprintCard .sectionCard > .questionPicker,
+.slotBlueprintCard .sectionCard > .questionPool,
+.slotBlueprintCard .sectionCard > .empty {
+  grid-column: 2;
+}
+.slotBlueprintCard .sectionCard > .rowFields,
+.slotBlueprintCard .sectionCard > .policyGrid {
+  grid-template-columns: 1fr;
+  margin-top: 0;
+}
+.slotBlueprintCard .questionAssignmentTitle {
+  align-self: start;
+  border-color: #dbeae4;
+  background: #f7fcfa;
+}
+.slotBlueprintCard .questionPool {
+  align-self: start;
+}
+.slotBlueprintCard .questionPoolToolbar {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.slotBlueprintCard .questionPoolSearch {
+  grid-column: 1 / -1;
+}
+.addSectionButton {
+  justify-self: start;
+  margin-left: 18px;
+  padding: 8px 12px;
+  border: 1px dashed #cdb8ed;
+  border-radius: 8px;
+  background: #faf8fd;
+  color: #7048b6;
+}
+.editorPanel > .validationSummary {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+}
+.editorPanel > .validationSummary ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 18px;
+}
+@media (max-width: 1180px) {
+  .builderOverviewCard,
+  .timingSettingsGrid,
+  .timingRuleGrid,
+  .mappingHeaderCard,
+  .slotSetupPanel,
+  .slotSetupGrid,
+  .slotBlueprintCard .sectionCard {
+    grid-template-columns: 1fr;
+  }
+  .builderOverviewMetrics,
+  .sidebarStatGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .slotBlueprintCard .sectionCard > .questionAssignmentTitle,
+  .slotBlueprintCard .sectionCard > .questionPicker,
+  .slotBlueprintCard .sectionCard > .questionPool,
+  .slotBlueprintCard .sectionCard > .empty {
+    grid-column: 1;
+  }
+}
 .summaryContinueButton {
   display: inline-flex;
   align-items: center;
@@ -2484,6 +3718,10 @@
 .summaryContinueButton:disabled {
   opacity: 0.48;
   cursor: not-allowed;
+}
+.builderStepForm > .summaryContinueButton {
+  justify-self: end;
+  width: min(100%, 300px);
 }
 .summaryAutosaveNote {
   display: inline-flex;
@@ -2514,6 +3752,46 @@
 @media (max-width: 760px) {
   .policyGrid {
     grid-template-columns: 1fr;
+  }
+  .timingPanel {
+    padding: 14px;
+  }
+  .timingPanelHeader,
+  .slotBlueprintHeader,
+  .slotTimeBudgetHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .timingModeBadge {
+    white-space: normal;
+  }
+  .timerHierarchy {
+    grid-template-columns: 1fr;
+  }
+  .timerHierarchyArrow {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+  .timingRuleGrid,
+  .slotSetupGrid {
+    grid-template-columns: 1fr;
+  }
+  .mappingHeaderCard {
+    align-items: stretch;
+  }
+  .mappingHeaderCard > button {
+    width: 100%;
+  }
+  .slotPurposeNote,
+  .slotSetupPanel,
+  .slotTimeBudget,
+  .slotRulesPanel,
+  .slotBlueprintCard .sectionCard,
+  .addSectionButton {
+    margin-left: 10px;
+  }
+  .slotBlueprintMeta {
+    justify-content: flex-start;
   }
   .templateEmptySteps,
   .templateDetailGrid,
@@ -3293,6 +4571,8 @@
   line-height: 1.6;
 }
 @media (max-width: 1100px) {
+  .templateHeroGrid,
+  .templateBuilderHeroGrid,
   .templateStatsGrid,
   .subjectHeroGrid,
   .subjectWorkspace,

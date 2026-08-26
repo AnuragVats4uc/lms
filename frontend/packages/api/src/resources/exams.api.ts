@@ -82,8 +82,7 @@ export const examsApi = {
         .then(unwrapApiData),
     create: (payload: {
       organizationId?: number;
-      primarySubjectId?: number;
-      code: string;
+      code?: string;
       name: string;
       description?: string;
       instructions?: string;
@@ -98,7 +97,6 @@ export const examsApi = {
     update: (
       id: number,
       payload: {
-        primarySubjectId?: number;
         code?: string;
         name?: string;
         description?: string;

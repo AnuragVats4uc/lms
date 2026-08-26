@@ -149,7 +149,6 @@ type ImportJobWithRows = Prisma.ExamImportJobGetPayload<{
 }>;
 
 const templateInclude = {
-  primarySubject: true,
   versions: {
     orderBy: { versionNumber: 'desc' as const },
     include: {
@@ -383,11 +382,12 @@ export class ExamService {
   async listTemplates(user: CurrentUser, query: TemplateListQueryDto) {
     const organizationId = this.organizationId(user, query.organizationId);
     const search = query.search?.trim();
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 100));
     const where: Prisma.ExamTemplateWhereInput = {
       organizationId,
       isActive: true,
       status: query.status,
-      primarySubjectId: query.subjectId,
       OR: search
         ? [
             { name: { contains: search } },
@@ -399,7 +399,6 @@ export class ExamService {
     const templates = await this.prisma.examTemplate.findMany({
       where,
       include: {
-        primarySubject: true,
         _count: { select: { versions: true } },
         versions: {
           orderBy: { versionNumber: 'desc' },
@@ -426,8 +425,8 @@ export class ExamService {
         },
       },
       orderBy: { updatedAt: 'desc' },
-      skip: (query.page - 1) * query.limit,
-      take: query.limit,
+      skip: (page - 1) * limit,
+      take: limit,
     });
     return templates.map((template) => {
       const latestVersion = template.versions[0];
@@ -442,10 +441,6 @@ export class ExamService {
           ),
         0,
       );
-      const derivedSubject =
-        template.primarySubject ??
-        sections.flatMap((section) => section.subjects)[0]?.subject ??
-        null;
       return {
         ...template,
         _summary: {
@@ -455,7 +450,6 @@ export class ExamService {
           sectionCount: sections.length,
           questionCount,
           latestVersionStatus: latestVersion?.status ?? template.status,
-          subject: derivedSubject,
         },
       };
     });
@@ -473,16 +467,14 @@ export class ExamService {
 
   async createTemplate(user: CurrentUser, dto: CreateExamTemplateDto) {
     const organizationId = this.organizationId(user, dto.organizationId);
-    await this.ensureSubjectBelongsToOrganization(
-      organizationId,
-      dto.primarySubjectId,
-    );
+    const code = dto.code
+      ? this.normalizeGeneratedCode(dto.code, 'TEMPLATE')
+      : await this.generateTemplateCode(organizationId, dto.name);
     try {
       return await this.prisma.examTemplate.create({
         data: {
           organizationId,
-          primarySubjectId: dto.primarySubjectId,
-          code: dto.code.toUpperCase(),
+          code,
           name: dto.name,
           description: dto.description,
           versions: {
@@ -512,15 +504,10 @@ export class ExamService {
     dto: UpdateExamTemplateDto,
   ) {
     const template = await this.getTemplate(user, templateId);
-    await this.ensureSubjectBelongsToOrganization(
-      template.organizationId,
-      dto.primarySubjectId,
-    );
     try {
       return await this.prisma.examTemplate.update({
         where: { id: template.id },
         data: {
-          primarySubjectId: dto.primarySubjectId,
           code: dto.code ? dto.code.toUpperCase() : undefined,
           name: dto.name,
           description: dto.description,
@@ -548,6 +535,7 @@ export class ExamService {
       throw new ConflictException(
         'Published template versions are immutable; create a new version first',
       );
+    this.assignStructureCodes(dto);
     this.validateStructure(dto);
 
     const subjectIds = [
@@ -608,7 +596,7 @@ export class ExamService {
             )
           ) {
             throw new BadRequestException(
-              `A question in section ${section.code} does not belong to subject ${subject.subjectId}`,
+              `A question in section ${section.name} does not belong to subject ${subject.subjectId}`,
             );
           }
         }
@@ -631,7 +619,7 @@ export class ExamService {
         await tx.examTemplateSlot.create({
           data: {
             examTemplateVersionId: version.id,
-            code: slot.code.toUpperCase(),
+            code: slot.code!.toUpperCase(),
             name: slot.name,
             description: slot.description,
             instructions: slot.instructions,
@@ -641,7 +629,7 @@ export class ExamService {
             sortOrder: slotIndex,
             sections: {
               create: slot.sections.map((section, sectionIndex) => ({
-                code: section.code.toUpperCase(),
+                code: section.code!.toUpperCase(),
                 name: section.name,
                 instructions: section.instructions,
                 durationMinutes: section.durationMinutes,
@@ -1697,15 +1685,75 @@ export class ExamService {
     }
   }
 
+  private async generateTemplateCode(organizationId: number, name: string) {
+    const base = this.normalizeGeneratedCode(name, 'TEMPLATE').slice(0, 52);
+    for (let index = 0; index < 100; index += 1) {
+      const code = index ? `${base}-${index + 1}` : base;
+      const existing = await this.prisma.examTemplate.findFirst({
+        where: { organizationId, code },
+        select: { id: true },
+      });
+      if (!existing) return code;
+    }
+    return `${base}-${Date.now().toString(36).toUpperCase()}`.slice(0, 60);
+  }
+
+  private assignStructureCodes(dto: SaveTemplateStructureDto) {
+    const slotCodes = new Set<string>();
+    dto.slots.forEach((slot, slotIndex) => {
+      slot.code = this.uniqueGeneratedCode(
+        slot.code || slot.name || `Slot ${slotIndex + 1}`,
+        `SLOT_${slotIndex + 1}`,
+        slotCodes,
+      );
+
+      const sectionCodes = new Set<string>();
+      slot.sections.forEach((section, sectionIndex) => {
+        section.code = this.uniqueGeneratedCode(
+          section.code || section.name || `Section ${sectionIndex + 1}`,
+          `SECTION_${sectionIndex + 1}`,
+          sectionCodes,
+        );
+      });
+    });
+  }
+
+  private uniqueGeneratedCode(
+    source: string | undefined,
+    fallback: string,
+    used: Set<string>,
+  ) {
+    const base = this.normalizeGeneratedCode(source, fallback).slice(0, 52);
+    let code = base;
+    let index = 2;
+    while (used.has(code)) {
+      code = `${base}-${index}`.slice(0, 60);
+      index += 1;
+    }
+    used.add(code);
+    return code;
+  }
+
+  private normalizeGeneratedCode(source: string | undefined, fallback: string) {
+    const code = (source || fallback)
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return code || fallback;
+  }
+
   private validateStructure(dto: SaveTemplateStructureDto) {
-    const slotCodes = dto.slots.map((item) => item.code.toUpperCase());
+    const slotCodes = dto.slots.map((item) => item.code!.toUpperCase());
     if (new Set(slotCodes).size !== slotCodes.length)
       throw new BadRequestException('Slot codes must be unique');
     for (const slot of dto.slots) {
-      const sectionCodes = slot.sections.map((item) => item.code.toUpperCase());
+      const sectionCodes = slot.sections.map((item) =>
+        item.code!.toUpperCase(),
+      );
       if (new Set(sectionCodes).size !== sectionCodes.length)
         throw new BadRequestException(
-          `Section codes must be unique inside slot ${slot.code}`,
+          `Section codes must be unique inside slot ${slot.name}`,
         );
       const totalSectionTime = slot.sections.reduce(
         (total, section) => total + section.durationMinutes,
@@ -1713,7 +1761,7 @@ export class ExamService {
       );
       if (totalSectionTime > slot.durationMinutes)
         throw new BadRequestException(
-          `Section timing exceeds slot timing for ${slot.code}`,
+          `Section timing exceeds slot timing for ${slot.name}`,
         );
       for (const section of slot.sections) {
         const available = section.subjects.reduce(
@@ -1725,7 +1773,7 @@ export class ExamService {
           section.questionsToAttempt > available
         )
           throw new BadRequestException(
-            `questionsToAttempt exceeds available questions in ${section.code}`,
+            `questionsToAttempt exceeds available questions in ${section.name}`,
           );
       }
     }

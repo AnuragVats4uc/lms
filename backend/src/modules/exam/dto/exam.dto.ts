@@ -92,12 +92,6 @@ export class TemplateListQueryDto extends OrganizationScopedQueryDto {
   search?: string;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  subjectId?: number;
-
-  @IsOptional()
   @IsEnum(ExamTemplateStatus)
   status?: ExamTemplateStatus;
 
@@ -252,16 +246,11 @@ export class CreateQuestionDto extends OrganizationScopedQueryDto {
 
 export class CreateExamTemplateDto extends OrganizationScopedQueryDto {
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  primarySubjectId?: number;
-
   @Transform(trimmed)
   @IsString()
   @IsNotEmpty()
   @MaxLength(60)
-  code!: string;
+  code?: string;
 
   @Transform(trimmed)
   @IsString()
@@ -300,12 +289,6 @@ export class CreateExamTemplateDto extends OrganizationScopedQueryDto {
 }
 
 export class UpdateExamTemplateDto {
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  primarySubjectId?: number;
-
   @IsOptional()
   @Transform(trimmed)
   @IsString()
@@ -363,11 +346,12 @@ export class TemplateSubjectDto {
 }
 
 export class TemplateSectionDto {
+  @IsOptional()
   @Transform(trimmed)
   @IsString()
   @IsNotEmpty()
   @MaxLength(60)
-  code!: string;
+  code?: string;
 
   @Transform(trimmed)
   @IsString()
@@ -423,11 +407,12 @@ export class TemplateSectionDto {
 }
 
 export class TemplateSlotDto {
+  @IsOptional()
   @Transform(trimmed)
   @IsString()
   @IsNotEmpty()
   @MaxLength(60)
-  code!: string;
+  code?: string;
 
   @Transform(trimmed)
   @IsString()

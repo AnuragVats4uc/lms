@@ -28,7 +28,6 @@ model Subject {
   organization    Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   questions       Question[]
   sectionSubjects ExamTemplateSectionSubject[]
-  primaryTemplates ExamTemplate[]              @relation("ExamTemplatePrimarySubject")
   importJobs      ExamImportJob[]
 
   @@unique([organizationId, code], map: "subjects_organization_id_code_unique")
@@ -146,7 +145,6 @@ model ExamTemplate {
   id             Int                @id @default(autoincrement())
   uuid           String             @unique @default(uuid())
   organizationId Int                @map("organization_id")
-  primarySubjectId Int?             @map("primary_subject_id")
   code           String             @db.VarChar(60)
   name           String             @db.VarChar(180)
   description    String?            @db.Text
@@ -156,11 +154,9 @@ model ExamTemplate {
   updatedAt      DateTime           @updatedAt @map("updated_at")
 
   organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  primarySubject Subject?            @relation("ExamTemplatePrimarySubject", fields: [primarySubjectId], references: [id], onDelete: SetNull)
   versions     ExamTemplateVersion[]
 
   @@unique([organizationId, code], map: "exam_templates_organization_id_code_unique")
-  @@index([primarySubjectId], map: "exam_templates_primary_subject_idx")
   @@index([organizationId, status, isActive], map: "exam_templates_scope_status_idx")
   @@map("exam_templates")
 }

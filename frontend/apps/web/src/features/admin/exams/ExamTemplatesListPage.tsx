@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { examsApi, organizationsApi } from "@repo/api";
 import { useCurrentUser } from "@repo/auth";
-import type { ExamSubject, ExamTemplateListItem, ExamTemplateStatus } from "@repo/types";
+import type { ExamTemplateListItem, ExamTemplateStatus } from "@repo/types";
 import {
   CheckCircle2,
   Eye,
@@ -14,7 +14,6 @@ import {
   Pencil,
   Plus,
   Search,
-  type LucideIcon,
 } from "lucide-react";
 import { CrudSelect } from "../components/crud";
 import styles from "./ExamManagementPage.module.css";
@@ -25,9 +24,6 @@ const templateStatusOptions = [
   { label: "Published", value: "PUBLISHED" },
   { label: "Archived", value: "ARCHIVED" },
 ] as const;
-
-const templateSubject = (template: ExamTemplateListItem) =>
-  template._summary?.subject ?? template.primarySubject ?? null;
 
 const templateDuration = (template: ExamTemplateListItem) =>
   template._summary?.durationMinutes ??
@@ -54,7 +50,6 @@ export function ExamTemplatesListPage() {
   const organizationId = currentUser?.organizationId ?? selectedOrganizationId;
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [subjectId, setSubjectId] = useState("all");
   const [status, setStatus] = useState("all");
 
   useEffect(() => {
@@ -70,28 +65,25 @@ export function ExamTemplatesListPage() {
     queryFn: () => organizationsApi.findAll({ page: 1, limit: 100 }),
     enabled: !currentUser?.organizationId,
   });
-  const subjects = useQuery({
-    queryKey: ["exam-template-list-subjects", organizationId],
-    queryFn: () => examsApi.subjects.list(organizationId),
-    enabled: Boolean(organizationId),
-  });
+  useEffect(() => {
+    if (currentUser?.organizationId || selectedOrganizationId) return;
+    const firstOrganization = organizations.data?.items[0];
+    if (firstOrganization) setSelectedOrganizationId(firstOrganization.id);
+  }, [currentUser?.organizationId, organizations.data?.items, selectedOrganizationId]);
+
   const templates = useQuery({
     queryKey: [
       "exam-template-list",
       organizationId,
       debouncedSearch,
-      subjectId,
       status,
     ],
     queryFn: () =>
       examsApi.templates.list({
         organizationId,
         search: debouncedSearch || undefined,
-        subjectId: subjectId === "all" ? undefined : Number(subjectId),
         status:
           status === "all" ? undefined : (status as ExamTemplateStatus),
-        page: 1,
-        limit: 100,
       }),
     enabled: Boolean(organizationId),
   });
@@ -110,47 +102,60 @@ export function ExamTemplatesListPage() {
 
   return (
     <main className={`${styles.page} ${styles.templateListPage}`}>
-      <header className={styles.templateListHeader}>
-        <div>
-          <h1>Exam Templates</h1>
-          <p>Create reusable exam blueprints, then schedule them when ready.</p>
+      <section className={styles.templateHeroGrid} aria-label="Template summary">
+        <div className={styles.templateHeroCard}>
+          <div>
+            <p>Assessment Management</p>
+            <h1>Exam Templates</h1>
+            <span>
+              Create reusable exam blueprints with timing, sections, and
+              question mapping before scheduling.
+            </span>
+          </div>
+          <span className={styles.templateHeroIcon}>
+            <Layers3 size={52} />
+          </span>
         </div>
-        <button
-          className={styles.templateCreateButton}
-          disabled={!organizationId}
-          onClick={() => router.push("/admin/exams/templates/builder")}
-          type="button"
-        >
-          <Plus size={20} />
-          Create template
-        </button>
-      </header>
 
-      {!currentUser?.organizationId ? (
-        <section className={styles.templateListOrgRow}>
-          <CrudSelect
-            ariaLabel="Organization"
-            label="Organization"
-            loading={organizations.isLoading}
-            onChange={(value) => setSelectedOrganizationId(Number(value) || undefined)}
-            options={
-              organizations.data?.items.map((organization) => ({
-                label: organization.name,
-                value: String(organization.id),
-              })) ?? []
-            }
-            placeholder="Choose organization"
-            value={selectedOrganizationId?.toString() ?? ""}
-            variant="form"
-            width="100%"
-          />
-        </section>
-      ) : null}
+        <div className={styles.templateCountCard}>
+          <span className={styles.templateCountDot} />
+          <span className={styles.templateCountIcon}>
+            <FileText size={28} />
+          </span>
+          <strong>{stats.total}</strong>
+          <p>
+            Total
+            <span>templates</span>
+          </p>
+        </div>
 
-      <section className={styles.templateStatsGrid}>
-        <TemplateStat icon={Layers3} label="Total templates" title="templates" value={stats.total} />
-        <TemplateStat icon={CheckCircle2} label="Templates published" title="published" value={stats.published} />
-        <TemplateStat icon={FileText} label="Templates in draft" title="draft" value={stats.draft} />
+        <div className={styles.templateInsightCard}>
+          <div>
+            <p>Template Insights</p>
+            <h2>Ready for scheduling</h2>
+            <div className={styles.templateInsightStats}>
+              <span>
+                <CheckCircle2 size={22} />
+                <strong>{stats.published}</strong>
+                <small>Published</small>
+              </span>
+              <span>
+                <FileText size={22} />
+                <strong>{stats.draft}</strong>
+                <small>Draft</small>
+              </span>
+            </div>
+          </div>
+          <button
+            className={styles.templateHeroButton}
+            disabled={!organizationId}
+            onClick={() => router.push("/admin/exams/templates/builder")}
+            type="button"
+          >
+            <Plus size={18} />
+            Create template
+          </button>
+        </div>
       </section>
 
       <section className={styles.templateTableCard}>
@@ -158,6 +163,25 @@ export function ExamTemplatesListPage() {
           <h2>Your exam templates</h2>
         </div>
         <div className={styles.templateTableToolbar}>
+          {!currentUser?.organizationId ? (
+            <CrudSelect
+              ariaLabel="Organization"
+              label="Organization"
+              loading={organizations.isLoading}
+              onChange={(value) =>
+                setSelectedOrganizationId(Number(value) || undefined)
+              }
+              options={
+                organizations.data?.items.map((organization) => ({
+                  label: organization.name,
+                  value: String(organization.id),
+                })) ?? []
+              }
+              placeholder="Choose organization"
+              value={selectedOrganizationId?.toString() ?? ""}
+              width="100%"
+            />
+          ) : null}
           <label className={styles.templateSearchBox}>
             <Search size={18} aria-hidden="true" />
             <input
@@ -167,19 +191,6 @@ export function ExamTemplatesListPage() {
               value={search}
             />
           </label>
-          <CrudSelect
-            ariaLabel="Filter templates by subject"
-            onChange={setSubjectId}
-            options={[
-              { label: "All subjects", value: "all" },
-              ...((subjects.data ?? []) as ExamSubject[]).map((subject) => ({
-                label: subject.name,
-                value: String(subject.id),
-              })),
-            ]}
-            value={subjectId}
-            width="100%"
-          />
           <CrudSelect
             ariaLabel="Filter templates by status"
             onChange={setStatus}
@@ -193,7 +204,6 @@ export function ExamTemplatesListPage() {
             <thead>
               <tr>
                 <th>Template name</th>
-                <th>Subject</th>
                 <th>Duration</th>
                 <th>Structure</th>
                 <th>Status</th>
@@ -204,7 +214,7 @@ export function ExamTemplatesListPage() {
             <tbody>
               {!rows.length ? (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={6}>
                     <div className={styles.templateTableEmpty}>
                       {organizationId
                         ? "No templates found."
@@ -214,7 +224,6 @@ export function ExamTemplatesListPage() {
                 </tr>
               ) : null}
               {rows.map((template) => {
-                const subject = templateSubject(template);
                 const duration = templateDuration(template);
                 const updatedAt = (template as { updatedAt?: string }).updatedAt;
                 return (
@@ -226,11 +235,9 @@ export function ExamTemplatesListPage() {
                         </span>
                         <div>
                           <strong>{template.name}</strong>
-                          <small>{template.code}</small>
                         </div>
                       </div>
                     </td>
-                    <td>{subject?.name ?? "Not selected"}</td>
                     <td>{duration ? `${duration} min` : "Not set"}</td>
                     <td>{templateStructure(template)}</td>
                     <td>
@@ -288,30 +295,5 @@ export function ExamTemplatesListPage() {
         </p>
       </section>
     </main>
-  );
-}
-
-function TemplateStat({
-  icon: Icon,
-  label,
-  title,
-  value,
-}: {
-  icon: LucideIcon;
-  label: string;
-  title: string;
-  value: number;
-}) {
-  return (
-    <article className={styles.templateStatCard}>
-      <span>
-        <Icon size={31} />
-      </span>
-      <div>
-        <strong>{value}</strong>
-        <b>{title}</b>
-        <small>{label}</small>
-      </div>
-    </article>
   );
 }
