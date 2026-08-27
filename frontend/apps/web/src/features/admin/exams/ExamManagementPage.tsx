@@ -14,9 +14,9 @@ import type {
   ExamImportJob,
   ExamImportRow,
   ExamQuestion,
-  ExamQuestionSort,
   ExamQuestionType,
   ExamSubject,
+  ExamTopic,
   ExamTemplate,
   ExamTemplateListItem,
   ExamTemplateVersion,
@@ -26,8 +26,8 @@ import type {
 } from "@repo/types";
 import {
   AlertTriangle,
+  BarChart3,
   BookOpenCheck,
-  Building2,
   CalendarClock,
   CheckCircle2,
   ChevronDown,
@@ -51,14 +51,13 @@ import {
 import {
   CrudDateTimePicker,
   CrudMultiSelectField,
-  CrudSearch,
   CrudSelect,
   CrudSelectField,
 } from "../components/crud";
 import styles from "./ExamManagementPage.module.css";
 
 export type ExamManagementTab =
-  "templates" | "subjects" | "questions" | "imports" | "schedule";
+  "templates" | "subjects" | "topics" | "questions" | "schedule" | "reports";
 type ExamManagementPageProps = {
   activeTab?: ExamManagementTab;
   templateMode?: "builder";
@@ -128,7 +127,6 @@ const emptySlot = (): BuilderSlot => ({
   sections: [emptySection()],
 });
 
-const questionLimitOptions = [1, 5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100];
 const messageOf = (error: unknown) => {
   if (typeof error === "object" && error && "response" in error) {
     const response = (
@@ -174,354 +172,6 @@ const contentSummary = (value?: string | null) => {
     .trim();
   if (!text) return hasImage ? "Image-based question" : "No question content";
   return `${text.slice(0, 150)}${text.length > 150 ? "…" : ""}${hasImage ? " · Includes image" : ""}`;
-};
-
-const questionStatusOptions = [
-  { label: "All statuses", value: "all" },
-  { label: "Published", value: "PUBLISHED" },
-  { label: "Draft", value: "DRAFT" },
-  { label: "Archived", value: "ARCHIVED" },
-] as const;
-
-const questionSortOptions: Array<{
-  label: string;
-  value: ExamQuestionSort;
-}> = [
-  { label: "Latest first", value: "LATEST" },
-  { label: "Oldest first", value: "OLDEST" },
-  { label: "Question code", value: "CODE" },
-  { label: "Recently updated", value: "RECENTLY_UPDATED" },
-];
-
-const SectionQuestionPicker = ({
-  organizationId,
-  subjectId,
-  questionTypes,
-  questionsToAttempt,
-  selectedQuestions,
-  onSelectionChange,
-}: {
-  organizationId: number;
-  subjectId: number;
-  questionTypes: ExamQuestionType[];
-  questionsToAttempt: number;
-  selectedQuestions: BuilderQuestion[];
-  onSelectionChange: (questions: BuilderQuestion[]) => void;
-}) => {
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [questionType, setQuestionType] = useState("all");
-  const [status, setStatus] = useState("PUBLISHED");
-  const [sort, setSort] = useState<ExamQuestionSort>("LATEST");
-  const [limit, setLimit] = useState("20");
-
-  useEffect(() => {
-    const timer = window.setTimeout(
-      () => setDebouncedSearch(search.trim()),
-      350,
-    );
-    return () => window.clearTimeout(timer);
-  }, [search]);
-
-  const pool = useQuery({
-    queryKey: [
-      "exam-template-question-pool",
-      organizationId,
-      subjectId,
-      debouncedSearch,
-      questionType,
-      status,
-      sort,
-      limit,
-    ],
-    queryFn: () =>
-      examsApi.questions.list({
-        organizationId,
-        subjectId,
-        search: debouncedSearch || undefined,
-        questionTypeId:
-          questionType === "all" ? undefined : Number(questionType),
-        status:
-          status === "all" ? undefined : (status as ExamQuestion["status"]),
-        sort,
-        limit: Math.min(100, Math.max(1, Number(limit))),
-      }),
-    enabled: subjectId > 0,
-    staleTime: 30_000,
-  });
-
-  const visibleQuestions = (pool.data ?? []).flatMap((question) => {
-    const version = question.versions[0];
-    return version ? [{ question, version }] : [];
-  });
-  const visibleIds = new Set(visibleQuestions.map(({ version }) => version.id));
-  const selectedVisibleCount = selectedQuestions.filter((question) =>
-    visibleIds.has(question.questionVersionId),
-  ).length;
-  const allVisibleSelected =
-    visibleQuestions.length > 0 &&
-    selectedVisibleCount === visibleQuestions.length;
-
-  const resetFilters = () => {
-    setSearch("");
-    setDebouncedSearch("");
-    setQuestionType("all");
-    setStatus("PUBLISHED");
-    setSort("LATEST");
-    setLimit("20");
-  };
-
-  const selectAllVisible = () => {
-    const selectedIds = new Set(
-      selectedQuestions.map((question) => question.questionVersionId),
-    );
-    onSelectionChange([
-      ...selectedQuestions,
-      ...visibleQuestions
-        .filter(({ version }) => !selectedIds.has(version.id))
-        .map(({ question, version }) => ({
-          questionVersionId: version.id,
-          marks: Number(version.defaultMarks),
-          negativeMarks: Number(version.defaultNegativeMarks),
-          code: question.code,
-          content: version.content,
-        })),
-    ]);
-  };
-
-  const clearVisibleSelection = () =>
-    onSelectionChange(
-      selectedQuestions.filter(
-        (question) => !visibleIds.has(question.questionVersionId),
-      ),
-    );
-
-  if (!subjectId) {
-    return (
-      <div className={styles.questionEmpty} role="status">
-        <ClipboardList size={20} aria-hidden="true" />
-        <strong>Choose a subject</strong>
-        <span>Select the section subject to load its question pool.</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.questionPool}>
-      <div className={styles.questionControls}>
-        <div className={styles.questionPoolToolbar}>
-          <div className={styles.questionPoolSearch}>
-            <span>Search questions</span>
-            <CrudSearch
-              ariaLabel="Search questions by code or text"
-              loading={pool.isFetching && !pool.data}
-              maxWidth={700}
-              onChange={setSearch}
-              placeholder="Search question code or text..."
-              value={search}
-            />
-          </div>
-          <CrudSelect
-            ariaLabel="Filter by question type"
-            label="Question type"
-            onChange={setQuestionType}
-            options={[
-              { label: "All types", value: "all" },
-              ...questionTypes.map((type) => ({
-                label: type.name,
-                value: String(type.id),
-              })),
-            ]}
-            value={questionType}
-            width="100%"
-          />
-          <CrudSelect
-            ariaLabel="Filter by question status"
-            label="Status"
-            onChange={setStatus}
-            options={questionStatusOptions}
-            value={status}
-            width="100%"
-          />
-          <CrudSelect
-            ariaLabel="Choose number of latest questions"
-            label="Show latest"
-            onChange={setLimit}
-            options={questionLimitOptions.map((value) => ({
-              label: `${value} ${value === 1 ? "question" : "questions"}`,
-              value: String(value),
-            }))}
-            value={limit}
-            width="100%"
-          />
-          <CrudSelect
-            ariaLabel="Sort questions"
-            label="Sort by"
-            onChange={(value) => setSort(value as ExamQuestionSort)}
-            options={questionSortOptions}
-            value={sort}
-            width="100%"
-          />
-          <button
-            className={styles.filterResetButton}
-            onClick={resetFilters}
-            type="button"
-          >
-            Reset filters
-          </button>
-        </div>
-
-        <div className={styles.questionSelectionBar}>
-          <span>
-            <strong>{selectedQuestions.length}</strong> selected
-            <b> · Students may attempt {questionsToAttempt}</b>
-            {pool.isFetching ? " · Updating list..." : ""}
-          </span>
-          <div>
-            <button
-              className={styles.textButton}
-              disabled={!visibleQuestions.length || allVisibleSelected}
-              onClick={selectAllVisible}
-              type="button"
-            >
-              Select all visible
-            </button>
-            <button
-              className={styles.textButton}
-              disabled={!selectedVisibleCount}
-              onClick={clearVisibleSelection}
-              type="button"
-            >
-              Clear visible
-            </button>
-          </div>
-        </div>
-        <p className={styles.marksOverrideNote}>
-          Marks and negative marks below override Question Bank defaults for
-          this template version.
-        </p>
-      </div>
-
-      <div className={styles.questionPicker}>
-        {pool.isPending ? (
-          <div
-            className={styles.questionLoading}
-            aria-label="Loading questions"
-          >
-            <span />
-            <span />
-            <span />
-          </div>
-        ) : pool.isError ? (
-          <div className={styles.questionEmpty} role="alert">
-            <ClipboardList size={20} aria-hidden="true" />
-            <strong>Questions could not be loaded</strong>
-            <span>Please try the request again.</span>
-            <button
-              className={styles.secondaryButton}
-              onClick={() => void pool.refetch()}
-              type="button"
-            >
-              Retry
-            </button>
-          </div>
-        ) : !visibleQuestions.length ? (
-          <div className={styles.questionEmpty} role="status">
-            <ClipboardList size={20} aria-hidden="true" />
-            <strong>No questions found</strong>
-            <span>Try changing the question filters.</span>
-          </div>
-        ) : (
-          visibleQuestions.map(({ question, version }) => {
-            const chosen = selectedQuestions.find(
-              (item) => item.questionVersionId === version.id,
-            );
-            const setSelected = (checked: boolean) =>
-              onSelectionChange(
-                checked
-                  ? [
-                      ...selectedQuestions,
-                      {
-                        questionVersionId: version.id,
-                        marks: Number(version.defaultMarks),
-                        negativeMarks: Number(version.defaultNegativeMarks),
-                        code: question.code,
-                        content: version.content,
-                      },
-                    ]
-                  : selectedQuestions.filter(
-                      (item) => item.questionVersionId !== version.id,
-                    ),
-              );
-            return (
-              <article
-                className={styles.questionChoice}
-                data-selected={Boolean(chosen)}
-                key={question.id}
-              >
-                <input
-                  aria-label={`Select ${question.code}`}
-                  checked={Boolean(chosen)}
-                  onChange={(event) => setSelected(event.target.checked)}
-                  type="checkbox"
-                />
-                <div className={styles.questionChoiceContent}>
-                  <strong>{question.code}</strong>
-                  <RichContent value={version.content} />
-                </div>
-                <div className={styles.questionMarks}>
-                  <label>
-                    <span>Marks</span>
-                    <input
-                      aria-label={`Marks for ${question.code}`}
-                      disabled={!chosen}
-                      onChange={(event) =>
-                        onSelectionChange(
-                          selectedQuestions.map((item) =>
-                            item.questionVersionId === version.id
-                              ? { ...item, marks: Number(event.target.value) }
-                              : item,
-                          ),
-                        )
-                      }
-                      step="0.25"
-                      type="number"
-                      value={chosen?.marks ?? Number(version.defaultMarks)}
-                    />
-                  </label>
-                  <label>
-                    <span>Negative</span>
-                    <input
-                      aria-label={`Negative marks for ${question.code}`}
-                      disabled={!chosen}
-                      onChange={(event) =>
-                        onSelectionChange(
-                          selectedQuestions.map((item) =>
-                            item.questionVersionId === version.id
-                              ? {
-                                  ...item,
-                                  negativeMarks: Number(event.target.value),
-                                }
-                              : item,
-                          ),
-                        )
-                      }
-                      step="0.25"
-                      type="number"
-                      value={
-                        chosen?.negativeMarks ??
-                        Number(version.defaultNegativeMarks)
-                      }
-                    />
-                  </label>
-                </div>
-              </article>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
 };
 
 type QuestionDetailOption = {
@@ -693,6 +343,7 @@ const ImportQuestionDetails = ({ row }: { row: ExamImportRow }) => {
         { label: "Slot", value: row.slotCode },
         { label: "Section", value: row.sectionCode },
         { label: "Subject", value: row.subjectCode },
+        { label: "Topic", value: row.topic?.name ?? row.topicCode },
         { label: "Order", value: row.sortOrder },
         {
           label: "Marking",
@@ -735,6 +386,12 @@ export const ExamManagementPage = ({
     queryFn: () => examsApi.subjects.list(organizationId),
     enabled: Boolean(organizationId),
   });
+  const topics = useQuery({
+    queryKey: ["exam-topics", organizationId],
+    queryFn: () =>
+      examsApi.topics.list({ organizationId, includeInactive: true }),
+    enabled: Boolean(organizationId),
+  });
   const questions = useQuery({
     queryKey: ["exam-questions", organizationId],
     queryFn: () => examsApi.questions.list({ organizationId, limit: 100 }),
@@ -759,6 +416,9 @@ export const ExamManagementPage = ({
     await Promise.all([
       queryClient.invalidateQueries({
         queryKey: ["exam-subjects", organizationId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["exam-topics", organizationId],
       }),
       queryClient.invalidateQueries({
         queryKey: ["exam-questions", organizationId],
@@ -837,28 +497,6 @@ export const ExamManagementPage = ({
     );
   }
 
-  if (tab === "imports") {
-    return (
-      <main className={`${styles.page} ${styles.importManagementPage}`}>
-        {notice ? (
-          <div
-            className={
-              notice.kind === "success" ? styles.success : styles.error
-            }
-          >
-            {notice.text}
-          </div>
-        ) : null}
-        <ImportsPanel
-          key={organizationId ?? "no-organization"}
-          organizationSelector={organizationSelector}
-          templates={templates.data ?? []}
-          report={report}
-        />
-      </main>
-    );
-  }
-
   if (tab === "questions") {
     return (
       <main className={`${styles.page} ${styles.questionBankPage}`}>
@@ -876,8 +514,33 @@ export const ExamManagementPage = ({
           organizationId={organizationId}
           organizationSelector={organizationSelector}
           subjects={subjects.data ?? []}
+          topics={topics.data ?? []}
           questions={questions.data ?? []}
           questionTypes={questionTypes.data ?? []}
+          report={report}
+        />
+      </main>
+    );
+  }
+
+  if (tab === "topics") {
+    return (
+      <main className={styles.page}>
+        {notice ? (
+          <div
+            className={
+              notice.kind === "success" ? styles.success : styles.error
+            }
+          >
+            {notice.text}
+          </div>
+        ) : null}
+        <TopicsPanel
+          key={organizationId ?? "no-organization"}
+          organizationId={organizationId}
+          organizationSelector={organizationSelector}
+          subjects={subjects.data ?? []}
+          topics={topics.data ?? []}
           report={report}
         />
       </main>
@@ -908,66 +571,20 @@ export const ExamManagementPage = ({
     );
   }
 
+  if (tab === "reports") {
+    return (
+      <main className={styles.page}>
+        <ReportsPanel
+          exams={scheduled.data ?? []}
+          organizationSelector={organizationSelector}
+        />
+      </main>
+    );
+  }
+
   return (
     <main className={styles.page}>
-      {templateMode === "builder" ? (
-        <section
-          className={styles.templateBuilderHeroGrid}
-          aria-label="Template builder summary"
-        >
-          <div className={styles.templateHeroCard}>
-            <div>
-              <p>Assessment Management</p>
-              <h1>Exam Template Builder</h1>
-              <span>
-                Build reusable exam blueprints with timing, slots, sections, and
-                controlled question assignment.
-              </span>
-            </div>
-            <span className={styles.templateHeroIcon}>
-              <Layers3 size={52} />
-            </span>
-          </div>
-
-          <div className={styles.templateCountCard}>
-            <span className={styles.templateCountDot} />
-            <span className={styles.templateCountIcon}>
-              <BookOpenCheck size={28} />
-            </span>
-            <strong>{templates.data?.length ?? 0}</strong>
-            <p>
-              Available
-              <span>templates</span>
-            </p>
-          </div>
-
-          <div className={styles.templateInsightCard}>
-            <div>
-              <p>Builder Workflow</p>
-              <h2>Draft to publish</h2>
-              <div className={styles.templateInsightStats}>
-                <span>
-                  <Save size={22} />
-                  <strong>
-                    {templates.data?.filter((item) => item.status === "DRAFT")
-                      .length ?? 0}
-                  </strong>
-                  <small>Draft</small>
-                </span>
-                <span>
-                  <CheckCircle2 size={22} />
-                  <strong>
-                    {templates.data?.filter(
-                      (item) => item.status === "PUBLISHED",
-                    ).length ?? 0}
-                  </strong>
-                  <small>Published</small>
-                </span>
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : (
+      {templateMode !== "builder" ? (
         <header className={styles.header}>
           <div>
             <p className={styles.eyebrow}>Assessment workspace</p>
@@ -988,7 +605,7 @@ export const ExamManagementPage = ({
             </div>
           </div>
         </header>
-      )}
+      ) : null}
       {notice ? (
         <div
           className={notice.kind === "success" ? styles.success : styles.error}
@@ -1004,7 +621,6 @@ export const ExamManagementPage = ({
           initialTemplateId={templateId}
           templates={templates.data ?? []}
           subjects={subjects.data ?? []}
-          questionTypes={questionTypes.data ?? []}
           clearNotice={() => setNotice(null)}
           report={report}
         />
@@ -1019,7 +635,6 @@ const TemplatesPanel = ({
   initialTemplateId,
   templates,
   subjects,
-  questionTypes,
   clearNotice,
   report,
 }: {
@@ -1028,7 +643,6 @@ const TemplatesPanel = ({
   initialTemplateId?: number;
   templates: ExamTemplateListItem[];
   subjects: ExamSubject[];
-  questionTypes: ExamQuestionType[];
   clearNotice: () => void;
   report: Report;
 }) => {
@@ -1051,14 +665,20 @@ const TemplatesPanel = ({
   const [wizardOverride, setWizardOverride] = useState<number | null>(null);
   const selectedListItem = templates.find((item) => item.id === selectedId);
   const selected = selectedTemplate ?? selectedListItem ?? null;
-  const effectiveOrganizationId =
-    organizationId ?? selectedTemplate?.organizationId;
   const hasDraft =
     selectedTemplate?.versions.some((item) => item.status === "DRAFT") ?? false;
   const selectedVersion = selectedTemplate?.versions.find(
     (item) => item.id === selectedVersionId,
   );
   const isSelectedDraft = selectedVersion?.status === "DRAFT";
+  const effectiveOrganizationId =
+    organizationId ?? selectedTemplate?.organizationId;
+  const builderSubjects = useQuery({
+    queryKey: ["exam-subjects", effectiveOrganizationId],
+    queryFn: () => examsApi.subjects.list(effectiveOrganizationId),
+    enabled: Boolean(effectiveOrganizationId),
+  });
+  const availableSubjects = builderSubjects.data ?? subjects;
 
   const showVersion = (version: ExamTemplateVersion) => {
     setValidationIssues([]);
@@ -1229,7 +849,11 @@ const TemplatesPanel = ({
     })),
   });
 
-  const validateBuilder = (): BuilderValidationIssue[] => {
+  const validateBuilder = ({
+    requireQuestions = true,
+  }: {
+    requireQuestions?: boolean;
+  } = {}): BuilderValidationIssue[] => {
     const issues: BuilderValidationIssue[] = [];
     if (
       !Number.isInteger(defaultDurationMinutes) ||
@@ -1309,10 +933,10 @@ const TemplatesPanel = ({
             message: `${section.name || `Section ${sectionIndex + 1}`} needs a subject.`,
           });
         }
-        if (!section.questions.length) {
+        if (requireQuestions && !section.questions.length) {
           issues.push({
             target: sectionTarget,
-            message: `${section.name || `Section ${sectionIndex + 1}`} has no questions selected.`,
+            message: `${section.name || `Section ${sectionIndex + 1}`} has no imported questions.`,
           });
         }
         if (
@@ -1323,10 +947,13 @@ const TemplatesPanel = ({
             target: sectionTarget,
             message: `${section.name || `Section ${sectionIndex + 1}`} must allow at least 1 question to be attempted.`,
           });
-        } else if (section.questionsToAttempt > section.questions.length) {
+        } else if (
+          requireQuestions &&
+          section.questionsToAttempt > section.questions.length
+        ) {
           issues.push({
             target: sectionTarget,
-            message: `${section.name || `Section ${sectionIndex + 1}`} allows ${section.questionsToAttempt} attempts but only ${section.questions.length} questions are selected.`,
+            message: `${section.name || `Section ${sectionIndex + 1}`} allows ${section.questionsToAttempt} attempts but only ${section.questions.length} questions are imported.`,
           });
         }
         if (
@@ -1350,7 +977,7 @@ const TemplatesPanel = ({
 
   const save = () => {
     if (!selected) return;
-    const issues = validateBuilder();
+    const issues = validateBuilder({ requireQuestions: false });
     setValidationIssues(issues);
     if (issues.length) return;
     report(
@@ -1439,11 +1066,22 @@ const TemplatesPanel = ({
   const inferredWizardStep = !selected
     ? 1
     : selectedQuestionCount > 0
-      ? 3
-      : defaultDurationMinutes > 0
-        ? 2
-        : 1;
+      ? 4
+      : hasAnySubject
+        ? 3
+        : defaultDurationMinutes > 0
+          ? 2
+          : 1;
   const wizardStep = wizardOverride ?? inferredWizardStep;
+
+  const preview = () => {
+    setWizardOverride(5);
+    window.setTimeout(() => {
+      document
+        .getElementById("template-review-publish")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  };
 
   useEffect(() => {
     if (!initialTemplateId || selectedId === initialTemplateId) return;
@@ -1458,6 +1096,19 @@ const TemplatesPanel = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTemplateId, selectedId, templates]);
 
+  useEffect(() => {
+    if (!selected || window.location.hash !== "#import-questions") return;
+    const timeoutId = window.setTimeout(() => {
+      setWizardOverride(4);
+      document.getElementById("import-questions")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [selected]);
+
   return (
     <div className={styles.templateBuilderShell}>
       <div
@@ -1465,21 +1116,34 @@ const TemplatesPanel = ({
         aria-label="Template builder steps"
       >
         {[
-          "Template details",
-          "Timing & slots",
-          "Build sections",
-          "Review & publish",
-        ].map((label, index) => {
+          { label: "Template details", target: "template-editor-actions" },
+          { label: "Timing & slots", target: "timing-configuration" },
+          { label: "Build sections", target: "build-sections" },
+          { label: "Import questions", target: "import-questions" },
+          {
+            label: "Review & publish",
+            target: "template-review-publish",
+          },
+        ].map(({ label, target }, index) => {
           const step = index + 1;
           return (
-            <span
+            <button
               data-active={wizardStep === step}
               data-complete={wizardStep > step}
+              disabled={!selected && step > 1}
               key={label}
+              onClick={() => {
+                setWizardOverride(step);
+                document.getElementById(target)?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                });
+              }}
+              type="button"
             >
               <b>{step}</b>
               {label}
-            </span>
+            </button>
           );
         })}
       </div>
@@ -1497,7 +1161,7 @@ const TemplatesPanel = ({
           <button
             className={styles.secondaryButton}
             disabled={!selected}
-            onClick={() => setWizardOverride(4)}
+            onClick={preview}
             type="button"
           >
             <Eye size={16} />
@@ -1639,7 +1303,10 @@ const TemplatesPanel = ({
             ))}
           </div>
           {selected ? (
-            <aside className={styles.templateSidebarSummary}>
+            <aside
+              className={styles.templateSidebarSummary}
+              id="template-publish-readiness"
+            >
               <div className={styles.builderSidebarCard}>
                 <div>
                   <span className={styles.stepLabel}>Live summary</span>
@@ -1674,7 +1341,7 @@ const TemplatesPanel = ({
                   </span>
                   <span>
                     <b>{selectedQuestionCount}</b>
-                    Selected
+                    Imported
                   </span>
                   <span>
                     <b>{totalQuestionsToAttempt}</b>
@@ -1701,7 +1368,7 @@ const TemplatesPanel = ({
                   </span>
                   <span data-complete={selectedQuestionCount > 0}>
                     <CheckCircle2 size={15} />
-                    Questions mapped
+                    Questions imported
                   </span>
                 </div>
 
@@ -1818,7 +1485,7 @@ const TemplatesPanel = ({
                   <h2>{selected.name}</h2>
                   <p>
                     {isSelectedDraft
-                      ? `Version ${selectedVersion?.versionNumber} is a draft. Save the structure before publishing.`
+                      ? `Version ${selectedVersion?.versionNumber} is a draft. Save the structure before uploading questions or publishing.`
                       : `Version ${selectedVersion?.versionNumber} is published and read-only.`}
                   </p>
                 </div>
@@ -1851,42 +1518,27 @@ const TemplatesPanel = ({
                       <Status value={selectedVersion.status} />
                     ) : null}
                   </div>
-                  <div className={styles.inlineActions}>
-                    <button
-                      className={styles.secondaryButton}
-                      disabled={!isSelectedDraft}
-                      onClick={() =>
-                        setSlots((current) => [
-                          ...current,
-                          {
-                            ...emptySlot(),
-                            name: `Slot ${current.length + 1}`,
-                          },
-                        ])
-                      }
-                    >
-                      <CirclePlus size={15} />
-                      Add slot
-                    </button>
-                    <button
-                      className={styles.primaryButton}
-                      disabled={!isSelectedDraft}
-                      onClick={save}
-                    >
-                      <Save size={15} />
-                      Save draft structure
-                    </button>
-                    <button
-                      className={styles.publishButton}
-                      disabled={!isSelectedDraft}
-                      onClick={publish}
-                    >
-                      <Send size={15} />
-                      Publish version
-                    </button>
-                    {!hasDraft ? (
+                  <div className={styles.versionActionStack}>
+                    <div className={styles.inlineActions}>
+                      <button
+                        className={styles.primaryButton}
+                        disabled={!isSelectedDraft}
+                        onClick={save}
+                      >
+                        <Save size={15} />
+                        Save draft structure
+                      </button>
+                      <button
+                        className={styles.publishButton}
+                        disabled={!isSelectedDraft}
+                        onClick={publish}
+                      >
+                        <Send size={15} />
+                        Publish version
+                      </button>
                       <button
                         className={styles.secondaryButton}
+                        disabled={hasDraft}
                         onClick={() =>
                           report(
                             examsApi.templates.createVersion(selected.id),
@@ -1894,24 +1546,37 @@ const TemplatesPanel = ({
                             () => loadBuilder(selected, "draft"),
                           )
                         }
+                        title={
+                          hasDraft
+                            ? "Publish the current draft before creating another version"
+                            : "Create the next editable version"
+                        }
                       >
                         <Plus size={15} />
                         New version
                       </button>
-                    ) : null}
-                    {hasDraft && !isSelectedDraft ? (
-                      <button
-                        className={styles.secondaryButton}
-                        onClick={() => {
-                          const draft = selectedTemplate?.versions.find(
-                            (version) => version.status === "DRAFT",
-                          );
-                          if (draft) showVersion(draft);
-                        }}
-                      >
-                        Open draft
-                      </button>
-                    ) : null}
+                      {hasDraft && !isSelectedDraft ? (
+                        <button
+                          className={styles.secondaryButton}
+                          onClick={() => {
+                            const draft = selectedTemplate?.versions.find(
+                              (version) => version.status === "DRAFT",
+                            );
+                            if (draft) showVersion(draft);
+                          }}
+                        >
+                          Open draft
+                        </button>
+                      ) : null}
+                    </div>
+                    <span
+                      className={styles.versionCreationHint}
+                      data-blocked={hasDraft}
+                    >
+                      {hasDraft
+                        ? `Publish v${selectedTemplate?.versions.find((version) => version.status === "DRAFT")?.versionNumber ?? ""} before creating another version. Only one draft can exist at a time.`
+                        : "New version creates the next editable draft from this template."}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -2228,44 +1893,70 @@ const TemplatesPanel = ({
                     </div>
                   </div>
                 </section>
-                <section className={styles.mappingHeaderCard}>
-                  <div className={styles.mappingHeaderCopy}>
-                    <span className={styles.stepLabel}>Step 3 · Structure</span>
-                    <h3>Build the exam flow</h3>
-                    <p>
-                      A slot is a major exam part. Add sections inside it, then
-                      assign a subject and questions to every section.
-                    </p>
-                    <div
-                      className={styles.structureLegend}
-                      aria-label="Structure guide"
-                    >
-                      <span data-level="exam">Exam</span>
-                      <b aria-hidden="true">→</b>
-                      <span data-level="slot">Slot</span>
-                      <b aria-hidden="true">→</b>
-                      <span data-level="section">Section</span>
-                      <b aria-hidden="true">→</b>
-                      <span data-level="questions">Questions</span>
+                <section
+                  className={styles.mappingHeaderCard}
+                  id="build-sections"
+                >
+                  <div className={styles.mappingHeaderTop}>
+                    <div className={styles.mappingHeaderCopy}>
+                      <span className={styles.stepLabel}>
+                        Step 3 · Structure
+                      </span>
+                      <h3>Build the exam structure</h3>
+                      <p>
+                        Work from top to bottom: define each slot, configure its
+                        sections, then save the draft.
+                      </p>
                     </div>
+                    <button
+                      className={styles.secondaryButton}
+                      disabled={!isSelectedDraft}
+                      onClick={() =>
+                        setSlots((current) => [
+                          ...current,
+                          {
+                            ...emptySlot(),
+                            name: `Slot ${current.length + 1}`,
+                          },
+                        ])
+                      }
+                      type="button"
+                    >
+                      <CirclePlus size={15} />
+                      Add slot
+                    </button>
                   </div>
-                  <button
-                    className={styles.secondaryButton}
-                    disabled={!isSelectedDraft}
-                    onClick={() =>
-                      setSlots((current) => [
-                        ...current,
-                        {
-                          ...emptySlot(),
-                          name: `Slot ${current.length + 1}`,
-                        },
-                      ])
-                    }
-                    type="button"
+                  <div
+                    className={styles.structureSteps}
+                    aria-label="How to complete Step 3"
                   >
-                    <CirclePlus size={15} />
-                    Add slot
-                  </button>
+                    <article>
+                      <span>1</span>
+                      <div>
+                        <strong>Define slots and sections</strong>
+                        <p>Name each part and set its timing and rules.</p>
+                      </div>
+                    </article>
+                    <article>
+                      <span>2</span>
+                      <div>
+                        <strong>Save the draft structure</strong>
+                        <p>
+                          Check the structure and keep your progress safely.
+                        </p>
+                      </div>
+                    </article>
+                    <article>
+                      <span>3</span>
+                      <div>
+                        <strong>Continue to question import</strong>
+                        <p>
+                          After saving, open Step 4 and upload the prepared
+                          files.
+                        </p>
+                      </div>
+                    </article>
+                  </div>
                 </section>
                 {slots.map((slot, slotIndex) => (
                   <article
@@ -2299,15 +1990,10 @@ const TemplatesPanel = ({
                         </span>
                       </div>
                     </div>
-                    <div className={styles.slotPurposeNote}>
-                      <Layers3 size={17} aria-hidden="true" />
-                      <span>
-                        <strong>What is a slot?</strong>{" "}
-                        A major part of the
-                        exam. Students complete its sections before continuing
-                        to the next slot.
-                      </span>
-                    </div>
+                    <p className={styles.slotHelper}>
+                      A slot is one major part of the exam. Configure its basic
+                      details first, then complete the section settings below.
+                    </p>
                     <div className={styles.slotSetupPanel}>
                       <div className={styles.slotSetupGrid}>
                         <label>
@@ -2484,16 +2170,8 @@ const TemplatesPanel = ({
                                 ? `${section.durationMinutes} min`
                                 : "Timer off"}
                             </span>
-                            <span
-                              className={styles.questionLimitBadge}
-                              data-invalid={
-                                section.questionsToAttempt < 1 ||
-                                section.questionsToAttempt >
-                                  section.questions.length
-                              }
-                            >
-                              {section.questions.length} selected ·{" "}
-                              {section.questionsToAttempt} allowed
+                            <span className={styles.questionLimitBadge}>
+                              {section.questionsToAttempt} to attempt
                             </span>
                             <button
                               className={styles.dangerButton}
@@ -2520,8 +2198,7 @@ const TemplatesPanel = ({
                           </div>
                         </div>
                         <p className={styles.sectionInstruction}>
-                          Choose one subject for this section, set the attempt
-                          limit, then map questions from that subject.
+                          Complete the section settings and choose its subject.
                         </p>
                         <div className={styles.rowFields}>
                           <label>
@@ -2600,31 +2277,6 @@ const TemplatesPanel = ({
                             />
                           </label>
                         </div>
-                        <div
-                          className={styles.questionLimitSummary}
-                          data-invalid={
-                            section.questionsToAttempt < 1 ||
-                            section.questionsToAttempt >
-                              section.questions.length
-                          }
-                        >
-                          <strong>
-                            {section.questions.length} questions selected
-                          </strong>
-                          <span>
-                            Students may answer {section.questionsToAttempt} of{" "}
-                            {section.questions.length}.
-                          </span>
-                          {section.questionsToAttempt < 1 ? (
-                            <em>Choose a question limit of at least 1.</em>
-                          ) : section.questionsToAttempt >
-                            section.questions.length ? (
-                            <em>
-                              Select at least {section.questionsToAttempt}{" "}
-                              questions or lower the limit.
-                            </em>
-                          ) : null}
-                        </div>
                         <div className={styles.policyChecks}>
                           <label>
                             <input
@@ -2696,82 +2348,22 @@ const TemplatesPanel = ({
                                 questions: [],
                               })
                             }
-                            options={subjects.map((subject) => ({
+                            options={availableSubjects.map((subject) => ({
                               label: subject.name,
                               value: String(subject.id),
                             }))}
-                            placeholder="Choose subject"
+                            placeholder={
+                              builderSubjects.isLoading
+                                ? "Loading subjects..."
+                                : availableSubjects.length
+                                  ? "Choose subject"
+                                  : "No subjects available"
+                            }
                             value={
                               section.subjectId ? String(section.subjectId) : ""
                             }
                           />
                         </div>
-                        <div className={styles.questionAssignmentTitle}>
-                          <div>
-                            <strong>Question assignment</strong>
-                            <span>
-                              Select reusable questions and confirm marks for
-                              this section.
-                            </span>
-                          </div>
-                          <small>
-                            {section.questions.length} selected /{" "}
-                            {section.questionsToAttempt} attempted
-                          </small>
-                        </div>
-                        {!isSelectedDraft ? (
-                          <div className={styles.questionPicker}>
-                            {section.questions.length ? (
-                              section.questions.map((question) => (
-                                <div
-                                  className={styles.versionQuestion}
-                                  key={question.questionVersionId}
-                                >
-                                  <CheckCircle2 size={15} aria-hidden="true" />
-                                  <div
-                                    className={styles.versionQuestionContent}
-                                  >
-                                    <strong>{question.code}</strong>
-                                    <RichContent value={question.content} />
-                                  </div>
-                                  <small>+{question.marks}</small>
-                                  <small>−{question.negativeMarks}</small>
-                                </div>
-                              ))
-                            ) : (
-                              <div
-                                className={styles.questionEmpty}
-                                role="status"
-                              >
-                                <ClipboardList size={20} aria-hidden="true" />
-                                <strong>No questions in this version</strong>
-                                <span>
-                                  This published section does not contain any
-                                  mapped questions.
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        ) : effectiveOrganizationId ? (
-                          <SectionQuestionPicker
-                            organizationId={effectiveOrganizationId}
-                            onSelectionChange={(nextQuestions) =>
-                              updateSection(slotIndex, sectionIndex, {
-                                questions: nextQuestions,
-                              })
-                            }
-                            questionTypes={questionTypes}
-                            questionsToAttempt={section.questionsToAttempt}
-                            selectedQuestions={section.questions}
-                            subjectId={section.subjectId}
-                          />
-                        ) : (
-                          <Empty
-                            icon={Building2}
-                            title="Choose an organization"
-                            text="Select an organization before mapping questions into this section."
-                          />
-                        )}
                       </div>
                     ))}
                     <button
@@ -2795,6 +2387,110 @@ const TemplatesPanel = ({
                   </article>
                 ))}
               </div>
+              <ImportsPanel
+                embedded
+                initialTemplateId={selected.id}
+                key={`template-import-${selected.id}-${selectedVersionId ?? "none"}`}
+                onImported={async () => {
+                  await loadBuilder(selected, selectedVersionId ?? "draft");
+                  setWizardOverride(4);
+                }}
+                report={report}
+                templates={templates}
+              />
+              <section
+                aria-labelledby="template-review-publish-heading"
+                className={styles.reviewPublishPanel}
+                id="template-review-publish"
+              >
+                <div className={styles.reviewPublishHeader}>
+                  <div>
+                    <span className={styles.stepLabel}>
+                      Step 5 · Review & publish
+                    </span>
+                    <h3 id="template-review-publish-heading">
+                      Check the final exam blueprint
+                    </h3>
+                    <p>
+                      Review the draft below. Publishing locks this version so
+                      scheduled exams always use a stable structure.
+                    </p>
+                  </div>
+                  <div
+                    className={styles.reviewStatus}
+                    data-ready={isPublishReady}
+                  >
+                    <CheckCircle2 size={18} />
+                    <strong>
+                      {isPublishReady ? "Ready to publish" : "Needs attention"}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className={styles.reviewMetricGrid}>
+                  <span>
+                    <b>{defaultDurationMinutes}</b>
+                    minutes
+                  </span>
+                  <span>
+                    <b>{slots.length}</b>
+                    slots
+                  </span>
+                  <span>
+                    <b>{sectionCount}</b>
+                    sections
+                  </span>
+                  <span>
+                    <b>{selectedQuestionCount}</b>
+                    imported questions
+                  </span>
+                </div>
+
+                <div className={styles.reviewChecklist}>
+                  {liveValidationIssues.length ? (
+                    liveValidationIssues.map((issue) => (
+                      <span
+                        data-complete={false}
+                        key={`${issue.target}-${issue.message}`}
+                      >
+                        <CheckCircle2 size={15} />
+                        {issue.message}
+                      </span>
+                    ))
+                  ) : (
+                    <span data-complete>
+                      <CheckCircle2 size={15} />
+                      Timing, sections, subjects, and question counts are ready.
+                    </span>
+                  )}
+                </div>
+
+                <div className={styles.reviewPublishActions}>
+                  <button
+                    className={styles.secondaryButton}
+                    disabled={!isSelectedDraft}
+                    onClick={save}
+                    type="button"
+                  >
+                    <Save size={16} />
+                    Save draft
+                  </button>
+                  <button
+                    className={styles.publishButton}
+                    disabled={!isSelectedDraft || !isPublishReady}
+                    onClick={publish}
+                    type="button"
+                  >
+                    <Send size={16} />
+                    Publish version
+                  </button>
+                  <small>
+                    {isSelectedDraft
+                      ? "You can publish once every checklist item is complete."
+                      : "Open the current draft to edit or publish this template."}
+                  </small>
+                </div>
+              </section>
             </>
           )}
         </section>
@@ -2985,10 +2681,347 @@ const SubjectsPanel = ({
   );
 };
 
+const TopicsPanel = ({
+  organizationId,
+  organizationSelector,
+  subjects,
+  topics,
+  report,
+}: {
+  organizationId?: number;
+  organizationSelector?: ReactNode;
+  subjects: ExamSubject[];
+  topics: ExamTopic[];
+  report: Report;
+}) => {
+  const [subjectId, setSubjectId] = useState(0);
+  const [subjectFilter, setSubjectFilter] = useState("all");
+  const visibleTopics = topics.filter(
+    (topic) =>
+      subjectFilter === "all" || topic.subjectId === Number(subjectFilter),
+  );
+
+  return (
+    <div className={styles.topicManagement}>
+      <header className={styles.header}>
+        <div>
+          <p className={styles.eyebrow}>Question taxonomy</p>
+          <h1>Topics</h1>
+          <p>
+            Organize each subject into reportable learning areas. Existing
+            questions can remain uncategorized.
+          </p>
+        </div>
+        <div className={styles.headerBadge}>
+          <Layers3 size={22} aria-hidden="true" />
+          <div>
+            <strong>{topics.filter((topic) => topic.isActive).length}</strong>
+            <span>Active topics</span>
+          </div>
+        </div>
+      </header>
+
+      <div className={styles.topicWorkspace}>
+        <section className={styles.panel}>
+          <div className={styles.panelTitle}>
+            <div>
+              <h2>Create topic</h2>
+              <p>A topic belongs to exactly one subject.</p>
+            </div>
+          </div>
+          <form
+            action={(form) => {
+              if (!organizationId || !subjectId) return;
+              report(
+                examsApi.topics.create({
+                  organizationId,
+                  subjectId,
+                  code: String(form.get("code")),
+                  name: String(form.get("name")),
+                  description: String(form.get("description") || ""),
+                }),
+                "Topic created",
+              );
+            }}
+            className={styles.form}
+          >
+            {organizationSelector}
+            <CrudSelectField
+              label="Subject"
+              onChange={(value) => setSubjectId(Number(value))}
+              options={subjects
+                .filter((subject) => subject.isActive)
+                .map((subject) => ({
+                  label: subject.name,
+                  value: String(subject.id),
+                }))}
+              placeholder="Choose subject"
+              value={subjectId ? String(subjectId) : ""}
+            />
+            <div className={styles.rowFields}>
+              <label>
+                Topic name
+                <input name="name" placeholder="Percentages" required />
+              </label>
+              <label>
+                Stable code
+                <input name="code" placeholder="PERCENTAGES" required />
+              </label>
+            </div>
+            <label>
+              Description
+              <textarea
+                name="description"
+                placeholder="What this topic covers"
+                rows={3}
+              />
+            </label>
+            <button
+              className={styles.primaryButton}
+              disabled={!organizationId || !subjectId}
+            >
+              <Plus size={16} />
+              Create topic
+            </button>
+          </form>
+        </section>
+
+        <section className={styles.panel}>
+          <div className={styles.panelTitle}>
+            <div>
+              <h2>Topic catalog</h2>
+              <p>{visibleTopics.length} available for question mapping</p>
+            </div>
+            <CrudSelect
+              ariaLabel="Filter topics by subject"
+              onChange={setSubjectFilter}
+              options={[
+                { label: "All subjects", value: "all" },
+                ...subjects.map((subject) => ({
+                  label: subject.name,
+                  value: String(subject.id),
+                })),
+              ]}
+              value={subjectFilter}
+              width="190px"
+            />
+          </div>
+          <div className={styles.catalog}>
+            {visibleTopics.map((topic) => (
+              <article key={topic.id}>
+                <div className={styles.subjectIcon}>
+                  {topic.code.slice(0, 2)}
+                </div>
+                <div>
+                  <strong>{topic.name}</strong>
+                  <span>
+                    {topic.subject?.name ??
+                      subjects.find((subject) => subject.id === topic.subjectId)
+                        ?.name ??
+                      "Unknown subject"}
+                    {" · "}
+                    {topic.code}
+                  </span>
+                  <p>
+                    {topic.description || "No description"} ·{" "}
+                    {topic._count?.questionVersions ?? 0} question versions
+                  </p>
+                </div>
+                <button
+                  className={styles.textButton}
+                  onClick={() =>
+                    report(
+                      examsApi.topics.update(topic.id, {
+                        isActive: !topic.isActive,
+                      }),
+                      topic.isActive ? "Topic deactivated" : "Topic activated",
+                    )
+                  }
+                  type="button"
+                >
+                  {topic.isActive ? "Deactivate" : "Activate"}
+                </button>
+              </article>
+            ))}
+            {!visibleTopics.length ? (
+              <Empty
+                icon={Layers3}
+                title="No topics yet"
+                text="Create the first topic for a subject to enable topic-wise reporting."
+              />
+            ) : null}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+};
+
+const ReportsPanel = ({
+  exams,
+  organizationSelector,
+}: {
+  exams: ScheduledExam[];
+  organizationSelector?: ReactNode;
+}) => {
+  const [examId, setExamId] = useState(0);
+  const report = useQuery({
+    queryKey: ["admin-exam-report", examId],
+    queryFn: () => examsApi.scheduled.report(examId),
+    enabled: Boolean(examId),
+  });
+
+  return (
+    <div className={styles.reportManagement}>
+      <header className={styles.header}>
+        <div>
+          <p className={styles.eyebrow}>Assessment insights</p>
+          <h1>Exam Reports</h1>
+          <p>
+            Compare student results, sections, and topics using each
+            student&apos;s best completed attempt.
+          </p>
+        </div>
+        <div className={styles.headerBadge}>
+          <BarChart3 size={22} aria-hidden="true" />
+          <div>
+            <strong>{report.data?.summary.students ?? 0}</strong>
+            <span>Students ranked</span>
+          </div>
+        </div>
+      </header>
+      <section className={`${styles.panel} ${styles.reportPicker}`}>
+        {organizationSelector}
+        <CrudSelectField
+          label="Exam"
+          onChange={(value) => setExamId(Number(value))}
+          options={exams.map((exam) => ({
+            label: `${exam.title} · ${exam.code}`,
+            value: String(exam.id),
+          }))}
+          placeholder={exams.length ? "Choose an exam" : "No scheduled exams"}
+          value={examId ? String(examId) : ""}
+        />
+        <p>
+          Rankings use one best attempt per student. Topic rows marked
+          Uncategorized preserve historical questions without topic mapping.
+        </p>
+      </section>
+      {report.isLoading ? (
+        <div className={styles.reportState}>Building report...</div>
+      ) : null}
+      {report.isError ? (
+        <div className={styles.error}>Unable to load this exam report.</div>
+      ) : null}
+      {report.data ? (
+        <>
+          <section className={styles.reportStats}>
+            <ReportStat label="Students" value={report.data.summary.students} />
+            <ReportStat
+              label="Attempts"
+              value={report.data.summary.totalAttempts}
+            />
+            <ReportStat
+              label="Average"
+              value={`${report.data.summary.averagePercentage}%`}
+            />
+            <ReportStat
+              label="Highest"
+              value={`${report.data.summary.highestPercentage}%`}
+            />
+            <ReportStat
+              label="Lowest"
+              value={`${report.data.summary.lowestPercentage}%`}
+            />
+          </section>
+          <div className={styles.reportGrid}>
+            <section className={styles.panel}>
+              <div className={styles.panelTitle}>
+                <div>
+                  <h2>Topic performance</h2>
+                  <p>Accuracy and marks across ranked students</p>
+                </div>
+              </div>
+              <div className={styles.reportMetricList}>
+                {report.data.performance.topics.map((topic) => (
+                  <article key={topic.key}>
+                    <div>
+                      <strong>{topic.label}</strong>
+                      <span>
+                        {topic.subjectName} · {topic.attempted} attempted
+                      </span>
+                    </div>
+                    <div className={styles.reportMetricBar}>
+                      <span
+                        style={{ width: `${Math.max(0, topic.percentage)}%` }}
+                      />
+                    </div>
+                    <b>{topic.percentage}%</b>
+                  </article>
+                ))}
+                {!report.data.performance.topics.length ? (
+                  <p>No topic results are available yet.</p>
+                ) : null}
+              </div>
+            </section>
+            <section className={styles.panel}>
+              <div className={styles.panelTitle}>
+                <div>
+                  <h2>Student leaderboard</h2>
+                  <p>Best completed attempt per student</p>
+                </div>
+              </div>
+              <div className={styles.leaderboard}>
+                {report.data.students.map((student) => (
+                  <article key={student.studentId}>
+                    <b>#{student.rank}</b>
+                    <div>
+                      <strong>
+                        {student.name ||
+                          student.rollNumber ||
+                          `Student ${student.studentId}`}
+                      </strong>
+                      <span>
+                        {student.rollNumber || "No roll number"} · Attempt{" "}
+                        {student.attemptNumber}
+                      </span>
+                    </div>
+                    <strong>{student.percentage}%</strong>
+                    <span>
+                      {student.score} / {student.maximumScore}
+                    </span>
+                  </article>
+                ))}
+                {!report.data.students.length ? (
+                  <p>No completed attempts are available yet.</p>
+                ) : null}
+              </div>
+            </section>
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+};
+
+const ReportStat = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) => (
+  <article>
+    <strong>{value}</strong>
+    <span>{label}</span>
+  </article>
+);
+
 const QuestionsPanel = ({
   organizationId,
   organizationSelector,
   subjects,
+  topics,
   questions,
   questionTypes,
   report,
@@ -2996,11 +3029,13 @@ const QuestionsPanel = ({
   organizationId?: number;
   organizationSelector?: ReactNode;
   subjects: ExamSubject[];
+  topics: ExamTopic[];
   questions: ExamQuestion[];
   questionTypes: ExamQuestionType[];
   report: Report;
 }) => {
   const [newQuestionSubjectId, setNewQuestionSubjectId] = useState(0);
+  const [newQuestionTopicId, setNewQuestionTopicId] = useState(0);
   const [questionTypeId, setQuestionTypeId] = useState(0);
   const [virtualKeyboardMode, setVirtualKeyboardMode] = useState<
     "NONE" | "NUMERIC" | "ALPHANUMERIC"
@@ -3051,6 +3086,7 @@ const QuestionsPanel = ({
       examsApi.questions.create({
         organizationId,
         subjectId: newQuestionSubjectId,
+        topicId: newQuestionTopicId || undefined,
         code: String(form.get("code")),
         questionTypeId,
         content: String(form.get("content")),
@@ -3166,13 +3202,35 @@ const QuestionsPanel = ({
               </label>
               <CrudSelectField
                 label="Subject"
-                onChange={(value) => setNewQuestionSubjectId(Number(value))}
+                onChange={(value) => {
+                  setNewQuestionSubjectId(Number(value));
+                  setNewQuestionTopicId(0);
+                }}
                 options={subjects.map((subject) => ({
                   label: subject.name,
                   value: String(subject.id),
                 }))}
                 placeholder="Choose subject"
                 value={newQuestionSubjectId ? String(newQuestionSubjectId) : ""}
+              />
+              <CrudSelectField
+                disabled={!newQuestionSubjectId}
+                label="Topic (optional)"
+                onChange={(value) => setNewQuestionTopicId(Number(value))}
+                options={topics
+                  .filter(
+                    (topic) =>
+                      topic.isActive &&
+                      topic.subjectId === newQuestionSubjectId,
+                  )
+                  .map((topic) => ({
+                    label: topic.name,
+                    value: String(topic.id),
+                  }))}
+                placeholder={
+                  newQuestionSubjectId ? "Choose topic" : "Choose subject first"
+                }
+                value={newQuestionTopicId ? String(newQuestionTopicId) : ""}
               />
               <CrudSelectField
                 label="Answer type"
@@ -3446,7 +3504,10 @@ const QuestionsPanel = ({
                   >
                     <div className={styles.questionIdentity}>
                       <strong>{question.code}</strong>
-                      <span>{question.subject.name}</span>
+                      <span>
+                        {question.subject.name}
+                        {version?.topic ? ` · ${version.topic.name}` : ""}
+                      </span>
                     </div>
                     <p>{contentSummary(version?.content)}</p>
                     <div className={styles.questionSummaryMeta}>
@@ -3509,17 +3570,21 @@ const QuestionsPanel = ({
 };
 
 const ImportsPanel = ({
-  organizationSelector,
+  embedded = false,
+  initialTemplateId,
+  onImported,
   templates,
   report,
 }: {
-  organizationSelector?: ReactNode;
+  embedded?: boolean;
+  initialTemplateId?: number;
+  onImported?: () => void | Promise<void>;
   templates: ExamTemplateListItem[];
   report: Report;
 }) => {
   type ImportMode = "CODELESS_WORD" | "PAIRED_WORD_EXCEL";
-  const [templateId, setTemplateId] = useState(0);
-  const [importMode, setImportMode] = useState<ImportMode>("CODELESS_WORD");
+  const [templateId, setTemplateId] = useState(initialTemplateId ?? 0);
+  const [importMode, setImportMode] = useState<ImportMode>("PAIRED_WORD_EXCEL");
   const [scope, setScope] = useState<"SINGLE_SECTION" | "FULL_EXAM">(
     "SINGLE_SECTION",
   );
@@ -3537,6 +3602,28 @@ const ImportsPanel = ({
   const version = templateDetails.data?.versions.find(
     (item) => item.status === "DRAFT",
   );
+  const draftTemplateOptions = templates
+    .filter((item) =>
+      item.versions.some((versionItem) => versionItem.status === "DRAFT"),
+    )
+    .map((item) => ({
+      label: `${item.name} - v${item.versions.find((versionItem) => versionItem.status === "DRAFT")?.versionNumber} Draft`,
+      value: String(item.id),
+    }));
+  const selectedTemplateOption =
+    templateDetails.data && version
+      ? {
+          label: `${templateDetails.data.name} - v${version.versionNumber} Draft`,
+          value: String(templateDetails.data.id),
+        }
+      : null;
+  const templateOptions =
+    selectedTemplateOption &&
+    !draftTemplateOptions.some(
+      (option) => option.value === selectedTemplateOption.value,
+    )
+      ? [selectedTemplateOption, ...draftTemplateOptions]
+      : draftTemplateOptions;
   const sections =
     version?.slots.flatMap((slot) =>
       slot.sections.map((section) => ({
@@ -3601,7 +3688,7 @@ const ImportsPanel = ({
     try {
       const committedJob = await examsApi.imports.commit(job.id);
       setJob(committedJob);
-      report(Promise.resolve(), "Import committed atomically");
+      report(Promise.resolve(), "Import committed atomically", onImported);
     } catch (error) {
       report(Promise.reject(error), "");
     } finally {
@@ -3609,54 +3696,85 @@ const ImportsPanel = ({
     }
   };
   return (
-    <div className={styles.importManagement}>
-      <section className={styles.importHeroGrid}>
-        <div className={styles.importHeroCard}>
+    <div
+      className={`${styles.importManagement} ${embedded ? styles.embeddedImportStep : ""}`}
+      id={embedded ? "import-questions" : undefined}
+    >
+      {embedded ? (
+        <section className={styles.embeddedImportHeader}>
+          <span className={styles.embeddedImportIcon}>
+            <FileUp size={21} aria-hidden="true" />
+          </span>
           <div>
-            <p>Assessment Management</p>
-            <h1>Question Import Center</h1>
+            <span className={styles.stepLabel}>Step 4 · Import questions</span>
+            <h3>Upload the prepared Word and Excel files</h3>
+            <p>
+              Save the structure first. Then download the templates, upload the
+              completed files, validate every row, and confirm the import
+              without leaving this builder.
+            </p>
+          </div>
+          <div className={styles.embeddedImportProgress}>
             <span>
-              Stage Word or Excel question files, validate every row, and commit
-              only when ready.
+              <b>1</b> Prepare files
+            </span>
+            <span>
+              <b>2</b> Stage and validate
+            </span>
+            <span>
+              <b>3</b> Confirm import
             </span>
           </div>
-          <img
-            alt=""
-            aria-hidden="true"
-            className={styles.importDocument}
-            src="/exam-import-assets/import-document-illustration.png"
-          />
-        </div>
-        <div className={styles.importStageCard}>
-          <span className={styles.importStageDot} />
-          <img
-            alt=""
-            aria-hidden="true"
-            src="/exam-import-assets/staged-imports-icon.png"
-          />
-          <strong>{job ? 1 : 0}</strong>
-          <p>Staged imports</p>
-        </div>
-        <div className={styles.importWorkflowCard}>
-          <div>
-            <p>Import Workflow</p>
-            <h2>Ready for review</h2>
-            <span>
-              <CheckCircle2 size={15} />
-              Row-level validation
-            </span>
-            <span>
-              <CheckCircle2 size={15} />
-              Safe atomic commit
-            </span>
+        </section>
+      ) : (
+        <section className={styles.importHeroGrid}>
+          <div className={styles.importHeroCard}>
+            <div>
+              <p>Assessment Management</p>
+              <h1>Question Import Center</h1>
+              <span>
+                Stage Word or Excel question files, validate every row, and
+                commit only when ready.
+              </span>
+            </div>
+            <img
+              alt=""
+              aria-hidden="true"
+              className={styles.importDocument}
+              src="/exam-import-assets/import-document-illustration.png"
+            />
           </div>
-          <img
-            alt=""
-            aria-hidden="true"
-            src="/exam-import-assets/review-document-check.png"
-          />
-        </div>
-      </section>
+          <div className={styles.importStageCard}>
+            <span className={styles.importStageDot} />
+            <img
+              alt=""
+              aria-hidden="true"
+              src="/exam-import-assets/staged-imports-icon.png"
+            />
+            <strong>{job ? 1 : 0}</strong>
+            <p>Staged imports</p>
+          </div>
+          <div className={styles.importWorkflowCard}>
+            <div>
+              <p>Import Workflow</p>
+              <h2>Ready for review</h2>
+              <span>
+                <CheckCircle2 size={15} />
+                Row-level validation
+              </span>
+              <span>
+                <CheckCircle2 size={15} />
+                Safe atomic commit
+              </span>
+            </div>
+            <img
+              alt=""
+              aria-hidden="true"
+              src="/exam-import-assets/review-document-check.png"
+            />
+          </div>
+        </section>
+      )}
       <div className={styles.importWorkspace}>
         <section className={`${styles.panel} ${styles.importControlPanel}`}>
           <div className={styles.panelTitle}>
@@ -3740,7 +3858,6 @@ const ImportsPanel = ({
             </button>
           </div>
           <form action={stage} className={styles.form}>
-            {organizationSelector}
             <CrudSelectField
               label="Import format"
               onChange={(value) => setImportMode(value as ImportMode)}
@@ -3753,30 +3870,35 @@ const ImportsPanel = ({
               ]}
               value={importMode}
             />
-            <CrudSelectField
-              description={
-                version
-                  ? `Questions will be imported into version ${version.versionNumber}, which is the active draft.`
-                  : undefined
-              }
-              label="Draft template"
-              onChange={(value) => {
-                setTemplateId(Number(value));
-                setSectionId(0);
-              }}
-              options={templates
-                .filter((item) =>
-                  item.versions.some(
-                    (versionItem) => versionItem.status === "DRAFT",
-                  ),
-                )
-                .map((item) => ({
-                  label: `${item.name} - v${item.versions.find((versionItem) => versionItem.status === "DRAFT")?.versionNumber} Draft`,
-                  value: String(item.id),
-                }))}
-              placeholder="Choose template"
-              value={templateId ? String(templateId) : ""}
-            />
+            {embedded ? (
+              <div className={styles.embeddedImportDestination}>
+                <span>Current draft destination</span>
+                <strong>
+                  {templateDetails.data?.name ?? "Loading template"}
+                  {version ? ` · v${version.versionNumber}` : ""}
+                </strong>
+                <small>
+                  Questions are added to this template only after you confirm
+                  the validated preview.
+                </small>
+              </div>
+            ) : (
+              <CrudSelectField
+                description={
+                  version
+                    ? `Questions will be imported into version ${version.versionNumber}, which is the active draft.`
+                    : undefined
+                }
+                label="Draft template"
+                onChange={(value) => {
+                  setTemplateId(Number(value));
+                  setSectionId(0);
+                }}
+                options={templateOptions}
+                placeholder="Choose template"
+                value={templateId ? String(templateId) : ""}
+              />
+            )}
             <CrudSelectField
               label="Import scope"
               onChange={(value) => setScope(value as typeof scope)}

@@ -28,6 +28,7 @@ model Organization {
   studentEnrollments     StudentEnrollment[]
   studentNotifications   StudentNotification[]
   subjects               Subject[]
+  topics                 Topic[]
   questions              Question[]
   questionComprehensions QuestionComprehension[]
   examTemplates          ExamTemplate[]

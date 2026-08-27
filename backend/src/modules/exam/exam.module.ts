@@ -7,6 +7,7 @@ import {
   ExamQuestionTypeController,
   ExamSubjectController,
   ExamTemplateController,
+  ExamTopicController,
 } from './controllers/exam.controller';
 import { ExamService } from './services/exam.service';
 import { ExamRepository } from './repositories/exam.repository';
@@ -17,6 +18,7 @@ import { StudentExamService } from './services/student-exam.service';
   imports: [PrismaModule],
   controllers: [
     ExamSubjectController,
+    ExamTopicController,
     ExamQuestionController,
     ExamQuestionTypeController,
     ExamTemplateController,

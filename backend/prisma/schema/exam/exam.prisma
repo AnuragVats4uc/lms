@@ -27,6 +27,7 @@ model Subject {
 
   organization    Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   questions       Question[]
+  topics          Topic[]
   sectionSubjects ExamTemplateSectionSubject[]
   importJobs      ExamImportJob[]
 
@@ -34,6 +35,31 @@ model Subject {
   @@unique([organizationId, name], map: "subjects_organization_id_name_unique")
   @@index([organizationId, isActive], map: "subjects_organization_id_is_active_idx")
   @@map("subjects")
+}
+
+model Topic {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  organizationId Int      @map("organization_id")
+  subjectId      Int      @map("subject_id")
+  code           String   @db.VarChar(60)
+  name           String   @db.VarChar(150)
+  description    String?  @db.Text
+  sortOrder      Int      @default(0) @map("sort_order")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subject          Subject           @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  questionVersions QuestionVersion[]
+  importRows       ExamImportRow[]
+
+  @@unique([subjectId, code], map: "topics_subject_id_code_unique")
+  @@unique([subjectId, name], map: "topics_subject_id_name_unique")
+  @@index([organizationId, subjectId, isActive], map: "topics_scope_subject_active_idx")
+  @@map("topics")
 }
 
 model Question {
@@ -63,6 +89,7 @@ model QuestionVersion {
   questionId            Int                     @map("question_id")
   questionTypeId        Int                     @map("question_type_id")
   comprehensionId       Int?                    @map("comprehension_id")
+  topicId               Int?                    @map("topic_id")
   versionNumber         Int                     @map("version_number")
   content               String                  @db.LongText
   explanation           String?                 @db.LongText
@@ -81,6 +108,7 @@ model QuestionVersion {
   question          Question                 @relation(fields: [questionId], references: [id], onDelete: Cascade)
   questionType      QuestionType             @relation(fields: [questionTypeId], references: [id], onDelete: Restrict)
   comprehension     QuestionComprehension?   @relation(fields: [comprehensionId], references: [id], onDelete: SetNull)
+  topic             Topic?                   @relation(fields: [topicId], references: [id], onDelete: Restrict)
   options           QuestionOption[]
   acceptedAnswers   QuestionAcceptedAnswer[]
   templateQuestions ExamTemplateQuestion[]
@@ -88,6 +116,7 @@ model QuestionVersion {
   @@unique([questionId, versionNumber], map: "question_versions_question_id_version_unique")
   @@index([questionTypeId], map: "question_versions_type_idx")
   @@index([comprehensionId], map: "question_versions_comprehension_idx")
+  @@index([topicId], map: "question_versions_topic_idx")
   @@map("question_versions")
 }
 
@@ -400,6 +429,8 @@ model ExamImportRow {
   slotCode            String?             @map("slot_code") @db.VarChar(60)
   sectionCode         String?             @map("section_code") @db.VarChar(60)
   subjectCode         String?             @map("subject_code") @db.VarChar(40)
+  topicId             Int?                @map("topic_id")
+  topicCode           String?             @map("topic_code") @db.VarChar(60)
   questionCode        String?             @map("question_code") @db.VarChar(80)
   questionTypeId      Int?                @map("question_type_id")
   rawQuestionTypeId   Int?                @map("raw_question_type_id")
@@ -424,10 +455,12 @@ model ExamImportRow {
 
   importJob    ExamImportJob @relation(fields: [examImportJobId], references: [id], onDelete: Cascade)
   questionType QuestionType? @relation(fields: [questionTypeId], references: [id], onDelete: Restrict)
+  topic        Topic?        @relation(fields: [topicId], references: [id], onDelete: SetNull)
 
   @@unique([examImportJobId, sourceIndex], map: "exam_import_rows_job_source_unique")
   @@index([examImportJobId, status], map: "exam_import_rows_job_status_idx")
   @@index([questionTypeId], map: "exam_import_rows_question_type_idx")
+  @@index([topicId], map: "exam_import_rows_topic_idx")
   @@map("exam_import_rows")
 }
 
@@ -451,6 +484,8 @@ model StudentExamAttempt {
   uuid                       String                @unique @default(uuid())
   studentId                  Int                   @map("student_id")
   examId                     Int                   @map("exam_id")
+  sessionCourseId            Int?                  @map("session_course_id")
+  sourceResourceId           Int?                  @map("source_resource_id")
   attemptNumber              Int                   @map("attempt_number")
   status                     ExamAttemptStatus     @default(IN_PROGRESS)
   startedAt                  DateTime              @default(now()) @map("started_at")
@@ -464,17 +499,22 @@ model StudentExamAttempt {
   submissionReason           ExamSubmissionReason? @map("submission_reason")
   score                      Decimal?              @db.Decimal(10, 2)
   maximumScore               Decimal?              @map("maximum_score") @db.Decimal(10, 2)
+  calculationVersion         Int                   @default(1) @map("calculation_version")
   createdAt                  DateTime              @default(now()) @map("created_at")
   updatedAt                  DateTime              @updatedAt @map("updated_at")
 
   student      Student                      @relation(fields: [studentId], references: [id], onDelete: Cascade)
   exam         Exam                         @relation(fields: [examId], references: [id], onDelete: Restrict)
+  sessionCourse SessionCourse? @relation(fields: [sessionCourseId], references: [id], onDelete: SetNull)
+  sourceResource Resource?                    @relation("StudentExamAttemptSourceResource", fields: [sourceResourceId], references: [id], onDelete: SetNull)
   slotProgress StudentExamSlotAttempt[]
   answers      StudentExamAnswer[]
   questions    StudentExamAttemptQuestion[]
 
   @@unique([studentId, examId, attemptNumber], map: "student_exam_attempts_student_exam_number_unique")
   @@index([examId, status], map: "student_exam_attempts_exam_status_idx")
+  @@index([examId, sessionCourseId, status, score], map: "student_exam_attempts_exam_course_rank_idx")
+  @@index([studentId, status, submittedAt], map: "student_exam_attempts_student_status_submitted_idx")
   @@map("student_exam_attempts")
 }
 

@@ -36,6 +36,20 @@ export interface ExamSubject {
   isActive: boolean;
 }
 
+export interface ExamTopic {
+  id: number;
+  uuid: string;
+  organizationId: number;
+  subjectId: number;
+  code: string;
+  name: string;
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  subject?: ExamSubject;
+  _count?: { questionVersions: number };
+}
+
 export interface ExamQuestionOption {
   id?: number;
   code: string;
@@ -48,6 +62,7 @@ export interface ExamQuestionVersion {
   versionNumber: number;
   questionTypeId: number;
   questionType: ExamQuestionType;
+  topic: ExamTopic | null;
   comprehension: {
     id: number;
     code: string;
@@ -90,6 +105,7 @@ export interface ExamQuestionListParams {
   organizationId?: number;
   search?: string;
   subjectId?: number;
+  topicId?: number;
   questionTypeId?: number;
   status?: ExamQuestion["status"];
   sort?: ExamQuestionSort;
@@ -228,6 +244,9 @@ export interface ExamImportRow {
   slotCode: string | null;
   sectionCode: string | null;
   subjectCode: string | null;
+  topicId: number | null;
+  topicCode: string | null;
+  topic: ExamTopic | null;
   questionCode: string | null;
   questionTypeId: number | null;
   rawQuestionTypeId: number | null;
@@ -387,25 +406,133 @@ export interface StudentExamReport {
   attemptNumber?: number;
   submittedAt?: string;
   durationSeconds?: number;
+  calculationVersion?: number;
   score?: number;
   maximumScore?: number;
   percentage?: number;
+  rank?: number | null;
+  percentile?: number | null;
+  cohortSize?: number;
+  rankBasis?:
+    | "COURSE_BEST_ATTEMPT_PER_STUDENT"
+    | "EXAM_BEST_ATTEMPT_PER_STUDENT"
+    | "UNAVAILABLE";
   summary?: {
     total: number;
     answered: number;
+    attempted: number;
     unanswered: number;
+    unattempted: number;
     correct: number;
     incorrect: number;
+    accuracy: number;
   };
+  performance?: {
+    sections: StudentExamPerformanceMetric[];
+    subjects: StudentExamPerformanceMetric[];
+    topics: Array<
+      StudentExamPerformanceMetric & {
+        topicId: number | null;
+        topicCode: string | null;
+        subjectId: number;
+        subjectName: string;
+        classification: "STRONG" | "DEVELOPING" | "WEAK" | "NOT_ATTEMPTED";
+      }
+    >;
+  };
+  timeAnalysis?: {
+    totalSeconds: number;
+    trackedQuestionSeconds: number;
+    isApproximate: boolean;
+    source: "QUESTION_HEARTBEATS";
+  };
+  trend?: Array<{
+    attemptUuid: string;
+    attemptNumber: number;
+    submittedAt: string;
+    exam: { id: number; code: string; title: string };
+    score: number;
+    maximumScore: number;
+    percentage: number;
+  }>;
   questions?: Array<{
     id: number;
     order: number;
     code: string;
+    subject: { id: number; name: string };
+    topic: { id: number; name: string } | null;
+    section: { id: number; name: string };
     content: string;
     explanation?: string | null;
     isCorrect: boolean | null;
+    answerState: "CORRECT" | "INCORRECT" | "UNATTEMPTED";
     marksAwarded: number;
+    timeSpentSeconds: number;
     correctOptionIds?: number[];
     acceptedAnswers?: Array<string | null>;
+  }>;
+}
+
+export interface StudentExamPerformanceMetric {
+  key: string;
+  label: string;
+  marksAwarded: number;
+  maximumMarks: number;
+  percentage: number;
+  timeSpentSeconds: number;
+  total: number;
+  answered: number;
+  attempted: number;
+  unanswered: number;
+  unattempted: number;
+  correct: number;
+  incorrect: number;
+  accuracy: number;
+  sectionId?: number;
+  sectionCode?: string;
+  subjectId?: number;
+  subjectCode?: string;
+}
+
+export interface AdminExamReport {
+  exam: {
+    id: number;
+    code: string;
+    title: string;
+    session: { id: number; name: string };
+    courses: Array<{ id: number; name: string }>;
+  };
+  basis: "BEST_ATTEMPT_PER_STUDENT";
+  summary: {
+    totalAttempts: number;
+    students: number;
+    averagePercentage: number;
+    highestPercentage: number;
+    lowestPercentage: number;
+  };
+  performance: {
+    sections: StudentExamPerformanceMetric[];
+    topics: Array<
+      StudentExamPerformanceMetric & {
+        topicId: number | null;
+        topicCode: string | null;
+        subjectId: number;
+        subjectName: string;
+      }
+    >;
+  };
+  students: Array<{
+    studentId: number;
+    rollNumber: string | null;
+    name: string;
+    attemptUuid: string;
+    attemptNumber: number;
+    submittedAt: string | null;
+    durationSeconds: number;
+    score: number;
+    maximumScore: number;
+    percentage: number;
+    rank: number;
+    summary: StudentExamReport["summary"];
   }>;
 }

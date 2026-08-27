@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import {
   Bell,
+  BarChart3,
   BookOpen,
   Building2,
   ClipboardList,
@@ -12,7 +13,6 @@ import {
   Settings,
   ShieldCheck,
   CalendarRange,
-  FileUp,
   Layers3,
   Library,
   UsersRound,
@@ -150,19 +150,24 @@ export const adminNavigation: NavigationItem[] = [
         label: "Subjects",
       },
       {
+        href: "/admin/exams/topics",
+        icon: Layers3,
+        label: "Topics",
+      },
+      {
         href: "/admin/exams/questions",
         icon: ClipboardList,
         label: "Question Bank",
       },
       {
-        href: "/admin/exams/imports",
-        icon: FileUp,
-        label: "Word / Excel Import",
-      },
-      {
         href: "/admin/exams/schedule",
         icon: CalendarRange,
         label: "Schedule Exams",
+      },
+      {
+        href: "/admin/exams/reports",
+        icon: BarChart3,
+        label: "Exam Reports",
       },
     ],
   },

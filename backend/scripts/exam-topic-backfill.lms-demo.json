@@ -1,0 +1,155 @@
+{
+  "organizationCode": "LMS-DEMO",
+  "topics": [
+    {
+      "subjectCode": "MATHEMATICS",
+      "code": "NUMBER_SYSTEMS",
+      "name": "Number Systems",
+      "description": "Divisibility, remainders and number properties.",
+      "sortOrder": 10,
+      "questionCodes": ["SEED-QA-001", "SEED-QA-007"]
+    },
+    {
+      "subjectCode": "MATHEMATICS",
+      "code": "PERCENTAGES",
+      "name": "Percentages",
+      "description": "Percentage change, discount and percentage calculations.",
+      "sortOrder": 20,
+      "questionCodes": ["SEED-QA-002"]
+    },
+    {
+      "subjectCode": "MATHEMATICS",
+      "code": "RATIO_PROPORTION",
+      "name": "Ratio & Proportion",
+      "description": "Ratios, proportions and equivalent comparisons.",
+      "sortOrder": 30,
+      "questionCodes": ["SEED-QA-003"]
+    },
+    {
+      "subjectCode": "MATHEMATICS",
+      "code": "AVERAGES",
+      "name": "Averages",
+      "description": "Arithmetic mean and average-based problems.",
+      "sortOrder": 40,
+      "questionCodes": ["SEED-QA-004"]
+    },
+    {
+      "subjectCode": "MATHEMATICS",
+      "code": "SPEED_DISTANCE_TIME",
+      "name": "Speed, Distance & Time",
+      "description": "Relationships between speed, distance and time.",
+      "sortOrder": 50,
+      "questionCodes": ["SEED-QA-005"]
+    },
+    {
+      "subjectCode": "MATHEMATICS",
+      "code": "ALGEBRA",
+      "name": "Algebra",
+      "description": "Equations and algebraic manipulation.",
+      "sortOrder": 60,
+      "questionCodes": ["SEED-QA-006"]
+    },
+    {
+      "subjectCode": "MATHEMATICS",
+      "code": "DATA_INTERPRETATION",
+      "name": "Data Interpretation",
+      "description": "Tables, charts and data-based quantitative reasoning.",
+      "sortOrder": 70,
+      "questionCodes": [
+        "CUET-FULL-QUANT-001",
+        "CUET-FULL-QUANT-002",
+        "CUET-FULL-QUANT-003"
+      ]
+    },
+    {
+      "subjectCode": "MATHEMATICS",
+      "code": "GEOMETRY",
+      "name": "Geometry",
+      "description": "Shapes, measurements and geometric properties.",
+      "sortOrder": 80,
+      "questionCodes": ["CUET-FULL-QUANT-004", "CUET-FULL-QUANT-005"]
+    },
+    {
+      "subjectCode": "ENGLISH",
+      "code": "READING_COMPREHENSION",
+      "name": "Reading Comprehension",
+      "description": "Passage understanding, inference and visual reading skills.",
+      "sortOrder": 10,
+      "questionCodes": [
+        "CUET-FULL-ENG-001",
+        "CUET-FULL-ENG-002",
+        "CUET-FULL-ENG-003",
+        "CUET-FULL-ENG-005",
+        "SEED-VA-004"
+      ]
+    },
+    {
+      "subjectCode": "ENGLISH",
+      "code": "VOCABULARY",
+      "name": "Vocabulary",
+      "description": "Word meanings, usage and one-word substitutions.",
+      "sortOrder": 20,
+      "questionCodes": ["CUET-FULL-ENG-004", "SEED-VA-001", "SEED-VA-002"]
+    },
+    {
+      "subjectCode": "ENGLISH",
+      "code": "GRAMMAR",
+      "name": "Grammar",
+      "description": "Sentence structure, agreement and correct usage.",
+      "sortOrder": 30,
+      "questionCodes": ["SEED-VA-003", "SEED-VA-005"]
+    },
+    {
+      "subjectCode": "REASONING",
+      "code": "SEATING_ARRANGEMENT",
+      "name": "Seating Arrangement",
+      "description": "Linear and circular seating relationships.",
+      "sortOrder": 10,
+      "questionCodes": [
+        "CUET-FULL-REA-001",
+        "CUET-FULL-REA-002",
+        "CUET-FULL-REA-003"
+      ]
+    },
+    {
+      "subjectCode": "REASONING",
+      "code": "SERIES",
+      "name": "Series & Patterns",
+      "description": "Number, letter and visual sequence patterns.",
+      "sortOrder": 20,
+      "questionCodes": ["CUET-FULL-REA-004", "CUET-FULL-REA-005", "SEED-LR-001"]
+    },
+    {
+      "subjectCode": "REASONING",
+      "code": "SYLLOGISM",
+      "name": "Syllogism",
+      "description": "Deduction from statements and logical conclusions.",
+      "sortOrder": 30,
+      "questionCodes": ["SEED-LR-002"]
+    },
+    {
+      "subjectCode": "REASONING",
+      "code": "CODING_DECODING",
+      "name": "Coding & Decoding",
+      "description": "Letter and symbol transformation rules.",
+      "sortOrder": 40,
+      "questionCodes": ["SEED-LR-003"]
+    },
+    {
+      "subjectCode": "REASONING",
+      "code": "ORDERING",
+      "name": "Ordering & Position",
+      "description": "Relative position and ordering relationships.",
+      "sortOrder": 50,
+      "questionCodes": ["SEED-LR-004"]
+    },
+    {
+      "subjectCode": "REASONING",
+      "code": "RANKING",
+      "name": "Ranking",
+      "description": "Rank and position calculations.",
+      "sortOrder": 60,
+      "questionCodes": ["SEED-LR-005"]
+    }
+  ]
+}

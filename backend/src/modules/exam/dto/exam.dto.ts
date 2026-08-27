@@ -66,6 +66,12 @@ export class QuestionListQueryDto extends OrganizationScopedQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  topicId?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
   questionTypeId?: number;
 
   @IsOptional()
@@ -144,6 +150,73 @@ export class UpdateSubjectDto {
   isActive?: boolean;
 }
 
+export class TopicListQueryDto extends OrganizationScopedQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  subjectId?: number;
+
+  @IsOptional()
+  @Transform(
+    ({ value }: { value: unknown }) => value === true || value === 'true',
+  )
+  @IsBoolean()
+  includeInactive = false;
+}
+
+export class CreateTopicDto extends OrganizationScopedQueryDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  subjectId!: number;
+
+  @Transform(trimmed)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(60)
+  code!: string;
+
+  @Transform(trimmed)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(150)
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
+}
+
+export class UpdateTopicDto {
+  @IsOptional()
+  @Transform(trimmed)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(150)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
 export class QuestionOptionDto {
   @Transform(trimmed)
   @IsString()
@@ -165,6 +238,12 @@ export class CreateQuestionDto extends OrganizationScopedQueryDto {
   @IsInt()
   @Min(1)
   subjectId!: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  topicId?: number;
 
   @Transform(trimmed)
   @IsString()

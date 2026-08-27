@@ -24,12 +24,15 @@ import {
   CreateExamTemplateDto,
   CreateQuestionDto,
   CreateSubjectDto,
+  CreateTopicDto,
   OrganizationScopedQueryDto,
   QuestionListQueryDto,
   SaveTemplateStructureDto,
   TemplateListQueryDto,
+  TopicListQueryDto,
   UpdateExamTemplateDto,
   UpdateSubjectDto,
+  UpdateTopicDto,
 } from '../dto/exam.dto';
 import { ExamImportFile, ExamService } from '../services/exam.service';
 
@@ -64,6 +67,38 @@ export class ExamSubjectController {
     @Body() dto: UpdateSubjectDto,
   ) {
     return this.service.updateSubject(request.user, id, dto);
+  }
+}
+
+@ApiTags('Exam topics')
+@ApiBearerAuth('access-token')
+@Controller('exam-topics')
+export class ExamTopicController {
+  constructor(private readonly service: ExamService) {}
+
+  @Get()
+  @Permissions('subject.read')
+  list(
+    @Req() request: AuthenticatedRequest,
+    @Query() query: TopicListQueryDto,
+  ) {
+    return this.service.listTopics(request.user, query);
+  }
+
+  @Post()
+  @Permissions('subject.create')
+  create(@Req() request: AuthenticatedRequest, @Body() dto: CreateTopicDto) {
+    return this.service.createTopic(request.user, dto);
+  }
+
+  @Patch(':id')
+  @Permissions('subject.update')
+  update(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateTopicDto,
+  ) {
+    return this.service.updateTopic(request.user, id, dto);
   }
 }
 
@@ -187,6 +222,15 @@ export class ExamController {
     @Query() query: OrganizationScopedQueryDto,
   ) {
     return this.service.listExams(request.user, query);
+  }
+
+  @Get(':id/report')
+  @Permissions('exam.read')
+  report(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.service.getExamReport(request.user, id);
   }
 
   @Post()

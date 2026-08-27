@@ -5,9 +5,11 @@ import type {
   ExamQuestionListParams,
   ExamQuestionType,
   ExamSubject,
+  ExamTopic,
   ExamTemplate,
   ExamTemplateListParams,
   ExamTemplateListItem,
+  AdminExamReport,
   SaveExamTemplateStructureRequest,
   ScheduledExam,
 } from "@repo/types";
@@ -38,6 +40,41 @@ export const examsApi = {
         .post<ApiResponse<ExamSubject>>("/exam-subjects", payload)
         .then(unwrapApiData),
   },
+  topics: {
+    list: (
+      params: {
+        organizationId?: number;
+        subjectId?: number;
+        includeInactive?: boolean;
+      } = {},
+    ) =>
+      api
+        .get<ApiResponse<ExamTopic[]>>("/exam-topics", { params })
+        .then(unwrapApiData),
+    create: (payload: {
+      organizationId?: number;
+      subjectId: number;
+      code: string;
+      name: string;
+      description?: string;
+      sortOrder?: number;
+    }) =>
+      api
+        .post<ApiResponse<ExamTopic>>("/exam-topics", payload)
+        .then(unwrapApiData),
+    update: (
+      id: number,
+      payload: {
+        name?: string;
+        description?: string;
+        sortOrder?: number;
+        isActive?: boolean;
+      },
+    ) =>
+      api
+        .patch<ApiResponse<ExamTopic>>(`/exam-topics/${id}`, payload)
+        .then(unwrapApiData),
+  },
   questions: {
     list: (params: ExamQuestionListParams = {}) =>
       api
@@ -48,6 +85,7 @@ export const examsApi = {
     create: (payload: {
       organizationId?: number;
       subjectId: number;
+      topicId?: number;
       code: string;
       questionTypeId: number;
       content: string;
@@ -127,6 +165,10 @@ export const examsApi = {
         .get<ApiResponse<ScheduledExam[]>>("/exams", {
           params: { organizationId },
         })
+        .then(unwrapApiData),
+    report: (id: number) =>
+      api
+        .get<ApiResponse<AdminExamReport>>(`/exams/${id}/report`)
         .then(unwrapApiData),
     create: (payload: Record<string, unknown>) =>
       api

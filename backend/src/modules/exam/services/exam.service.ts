@@ -10,6 +10,7 @@ import {
   ExamImportRowStatus,
   ExamImportScope,
   ExamImportStatus,
+  ExamAttemptStatus,
   ExamResultReleaseMode,
   ExamStatus,
   ExamTemplateStatus,
@@ -34,19 +35,26 @@ import {
   CreateExamTemplateDto,
   CreateQuestionDto,
   CreateSubjectDto,
+  CreateTopicDto,
   OrganizationScopedQueryDto,
   QuestionListQueryDto,
   QuestionListSort,
   SaveTemplateStructureDto,
   TemplateListQueryDto,
+  TopicListQueryDto,
   UpdateExamTemplateDto,
   UpdateSubjectDto,
+  UpdateTopicDto,
 } from '../dto/exam.dto';
 import { ExamRepository } from '../repositories/exam.repository';
 import {
   QUESTION_TYPE_CODES,
   type QuestionTypeCode,
 } from '../constants/question-type.constants';
+import {
+  aggregateReportPerformance,
+  summarizeReportAnswers,
+} from '../reporting/exam-report-metrics';
 
 export interface ExamImportFile {
   buffer: Buffer;
@@ -60,6 +68,8 @@ type StagedRow = {
   slotCode?: string;
   sectionCode?: string;
   subjectCode?: string;
+  topicId?: number;
+  topicCode?: string;
   questionCode: string;
   questionTypeId?: number;
   rawQuestionTypeId?: number;
@@ -110,6 +120,7 @@ type ExcelQuestionMapping = Pick<
   | 'slotCode'
   | 'sectionCode'
   | 'subjectCode'
+  | 'topicCode'
   | 'questionCode'
   | 'rawQuestionTypeId'
   | 'comprehensionCode'
@@ -142,7 +153,7 @@ type CodelessWordQuestionContent = Omit<
 
 type ImportJobWithRows = Prisma.ExamImportJobGetPayload<{
   include: {
-    rows: { include: { questionType: true } };
+    rows: { include: { questionType: true; topic: true } };
     files: true;
     errors: true;
   };
@@ -170,6 +181,7 @@ const templateInclude = {
                           question: true,
                           questionType: true,
                           comprehension: true,
+                          topic: true,
                           options: true,
                           acceptedAnswers: true,
                         },
@@ -233,6 +245,71 @@ export class ExamService {
     return this.prisma.subject.update({ where: { id: subject.id }, data: dto });
   }
 
+  async listTopics(user: CurrentUser, query: TopicListQueryDto) {
+    const organizationId = this.organizationId(user, query.organizationId);
+    return this.prisma.topic.findMany({
+      where: {
+        organizationId,
+        subjectId: query.subjectId,
+        isActive: query.includeInactive ? undefined : true,
+      },
+      include: {
+        subject: true,
+        _count: { select: { questionVersions: true } },
+      },
+      orderBy: [
+        { subject: { name: 'asc' } },
+        { sortOrder: 'asc' },
+        { name: 'asc' },
+      ],
+    });
+  }
+
+  async createTopic(user: CurrentUser, dto: CreateTopicDto) {
+    const organizationId = this.organizationId(user, dto.organizationId);
+    const subject = await this.prisma.subject.findFirst({
+      where: { id: dto.subjectId, organizationId, isActive: true },
+    });
+    if (!subject) {
+      throw new BadRequestException(
+        'Subject does not belong to this organization',
+      );
+    }
+
+    try {
+      return await this.prisma.topic.create({
+        data: {
+          organizationId,
+          subjectId: subject.id,
+          code: dto.code.toUpperCase(),
+          name: dto.name,
+          description: dto.description,
+          sortOrder: dto.sortOrder ?? 0,
+        },
+        include: { subject: true },
+      });
+    } catch (error) {
+      this.rethrowUnique(
+        error,
+        'A topic with this code or name already exists for the subject',
+      );
+    }
+  }
+
+  async updateTopic(user: CurrentUser, id: number, dto: UpdateTopicDto) {
+    const topic = await this.topicForUser(user, id);
+
+    try {
+      return await this.prisma.topic.update({
+        where: { id: topic.id },
+        data: dto,
+        include: { subject: true },
+      });
+    } catch (error) {
+      this.rethrowUnique(error, 'A topic with this name already exists');
+    }
+  }
+
   async listQuestions(user: CurrentUser, query: QuestionListQueryDto) {
     const organizationId = this.organizationId(user, query.organizationId);
     const search = query.search?.trim();
@@ -250,9 +327,15 @@ export class ExamService {
         isActive: true,
         subjectId: query.subjectId,
         status: query.status,
-        versions: query.questionTypeId
-          ? { some: { questionTypeId: query.questionTypeId } }
-          : undefined,
+        versions:
+          query.questionTypeId || query.topicId
+            ? {
+                some: {
+                  questionTypeId: query.questionTypeId,
+                  topicId: query.topicId,
+                },
+              }
+            : undefined,
         OR: search
           ? [
               { code: { contains: search } },
@@ -269,6 +352,7 @@ export class ExamService {
             acceptedAnswers: true,
             questionType: true,
             comprehension: true,
+            topic: true,
           },
         },
       },
@@ -286,6 +370,21 @@ export class ExamService {
       throw new BadRequestException(
         'Subject does not belong to this organization',
       );
+    if (dto.topicId) {
+      const topic = await this.prisma.topic.findFirst({
+        where: {
+          id: dto.topicId,
+          organizationId,
+          subjectId: subject.id,
+          isActive: true,
+        },
+      });
+      if (!topic) {
+        throw new BadRequestException(
+          'Topic does not belong to the selected subject',
+        );
+      }
+    }
     const questionType = await this.prisma.questionType.findFirst({
       where: { id: dto.questionTypeId, isActive: true },
     });
@@ -308,6 +407,7 @@ export class ExamService {
             create: {
               versionNumber: 1,
               questionTypeId: questionType.id,
+              topicId: dto.topicId,
               content: this.sanitizeRichHtml(dto.content),
               explanation: dto.explanation
                 ? this.sanitizeRichHtml(dto.explanation)
@@ -367,6 +467,7 @@ export class ExamService {
               acceptedAnswers: true,
               questionType: true,
               comprehension: true,
+              topic: true,
             },
           },
         },
@@ -693,6 +794,25 @@ export class ExamService {
       throw new BadRequestException(
         'A template must contain at least one slot and one question before publishing',
       );
+    for (const slot of version.slots) {
+      for (const section of slot.sections) {
+        const available = section.subjects.reduce(
+          (total, subject) => total + subject.questions.length,
+          0,
+        );
+        if (!available)
+          throw new BadRequestException(
+            `${section.name} must contain at least one question before publishing`,
+          );
+        if (
+          section.questionsToAttempt &&
+          section.questionsToAttempt > available
+        )
+          throw new BadRequestException(
+            `questionsToAttempt exceeds available questions in ${section.name}`,
+          );
+      }
+    }
     await this.prisma.$transaction([
       this.prisma.examTemplateVersion.update({
         where: { id: version.id },
@@ -795,6 +915,193 @@ export class ExamService {
       },
       orderBy: { availableFrom: 'desc' },
     });
+  }
+
+  async getExamReport(user: CurrentUser, examId: number) {
+    const exam = await this.prisma.exam.findUnique({
+      where: { id: examId },
+      include: {
+        session: true,
+        courseAssignments: {
+          include: { sessionCourse: { include: { course: true } } },
+        },
+      },
+    });
+    if (!exam || !exam.isActive) throw new NotFoundException('Exam not found');
+    this.assertOrganization(user, exam.organizationId);
+
+    const attempts = await this.prisma.studentExamAttempt.findMany({
+      where: {
+        examId: exam.id,
+        status: {
+          in: [
+            ExamAttemptStatus.SUBMITTED,
+            ExamAttemptStatus.AUTO_SUBMITTED,
+            ExamAttemptStatus.EVALUATED,
+          ],
+        },
+        score: { not: null },
+      },
+      include: {
+        student: { include: { user: true } },
+        answers: { include: { selectedOptions: true } },
+        questions: {
+          include: {
+            sectionAttempt: { include: { templateSection: true } },
+            templateQuestion: {
+              include: {
+                sectionSubject: { include: { subject: true } },
+                questionVersion: { include: { topic: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    const bestByStudent = new Map<number, (typeof attempts)[number]>();
+    for (const attempt of attempts) {
+      const existing = bestByStudent.get(attempt.studentId);
+      const percentage = Number(attempt.maximumScore ?? 0)
+        ? Number(attempt.score ?? 0) / Number(attempt.maximumScore)
+        : 0;
+      const existingPercentage = existing
+        ? Number(existing.maximumScore ?? 0)
+          ? Number(existing.score ?? 0) / Number(existing.maximumScore)
+          : 0
+        : -Infinity;
+      if (
+        !existing ||
+        percentage > existingPercentage ||
+        (percentage === existingPercentage &&
+          attempt.durationSeconds < existing.durationSeconds)
+      ) {
+        bestByStudent.set(attempt.studentId, attempt);
+      }
+    }
+    const includedAttempts = [...bestByStudent.values()];
+    const performanceItems = includedAttempts.flatMap((attempt) => {
+      const answerByQuestion = new Map(
+        attempt.answers.map((answer) => [
+          answer.examTemplateQuestionId,
+          answer,
+        ]),
+      );
+      return attempt.questions.map((question) => {
+        const templateQuestion = question.templateQuestion;
+        return {
+          attempt,
+          question,
+          answer: answerByQuestion.get(question.examTemplateQuestionId) ?? null,
+          subject: templateQuestion.sectionSubject.subject,
+          topic: templateQuestion.questionVersion.topic,
+          section: question.sectionAttempt.templateSection,
+          maximumMarks: Number(templateQuestion.marks),
+        };
+      });
+    });
+    const commonMetric = (item: (typeof performanceItems)[number]) => ({
+      marksAwarded: Number(item.answer?.marksAwarded ?? 0),
+      maximumMarks: item.maximumMarks,
+      timeSpentSeconds: item.question.timeSpentSeconds,
+      answer: item.answer,
+    });
+    const sections = aggregateReportPerformance(
+      performanceItems.map((item) => ({
+        ...commonMetric(item),
+        groupKey: `section:${item.section.id}`,
+        groupLabel: item.section.name,
+        metadata: {
+          sectionId: item.section.id,
+          sectionCode: item.section.code,
+        },
+      })),
+    );
+    const topics = aggregateReportPerformance(
+      performanceItems.map((item) => ({
+        ...commonMetric(item),
+        groupKey: item.topic
+          ? `topic:${item.topic.id}`
+          : `subject:${item.subject.id}:uncategorized`,
+        groupLabel: item.topic?.name ?? 'Uncategorized',
+        metadata: {
+          topicId: item.topic?.id ?? null,
+          topicCode: item.topic?.code ?? null,
+          subjectId: item.subject.id,
+          subjectName: item.subject.name,
+        },
+      })),
+    );
+    const students = includedAttempts
+      .map((attempt) => {
+        const answerByQuestion = new Map(
+          attempt.answers.map((answer) => [
+            answer.examTemplateQuestionId,
+            answer,
+          ]),
+        );
+        const maximumScore = Number(attempt.maximumScore ?? 0);
+        const score = Number(attempt.score ?? 0);
+        return {
+          studentId: attempt.studentId,
+          rollNumber: attempt.student.rollNumber,
+          name: [attempt.student.user.firstName, attempt.student.user.lastName]
+            .filter(Boolean)
+            .join(' '),
+          attemptUuid: attempt.uuid,
+          attemptNumber: attempt.attemptNumber,
+          submittedAt: attempt.submittedAt,
+          durationSeconds: attempt.durationSeconds,
+          score,
+          maximumScore,
+          percentage: maximumScore
+            ? Math.round((score / maximumScore) * 10_000) / 100
+            : 0,
+          summary: summarizeReportAnswers(
+            attempt.questions.length,
+            attempt.questions.map(
+              (question) =>
+                answerByQuestion.get(question.examTemplateQuestionId) ?? null,
+            ),
+          ),
+        };
+      })
+      .sort(
+        (left, right) =>
+          right.percentage - left.percentage ||
+          left.durationSeconds - right.durationSeconds,
+      )
+      .map((student, index) => ({ ...student, rank: index + 1 }));
+    const percentages = students.map((student) => student.percentage);
+
+    return {
+      exam: {
+        id: exam.id,
+        code: exam.code,
+        title: exam.title,
+        session: exam.session,
+        courses: exam.courseAssignments.map(
+          (assignment) => assignment.sessionCourse.course,
+        ),
+      },
+      basis: 'BEST_ATTEMPT_PER_STUDENT',
+      summary: {
+        totalAttempts: attempts.length,
+        students: students.length,
+        averagePercentage: percentages.length
+          ? Math.round(
+              (percentages.reduce((total, value) => total + value, 0) /
+                percentages.length) *
+                100,
+            ) / 100
+          : 0,
+        highestPercentage: percentages.length ? Math.max(...percentages) : 0,
+        lowestPercentage: percentages.length ? Math.min(...percentages) : 0,
+      },
+      performance: { sections, topics },
+      students,
+    };
   }
 
   async createExam(user: CurrentUser, dto: CreateExamDto) {
@@ -968,10 +1275,7 @@ export class ExamService {
       );
     if (extname(wordFile.originalname).toLowerCase() !== '.docx')
       throw new BadRequestException('The content file must be a .docx file');
-    if (
-      excelFile &&
-      extname(excelFile.originalname).toLowerCase() !== '.xlsx'
-    )
+    if (excelFile && extname(excelFile.originalname).toLowerCase() !== '.xlsx')
       throw new BadRequestException('The mapping file must be a .xlsx file');
     const version = await this.prisma.examTemplateVersion.findUnique({
       where: { id: dto.examTemplateVersionId },
@@ -1120,6 +1424,8 @@ export class ExamService {
               slotCode: row.slotCode,
               sectionCode: row.sectionCode,
               subjectCode: row.subjectCode,
+              topicId: row.topicId,
+              topicCode: row.topicCode,
               questionCode: row.questionCode,
               questionTypeId: row.questionTypeId,
               rawQuestionTypeId: row.rawQuestionTypeId,
@@ -1144,7 +1450,7 @@ export class ExamService {
         },
         include: {
           files: true,
-          rows: { include: { questionType: true } },
+          rows: { include: { questionType: true, topic: true } },
           errors: true,
         },
       });
@@ -1163,7 +1469,7 @@ export class ExamService {
         files: true,
         rows: {
           orderBy: { sourceIndex: 'asc' },
-          include: { questionType: true },
+          include: { questionType: true, topic: true },
         },
         errors: true,
       },
@@ -1262,6 +1568,7 @@ export class ExamService {
                 questionId: question.id,
                 versionNumber: 1,
                 questionTypeId: row.questionType.id,
+                topicId: row.topicId,
                 comprehensionId: comprehension?.id,
                 content: row.questionText,
                 explanation: row.explanation,
@@ -1362,6 +1669,7 @@ export class ExamService {
         slot_code: 'CUET_SLOT_1',
         section_code: 'LANGUAGE',
         subject_code: 'ENGLISH',
+        topic_code: 'READING_COMPREHENSION',
         question_type_id: 1,
         marks: 5,
         negative_marks: 1,
@@ -1374,6 +1682,7 @@ export class ExamService {
         slot_code: 'CUET_SLOT_1',
         section_code: 'QUANT',
         subject_code: 'MATHEMATICS',
+        topic_code: 'PERCENTAGES',
         question_type_id: 2,
         marks: 5,
         negative_marks: 0,
@@ -1386,6 +1695,7 @@ export class ExamService {
         slot_code: 'CUET_SLOT_1',
         section_code: 'LANGUAGE',
         subject_code: 'ENGLISH',
+        topic_code: 'READING_COMPREHENSION',
         question_type_id: 1,
         marks: 5,
         negative_marks: 1,
@@ -1398,6 +1708,7 @@ export class ExamService {
         slot_code: 'CUET_SLOT_1',
         section_code: 'LANGUAGE',
         subject_code: 'ENGLISH',
+        topic_code: 'VOCABULARY',
         question_type_id: 3,
         marks: 5,
         negative_marks: 0,
@@ -1430,7 +1741,7 @@ export class ExamService {
           'question_code is the exact join key and must occur once in each file.',
         ],
         [
-          'Excel owns placement, question_type_id, marking, order, and mandatory status.',
+          'Excel owns placement, optional topic_code, question_type_id, marking, order, and mandatory status.',
         ],
         [
           'Word owns comprehension, question text, images, options, answers, tolerance, case sensitivity, and explanation.',
@@ -1446,7 +1757,10 @@ export class ExamService {
       `<w:p>${style ? `<w:pPr><w:pStyle w:val="${style}"/></w:pPr>` : ''}<w:r><w:t xml:space="preserve">${this.escapeXml(text)}</w:t></w:r></w:p>`;
     const table = (rows: Array<[string, string]>) =>
       `<w:tbl><w:tblPr><w:tblBorders><w:top w:val="single" w:sz="4" w:color="D8E2E9"/><w:left w:val="single" w:sz="4" w:color="D8E2E9"/><w:bottom w:val="single" w:sz="4" w:color="D8E2E9"/><w:right w:val="single" w:sz="4" w:color="D8E2E9"/><w:insideH w:val="single" w:sz="4" w:color="D8E2E9"/><w:insideV w:val="single" w:sz="4" w:color="D8E2E9"/></w:tblBorders></w:tblPr>${rows
-        .map(([label, value]) => `<w:tr><w:tc>${p(label)}</w:tc><w:tc>${p(value)}</w:tc></w:tr>`)
+        .map(
+          ([label, value]) =>
+            `<w:tr><w:tc>${p(label)}</w:tc><w:tc>${p(value)}</w:tc></w:tr>`,
+        )
         .join('')}</w:tbl>`;
     const answerRules = (
       type: string,
@@ -1468,10 +1782,16 @@ export class ExamService {
       ]);
     const body = [
       p('Code-free Exam Import - Word Template'),
-      p('Use the same Heading styles. The system generates internal codes automatically.'),
-      p('English Language | Slot: Slot 1 | Section: English Language | Subject: English'),
+      p(
+        'Use the same Heading styles. The system generates internal codes automatically.',
+      ),
+      p(
+        'English Language | Slot: Slot 1 | Section: English Language | Subject: English',
+      ),
       p('Comprehension - 1 to 5', 'Heading1'),
-      p('Paste the passage text here. Images can be inserted directly in the passage.'),
+      p(
+        'Paste the passage text here. Images can be inserted directly in the passage.',
+      ),
       p('Question - 1', 'Heading2'),
       p('Choose the word closest in meaning to concise.'),
       p('Options', 'Heading3'),
@@ -1626,6 +1946,13 @@ export class ExamService {
     return subject;
   }
 
+  private async topicForUser(user: CurrentUser, id: number) {
+    const topic = await this.prisma.topic.findUnique({ where: { id } });
+    if (!topic) throw new NotFoundException('Topic not found');
+    this.assertOrganization(user, topic.organizationId);
+    return topic;
+  }
+
   private async ensureSubjectBelongsToOrganization(
     organizationId: number,
     subjectId?: number,
@@ -1769,6 +2096,7 @@ export class ExamService {
           0,
         );
         if (
+          available > 0 &&
           section.questionsToAttempt &&
           section.questionsToAttempt > available
         )
@@ -1811,6 +2139,7 @@ export class ExamService {
         slotCode: text('slot_code').toUpperCase() || undefined,
         sectionCode: text('section_code').toUpperCase() || undefined,
         subjectCode: text('subject_code').toUpperCase() || undefined,
+        topicCode: text('topic_code').toUpperCase() || undefined,
         questionCode: text('question_code').toUpperCase(),
         rawQuestionTypeId:
           questionTypeId !== undefined && Number.isInteger(questionTypeId)
@@ -2065,7 +2394,8 @@ export class ExamService {
           const sortOrder = this.optionalIntegerRule(
             rules.get('sort order') ?? rules.get('sort_order'),
           );
-          if (marks.invalid) question.parseErrors.push('Marks must be a number');
+          if (marks.invalid)
+            question.parseErrors.push('Marks must be a number');
           else question.marks = marks.value;
           if (negativeMarks.invalid)
             question.parseErrors.push('Negative Marks must be a number');
@@ -2614,7 +2944,10 @@ export class ExamService {
   }
 
   private normalizeLookupKey(value: string) {
-    return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '');
   }
 
   private mergeImportFiles(
@@ -2719,6 +3052,7 @@ export class ExamService {
         slotCode: mapping?.slotCode,
         sectionCode: mapping?.sectionCode,
         subjectCode: mapping?.subjectCode,
+        topicCode: mapping?.topicCode,
         questionCode: code,
         questionTypeId: type?.id,
         rawQuestionTypeId: mapping?.rawQuestionTypeId,
@@ -2805,12 +3139,10 @@ export class ExamService {
         destination.slot?.code ?? word.slotCode ?? '',
         destination.section?.code ?? word.sectionCode ?? '',
       ].join(':');
-      const sortOrder = word.sortOrder ?? orderByDestination.get(destinationKey) ?? 1;
+      const sortOrder =
+        word.sortOrder ?? orderByDestination.get(destinationKey) ?? 1;
       orderByDestination.set(destinationKey, sortOrder + 1);
-      const type = this.resolveCodelessQuestionType(
-        word,
-        typeByCode,
-      );
+      const type = this.resolveCodelessQuestionType(word, typeByCode);
       const errors: string[] = [...(word.parseErrors ?? [])];
       if (
         dto.scope === ExamImportScope.FULL_EXAM &&
@@ -2934,6 +3266,10 @@ export class ExamService {
     const subjects = await this.prisma.subject.findMany({
       where: { organizationId, isActive: true },
     });
+    const topics = await this.prisma.topic.findMany({
+      where: { organizationId, isActive: true },
+      select: { id: true, subjectId: true, code: true },
+    });
     const existingQuestions = await this.prisma.question.findMany({
       where: {
         organizationId,
@@ -2943,6 +3279,12 @@ export class ExamService {
     });
     const subjectCodes = new Map(
       subjects.map((subject) => [subject.code.toUpperCase(), subject.id]),
+    );
+    const topicCodes = new Map(
+      topics.map((topic) => [
+        `${topic.subjectId}:${topic.code.toUpperCase()}`,
+        topic.id,
+      ]),
     );
     const existingQuestionCodes = new Map(
       existingQuestions.map((question) => [
@@ -2974,6 +3316,18 @@ export class ExamService {
         dto.scope === ExamImportScope.SINGLE_SECTION
           ? dto.subjectId
           : subjectCodes.get(row.subjectCode?.trim().toUpperCase() ?? '');
+      if (row.topicCode) {
+        row.topicId = intendedSubjectId
+          ? topicCodes.get(
+              `${intendedSubjectId}:${row.topicCode.trim().toUpperCase()}`,
+            )
+          : undefined;
+        if (!row.topicId) {
+          errors.push(
+            `unknown topic_code ${row.topicCode} for subject ${row.subjectCode ?? ''}`,
+          );
+        }
+      }
       if (existingSubjectId !== undefined)
         errors.push(
           existingSubjectId === intendedSubjectId

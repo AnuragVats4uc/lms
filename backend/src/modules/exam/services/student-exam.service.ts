@@ -27,6 +27,11 @@ import {
 } from '../dto/student-exam.dto';
 import { ExamRepository } from '../repositories/exam.repository';
 import { QUESTION_TYPE_CODES } from '../constants/question-type.constants';
+import {
+  aggregateReportPerformance,
+  classifyReportAnswer,
+  summarizeReportAnswers,
+} from '../reporting/exam-report-metrics';
 
 const TERMINAL_STATUSES: ExamAttemptStatus[] = [
   ExamAttemptStatus.SUBMITTED,
@@ -59,6 +64,7 @@ const attemptInclude = Prisma.validator<Prisma.StudentExamAttemptInclude>()({
               question: true,
               questionType: true,
               comprehension: true,
+              topic: true,
               options: { orderBy: { sortOrder: 'asc' } },
               acceptedAnswers: { orderBy: { sortOrder: 'asc' } },
             },
@@ -136,6 +142,8 @@ export class StudentExamService {
         data: {
           studentId: student.id,
           examId: exam.id,
+          sessionCourseId: resource.folder.sessionCourseId,
+          sourceResourceId: resource.id,
           attemptNumber,
           expiresAt,
           remainingSecondsAtLastSave: Math.max(
@@ -426,15 +434,95 @@ export class StudentExamService {
     const answerByQuestion = new Map<number, LoadedAttempt['answers'][number]>(
       current.answers.map((answer) => [answer.examTemplateQuestionId, answer]),
     );
-    const correct = current.answers.filter(
-      (answer) => answer.isCorrect === true,
-    ).length;
-    const incorrect = current.answers.filter(
-      (answer) => answer.isCorrect === false,
-    ).length;
-    const answered = current.answers.filter((answer) =>
-      this.answerHasValue(answer),
-    ).length;
+    const summary = summarizeReportAnswers(
+      current.questions.length,
+      current.questions.map(
+        (question) =>
+          answerByQuestion.get(question.examTemplateQuestionId) ?? null,
+      ),
+    );
+    const metricItems = current.questions.map((question) => {
+      const templateQuestion = question.templateQuestion;
+      const version = templateQuestion.questionVersion;
+      const subject = templateQuestion.sectionSubject.subject;
+      const section = question.sectionAttempt.templateSection;
+      const answer =
+        answerByQuestion.get(question.examTemplateQuestionId) ?? null;
+      return {
+        question,
+        answer,
+        subject,
+        section,
+        topic: version.topic,
+        marksAwarded: Number(answer?.marksAwarded ?? 0),
+        maximumMarks: Number(templateQuestion.marks),
+        timeSpentSeconds: question.timeSpentSeconds,
+      };
+    });
+    const sectionPerformance = aggregateReportPerformance(
+      metricItems.map((item) => ({
+        groupKey: `section:${item.section.id}`,
+        groupLabel: item.section.name,
+        metadata: {
+          sectionId: item.section.id,
+          sectionCode: item.section.code,
+        },
+        marksAwarded: item.marksAwarded,
+        maximumMarks: item.maximumMarks,
+        timeSpentSeconds: item.timeSpentSeconds,
+        answer: item.answer,
+      })),
+    );
+    const subjectPerformance = aggregateReportPerformance(
+      metricItems.map((item) => ({
+        groupKey: `subject:${item.subject.id}`,
+        groupLabel: item.subject.name,
+        metadata: {
+          subjectId: item.subject.id,
+          subjectCode: item.subject.code,
+        },
+        marksAwarded: item.marksAwarded,
+        maximumMarks: item.maximumMarks,
+        timeSpentSeconds: item.timeSpentSeconds,
+        answer: item.answer,
+      })),
+    );
+    const topicPerformance = aggregateReportPerformance(
+      metricItems.map((item) => ({
+        groupKey: item.topic
+          ? `topic:${item.topic.id}`
+          : `subject:${item.subject.id}:uncategorized`,
+        groupLabel: item.topic?.name ?? 'Uncategorized',
+        metadata: {
+          topicId: item.topic?.id ?? null,
+          topicCode: item.topic?.code ?? null,
+          subjectId: item.subject.id,
+          subjectName: item.subject.name,
+        },
+        marksAwarded: item.marksAwarded,
+        maximumMarks: item.maximumMarks,
+        timeSpentSeconds: item.timeSpentSeconds,
+        answer: item.answer,
+      })),
+    ).map((topic) => ({
+      ...topic,
+      classification:
+        topic.attempted === 0
+          ? 'NOT_ATTEMPTED'
+          : topic.accuracy >= 75
+            ? 'STRONG'
+            : topic.accuracy < 50
+              ? 'WEAK'
+              : 'DEVELOPING',
+    }));
+    const [ranking, trend] = await Promise.all([
+      current.exam.showScore ? this.reportRanking(current) : null,
+      current.exam.showScore ? this.reportTrend(current) : [],
+    ]);
+    const trackedQuestionSeconds = metricItems.reduce(
+      (total, item) => total + item.timeSpentSeconds,
+      0,
+    );
     const response: Record<string, unknown> = {
       attemptUuid: current.uuid,
       status: current.status,
@@ -443,12 +531,18 @@ export class StudentExamService {
       attemptNumber: current.attemptNumber,
       submittedAt: current.submittedAt,
       durationSeconds: current.durationSeconds,
-      summary: {
-        total: current.questions.length,
-        answered,
-        unanswered: current.questions.length - answered,
-        correct,
-        incorrect,
+      calculationVersion: current.calculationVersion,
+      summary,
+      performance: {
+        sections: sectionPerformance,
+        subjects: subjectPerformance,
+        topics: topicPerformance,
+      },
+      timeAnalysis: {
+        totalSeconds: current.durationSeconds,
+        trackedQuestionSeconds,
+        isApproximate: true,
+        source: 'QUESTION_HEARTBEATS',
       },
     };
     if (current.exam.showScore) {
@@ -459,6 +553,11 @@ export class StudentExamService {
             (Number(current.score ?? 0) / Number(current.maximumScore)) * 10000,
           ) / 100
         : 0;
+      response.rank = ranking?.rank ?? null;
+      response.percentile = ranking?.percentile ?? null;
+      response.cohortSize = ranking?.cohortSize ?? 0;
+      response.rankBasis = ranking?.basis ?? 'UNAVAILABLE';
+      response.trend = trend;
     }
     if (current.exam.showQuestionReview) {
       response.questions = current.questions.map((question) => {
@@ -468,12 +567,25 @@ export class StudentExamService {
           id: question.id,
           order: question.questionOrder,
           code: version.question.code,
+          subject: {
+            id: question.templateQuestion.sectionSubject.subject.id,
+            name: question.templateQuestion.sectionSubject.subject.name,
+          },
+          topic: version.topic
+            ? { id: version.topic.id, name: version.topic.name }
+            : null,
+          section: {
+            id: question.sectionAttempt.templateSection.id,
+            name: question.sectionAttempt.templateSection.name,
+          },
           content: version.content,
           explanation: current.exam.showExplanations
             ? version.explanation
             : undefined,
           isCorrect: answer?.isCorrect ?? null,
+          answerState: classifyReportAnswer(answer ?? null),
           marksAwarded: Number(answer?.marksAwarded ?? 0),
+          timeSpentSeconds: question.timeSpentSeconds,
           correctOptionIds: current.exam.showCorrectAnswers
             ? version.options
                 .filter((option) => option.isCorrect)
@@ -490,6 +602,95 @@ export class StudentExamService {
       });
     }
     return response;
+  }
+
+  private async reportRanking(attempt: LoadedAttempt) {
+    const rows = await this.prisma.studentExamAttempt.findMany({
+      where: {
+        examId: attempt.examId,
+        sessionCourseId: attempt.sessionCourseId ?? undefined,
+        status: {
+          in: [
+            ExamAttemptStatus.SUBMITTED,
+            ExamAttemptStatus.AUTO_SUBMITTED,
+            ExamAttemptStatus.EVALUATED,
+          ],
+        },
+        score: { not: null },
+      },
+      select: { studentId: true, score: true },
+    });
+    const scoreByStudent = new Map<number, number>();
+    for (const row of rows) {
+      const score = Number(row.score ?? 0);
+      scoreByStudent.set(
+        row.studentId,
+        Math.max(score, scoreByStudent.get(row.studentId) ?? -Infinity),
+      );
+    }
+    scoreByStudent.set(attempt.studentId, Number(attempt.score ?? 0));
+    const scores = [...scoreByStudent.values()];
+    const currentScore = Number(attempt.score ?? 0);
+    const rank = 1 + scores.filter((score) => score > currentScore).length;
+    const cohortSize = scores.length;
+    const percentile =
+      cohortSize <= 1
+        ? 100
+        : Math.round(((cohortSize - rank) / (cohortSize - 1)) * 10_000) / 100;
+    return {
+      rank,
+      percentile,
+      cohortSize,
+      basis: attempt.sessionCourseId
+        ? 'COURSE_BEST_ATTEMPT_PER_STUDENT'
+        : 'EXAM_BEST_ATTEMPT_PER_STUDENT',
+    };
+  }
+
+  private async reportTrend(attempt: LoadedAttempt) {
+    const rows = await this.prisma.studentExamAttempt.findMany({
+      where: {
+        studentId: attempt.studentId,
+        sessionCourseId: attempt.sessionCourseId ?? undefined,
+        exam: attempt.sessionCourseId
+          ? undefined
+          : { organizationId: attempt.exam.organizationId },
+        status: {
+          in: [
+            ExamAttemptStatus.SUBMITTED,
+            ExamAttemptStatus.AUTO_SUBMITTED,
+            ExamAttemptStatus.EVALUATED,
+          ],
+        },
+        score: { not: null },
+        submittedAt: { not: null },
+      },
+      orderBy: { submittedAt: 'desc' },
+      take: 10,
+      select: {
+        uuid: true,
+        attemptNumber: true,
+        submittedAt: true,
+        score: true,
+        maximumScore: true,
+        exam: { select: { id: true, code: true, title: true } },
+      },
+    });
+    return rows.reverse().map((row) => {
+      const score = Number(row.score ?? 0);
+      const maximumScore = Number(row.maximumScore ?? 0);
+      return {
+        attemptUuid: row.uuid,
+        attemptNumber: row.attemptNumber,
+        submittedAt: row.submittedAt,
+        exam: row.exam,
+        score,
+        maximumScore,
+        percentage: maximumScore
+          ? Math.round((score / maximumScore) * 10_000) / 100
+          : 0,
+      };
+    });
   }
 
   private async findAccessibleExamResource(
