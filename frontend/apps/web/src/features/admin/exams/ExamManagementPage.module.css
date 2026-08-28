@@ -147,7 +147,10 @@
 }
 .reportMetricList article {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(110px, 1fr) auto;
+  grid-template-columns: minmax(150px, 1fr) minmax(90px, 0.7fr) minmax(
+      105px,
+      auto
+    );
   align-items: center;
   gap: 12px;
   padding: 11px;
@@ -171,13 +174,44 @@
   border-radius: inherit;
   background: linear-gradient(90deg, #00a16d, #48caa0);
 }
+.reportMetricValues,
+.studentPerformanceValues {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  white-space: nowrap;
+}
+.reportMetricValues b {
+  color: #008d61;
+  font-size: 11px;
+}
 .leaderboard article {
   display: grid;
-  grid-template-columns: 34px minmax(150px, 1fr) auto auto;
+  grid-template-columns: 34px minmax(170px, 1fr) auto auto auto;
   align-items: center;
   gap: 10px;
   padding: 11px;
   border-bottom: 1px solid #edf1f5;
+}
+.reportLeaderboardPanel {
+  grid-column: 1 / -1;
+}
+.adminResultBadge {
+  justify-self: end;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #eef3f7;
+  color: #536178 !important;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.adminResultBadge[data-status="PASSED"] {
+  background: #e8f8f1;
+  color: #00895d !important;
+}
+.adminResultBadge[data-status="FAILED"] {
+  background: #fff0f0;
+  color: #c82828 !important;
 }
 .leaderboard article > b {
   color: #008d61;
@@ -4850,6 +4884,22 @@
   font-size: 10px;
   font-weight: 650;
 }
+.difficultyBadge {
+  padding: 4px 7px;
+  border-radius: 10px;
+  background: #fff5df;
+  color: #9a5d00;
+  font-size: 10px;
+  font-weight: 750;
+}
+.difficultyBadge[data-difficulty="EASY"] {
+  background: #e9f9f2;
+  color: #087b58;
+}
+.difficultyBadge[data-difficulty="HARD"] {
+  background: #fff0ef;
+  color: #b42318;
+}
 .markingSummary {
   color: #40506a;
   font-size: 11px;
@@ -4864,7 +4914,7 @@
 }
 .questionToolbar {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 13px;
 }

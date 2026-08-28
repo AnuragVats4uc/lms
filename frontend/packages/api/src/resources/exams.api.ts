@@ -12,6 +12,7 @@ import type {
   AdminExamReport,
   SaveExamTemplateStructureRequest,
   ScheduledExam,
+  QuestionDifficulty,
 } from "@repo/types";
 import { api } from "../client/axios";
 import { unwrapApiData } from "../client/response";
@@ -88,6 +89,7 @@ export const examsApi = {
       topicId?: number;
       code: string;
       questionTypeId: number;
+      difficulty?: QuestionDifficulty;
       content: string;
       explanation?: string;
       defaultMarks: number;

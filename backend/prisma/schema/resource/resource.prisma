@@ -25,12 +25,12 @@ model Resource {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  folder                     Folder                  @relation(fields: [folderId], references: [id], onDelete: Cascade)
-  resourceType               ResourceType            @relation(fields: [resourceTypeId], references: [id], onDelete: Restrict)
-  lastAccessedCourseProgress StudentCourseProgress[] @relation("LastAccessedResource")
+  folder                     Folder                           @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  resourceType               ResourceType                     @relation(fields: [resourceTypeId], references: [id], onDelete: Restrict)
+  lastAccessedCourseProgress StudentCourseProgress[]          @relation("LastAccessedResource")
   videoProgress              StudentVideoProgress[]
-  exam                       Exam?                   @relation(fields: [examId], references: [id], onDelete: Restrict)
-  examAttempts               StudentExamAttempt[]    @relation("StudentExamAttemptSourceResource")
+  exam                       Exam?                            @relation(fields: [examId], references: [id], onDelete: Restrict)
+  examAttempts               StudentExamAttempt[]             @relation("StudentExamAttemptSourceResource")
   activitySessions           StudentResourceActivitySession[]
   activityEvents             StudentActivityEvent[]
 

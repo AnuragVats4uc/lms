@@ -82,6 +82,7 @@ function serviceWith(
         ]),
     },
     subject: { findMany: () => Promise.resolve([englishSubject]) },
+    topic: { findMany: () => Promise.resolve([]) },
     question: { findMany: () => Promise.resolve(existingQuestions) },
   };
   return new ExamService({

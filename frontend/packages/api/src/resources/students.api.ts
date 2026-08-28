@@ -176,6 +176,24 @@ export const studentsApi = {
       .then(unwrapApiData);
   },
 
+  continueMyExamAfterTimeout(attemptUuid: string) {
+    return api
+      .post<
+        ApiResponse<
+          | StudentExamAttempt
+          | {
+              attemptUuid: string;
+              status: string;
+              submitted: true;
+              reportAvailable: boolean;
+            }
+        >
+      >(
+        `${STUDENTS_ENDPOINT}/me/exam-attempts/${attemptUuid}/continue-after-timeout`,
+      )
+      .then(unwrapApiData);
+  },
+
   findMyExamReport(attemptUuid: string) {
     return api
       .get<ApiResponse<StudentExamReport>>(

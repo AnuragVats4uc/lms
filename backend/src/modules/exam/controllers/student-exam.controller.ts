@@ -76,6 +76,14 @@ export class StudentExamController {
     return this.service.submit(request.user, attemptUuid);
   }
 
+  @Post('exam-attempts/:attemptUuid/continue-after-timeout')
+  continueAfterTimeout(
+    @Req() request: AuthenticatedRequest,
+    @Param('attemptUuid') attemptUuid: string,
+  ) {
+    return this.service.continueAfterTimeout(request.user, attemptUuid);
+  }
+
   @Get('exam-attempts/:attemptUuid/report')
   report(
     @Req() request: AuthenticatedRequest,

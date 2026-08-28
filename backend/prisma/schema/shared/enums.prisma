@@ -184,6 +184,12 @@ enum QuestionStatus {
   ARCHIVED
 }
 
+enum QuestionDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
 enum ExamNavigationMode {
   FREE
   SEQUENTIAL

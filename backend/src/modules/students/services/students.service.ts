@@ -704,15 +704,22 @@ export class StudentsService {
     this.ensureExamMatchesSessionCourse(resource.exam, sessionCourse.id);
     const stats = this.examStats(resource.exam);
     const availability = this.toExamAvailability(resource.exam);
+    const now = new Date();
     const activeAttempt = resource.exam.attempts.find(
-      (attempt) =>
-        attempt.status === 'IN_PROGRESS' && attempt.expiresAt > new Date(),
+      (attempt) => attempt.status === 'IN_PROGRESS',
     );
-    const attemptsUsed = resource.exam.attempts.filter(
-      (attempt) => attempt.status !== 'CANCELLED',
-    ).length;
+    const timeoutNeedsAction = Boolean(
+      activeAttempt &&
+      activeAttempt.expiresAt <= now &&
+      !resource.exam.autoSubmitOnTimeout,
+    );
+    const attemptsUsed = resource.exam.attempts.length;
+    const attemptsRemaining = Math.max(
+      0,
+      resource.exam.attemptLimit - attemptsUsed,
+    );
     const action = activeAttempt
-      ? resource.exam.allowResume
+      ? resource.exam.allowResume || timeoutNeedsAction
         ? 'RESUME'
         : 'UNAVAILABLE'
       : availability === 'AVAILABLE' &&
@@ -721,6 +728,32 @@ export class StudentsService {
         : attemptsUsed > 0
           ? 'VIEW_RESULT'
           : 'UNAVAILABLE';
+    const actionReason = activeAttempt
+      ? action === 'RESUME'
+        ? 'ACTIVE_ATTEMPT'
+        : 'RESUME_DISABLED'
+      : action === 'START'
+        ? 'READY'
+        : action === 'VIEW_RESULT'
+          ? attemptsRemaining === 0
+            ? 'ATTEMPT_LIMIT_EXHAUSTED'
+            : availability === 'CLOSED'
+              ? 'EXAM_ENDED'
+              : 'RESULT_AVAILABLE'
+          : availability === 'UPCOMING'
+            ? 'EXAM_UPCOMING'
+            : availability === 'CLOSED'
+              ? 'EXAM_ENDED'
+              : 'EXAM_UNAVAILABLE';
+    const actionMessage = this.toExamActionMessage({
+      actionReason,
+      activeAttemptExpired: Boolean(
+        activeAttempt && activeAttempt.expiresAt <= now,
+      ),
+      attemptLimit: resource.exam.attemptLimit,
+      availableFrom: resource.exam.availableFrom,
+      availableUntil: resource.exam.availableUntil,
+    });
 
     return {
       id: resource.id,
@@ -754,7 +787,10 @@ export class StudentsService {
         durationMinutes: resource.exam.durationMinutes,
         attemptLimit: resource.exam.attemptLimit,
         attemptsUsed,
+        attemptsRemaining,
         action,
+        actionReason,
+        actionMessage,
         activeAttemptUuid: activeAttempt?.uuid ?? null,
         latestAttemptUuid: resource.exam.attempts[0]?.uuid ?? null,
         allowResume: resource.exam.allowResume,
@@ -1210,6 +1246,42 @@ export class StudentsService {
       return 'CLOSED';
     }
     return 'AVAILABLE';
+  }
+
+  private toExamActionMessage(input: {
+    actionReason: string;
+    activeAttemptExpired: boolean;
+    attemptLimit: number;
+    availableFrom: Date;
+    availableUntil: Date;
+  }) {
+    switch (input.actionReason) {
+      case 'READY':
+        return `You can start this exam now. ${input.attemptLimit} attempt${input.attemptLimit === 1 ? '' : 's'} are allowed.`;
+      case 'ACTIVE_ATTEMPT':
+        return input.activeAttemptExpired
+          ? 'The timer has ended. Reopen the attempt to review the timeout message and complete submission.'
+          : 'An unfinished attempt is saved. Resume to continue from your last saved question.';
+      case 'ATTEMPT_LIMIT_EXHAUSTED':
+        return `You have used all ${input.attemptLimit} allowed attempt${input.attemptLimit === 1 ? '' : 's'}. You can view your latest released result, but cannot start another attempt.`;
+      case 'RESULT_AVAILABLE':
+        return 'A completed attempt is available. Open the report to review your performance.';
+      case 'EXAM_UPCOMING':
+        return `This exam opens on ${this.formatExamDateTime(input.availableFrom)}. Return after the opening time to start.`;
+      case 'EXAM_ENDED':
+        return `This exam closed on ${this.formatExamDateTime(input.availableUntil)}. New attempts are no longer accepted.`;
+      case 'RESUME_DISABLED':
+        return 'An attempt is already in progress, but this exam does not allow resuming after leaving. Contact your teacher or administrator for help.';
+      default:
+        return 'This exam is not currently open for student attempts. Contact your teacher or administrator if you believe this is incorrect.';
+    }
+  }
+
+  private formatExamDateTime(value: Date) {
+    return value.toLocaleString('en-IN', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
   }
 
   private toVideoProgress(

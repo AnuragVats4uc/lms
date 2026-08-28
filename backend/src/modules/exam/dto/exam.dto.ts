@@ -23,6 +23,7 @@ import {
   ExamStatus,
   ExamTemplateStatus,
   ExamVirtualKeyboardMode,
+  QuestionDifficulty,
   QuestionStatus,
 } from '@prisma/client';
 
@@ -73,6 +74,10 @@ export class QuestionListQueryDto extends OrganizationScopedQueryDto {
   @IsInt()
   @Min(1)
   questionTypeId?: number;
+
+  @IsOptional()
+  @IsEnum(QuestionDifficulty)
+  difficulty?: QuestionDifficulty;
 
   @IsOptional()
   @IsEnum(QuestionStatus)
@@ -255,6 +260,10 @@ export class CreateQuestionDto extends OrganizationScopedQueryDto {
   @IsInt()
   @Min(1)
   questionTypeId!: number;
+
+  @IsOptional()
+  @IsEnum(QuestionDifficulty)
+  difficulty?: QuestionDifficulty;
 
   @Transform(trimmed)
   @IsString()
@@ -603,6 +612,13 @@ export class CreateExamDto extends OrganizationScopedQueryDto {
   @Min(1)
   @Max(100)
   attemptLimit!: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(100)
+  passingPercentage?: number;
 
   @IsOptional()
   @IsBoolean()

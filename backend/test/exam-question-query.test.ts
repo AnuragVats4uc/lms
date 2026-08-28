@@ -67,6 +67,7 @@ void test('question listing passes tenant-safe filters, sorting, and limit to Pr
           acceptedAnswers: true,
           questionType: true,
           comprehension: true,
+          topic: true,
         },
       },
     },

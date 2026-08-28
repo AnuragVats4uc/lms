@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 import { ExamRepository } from '../src/modules/exam/repositories/exam.repository';
 import { ExamService } from '../src/modules/exam/services/exam.service';
 
-void test('Excel import template exposes the optional topic mapping contract', () => {
+void test('Excel import template exposes topic and difficulty mapping contracts', () => {
   const service = new ExamService({} as ExamRepository);
   const workbook = XLSX.read(service.createExcelImportTemplate(), {
     type: 'buffer',
@@ -24,6 +24,15 @@ void test('Excel import template exposes the optional topic mapping contract', (
     rows.every((row) => typeof row.topic_code === 'string'),
     'example rows should demonstrate valid topic codes',
   );
+  assert.ok(
+    Object.hasOwn(rows[0], 'difficulty'),
+    'difficulty column is missing from the mapping template',
+  );
+  assert.deepEqual(
+    new Set(rows.map((row) => row.difficulty)),
+    new Set(['EASY', 'MEDIUM', 'HARD']),
+    'examples should demonstrate every supported difficulty',
+  );
 
   const instructionsSheet = workbook.Sheets.Instructions;
   assert.ok(instructionsSheet, 'Instructions sheet is missing');
@@ -32,4 +41,5 @@ void test('Excel import template exposes the optional topic mapping contract', (
     .flat()
     .join(' ');
   assert.match(instructions, /optional topic_code/i);
+  assert.match(instructions, /difficulty.*EASY.*MEDIUM.*HARD/i);
 });

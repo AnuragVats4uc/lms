@@ -1,4 +1,5 @@
 export type ExamQuestionTypeCode = "SINGLE_CHOICE" | "NUMERIC" | "ONE_WORD";
+export type QuestionDifficulty = "EASY" | "MEDIUM" | "HARD";
 export type ExamVirtualKeyboardMode = "NONE" | "NUMERIC" | "ALPHANUMERIC";
 export type ExamNavigationMode = "FREE" | "SEQUENTIAL" | "LOCKED_AFTER_SUBMIT";
 export type ExamResultReleaseMode = "IMMEDIATE" | "SCHEDULED" | "MANUAL";
@@ -62,6 +63,7 @@ export interface ExamQuestionVersion {
   versionNumber: number;
   questionTypeId: number;
   questionType: ExamQuestionType;
+  difficulty: QuestionDifficulty;
   topic: ExamTopic | null;
   comprehension: {
     id: number;
@@ -107,6 +109,7 @@ export interface ExamQuestionListParams {
   subjectId?: number;
   topicId?: number;
   questionTypeId?: number;
+  difficulty?: QuestionDifficulty;
   status?: ExamQuestion["status"];
   sort?: ExamQuestionSort;
   limit?: number;
@@ -214,6 +217,7 @@ export interface ScheduledExam {
   availableUntil: string;
   durationMinutes: number;
   attemptLimit: number;
+  passingPercentage: string | null;
   autoSubmitOnTimeout: boolean;
   allowResume: boolean;
   resultReleaseMode: ExamResultReleaseMode;
@@ -251,6 +255,7 @@ export interface ExamImportRow {
   questionTypeId: number | null;
   rawQuestionTypeId: number | null;
   questionType: ExamQuestionType | null;
+  difficulty: QuestionDifficulty;
   comprehensionCode: string | null;
   comprehensionText: string | null;
   questionText: string | null;
@@ -336,6 +341,7 @@ export interface StudentExamAttemptQuestion {
   content: string;
   comprehension: { id: number; code: string; content: string } | null;
   questionType: ExamQuestionType;
+  difficulty: QuestionDifficulty;
   options: Array<{ id: number; code: string; content: string }>;
   marks: number;
   negativeMarks: number;
@@ -369,13 +375,21 @@ export interface StudentExamAttempt {
   code: string;
   instructions: string | null;
   durationMinutes: number;
+  autoSubmitOnTimeout: boolean;
   allowResume: boolean;
+  timeoutState: {
+    scope: "EXAM" | "SLOT" | "SECTION";
+    scopeId: number | null;
+    autoSubmitOnTimeout: boolean;
+    message: string;
+  } | null;
   slots: Array<{
     id: number;
     code: string;
     name: string;
     instructions: string | null;
     navigationMode: ExamNavigationMode;
+    autoSubmitOnTimeout: boolean;
     status: ExamAttemptStatus;
     startedAt: string | null;
     expiresAt: string | null;
@@ -387,6 +401,7 @@ export interface StudentExamAttempt {
       instructions: string | null;
       navigationMode: ExamNavigationMode;
       allowReview: boolean;
+      autoSubmitOnTimeout: boolean;
       questionsToAttempt: number | null;
       status: ExamAttemptStatus;
       startedAt: string | null;
@@ -404,7 +419,16 @@ export interface StudentExamReport {
   message?: string;
   title?: string;
   attemptNumber?: number;
+  startedAt?: string;
   submittedAt?: string;
+  evaluatedAt?: string | null;
+  submissionReason?:
+    | "STUDENT_SUBMITTED"
+    | "EXAM_TIMEOUT"
+    | "SLOT_TIMEOUT"
+    | "SECTION_TIMEOUT"
+    | "ADMIN_FORCED"
+    | null;
   durationSeconds?: number;
   calculationVersion?: number;
   score?: number;
@@ -426,25 +450,54 @@ export interface StudentExamReport {
     correct: number;
     incorrect: number;
     accuracy: number;
+    completionRate: number;
   };
   performance?: {
     sections: StudentExamPerformanceMetric[];
     subjects: StudentExamPerformanceMetric[];
+    difficulties: Array<
+      StudentExamPerformanceMetric & { difficulty: QuestionDifficulty }
+    >;
+    questionTypes: Array<
+      StudentExamPerformanceMetric & {
+        questionTypeId: number;
+        questionTypeCode: ExamQuestionTypeCode;
+      }
+    >;
     topics: Array<
       StudentExamPerformanceMetric & {
         topicId: number | null;
         topicCode: string | null;
         subjectId: number;
         subjectName: string;
-        classification: "STRONG" | "DEVELOPING" | "WEAK" | "NOT_ATTEMPTED";
+        classification:
+          | "STRONG"
+          | "DEVELOPING"
+          | "WEAK"
+          | "NOT_ATTEMPTED"
+          | "LIMITED_DATA";
       }
     >;
   };
   timeAnalysis?: {
     totalSeconds: number;
     trackedQuestionSeconds: number;
+    untrackedSeconds: number;
+    averageTimePerQuestion: number;
+    averageTimePerAttemptedQuestion: number;
     isApproximate: boolean;
     source: "QUESTION_HEARTBEATS";
+  };
+  result?: {
+    status: "PASSED" | "FAILED" | "NOT_CONFIGURED";
+    passingPercentage: number | null;
+  };
+  opportunity?: {
+    incorrectQuestionMarks: number;
+    unansweredQuestionMarks: number;
+    negativeMarksDeducted: number;
+    passingScore: number | null;
+    marksToPass: number | null;
   };
   trend?: Array<{
     attemptUuid: string;
@@ -463,13 +516,30 @@ export interface StudentExamReport {
     topic: { id: number; name: string } | null;
     section: { id: number; name: string };
     content: string;
+    comprehension: { id: number; code: string; content: string } | null;
+    questionType: { id: number; code: ExamQuestionTypeCode; name: string };
+    difficulty: QuestionDifficulty;
     explanation?: string | null;
     isCorrect: boolean | null;
     answerState: "CORRECT" | "INCORRECT" | "UNATTEMPTED";
     marksAwarded: number;
+    maximumMarks: number;
+    negativeMarks: number;
     timeSpentSeconds: number;
-    correctOptionIds?: number[];
-    acceptedAnswers?: Array<string | null>;
+    markedForReview: boolean;
+    visitedAt: string | null;
+    lastViewedAt: string | null;
+    studentAnswer: {
+      optionIds: number[];
+      options: Array<{ id: number; code: string; content: string }>;
+      text: string | null;
+      numeric: number | null;
+    };
+    correctAnswer?: {
+      optionIds: number[];
+      options: Array<{ id: number; code: string; content: string }>;
+      acceptedAnswers: string[];
+    };
   }>;
 }
 
@@ -480,6 +550,8 @@ export interface StudentExamPerformanceMetric {
   maximumMarks: number;
   percentage: number;
   timeSpentSeconds: number;
+  averageTimePerQuestion: number;
+  averageTimePerAttemptedQuestion: number;
   total: number;
   answered: number;
   attempted: number;
@@ -488,10 +560,14 @@ export interface StudentExamPerformanceMetric {
   correct: number;
   incorrect: number;
   accuracy: number;
+  completionRate: number;
   sectionId?: number;
   sectionCode?: string;
   subjectId?: number;
   subjectCode?: string;
+  difficulty?: QuestionDifficulty;
+  questionTypeId?: number;
+  questionTypeCode?: ExamQuestionTypeCode;
 }
 
 export interface AdminExamReport {
@@ -499,6 +575,7 @@ export interface AdminExamReport {
     id: number;
     code: string;
     title: string;
+    passingPercentage: number | null;
     session: { id: number; name: string };
     courses: Array<{ id: number; name: string }>;
   };
@@ -509,9 +586,18 @@ export interface AdminExamReport {
     averagePercentage: number;
     highestPercentage: number;
     lowestPercentage: number;
+    averageAccuracy: number;
+    averageCompletionRate: number;
+    averageDurationSeconds: number;
+    passedStudents: number;
+    failedStudents: number;
+    passRate: number | null;
   };
   performance: {
     sections: StudentExamPerformanceMetric[];
+    difficulties: Array<
+      StudentExamPerformanceMetric & { difficulty: QuestionDifficulty }
+    >;
     topics: Array<
       StudentExamPerformanceMetric & {
         topicId: number | null;
@@ -532,6 +618,7 @@ export interface AdminExamReport {
     score: number;
     maximumScore: number;
     percentage: number;
+    resultStatus: "PASSED" | "FAILED" | "NOT_CONFIGURED";
     rank: number;
     summary: StudentExamReport["summary"];
   }>;

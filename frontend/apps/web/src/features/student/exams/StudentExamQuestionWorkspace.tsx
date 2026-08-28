@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { SyntheticEvent } from "react";
 import {
   BadgeInfo,
   Bookmark,
@@ -37,6 +38,7 @@ type StudentExamQuestionWorkspaceProps = {
   isLastQuestion: boolean;
   busy: boolean;
   saveState: SaveState;
+  saveErrorMessage: string | null;
   onChange: (draft: QuestionDraft) => void;
   onClear: () => void;
   onNext: () => void;
@@ -57,6 +59,7 @@ export function StudentExamQuestionWorkspace({
   isLastQuestion,
   busy,
   saveState,
+  saveErrorMessage,
   onChange,
   onClear,
   onNext,
@@ -166,6 +169,13 @@ export function StudentExamQuestionWorkspace({
             Question {questionPosition} of {group.questions.length}
           </h2>
           <div className={styles.questionHeaderActions}>
+            <span
+              className={styles.questionDifficulty}
+              data-level={question.difficulty}
+            >
+              {question.difficulty.charAt(0) +
+                question.difficulty.slice(1).toLowerCase()}
+            </span>
             <span className={styles.positiveMarks}>
               +{Number(question.marks).toFixed(2)}
             </span>
@@ -250,7 +260,8 @@ export function StudentExamQuestionWorkspace({
         </div>
         {saveState === "error" ? (
           <p className={styles.saveError} role="alert">
-            Your answer could not be saved. Check your connection and try again.
+            {saveErrorMessage ??
+              "Your answer could not be saved. Check your connection and try again."}
           </p>
         ) : null}
       </article>
@@ -355,6 +366,14 @@ function AnswerControl({
       : question.inputPolicy.virtualKeyboardMode === "ALPHANUMERIC"
         ? "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split("")
         : [];
+  const appendKey = (key: string) => {
+    if (numeric && key === "-") {
+      setValue(value.startsWith("-") ? value.slice(1) : `-${value}`);
+      return;
+    }
+    if (numeric && key === "." && value.includes(".")) return;
+    setValue(value + key);
+  };
 
   return (
     <div className={styles.textAnswer}>
@@ -375,11 +394,7 @@ function AnswerControl({
       {keys.length ? (
         <div className={styles.keyboard} aria-label="On-screen keyboard">
           {keys.map((key) => (
-            <button
-              key={key}
-              onClick={() => setValue(value + key)}
-              type="button"
-            >
+            <button key={key} onClick={() => appendKey(key)} type="button">
               {key}
             </button>
           ))}
@@ -408,8 +423,23 @@ function RichContent({ value }: { value: string }) {
     <div
       className={styles.richContent}
       dangerouslySetInnerHTML={{ __html: value }}
+      onErrorCapture={handleRichContentError}
     />
   );
+}
+
+function handleRichContentError(event: SyntheticEvent<HTMLDivElement>) {
+  const image = event.target;
+  if (!(image instanceof HTMLImageElement) || image.dataset.failed) return;
+  image.dataset.failed = "true";
+  image.hidden = true;
+  const fallback = document.createElement("span");
+  fallback.className = styles.missingMedia;
+  fallback.setAttribute("role", "status");
+  fallback.textContent = image.alt
+    ? `Image unavailable: ${image.alt}`
+    : "Image unavailable";
+  image.insertAdjacentElement("afterend", fallback);
 }
 
 function formatMarks(value: number) {

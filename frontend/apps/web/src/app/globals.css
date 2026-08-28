@@ -13,6 +13,149 @@
   --lms-workspace-padding: 18px;
 }
 
+/* Student exam access states */
+.student-exam-action-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 11px 12px;
+  border: 1px solid #dfe6ee;
+  border-radius: 10px;
+  color: #526078;
+  background: #f7f9fc;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.student-exam-action-note svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.student-exam-action-note[data-tone="positive"] {
+  border-color: #cce8df;
+  color: #19745d;
+  background: #effaf6;
+}
+
+.student-exam-reason-button {
+  padding: 6px 0;
+  border: 0;
+  color: #316fbe;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.student-exam-access-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(13, 28, 51, 0.58);
+  backdrop-filter: blur(4px);
+}
+
+.student-exam-access-dialog {
+  position: relative;
+  width: min(100%, 480px);
+  padding: 30px;
+  border: 1px solid #dbe5ec;
+  border-radius: 18px;
+  color: #10213f;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(8, 22, 43, 0.28);
+  text-align: center;
+}
+
+.student-exam-access-close {
+  position: absolute;
+  top: 13px;
+  right: 13px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  color: #65738a;
+  background: #f1f4f7;
+  cursor: pointer;
+}
+
+.student-exam-access-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 15px;
+  border-radius: 17px;
+  color: #b47c15;
+  background: #fff3d4;
+}
+
+.student-exam-access-dialog > p {
+  margin: 0 0 5px;
+  color: #13805f;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+}
+
+.student-exam-access-dialog h2 {
+  margin: 0 0 9px;
+  font-size: 24px;
+  letter-spacing: -0.025em;
+}
+
+.student-exam-access-dialog > span:not(.student-exam-access-icon) {
+  display: block;
+  color: #627087;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.student-exam-access-guidance {
+  margin: 20px 0;
+  padding: 14px;
+  border-left: 3px solid #15a27a;
+  border-radius: 0 10px 10px 0;
+  background: #f1faf7;
+  text-align: left;
+}
+
+.student-exam-access-guidance strong {
+  color: #12765c;
+  font-size: 11px;
+}
+
+.student-exam-access-guidance p {
+  margin: 4px 0 0;
+  color: #526078;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.student-exam-access-dialog > .student-folder-primary-button {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 520px) {
+  .student-exam-access-dialog {
+    padding: 27px 20px 22px;
+    border-radius: 15px;
+  }
+}
+
 /* Public student registration */
 .registration-public-shell {
   --registration-primary: #059669;

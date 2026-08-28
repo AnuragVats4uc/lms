@@ -16,6 +16,7 @@ import {
   ExamTemplateStatus,
   ExamTemplateVersionStatus,
   Prisma,
+  QuestionDifficulty,
   QuestionStatus,
   ResourceStatus,
   ExamVirtualKeyboardMode,
@@ -53,6 +54,8 @@ import {
 } from '../constants/question-type.constants';
 import {
   aggregateReportPerformance,
+  attainableMaximumScoreByGroup,
+  examReportResultStatus,
   summarizeReportAnswers,
 } from '../reporting/exam-report-metrics';
 
@@ -73,6 +76,7 @@ type StagedRow = {
   questionCode: string;
   questionTypeId?: number;
   rawQuestionTypeId?: number;
+  difficulty: QuestionDifficulty;
   comprehensionCode?: string;
   comprehensionContent?: string;
   questionContent: string;
@@ -123,13 +127,14 @@ type ExcelQuestionMapping = Pick<
   | 'topicCode'
   | 'questionCode'
   | 'rawQuestionTypeId'
+  | 'difficulty'
   | 'comprehensionCode'
   | 'marks'
   | 'negativeMarks'
   | 'sortOrder'
   | 'isMandatory'
   | 'rawData'
->;
+> & { difficultyInvalid?: boolean };
 
 type CodelessWordQuestionContent = Omit<
   WordQuestionContent,
@@ -145,6 +150,7 @@ type CodelessWordQuestionContent = Omit<
   questionLabel: string;
   comprehensionLabel?: string;
   questionTypeLabel?: string;
+  difficulty?: QuestionDifficulty;
   marks?: number;
   negativeMarks?: number;
   sortOrder?: number;
@@ -328,11 +334,16 @@ export class ExamService {
         subjectId: query.subjectId,
         status: query.status,
         versions:
-          query.questionTypeId || query.topicId
+          query.questionTypeId || query.topicId || query.difficulty
             ? {
                 some: {
-                  questionTypeId: query.questionTypeId,
-                  topicId: query.topicId,
+                  ...(query.questionTypeId
+                    ? { questionTypeId: query.questionTypeId }
+                    : {}),
+                  ...(query.topicId ? { topicId: query.topicId } : {}),
+                  ...(query.difficulty
+                    ? { difficulty: query.difficulty }
+                    : {}),
                 },
               }
             : undefined,
@@ -407,6 +418,7 @@ export class ExamService {
             create: {
               versionNumber: 1,
               questionTypeId: questionType.id,
+              difficulty: dto.difficulty ?? QuestionDifficulty.MEDIUM,
               topicId: dto.topicId,
               content: this.sanitizeRichHtml(dto.content),
               explanation: dto.explanation
@@ -996,6 +1008,7 @@ export class ExamService {
           answer: answerByQuestion.get(question.examTemplateQuestionId) ?? null,
           subject: templateQuestion.sectionSubject.subject,
           topic: templateQuestion.questionVersion.topic,
+          difficulty: templateQuestion.questionVersion.difficulty,
           section: question.sectionAttempt.templateSection,
           maximumMarks: Number(templateQuestion.marks),
         };
@@ -1007,6 +1020,21 @@ export class ExamService {
       timeSpentSeconds: item.question.timeSpentSeconds,
       answer: item.answer,
     });
+    const sectionMaximumByAttempt = attainableMaximumScoreByGroup(
+      performanceItems.map((item) => ({
+        groupKey: `attempt:${item.attempt.id}:section:${item.section.id}`,
+        marks: item.maximumMarks,
+        questionsToAttempt: item.section.questionsToAttempt,
+      })),
+    );
+    const sectionMaximums = new Map<string, number>();
+    for (const [attemptSectionKey, maximumMarks] of sectionMaximumByAttempt) {
+      const sectionKey = `section:${attemptSectionKey.split(':').at(-1)}`;
+      sectionMaximums.set(
+        sectionKey,
+        (sectionMaximums.get(sectionKey) ?? 0) + maximumMarks,
+      );
+    }
     const sections = aggregateReportPerformance(
       performanceItems.map((item) => ({
         ...commonMetric(item),
@@ -1017,7 +1045,16 @@ export class ExamService {
           sectionCode: item.section.code,
         },
       })),
-    );
+    ).map((section) => {
+      const maximumMarks = sectionMaximums.get(section.key) ?? 0;
+      return {
+        ...section,
+        maximumMarks,
+        percentage: maximumMarks
+          ? Math.round((section.marksAwarded / maximumMarks) * 10_000) / 100
+          : 0,
+      };
+    });
     const topics = aggregateReportPerformance(
       performanceItems.map((item) => ({
         ...commonMetric(item),
@@ -1033,6 +1070,16 @@ export class ExamService {
         },
       })),
     );
+    const difficulties = aggregateReportPerformance(
+      performanceItems.map((item) => ({
+        ...commonMetric(item),
+        groupKey: `difficulty:${item.difficulty}`,
+        groupLabel:
+          item.difficulty.charAt(0) +
+          item.difficulty.slice(1).toLowerCase(),
+        metadata: { difficulty: item.difficulty },
+      })),
+    );
     const students = includedAttempts
       .map((attempt) => {
         const answerByQuestion = new Map(
@@ -1043,6 +1090,13 @@ export class ExamService {
         );
         const maximumScore = Number(attempt.maximumScore ?? 0);
         const score = Number(attempt.score ?? 0);
+        const percentage = maximumScore
+          ? Math.round((score / maximumScore) * 10_000) / 100
+          : 0;
+        const passingPercentage =
+          exam.passingPercentage === null
+            ? null
+            : Number(exam.passingPercentage);
         return {
           studentId: attempt.studentId,
           rollNumber: attempt.student.rollNumber,
@@ -1055,9 +1109,8 @@ export class ExamService {
           durationSeconds: attempt.durationSeconds,
           score,
           maximumScore,
-          percentage: maximumScore
-            ? Math.round((score / maximumScore) * 10_000) / 100
-            : 0,
+          percentage,
+          resultStatus: examReportResultStatus(percentage, passingPercentage),
           summary: summarizeReportAnswers(
             attempt.questions.length,
             attempt.questions.map(
@@ -1074,12 +1127,29 @@ export class ExamService {
       )
       .map((student, index) => ({ ...student, rank: index + 1 }));
     const percentages = students.map((student) => student.percentage);
+    const accuracies = students.map(
+      (student) => student.summary?.accuracy ?? 0,
+    );
+    const completionRates = students.map(
+      (student) => student.summary?.completionRate ?? 0,
+    );
+    const durations = students.map((student) => student.durationSeconds);
+    const passedStudents = students.filter(
+      (student) => student.resultStatus === 'PASSED',
+    ).length;
+    const failedStudents = students.filter(
+      (student) => student.resultStatus === 'FAILED',
+    ).length;
 
     return {
       exam: {
         id: exam.id,
         code: exam.code,
         title: exam.title,
+        passingPercentage:
+          exam.passingPercentage === null
+            ? null
+            : Number(exam.passingPercentage),
         session: exam.session,
         courses: exam.courseAssignments.map(
           (assignment) => assignment.sessionCourse.course,
@@ -1098,8 +1168,36 @@ export class ExamService {
           : 0,
         highestPercentage: percentages.length ? Math.max(...percentages) : 0,
         lowestPercentage: percentages.length ? Math.min(...percentages) : 0,
+        averageAccuracy: accuracies.length
+          ? Math.round(
+              (accuracies.reduce((total, value) => total + value, 0) /
+                accuracies.length) *
+                100,
+            ) / 100
+          : 0,
+        averageCompletionRate: completionRates.length
+          ? Math.round(
+              (completionRates.reduce((total, value) => total + value, 0) /
+                completionRates.length) *
+                100,
+            ) / 100
+          : 0,
+        averageDurationSeconds: durations.length
+          ? Math.round(
+              durations.reduce((total, value) => total + value, 0) /
+                durations.length,
+            )
+          : 0,
+        passedStudents,
+        failedStudents,
+        passRate:
+          passedStudents + failedStudents
+            ? Math.round(
+                (passedStudents / (passedStudents + failedStudents)) * 10_000,
+              ) / 100
+            : null,
       },
-      performance: { sections, topics },
+      performance: { sections, topics, difficulties },
       students,
     };
   }
@@ -1177,6 +1275,7 @@ export class ExamService {
             availableUntil,
             durationMinutes: dto.durationMinutes,
             attemptLimit: dto.attemptLimit,
+            passingPercentage: dto.passingPercentage,
             autoSubmitOnTimeout: dto.autoSubmitOnTimeout ?? true,
             allowResume: dto.allowResume ?? true,
             resultReleaseMode:
@@ -1429,6 +1528,7 @@ export class ExamService {
               questionCode: row.questionCode,
               questionTypeId: row.questionTypeId,
               rawQuestionTypeId: row.rawQuestionTypeId,
+              difficulty: row.difficulty,
               comprehensionCode: row.comprehensionCode,
               comprehensionText: row.comprehensionContent,
               questionText: row.questionContent,
@@ -1568,6 +1668,7 @@ export class ExamService {
                 questionId: question.id,
                 versionNumber: 1,
                 questionTypeId: row.questionType.id,
+                difficulty: row.difficulty,
                 topicId: row.topicId,
                 comprehensionId: comprehension?.id,
                 content: row.questionText,
@@ -1671,6 +1772,7 @@ export class ExamService {
         subject_code: 'ENGLISH',
         topic_code: 'READING_COMPREHENSION',
         question_type_id: 1,
+        difficulty: QuestionDifficulty.MEDIUM,
         marks: 5,
         negative_marks: 1,
         sort_order: 1,
@@ -1684,6 +1786,7 @@ export class ExamService {
         subject_code: 'MATHEMATICS',
         topic_code: 'PERCENTAGES',
         question_type_id: 2,
+        difficulty: QuestionDifficulty.EASY,
         marks: 5,
         negative_marks: 0,
         sort_order: 2,
@@ -1697,6 +1800,7 @@ export class ExamService {
         subject_code: 'ENGLISH',
         topic_code: 'READING_COMPREHENSION',
         question_type_id: 1,
+        difficulty: QuestionDifficulty.HARD,
         marks: 5,
         negative_marks: 1,
         sort_order: 3,
@@ -1710,6 +1814,7 @@ export class ExamService {
         subject_code: 'ENGLISH',
         topic_code: 'VOCABULARY',
         question_type_id: 3,
+        difficulty: QuestionDifficulty.MEDIUM,
         marks: 5,
         negative_marks: 0,
         sort_order: 4,
@@ -1741,7 +1846,7 @@ export class ExamService {
           'question_code is the exact join key and must occur once in each file.',
         ],
         [
-          'Excel owns placement, optional topic_code, question_type_id, marking, order, and mandatory status.',
+          'Excel owns placement, optional topic_code, question_type_id, difficulty (EASY, MEDIUM, or HARD), marking, order, and mandatory status.',
         ],
         [
           'Word owns comprehension, question text, images, options, answers, tolerance, case sensitivity, and explanation.',
@@ -1764,6 +1869,7 @@ export class ExamService {
         .join('')}</w:tbl>`;
     const answerRules = (
       type: string,
+      difficulty: string,
       marks: string,
       negativeMarks: string,
       correctOption: string,
@@ -1772,6 +1878,7 @@ export class ExamService {
     ) =>
       table([
         ['Question Type', type],
+        ['Difficulty', difficulty],
         ['Marks', marks],
         ['Negative Marks', negativeMarks],
         ['Correct Option', correctOption],
@@ -1802,14 +1909,14 @@ export class ExamService {
         ['D', 'Complex'],
       ]),
       p('Answer Rules', 'Heading3'),
-      answerRules('Single Choice', '5', '1', 'A', '', ''),
+      answerRules('Single Choice', 'Medium', '5', '1', 'A', '', ''),
       p('Explanation', 'Heading3'),
       p('Concise means brief and clear.'),
       p('Standalone Questions', 'Heading1'),
       p('Question - 2', 'Heading2'),
       p('What is 15% of 240?'),
       p('Answer Rules', 'Heading3'),
-      answerRules('Numeric', '5', '0', '', '36', '0'),
+      answerRules('Numeric', 'Easy', '5', '0', '', '36', '0'),
       p('Explanation', 'Heading3'),
       p('0.15 multiplied by 240 equals 36.'),
     ].join('');
@@ -2134,6 +2241,10 @@ export class ExamService {
       const marks = numeric('marks', 1) ?? 1;
       const negativeMarks = numeric('negative_marks', 0) ?? 0;
       const sortOrder = numeric('sort_order');
+      const difficultyText = text('difficulty').toUpperCase();
+      const difficultyValid = Object.values(QuestionDifficulty).includes(
+        difficultyText as QuestionDifficulty,
+      );
       return {
         sourceRowNumber: index + 2,
         slotCode: text('slot_code').toUpperCase() || undefined,
@@ -2145,6 +2256,10 @@ export class ExamService {
           questionTypeId !== undefined && Number.isInteger(questionTypeId)
             ? questionTypeId
             : undefined,
+        difficulty: difficultyValid
+          ? (difficultyText as QuestionDifficulty)
+          : QuestionDifficulty.MEDIUM,
+        difficultyInvalid: Boolean(difficultyText && !difficultyValid),
         comprehensionCode:
           text('comprehension_code').toUpperCase() || undefined,
         marks,
@@ -2211,6 +2326,7 @@ export class ExamService {
       caseSensitive: boolean;
       explanation: string[];
       questionTypeLabel?: string;
+      difficulty?: QuestionDifficulty;
       marks?: number;
       negativeMarks?: number;
       sortOrder?: number;
@@ -2252,6 +2368,7 @@ export class ExamService {
         options: question.options,
         acceptedAnswers: question.acceptedAnswers,
         questionTypeLabel: question.questionTypeLabel,
+        difficulty: question.difficulty,
         marks: question.marks,
         negativeMarks: question.negativeMarks,
         sortOrder: question.sortOrder,
@@ -2372,6 +2489,21 @@ export class ExamService {
           );
           question.questionTypeLabel =
             rules.get('question type') || rules.get('type') || undefined;
+          const difficultyText = (rules.get('difficulty') ?? '')
+            .trim()
+            .toUpperCase();
+          if (
+            difficultyText &&
+            !Object.values(QuestionDifficulty).includes(
+              difficultyText as QuestionDifficulty,
+            )
+          ) {
+            question.parseErrors.push(
+              'Difficulty must be Easy, Medium, or Hard',
+            );
+          } else if (difficultyText) {
+            question.difficulty = difficultyText as QuestionDifficulty;
+          }
           question.correctOption =
             rules.get('correct option')?.toUpperCase() || undefined;
           question.acceptedAnswers = (rules.get('accepted answers') ?? '')
@@ -2989,6 +3121,8 @@ export class ExamService {
         errors.push(
           `unknown or inactive question_type_id ${mapping.rawQuestionTypeId}`,
         );
+      if (mapping?.difficultyInvalid)
+        errors.push('difficulty must be EASY, MEDIUM, or HARD');
       if (!word || !this.hasRichContent(word.questionContent))
         errors.push('Word question content is required');
       if (
@@ -3056,6 +3190,7 @@ export class ExamService {
         questionCode: code,
         questionTypeId: type?.id,
         rawQuestionTypeId: mapping?.rawQuestionTypeId,
+        difficulty: mapping?.difficulty ?? QuestionDifficulty.MEDIUM,
         comprehensionCode:
           word?.comprehensionCode ?? mapping?.comprehensionCode,
         comprehensionContent: word?.comprehensionContent,
@@ -3219,6 +3354,7 @@ export class ExamService {
         questionCode,
         questionTypeId: type?.id,
         rawQuestionTypeId: type?.id,
+        difficulty: word.difficulty ?? QuestionDifficulty.MEDIUM,
         comprehensionCode,
         comprehensionContent: word.comprehensionContent,
         questionContent: word.questionContent,

@@ -12,6 +12,8 @@ import {
   StudentActivityEventType,
 } from '@prisma/client';
 
+import { seedDemoExamAttemptDetails } from './demo-exam-attempt-details';
+
 type DemoActivityContext = {
   organizationId: number;
   studentId: number;
@@ -357,7 +359,8 @@ export async function seedDemoActivityHistory(
       startedAt: ago(1_000),
       submittedAt: ago(980),
       submissionReason: ExamSubmissionReason.STUDENT_SUBMITTED,
-      score: 2,
+      score: 10,
+      reportFixture: 'PASSED_STUDENT_SUBMISSION',
     }),
     upsertExamAttempt(prisma, context, examResource.id, 2, {
       uuid: uuid('36', 2),
@@ -365,7 +368,8 @@ export async function seedDemoActivityHistory(
       startedAt: ago(800),
       submittedAt: ago(785),
       submissionReason: ExamSubmissionReason.EXAM_TIMEOUT,
-      score: 1,
+      score: 3,
+      reportFixture: 'FAILED_TIMEOUT_WITH_UNANSWERED',
     }),
     upsertExamAttempt(prisma, context, examResource.id, 3, {
       uuid: uuid('36', 3),
@@ -376,6 +380,11 @@ export async function seedDemoActivityHistory(
       score: null,
     }),
   ]);
+  await seedDemoExamAttemptDetails(
+    prisma,
+    context.examId,
+    examAttempts.slice(0, 2).map((attempt) => attempt.id),
+  );
 
   const resourceTemplates: ResourceTemplate[] = [
     {
@@ -783,7 +792,7 @@ export async function seedDemoActivityHistory(
   await event(StudentActivityEventType.EXAM_SUBMIT, ago(980), {
     ...examCommon,
     examAttemptId: examAttempts[0].id,
-    metadata: { score: 2, maximumScore: 3 },
+    metadata: { score: 10, maximumScore: 10 },
   });
   await event(StudentActivityEventType.EXAM_START, ago(800), {
     ...examCommon,
@@ -792,7 +801,11 @@ export async function seedDemoActivityHistory(
   await event(StudentActivityEventType.EXAM_AUTO_SUBMIT, ago(785), {
     ...examCommon,
     examAttemptId: examAttempts[1].id,
-    metadata: { reason: ExamSubmissionReason.EXAM_TIMEOUT },
+    metadata: {
+      reason: ExamSubmissionReason.EXAM_TIMEOUT,
+      score: 3,
+      maximumScore: 10,
+    },
   });
   await event(StudentActivityEventType.EXAM_START, ago(600), {
     ...examCommon,
@@ -880,6 +893,9 @@ async function upsertExamAttempt(
     submittedAt: Date | null;
     submissionReason: ExamSubmissionReason | null;
     score: number | null;
+    reportFixture?:
+      | 'PASSED_STUDENT_SUBMISSION'
+      | 'FAILED_TIMEOUT_WITH_UNANSWERED';
   },
 ) {
   const expiresAt = new Date(input.startedAt.getTime() + 15 * 60_000);
@@ -903,8 +919,13 @@ async function upsertExamAttempt(
       input.status === ExamAttemptStatus.EVALUATED ? input.submittedAt : null,
     submissionReason: input.submissionReason,
     score: input.score,
-    maximumScore: input.score === null ? null : 3,
-    configurationSnapshot: { source: 'DEMO_ACTIVITY_FIXTURE' },
+    maximumScore: input.score === null ? null : 10,
+    configurationSnapshot: {
+      source: 'DEMO_ACTIVITY_FIXTURE',
+      ...(input.reportFixture
+        ? { reportFixture: input.reportFixture }
+        : {}),
+    },
   };
   return prisma.studentExamAttempt.upsert({
     where: {

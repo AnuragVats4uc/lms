@@ -23,6 +23,7 @@ import type {
   ExamNavigationMode,
   SaveExamTemplateStructureRequest,
   ScheduledExam,
+  QuestionDifficulty,
 } from "@repo/types";
 import {
   AlertTriangle,
@@ -75,6 +76,16 @@ type Report = (
   success: string,
   afterSuccess?: () => void | Promise<void>,
 ) => void;
+const difficultyOptions: Array<{
+  label: string;
+  value: QuestionDifficulty;
+}> = [
+  { label: "Easy", value: "EASY" },
+  { label: "Medium", value: "MEDIUM" },
+  { label: "Hard", value: "HARD" },
+];
+const difficultyLabel = (difficulty: QuestionDifficulty) =>
+  difficulty.charAt(0) + difficulty.slice(1).toLowerCase();
 type BuilderSection = {
   code?: string;
   name: string;
@@ -344,6 +355,7 @@ const ImportQuestionDetails = ({ row }: { row: ExamImportRow }) => {
         { label: "Section", value: row.sectionCode },
         { label: "Subject", value: row.subjectCode },
         { label: "Topic", value: row.topic?.name ?? row.topicCode },
+        { label: "Difficulty", value: difficultyLabel(row.difficulty) },
         { label: "Order", value: row.sortOrder },
         {
           label: "Marking",
@@ -2933,8 +2945,69 @@ const ReportsPanel = ({
               label="Lowest"
               value={`${report.data.summary.lowestPercentage}%`}
             />
+            <ReportStat
+              label="Avg. accuracy"
+              value={`${report.data.summary.averageAccuracy}%`}
+            />
+            <ReportStat
+              label="Avg. completion"
+              value={`${report.data.summary.averageCompletionRate}%`}
+            />
+            <ReportStat
+              label="Avg. time"
+              value={formatExamReportDuration(
+                report.data.summary.averageDurationSeconds,
+              )}
+            />
+            <ReportStat
+              label="Pass rate"
+              value={
+                report.data.summary.passRate === null
+                  ? "Not set"
+                  : `${report.data.summary.passRate}%`
+              }
+            />
           </section>
           <div className={styles.reportGrid}>
+            <section className={styles.panel}>
+              <div className={styles.panelTitle}>
+                <div>
+                  <h2>Section performance</h2>
+                  <p>Score, accuracy, completion, and time by section</p>
+                </div>
+              </div>
+              <div className={styles.reportMetricList}>
+                {report.data.performance.sections.map((section) => (
+                  <article key={section.key}>
+                    <div>
+                      <strong>{section.label}</strong>
+                      <span>
+                        {section.correct} correct · {section.incorrect}{" "}
+                        incorrect · {section.unattempted} skipped
+                      </span>
+                    </div>
+                    <div className={styles.reportMetricBar}>
+                      <span
+                        style={{
+                          width: `${Math.max(0, section.percentage)}%`,
+                        }}
+                      />
+                    </div>
+                    <div className={styles.reportMetricValues}>
+                      <b>{section.percentage}% score</b>
+                      <span>{section.accuracy}% accuracy</span>
+                      <span>{section.completionRate}% completed</span>
+                      <span>
+                        {formatExamReportDuration(section.timeSpentSeconds)}
+                      </span>
+                    </div>
+                  </article>
+                ))}
+                {!report.data.performance.sections.length ? (
+                  <p>No section results are available yet.</p>
+                ) : null}
+              </div>
+            </section>
             <section className={styles.panel}>
               <div className={styles.panelTitle}>
                 <div>
@@ -2948,7 +3021,8 @@ const ReportsPanel = ({
                     <div>
                       <strong>{topic.label}</strong>
                       <span>
-                        {topic.subjectName} · {topic.attempted} attempted
+                        {topic.subjectName} · {topic.attempted} attempted ·{" "}
+                        {topic.unattempted} skipped
                       </span>
                     </div>
                     <div className={styles.reportMetricBar}>
@@ -2956,7 +3030,14 @@ const ReportsPanel = ({
                         style={{ width: `${Math.max(0, topic.percentage)}%` }}
                       />
                     </div>
-                    <b>{topic.percentage}%</b>
+                    <div className={styles.reportMetricValues}>
+                      <b>{topic.percentage}% score</b>
+                      <span>{topic.accuracy}% accuracy</span>
+                      <span>{topic.completionRate}% completed</span>
+                      <span>
+                        {formatExamReportDuration(topic.timeSpentSeconds)}
+                      </span>
+                    </div>
                   </article>
                 ))}
                 {!report.data.performance.topics.length ? (
@@ -2964,11 +3045,18 @@ const ReportsPanel = ({
                 ) : null}
               </div>
             </section>
-            <section className={styles.panel}>
+            <section
+              className={`${styles.panel} ${styles.reportLeaderboardPanel}`}
+            >
               <div className={styles.panelTitle}>
                 <div>
                   <h2>Student leaderboard</h2>
-                  <p>Best completed attempt per student</p>
+                  <p>
+                    Best completed attempt per student
+                    {report.data.exam.passingPercentage === null
+                      ? " · passing threshold not configured"
+                      : ` · ${report.data.exam.passingPercentage}% required to pass`}
+                  </p>
                 </div>
               </div>
               <div className={styles.leaderboard}>
@@ -2983,12 +3071,31 @@ const ReportsPanel = ({
                       </strong>
                       <span>
                         {student.rollNumber || "No roll number"} · Attempt{" "}
-                        {student.attemptNumber}
+                        {student.attemptNumber} ·{" "}
+                        {formatExamReportDuration(student.durationSeconds)}
                       </span>
                     </div>
-                    <strong>{student.percentage}%</strong>
-                    <span>
-                      {student.score} / {student.maximumScore}
+                    <div className={styles.studentPerformanceValues}>
+                      <strong>{student.percentage}%</strong>
+                      <span>
+                        {student.score} / {student.maximumScore} marks
+                      </span>
+                    </div>
+                    <div className={styles.studentPerformanceValues}>
+                      <span>{student.summary?.accuracy ?? 0}% accuracy</span>
+                      <span>
+                        {student.summary?.completionRate ?? 0}% completed
+                      </span>
+                    </div>
+                    <span
+                      className={styles.adminResultBadge}
+                      data-status={student.resultStatus}
+                    >
+                      {student.resultStatus === "NOT_CONFIGURED"
+                        ? "No pass rule"
+                        : student.resultStatus === "PASSED"
+                          ? "Passed"
+                          : "Failed"}
                     </span>
                   </article>
                 ))}
@@ -3017,6 +3124,14 @@ const ReportStat = ({
   </article>
 );
 
+const formatExamReportDuration = (seconds: number) => {
+  const rounded = Math.max(0, Math.round(seconds));
+  const hours = Math.floor(rounded / 3600);
+  const minutes = Math.floor((rounded % 3600) / 60);
+  const remainingSeconds = rounded % 60;
+  return hours ? `${hours}h ${minutes}m` : `${minutes}m ${remainingSeconds}s`;
+};
+
 const QuestionsPanel = ({
   organizationId,
   organizationSelector,
@@ -3037,12 +3152,15 @@ const QuestionsPanel = ({
   const [newQuestionSubjectId, setNewQuestionSubjectId] = useState(0);
   const [newQuestionTopicId, setNewQuestionTopicId] = useState(0);
   const [questionTypeId, setQuestionTypeId] = useState(0);
+  const [newQuestionDifficulty, setNewQuestionDifficulty] =
+    useState<QuestionDifficulty>("MEDIUM");
   const [virtualKeyboardMode, setVirtualKeyboardMode] = useState<
     "NONE" | "NUMERIC" | "ALPHANUMERIC"
   >("NONE");
   const [questionSearch, setQuestionSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [difficultyFilter, setDifficultyFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [expandedQuestionId, setExpandedQuestionId] = useState<number | null>(
     null,
@@ -3063,6 +3181,8 @@ const QuestionsPanel = ({
         question.subject.id === Number(subjectFilter)) &&
       (typeFilter === "all" ||
         version?.questionTypeId === Number(typeFilter)) &&
+      (difficultyFilter === "all" ||
+        version?.difficulty === difficultyFilter) &&
       (statusFilter === "all" || question.status === statusFilter)
     );
   });
@@ -3089,6 +3209,7 @@ const QuestionsPanel = ({
         topicId: newQuestionTopicId || undefined,
         code: String(form.get("code")),
         questionTypeId,
+        difficulty: newQuestionDifficulty,
         content: String(form.get("content")),
         explanation: String(form.get("explanation") || ""),
         defaultMarks: Number(form.get("marks")),
@@ -3253,6 +3374,14 @@ const QuestionsPanel = ({
                 }))}
                 placeholder="Choose answer type"
                 value={questionTypeId ? String(questionTypeId) : ""}
+              />
+              <CrudSelectField
+                label="Difficulty"
+                onChange={(value) =>
+                  setNewQuestionDifficulty(value as QuestionDifficulty)
+                }
+                options={difficultyOptions}
+                value={newQuestionDifficulty}
               />
             </div>
             <label>
@@ -3455,6 +3584,17 @@ const QuestionsPanel = ({
               width="100%"
             />
             <CrudSelect
+              ariaLabel="Filter question bank by difficulty"
+              label="Difficulty"
+              onChange={setDifficultyFilter}
+              options={[
+                { label: "All levels", value: "all" },
+                ...difficultyOptions,
+              ]}
+              value={difficultyFilter}
+              width="100%"
+            />
+            <CrudSelect
               ariaLabel="Filter question bank by status"
               label="Status"
               onChange={setStatusFilter}
@@ -3514,6 +3654,14 @@ const QuestionsPanel = ({
                       <span className={styles.typeBadge}>
                         {version?.questionType.name ?? "Unknown type"}
                       </span>
+                      {version ? (
+                        <span
+                          className={styles.difficultyBadge}
+                          data-difficulty={version.difficulty}
+                        >
+                          {difficultyLabel(version.difficulty)}
+                        </span>
+                      ) : null}
                       <Status value={question.status} />
                       <span className={styles.markingSummary}>
                         +{version?.defaultMarks ?? "—"} / −
@@ -3548,6 +3696,12 @@ const QuestionsPanel = ({
                         {
                           label: "Version",
                           value: version ? `v${version.versionNumber}` : null,
+                        },
+                        {
+                          label: "Difficulty",
+                          value: version
+                            ? difficultyLabel(version.difficulty)
+                            : null,
                         },
                         {
                           label: "Default marking",
@@ -3999,6 +4153,7 @@ const ImportsPanel = ({
                       <th>Row</th>
                       <th>Code</th>
                       <th>Type</th>
+                      <th>Difficulty</th>
                       <th>Marks</th>
                       <th>Validation</th>
                     </tr>
@@ -4038,6 +4193,7 @@ const ImportsPanel = ({
                                   ? `Unknown ID ${row.rawQuestionTypeId}`
                                   : "—"}
                             </td>
+                            <td>{difficultyLabel(row.difficulty)}</td>
                             <td>
                               {row.marks ?? "—"} / −{row.negativeMarks ?? "—"}
                             </td>
@@ -4050,7 +4206,7 @@ const ImportsPanel = ({
                           </tr>
                           {isExpanded ? (
                             <tr className={styles.previewDetailRow}>
-                              <td colSpan={6}>
+                              <td colSpan={7}>
                                 <ImportQuestionDetails row={row} />
                               </td>
                             </tr>
@@ -4152,6 +4308,9 @@ const SchedulePanel = ({
         ).toISOString(),
         durationMinutes: Number(form.get("duration")),
         attemptLimit: Number(form.get("attemptLimit")),
+        passingPercentage: form.get("passingPercentage")
+          ? Number(form.get("passingPercentage"))
+          : undefined,
         autoSubmitOnTimeout: form.get("autoSubmitOnTimeout") === "on",
         allowResume: form.get("allowResume") === "on",
         resultReleaseMode,
@@ -4400,6 +4559,17 @@ const SchedulePanel = ({
                   max="100"
                   defaultValue="1"
                   required
+                />
+              </label>
+              <label>
+                Passing percentage
+                <input
+                  name="passingPercentage"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  placeholder="Optional"
                 />
               </label>
             </div>

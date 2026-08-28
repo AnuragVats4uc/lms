@@ -271,6 +271,16 @@ export interface StudentExamSectionSummary {
   maximumMarks: number;
 }
 
+export type StudentExamActionReason =
+  | "READY"
+  | "ACTIVE_ATTEMPT"
+  | "RESULT_AVAILABLE"
+  | "EXAM_UPCOMING"
+  | "EXAM_ENDED"
+  | "ATTEMPT_LIMIT_EXHAUSTED"
+  | "RESUME_DISABLED"
+  | "EXAM_UNAVAILABLE";
+
 export interface StudentExamResourceDetail {
   id: number;
   uuid: string;
@@ -286,6 +296,9 @@ export interface StudentExamResourceDetail {
     instructions: string | null;
     sections: StudentExamSectionSummary[];
     action: "START" | "RESUME" | "VIEW_RESULT" | "UNAVAILABLE";
+    actionReason: StudentExamActionReason;
+    actionMessage: string;
+    attemptsRemaining: number;
     activeAttemptUuid: string | null;
     latestAttemptUuid: string | null;
     allowResume: boolean;

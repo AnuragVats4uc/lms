@@ -14,13 +14,16 @@ import styles from "./StudentExamAttemptPage.module.css";
 import { ExamHeader, ExamStatusFooter } from "./StudentExamChrome";
 import { StudentExamPalette } from "./StudentExamPalette";
 import { StudentExamQuestionWorkspace } from "./StudentExamQuestionWorkspace";
+import { StudentExamTimeoutDialog } from "./StudentExamTimeoutDialog";
 import {
   StudentExamSubmissionDialog,
   type ExamSubmissionSummary,
 } from "./StudentExamSubmissionDialog";
 import {
+  attainableMaximumMarks,
   draftFromQuestion,
   draftHasAnswer,
+  parseNumericDraft,
   type QuestionDraft,
   type SaveState,
   type SectionGroup,
@@ -39,10 +42,14 @@ export function StudentExamAttemptPage({
     {},
   );
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [submissionDialogOpen, setSubmissionDialogOpen] = useState(false);
+  const [timedOutLocally, setTimedOutLocally] = useState(false);
+  const [timeoutError, setTimeoutError] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
   const enteredAt = useRef<number | null>(null);
-  const autoSubmitted = useRef(false);
+  const handledTimeout = useRef<string | null>(null);
   const restoredPosition = useRef(false);
   const draftVersions = useRef<Record<number, number>>({});
   const saveQueue = useRef<Promise<boolean>>(Promise.resolve(true));
@@ -67,6 +74,32 @@ export function StudentExamAttemptPage({
     mutationFn: () => studentsApi.submitMyExam(attemptUuid),
     onSuccess: () =>
       router.replace(`/student/exam-attempts/${attemptUuid}/report`),
+  });
+
+  const timeoutMutation = useMutation({
+    mutationFn: () => studentsApi.continueMyExamAfterTimeout(attemptUuid),
+    onMutate: () => setTimeoutError(null),
+    onSuccess: (result) => {
+      if (!("questions" in result)) {
+        router.replace(`/student/exam-attempts/${attemptUuid}/report`);
+        return;
+      }
+      queryClient.setQueryData(["student-exam-attempt", attemptUuid], result);
+      const nextIndex = result.currentQuestionId
+        ? result.questions.findIndex(
+            (item) => item.id === result.currentQuestionId,
+          )
+        : 0;
+      setIndex(nextIndex >= 0 ? nextIndex : 0);
+      setLastSavedAt(result.lastSavedAt);
+      setTimedOutLocally(false);
+      handledTimeout.current = null;
+    },
+    onError: () => {
+      setTimeoutError(
+        "The timeout could not be processed. Check your connection and try again.",
+      );
+    },
   });
 
   useEffect(() => {
@@ -103,16 +136,61 @@ export function StudentExamAttemptPage({
     return () => window.removeEventListener("beforeunload", warn);
   }, []);
 
+  useEffect(() => {
+    const examUrl = window.location.href;
+    let leaving = false;
+    window.history.pushState({ examNavigationGuard: true }, "", examUrl);
+    const guardBackNavigation = () => {
+      if (leaving) return;
+      if (
+        window.confirm(
+          "Leave this exam? Saved answers will remain available when you resume.",
+        )
+      ) {
+        leaving = true;
+        window.history.back();
+        return;
+      }
+      window.history.pushState({ examNavigationGuard: true }, "", examUrl);
+    };
+    window.addEventListener("popstate", guardBackNavigation);
+    return () => window.removeEventListener("popstate", guardBackNavigation);
+  }, []);
+
+  useEffect(() => {
+    const online = () => setIsOnline(true);
+    const offline = () => setIsOnline(false);
+    setIsOnline(window.navigator.onLine);
+    window.addEventListener("online", online);
+    window.addEventListener("offline", offline);
+    return () => {
+      window.removeEventListener("online", online);
+      window.removeEventListener("offline", offline);
+    };
+  }, []);
+
   const persistQuestion = useCallback(
     (
       targetQuestion: StudentExamAttemptQuestion,
       targetDraft: QuestionDraft,
       draftVersion: number,
     ) => {
+      const numericAnswer = parseNumericDraft(targetDraft.numericAnswer);
+      if (
+        targetQuestion.questionType.code === "NUMERIC" &&
+        !numericAnswer.valid
+      ) {
+        setSaveState("error");
+        setSaveErrorMessage(
+          "Enter a valid number with no more than 6 decimal places.",
+        );
+        return Promise.resolve(false);
+      }
       const save = saveQueue.current
         .catch(() => false)
         .then(async () => {
           setSaveState("saving");
+          setSaveErrorMessage(null);
           try {
             const result = await studentsApi.saveMyExamAnswer(
               attemptUuid,
@@ -121,9 +199,9 @@ export function StudentExamAttemptPage({
                 selectedOptionIds: targetDraft.selectedOptionIds,
                 textAnswer: targetDraft.textAnswer.trim() || null,
                 numericAnswer:
-                  targetDraft.numericAnswer.trim() === ""
-                    ? null
-                    : Number(targetDraft.numericAnswer),
+                  targetQuestion.questionType.code === "NUMERIC"
+                    ? numericAnswer.value
+                    : null,
                 markedForReview: targetDraft.markedForReview,
                 timeSpentSeconds: Math.min(
                   300,
@@ -151,6 +229,9 @@ export function StudentExamAttemptPage({
             return true;
           } catch {
             setSaveState("error");
+            setSaveErrorMessage(
+              "Your answer could not be saved. Check your connection and try again.",
+            );
             return false;
           }
         });
@@ -159,6 +240,25 @@ export function StudentExamAttemptPage({
     },
     [attemptUuid, queryClient],
   );
+
+  useEffect(() => {
+    const retryDirtyAnswers = () => {
+      if (!attempt) return;
+      for (const targetQuestion of attempt.questions) {
+        if (!dirtyQuestions[targetQuestion.id]) continue;
+        const targetDraft = drafts[targetQuestion.id];
+        if (!targetDraft) continue;
+        void persistQuestion(
+          targetQuestion,
+          targetDraft,
+          draftVersions.current[targetQuestion.id] ?? 0,
+        );
+      }
+      void query.refetch();
+    };
+    window.addEventListener("online", retryDirtyAnswers);
+    return () => window.removeEventListener("online", retryDirtyAnswers);
+  }, [attempt, dirtyQuestions, drafts, persistQuestion, query]);
 
   const changeDraft = useCallback(
     (nextDraft: QuestionDraft) => {
@@ -242,36 +342,58 @@ export function StudentExamAttemptPage({
   }, [serverTime]);
   const activeSlot = currentGroup?.slot;
   const activeSection = currentGroup?.section;
-  const effectiveDeadline = attempt
-    ? Math.min(
-        new Date(attempt.expiresAt).getTime(),
+  const effectiveTimer = attempt
+    ? [
+        {
+          autoSubmitOnTimeout: attempt.autoSubmitOnTimeout,
+          deadline: new Date(attempt.expiresAt).getTime(),
+          key: `EXAM:${attempt.expiresAt}`,
+        },
         ...(activeSlot?.expiresAt
-          ? [new Date(activeSlot.expiresAt).getTime()]
+          ? [
+              {
+                autoSubmitOnTimeout: activeSlot.autoSubmitOnTimeout,
+                deadline: new Date(activeSlot.expiresAt).getTime(),
+                key: `SLOT:${activeSlot.id}:${activeSlot.expiresAt}`,
+              },
+            ]
           : []),
         ...(activeSection?.expiresAt
-          ? [new Date(activeSection.expiresAt).getTime()]
+          ? [
+              {
+                autoSubmitOnTimeout: activeSection.autoSubmitOnTimeout,
+                deadline: new Date(activeSection.expiresAt).getTime(),
+                key: `SECTION:${activeSection.id}:${activeSection.expiresAt}`,
+              },
+            ]
           : []),
-      )
+      ].sort((left, right) => left.deadline - right.deadline)[0]
     : null;
 
   useEffect(() => {
-    if (!effectiveDeadline || autoSubmitted.current) return;
-    const remaining = effectiveDeadline - (Date.now() + serverOffsetMs);
+    if (!effectiveTimer || handledTimeout.current === effectiveTimer.key)
+      return;
+    const remaining = effectiveTimer.deadline - (Date.now() + serverOffsetMs);
+    const handleTimeout = () => {
+      if (handledTimeout.current === effectiveTimer.key) return;
+      handledTimeout.current = effectiveTimer.key;
+      setTimedOutLocally(true);
+      if (effectiveTimer.autoSubmitOnTimeout) {
+        timeoutMutation.mutate();
+      } else {
+        void query.refetch();
+      }
+    };
     if (remaining <= 0) {
-      autoSubmitted.current = true;
-      void submitExam();
+      handleTimeout();
       return;
     }
     const timer = window.setTimeout(
-      () => {
-        if (autoSubmitted.current) return;
-        autoSubmitted.current = true;
-        void submitExam();
-      },
+      handleTimeout,
       Math.min(remaining + 250, 2_147_000_000),
     );
     return () => window.clearTimeout(timer);
-  }, [effectiveDeadline, serverOffsetMs, submitExam]);
+  }, [effectiveTimer, query, serverOffsetMs, timeoutMutation]);
 
   if (query.isLoading) return <ExamLoading />;
   if (query.isError || !query.data) {
@@ -308,12 +430,17 @@ export function StudentExamAttemptPage({
   const sectionAnswered = currentGroup.questions.filter(({ question: item }) =>
     draftHasAnswer(drafts[item.id] ?? draftFromQuestion(item)),
   ).length;
-  const sectionMarks = currentGroup.questions.reduce(
-    (total, item) => total + Number(item.question.marks),
-    0,
+  const sectionMarks = attainableMaximumMarks(
+    currentGroup.questions.map((item) => Number(item.question.marks)),
+    currentGroup.section.questionsToAttempt,
   );
-  const maximumMarks = attempt.questions.reduce(
-    (total, item) => total + Number(item.marks),
+  const maximumMarks = groups.reduce(
+    (total, group) =>
+      total +
+      attainableMaximumMarks(
+        group.questions.map((item) => Number(item.question.marks)),
+        group.section.questionsToAttempt,
+      ),
     0,
   );
   const previousGroup = groups.find((group) =>
@@ -322,6 +449,7 @@ export function StudentExamAttemptPage({
   const canGoBack =
     index > 0 &&
     currentGroup.section.navigationMode !== "SEQUENTIAL" &&
+    currentGroup.slot.navigationMode !== "SEQUENTIAL" &&
     !previousGroup?.locked;
   const busy = saveState === "saving" || submitMutation.isPending;
   const submissionSummary = attempt.questions.reduce<ExamSubmissionSummary>(
@@ -371,6 +499,12 @@ export function StudentExamAttemptPage({
         slotDeadline={activeSlot?.expiresAt ?? null}
         submitting={submitMutation.isPending}
       />
+      {!isOnline ? (
+        <div className={styles.networkBanner} role="status">
+          <AlertTriangle size={16} /> You are offline. Unsaved changes will be
+          retried automatically when the connection returns.
+        </div>
+      ) : null}
 
       <div className={styles.examLayout}>
         <StudentExamQuestionWorkspace
@@ -392,14 +526,20 @@ export function StudentExamAttemptPage({
           question={question}
           questionPosition={sectionQuestionPosition}
           saveState={saveState}
+          saveErrorMessage={saveErrorMessage}
           sectionAnswered={sectionAnswered}
           sectionMarks={sectionMarks}
         />
         <StudentExamPalette
+          currentIndex={index}
           currentQuestionId={question.id}
           drafts={drafts}
           groups={groups}
           onNavigate={(targetIndex) => void navigateTo(targetIndex)}
+          sequential={
+            currentGroup.section.navigationMode === "SEQUENTIAL" ||
+            currentGroup.slot.navigationMode === "SEQUENTIAL"
+          }
         />
       </div>
 
@@ -423,8 +563,29 @@ export function StudentExamAttemptPage({
           summary={submissionSummary}
         />
       ) : null}
+      {attempt.timeoutState || timedOutLocally ? (
+        <StudentExamTimeoutDialog
+          error={timeoutError}
+          message={
+            attempt.timeoutState?.message ??
+            "The current timer has reached zero. Processing the saved attempt state."
+          }
+          onContinue={() => timeoutMutation.mutate()}
+          resolving={timeoutMutation.isPending}
+          scope={
+            attempt.timeoutState?.scope ??
+            effectiveTimerScope(effectiveTimer?.key)
+          }
+        />
+      ) : null}
     </main>
   );
+}
+
+function effectiveTimerScope(key?: string) {
+  if (key?.startsWith("SLOT:")) return "SLOT" as const;
+  if (key?.startsWith("SECTION:")) return "SECTION" as const;
+  return "EXAM" as const;
 }
 
 function buildSectionGroups(attempt: StudentExamAttempt | null) {

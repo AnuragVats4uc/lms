@@ -7,7 +7,7 @@ model Course {
   description String? @db.Text
 
   thumbnail      String?
-  durationInDays Int?    @map("duration_in_days")
+  durationInDays Int?     @map("duration_in_days")
   price          Decimal? @db.Decimal(10, 2)
   discount       Decimal? @db.Decimal(10, 2)
   type           String?  @db.VarChar(80)

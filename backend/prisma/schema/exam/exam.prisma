@@ -93,6 +93,7 @@ model QuestionVersion {
   versionNumber         Int                     @map("version_number")
   content               String                  @db.LongText
   explanation           String?                 @db.LongText
+  difficulty            QuestionDifficulty      @default(MEDIUM)
   defaultMarks          Decimal                 @default(1) @map("default_marks") @db.Decimal(8, 2)
   defaultNegativeMarks  Decimal                 @default(0) @map("default_negative_marks") @db.Decimal(8, 2)
   caseSensitive         Boolean                 @default(false) @map("case_sensitive")
@@ -311,6 +312,7 @@ model Exam {
   availableUntil        DateTime              @map("available_until")
   durationMinutes       Int                   @map("duration_minutes")
   attemptLimit          Int                   @default(1) @map("attempt_limit")
+  passingPercentage     Decimal?              @map("passing_percentage") @db.Decimal(5, 2)
   autoSubmitOnTimeout   Boolean               @default(true) @map("auto_submit_on_timeout")
   allowResume           Boolean               @default(true) @map("allow_resume")
   resultReleaseMode     ExamResultReleaseMode @default(IMMEDIATE) @map("result_release_mode")
@@ -437,6 +439,7 @@ model ExamImportRow {
   comprehensionCode   String?             @map("comprehension_code") @db.VarChar(80)
   comprehensionText   String?             @map("comprehension_text") @db.LongText
   questionText        String?             @map("question_text") @db.LongText
+  difficulty          QuestionDifficulty  @default(MEDIUM)
   marks               Decimal?            @db.Decimal(8, 2)
   negativeMarks       Decimal?            @map("negative_marks") @db.Decimal(8, 2)
   sortOrder           Int?                @map("sort_order")
@@ -503,13 +506,13 @@ model StudentExamAttempt {
   createdAt                  DateTime              @default(now()) @map("created_at")
   updatedAt                  DateTime              @updatedAt @map("updated_at")
 
-  student      Student                      @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  exam         Exam                         @relation(fields: [examId], references: [id], onDelete: Restrict)
-  sessionCourse SessionCourse? @relation(fields: [sessionCourseId], references: [id], onDelete: SetNull)
+  student        Student                      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  exam           Exam                         @relation(fields: [examId], references: [id], onDelete: Restrict)
+  sessionCourse  SessionCourse?               @relation(fields: [sessionCourseId], references: [id], onDelete: SetNull)
   sourceResource Resource?                    @relation("StudentExamAttemptSourceResource", fields: [sourceResourceId], references: [id], onDelete: SetNull)
-  slotProgress StudentExamSlotAttempt[]
-  answers      StudentExamAnswer[]
-  questions    StudentExamAttemptQuestion[]
+  slotProgress   StudentExamSlotAttempt[]
+  answers        StudentExamAnswer[]
+  questions      StudentExamAttemptQuestion[]
   activityEvents StudentActivityEvent[]
 
   @@unique([studentId, examId, attemptNumber], map: "student_exam_attempts_student_exam_number_unique")

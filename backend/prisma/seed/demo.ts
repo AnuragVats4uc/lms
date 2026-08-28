@@ -11,6 +11,7 @@ import {
   FolderStatus,
   OrganizationStatus,
   PrismaClient,
+  QuestionDifficulty,
   QuestionStatus,
   RegistrationPageStatus,
   ResourceStatus,
@@ -787,7 +788,8 @@ async function seedExamResource(
       availableFrom: new Date('2026-01-01T00:00:00.000Z'),
       availableUntil: new Date('2027-12-31T23:59:59.000Z'),
       durationMinutes: 15,
-      attemptLimit: 5,
+      attemptLimit: 3,
+      passingPercentage: 60,
       autoSubmitOnTimeout: true,
       allowResume: true,
       resultReleaseMode: ExamResultReleaseMode.IMMEDIATE,
@@ -818,12 +820,444 @@ async function seedExamResource(
     },
   });
 
+  await seedExamVariantResources({
+    organizationId,
+    sessionId,
+    sessionCourseId,
+    folderId,
+    subjectId: subject.id,
+    questionVersionIds,
+  });
+
   return exam;
+}
+
+async function seedExamVariantResources(input: {
+  organizationId: number;
+  sessionId: number;
+  sessionCourseId: number;
+  folderId: number;
+  subjectId: number;
+  questionVersionIds: number[];
+}) {
+  const allQuestions = input.questionVersionIds.map((_, index) => index);
+  const variants: Array<{
+    code: string;
+    resourceUuid: string;
+    title: string;
+    description: string;
+    durationMinutes: number;
+    attemptLimit: number;
+    allowResume: boolean;
+    enforceSlotTimers: boolean;
+    enforceSectionTimers: boolean;
+    availableFrom: Date;
+    availableUntil: Date;
+    status: ExamStatus;
+    slots: Array<{
+      code: string;
+      name: string;
+      durationMinutes: number;
+      navigationMode: ExamNavigationMode;
+      autoSubmitOnTimeout: boolean;
+      sections: Array<{
+        code: string;
+        name: string;
+        durationMinutes: number;
+        navigationMode: ExamNavigationMode;
+        autoSubmitOnTimeout: boolean;
+        randomizeQuestions?: boolean;
+        randomizeOptions?: boolean;
+        questionIndexes: number[];
+      }>;
+    }>;
+  }> = [
+    {
+      code: 'DEMO-EXAM-TIMER',
+      resourceUuid: '10000000-0000-4000-8000-000000000302',
+      title: 'Exam Timer Practice — 10 Questions',
+      description:
+        'A standard resumable attempt governed by one overall exam timer.',
+      durationMinutes: 20,
+      attemptLimit: 2,
+      allowResume: true,
+      enforceSlotTimers: false,
+      enforceSectionTimers: false,
+      availableFrom: new Date('2026-01-01T00:00:00.000Z'),
+      availableUntil: new Date('2027-12-31T23:59:59.000Z'),
+      status: ExamStatus.SCHEDULED,
+      slots: [
+        {
+          code: 'STANDARD',
+          name: 'Standard Paper',
+          durationMinutes: 20,
+          navigationMode: ExamNavigationMode.FREE,
+          autoSubmitOnTimeout: true,
+          sections: [
+            {
+              code: 'ALL-QUESTIONS',
+              name: 'All Questions',
+              durationMinutes: 20,
+              navigationMode: ExamNavigationMode.FREE,
+              autoSubmitOnTimeout: true,
+              questionIndexes: allQuestions,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: 'DEMO-SLOT-TIMER',
+      resourceUuid: '10000000-0000-4000-8000-000000000303',
+      title: 'Slot-Timed Assessment — 10 Questions',
+      description:
+        'Two separately timed five-question slots with a sequential first slot.',
+      durationMinutes: 16,
+      attemptLimit: 2,
+      allowResume: true,
+      enforceSlotTimers: true,
+      enforceSectionTimers: false,
+      availableFrom: new Date('2026-01-01T00:00:00.000Z'),
+      availableUntil: new Date('2027-12-31T23:59:59.000Z'),
+      status: ExamStatus.SCHEDULED,
+      slots: [
+        {
+          code: 'SLOT-A',
+          name: 'Core Skills Slot',
+          durationMinutes: 8,
+          navigationMode: ExamNavigationMode.SEQUENTIAL,
+          autoSubmitOnTimeout: false,
+          sections: [
+            {
+              code: 'CORE',
+              name: 'Core Skills',
+              durationMinutes: 8,
+              navigationMode: ExamNavigationMode.SEQUENTIAL,
+              autoSubmitOnTimeout: false,
+              questionIndexes: [0, 1, 2, 3, 4],
+            },
+          ],
+        },
+        {
+          code: 'SLOT-B',
+          name: 'Applied Skills Slot',
+          durationMinutes: 8,
+          navigationMode: ExamNavigationMode.FREE,
+          autoSubmitOnTimeout: true,
+          sections: [
+            {
+              code: 'APPLIED',
+              name: 'Applied Skills',
+              durationMinutes: 8,
+              navigationMode: ExamNavigationMode.FREE,
+              autoSubmitOnTimeout: true,
+              questionIndexes: [5, 6, 7, 8, 9],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: 'DEMO-SECTION-TIMER',
+      resourceUuid: '10000000-0000-4000-8000-000000000304',
+      title: 'Section-Timed Assessment — 10 Questions',
+      description:
+        'One paper with two separately timed sections and a manual timeout transition.',
+      durationMinutes: 18,
+      attemptLimit: 2,
+      allowResume: true,
+      enforceSlotTimers: false,
+      enforceSectionTimers: true,
+      availableFrom: new Date('2026-01-01T00:00:00.000Z'),
+      availableUntil: new Date('2027-12-31T23:59:59.000Z'),
+      status: ExamStatus.SCHEDULED,
+      slots: [
+        {
+          code: 'SECTION-PAPER',
+          name: 'Section-Timed Paper',
+          durationMinutes: 18,
+          navigationMode: ExamNavigationMode.FREE,
+          autoSubmitOnTimeout: true,
+          sections: [
+            {
+              code: 'FOUNDATION',
+              name: 'Foundation Section',
+              durationMinutes: 8,
+              navigationMode: ExamNavigationMode.FREE,
+              autoSubmitOnTimeout: false,
+              questionIndexes: [0, 1, 2, 3, 4],
+            },
+            {
+              code: 'ADVANCED',
+              name: 'Advanced Section',
+              durationMinutes: 10,
+              navigationMode: ExamNavigationMode.SEQUENTIAL,
+              autoSubmitOnTimeout: true,
+              questionIndexes: [5, 6, 7, 8, 9],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: 'DEMO-LOCKED-NAVIGATION',
+      resourceUuid: '10000000-0000-4000-8000-000000000305',
+      title: 'Locked Navigation Assessment — 10 Questions',
+      description:
+        'A randomized paper demonstrating sequential and locked-after-submit navigation.',
+      durationMinutes: 20,
+      attemptLimit: 1,
+      allowResume: false,
+      enforceSlotTimers: false,
+      enforceSectionTimers: false,
+      availableFrom: new Date('2026-01-01T00:00:00.000Z'),
+      availableUntil: new Date('2027-12-31T23:59:59.000Z'),
+      status: ExamStatus.SCHEDULED,
+      slots: [
+        {
+          code: 'LOCKED-PAPER',
+          name: 'Controlled Navigation Paper',
+          durationMinutes: 20,
+          navigationMode: ExamNavigationMode.LOCKED_AFTER_SUBMIT,
+          autoSubmitOnTimeout: true,
+          sections: [
+            {
+              code: 'LOCKED',
+              name: 'Locked Navigation Section',
+              durationMinutes: 20,
+              navigationMode: ExamNavigationMode.LOCKED_AFTER_SUBMIT,
+              autoSubmitOnTimeout: true,
+              randomizeQuestions: true,
+              randomizeOptions: true,
+              questionIndexes: allQuestions,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: 'DEMO-ENDED-WINDOW',
+      resourceUuid: '10000000-0000-4000-8000-000000000306',
+      title: 'Closed Exam Window — 10 Questions',
+      description:
+        'A closed assessment fixture used to verify the exam-ended student message.',
+      durationMinutes: 15,
+      attemptLimit: 1,
+      allowResume: true,
+      enforceSlotTimers: false,
+      enforceSectionTimers: false,
+      availableFrom: new Date('2026-01-01T00:00:00.000Z'),
+      availableUntil: new Date('2026-07-31T23:59:59.000Z'),
+      status: ExamStatus.CLOSED,
+      slots: [
+        {
+          code: 'CLOSED-PAPER',
+          name: 'Closed Paper',
+          durationMinutes: 15,
+          navigationMode: ExamNavigationMode.FREE,
+          autoSubmitOnTimeout: true,
+          sections: [
+            {
+              code: 'CLOSED-SECTION',
+              name: 'Closed Exam Section',
+              durationMinutes: 15,
+              navigationMode: ExamNavigationMode.FREE,
+              autoSubmitOnTimeout: true,
+              questionIndexes: allQuestions,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: 'DEMO-UPCOMING-WINDOW',
+      resourceUuid: '10000000-0000-4000-8000-000000000307',
+      title: 'Upcoming Exam Window — 10 Questions',
+      description:
+        'A future assessment fixture used to verify the not-yet-open student message.',
+      durationMinutes: 15,
+      attemptLimit: 1,
+      allowResume: true,
+      enforceSlotTimers: false,
+      enforceSectionTimers: false,
+      availableFrom: new Date('2026-11-01T00:00:00.000Z'),
+      availableUntil: new Date('2026-12-31T23:59:59.000Z'),
+      status: ExamStatus.SCHEDULED,
+      slots: [
+        {
+          code: 'UPCOMING-PAPER',
+          name: 'Upcoming Paper',
+          durationMinutes: 15,
+          navigationMode: ExamNavigationMode.FREE,
+          autoSubmitOnTimeout: true,
+          sections: [
+            {
+              code: 'UPCOMING-SECTION',
+              name: 'Upcoming Exam Section',
+              durationMinutes: 15,
+              navigationMode: ExamNavigationMode.FREE,
+              autoSubmitOnTimeout: true,
+              questionIndexes: allQuestions,
+            },
+          ],
+        },
+      ],
+    },
+  ];
+
+  for (const [variantIndex, variant] of variants.entries()) {
+    const template = await prisma.examTemplate.create({
+      data: {
+        organizationId: input.organizationId,
+        code: `TPL-${variant.code}`,
+        name: `${variant.title} Template`,
+        description: variant.description,
+        status: ExamTemplateStatus.PUBLISHED,
+        isActive: true,
+      },
+    });
+    const templateVersion = await prisma.examTemplateVersion.create({
+      data: {
+        examTemplateId: template.id,
+        versionNumber: 1,
+        instructions:
+          'Read the timer and navigation rules carefully before beginning. Answers are saved automatically.',
+        defaultDurationMinutes: variant.durationMinutes,
+        defaultAttemptLimit: variant.attemptLimit,
+        enforceSlotTimers: variant.enforceSlotTimers,
+        enforceSectionTimers: variant.enforceSectionTimers,
+        status: ExamTemplateVersionStatus.PUBLISHED,
+        publishedAt: new Date(),
+      },
+    });
+    const slotIds: number[] = [];
+    for (const [slotIndex, slotConfig] of variant.slots.entries()) {
+      const slot = await prisma.examTemplateSlot.create({
+        data: {
+          examTemplateVersionId: templateVersion.id,
+          code: slotConfig.code,
+          name: slotConfig.name,
+          description: `${slotConfig.name} for ${variant.title}.`,
+          instructions: `${slotConfig.durationMinutes} minutes are available for this slot.`,
+          durationMinutes: slotConfig.durationMinutes,
+          navigationMode: slotConfig.navigationMode,
+          autoSubmitOnTimeout: slotConfig.autoSubmitOnTimeout,
+          sortOrder: slotIndex + 1,
+          isActive: true,
+        },
+      });
+      slotIds.push(slot.id);
+      for (const [sectionIndex, sectionConfig] of
+        slotConfig.sections.entries()) {
+        const section = await prisma.examTemplateSection.create({
+          data: {
+            examTemplateSlotId: slot.id,
+            code: sectionConfig.code,
+            name: sectionConfig.name,
+            instructions: `Complete ${sectionConfig.questionIndexes.length} questions within ${sectionConfig.durationMinutes} minutes.`,
+            durationMinutes: sectionConfig.durationMinutes,
+            questionsToAttempt: sectionConfig.questionIndexes.length,
+            randomizeQuestions: sectionConfig.randomizeQuestions ?? false,
+            randomizeOptions: sectionConfig.randomizeOptions ?? false,
+            navigationMode: sectionConfig.navigationMode,
+            allowReview:
+              sectionConfig.navigationMode !==
+              ExamNavigationMode.LOCKED_AFTER_SUBMIT,
+            autoSubmitOnTimeout: sectionConfig.autoSubmitOnTimeout,
+            sortOrder: sectionIndex + 1,
+            isActive: true,
+          },
+        });
+        const sectionSubject =
+          await prisma.examTemplateSectionSubject.create({
+            data: {
+              examTemplateSectionId: section.id,
+              subjectId: input.subjectId,
+              isMandatory: true,
+              sortOrder: 1,
+            },
+          });
+        await prisma.examTemplateQuestion.createMany({
+          data: sectionConfig.questionIndexes.map(
+            (questionIndex, questionOrder) => ({
+              examTemplateSectionSubjectId: sectionSubject.id,
+              questionVersionId: input.questionVersionIds[questionIndex],
+              marks: questionIndex >= 7 ? 2 : 1,
+              negativeMarks: questionIndex >= 7 ? 0.25 : 0,
+              isMandatory: true,
+              sortOrder: questionOrder + 1,
+            }),
+          ),
+        });
+      }
+    }
+    const exam = await prisma.exam.create({
+      data: {
+        organizationId: input.organizationId,
+        sessionId: input.sessionId,
+        examTemplateVersionId: templateVersion.id,
+        code: variant.code,
+        title: variant.title,
+        instructions: variant.description,
+        availableFrom: variant.availableFrom,
+        availableUntil: variant.availableUntil,
+        durationMinutes: variant.durationMinutes,
+        attemptLimit: variant.attemptLimit,
+        passingPercentage: 60,
+        autoSubmitOnTimeout: true,
+        allowResume: variant.allowResume,
+        resultReleaseMode: ExamResultReleaseMode.IMMEDIATE,
+        showScore: true,
+        showCorrectAnswers: true,
+        showExplanations: true,
+        showQuestionReview: true,
+        status: variant.status,
+        isActive: true,
+        selectedSlots: {
+          create: slotIds.map((examTemplateSlotId, sortOrder) => ({
+            examTemplateSlotId,
+            sortOrder: sortOrder + 1,
+          })),
+        },
+        courseAssignments: {
+          create: { sessionCourseId: input.sessionCourseId },
+        },
+      },
+    });
+    await prisma.resource.create({
+      data: {
+        uuid: variant.resourceUuid,
+        folderId: input.folderId,
+        title: variant.title,
+        description: variant.description,
+        resourceTypeId: RESOURCE_TYPE_IDS.EXAM,
+        examId: exam.id,
+        sortOrder: variantIndex + 2,
+        status: ResourceStatus.PUBLISHED,
+        isPublished: true,
+        isDownloadable: false,
+        isActive: true,
+      },
+    });
+  }
 }
 
 async function cleanupDemoExam(organizationId: number) {
   const exams = await prisma.exam.findMany({
-    where: { organizationId, code: DEMO_EXAM_CODE },
+    where: {
+      organizationId,
+      code: {
+        in: [
+          DEMO_EXAM_CODE,
+          'DEMO-EXAM-TIMER',
+          'DEMO-SLOT-TIMER',
+          'DEMO-SECTION-TIMER',
+          'DEMO-LOCKED-NAVIGATION',
+          'DEMO-ENDED-WINDOW',
+          'DEMO-UPCOMING-WINDOW',
+        ],
+      },
+    },
     select: { id: true },
   });
   const examIds = exams.map(({ id }) => id);
@@ -835,19 +1269,118 @@ async function cleanupDemoExam(organizationId: number) {
     await prisma.exam.deleteMany({ where: { id: { in: examIds } } });
   }
   await prisma.resource.deleteMany({
-    where: { uuid: DEMO_EXAM_RESOURCE_UUID },
+    where: {
+      uuid: {
+        in: [
+          DEMO_EXAM_RESOURCE_UUID,
+          '10000000-0000-4000-8000-000000000302',
+          '10000000-0000-4000-8000-000000000303',
+          '10000000-0000-4000-8000-000000000304',
+          '10000000-0000-4000-8000-000000000305',
+          '10000000-0000-4000-8000-000000000306',
+          '10000000-0000-4000-8000-000000000307',
+        ],
+      },
+    },
   });
   await prisma.examTemplate.deleteMany({
-    where: { organizationId, code: `TPL-${DEMO_EXAM_CODE}` },
+    where: {
+      organizationId,
+      code: {
+        in: [
+          `TPL-${DEMO_EXAM_CODE}`,
+          'TPL-DEMO-EXAM-TIMER',
+          'TPL-DEMO-SLOT-TIMER',
+          'TPL-DEMO-SECTION-TIMER',
+          'TPL-DEMO-LOCKED-NAVIGATION',
+          'TPL-DEMO-ENDED-WINDOW',
+          'TPL-DEMO-UPCOMING-WINDOW',
+        ],
+      },
+    },
   });
 }
 
 async function seedDemoQuestions(organizationId: number, subjectId: number) {
-  const seeds = [
+  const topics = await Promise.all(
+    [
+      {
+        code: 'DEMO-ARITHMETIC',
+        name: 'Arithmetic',
+        description: 'Percentages, ratios, and applied calculations.',
+      },
+      {
+        code: 'DEMO-LANGUAGE',
+        name: 'Language Skills',
+        description: 'Vocabulary and reading comprehension.',
+      },
+      {
+        code: 'DEMO-REASONING',
+        name: 'Logical Reasoning',
+        description: 'Patterns, sequences, and analytical reasoning.',
+      },
+    ].map((topic, sortOrder) =>
+      prisma.topic.upsert({
+        where: { subjectId_code: { subjectId, code: topic.code } },
+        update: {
+          organizationId,
+          name: topic.name,
+          description: topic.description,
+          sortOrder: sortOrder + 1,
+          isActive: true,
+        },
+        create: {
+          organizationId,
+          subjectId,
+          ...topic,
+          sortOrder: sortOrder + 1,
+          isActive: true,
+        },
+      }),
+    ),
+  );
+  const topicByCode = new Map(topics.map((topic) => [topic.code, topic.id]));
+  const comprehension = await prisma.questionComprehension.upsert({
+    where: {
+      organizationId_code: {
+        organizationId,
+        code: 'DEMO-PASSAGE-CLIMATE-LIBRARY',
+      },
+    },
+    update: {
+      content:
+        '<p>A city library reduced electricity use by replacing old lights and adding rooftop solar panels. In its first year, consumption fell by 18 percent while visitor numbers increased.</p>',
+      isActive: true,
+    },
+    create: {
+      organizationId,
+      code: 'DEMO-PASSAGE-CLIMATE-LIBRARY',
+      content:
+        '<p>A city library reduced electricity use by replacing old lights and adding rooftop solar panels. In its first year, consumption fell by 18 percent while visitor numbers increased.</p>',
+      isActive: true,
+    },
+  });
+  const seeds: Array<{
+    code: string;
+    content: string;
+    explanation: string;
+    questionTypeId: number;
+    difficulty: QuestionDifficulty;
+    topicCode: string;
+    options?: string[];
+    correctIndex?: number;
+    textAnswer?: string;
+    numericAnswer?: number;
+    numericTolerance?: number;
+    comprehensionId?: number;
+  }> = [
     {
       code: 'DEMO-Q-001',
       content: 'What is 15 percent of 200?',
       explanation: '15 percent of 200 is 30.',
+      questionTypeId: QUESTION_TYPE_IDS.SINGLE_CHOICE,
+      difficulty: QuestionDifficulty.EASY,
+      topicCode: 'DEMO-ARITHMETIC',
       options: ['20', '25', '30', '35'],
       correctIndex: 2,
     },
@@ -855,8 +1388,102 @@ async function seedDemoQuestions(organizationId: number, subjectId: number) {
       code: 'DEMO-Q-002',
       content: 'Choose the word closest in meaning to practical.',
       explanation: 'Pragmatic means practical.',
+      questionTypeId: QUESTION_TYPE_IDS.SINGLE_CHOICE,
+      difficulty: QuestionDifficulty.EASY,
+      topicCode: 'DEMO-LANGUAGE',
       options: ['Pragmatic', 'Random', 'Ancient', 'Silent'],
       correctIndex: 0,
+    },
+    {
+      code: 'DEMO-Q-003',
+      content: 'Enter the value of 12 multiplied by 12.',
+      explanation: '12 × 12 equals 144.',
+      questionTypeId: QUESTION_TYPE_IDS.NUMERIC,
+      difficulty: QuestionDifficulty.MEDIUM,
+      topicCode: 'DEMO-ARITHMETIC',
+      numericAnswer: 144,
+      numericTolerance: 0,
+    },
+    {
+      code: 'DEMO-Q-004',
+      content: 'Write one word that means “moving very quickly”.',
+      explanation: 'Rapid means moving very quickly.',
+      questionTypeId: QUESTION_TYPE_IDS.ONE_WORD,
+      difficulty: QuestionDifficulty.EASY,
+      topicCode: 'DEMO-LANGUAGE',
+      textAnswer: 'rapid',
+    },
+    {
+      code: 'DEMO-Q-005',
+      content: 'Complete the sequence: 2, 6, 12, 20, __.',
+      explanation: 'The differences are 4, 6, 8, then 10; therefore 30.',
+      questionTypeId: QUESTION_TYPE_IDS.SINGLE_CHOICE,
+      difficulty: QuestionDifficulty.MEDIUM,
+      topicCode: 'DEMO-REASONING',
+      options: ['26', '28', '30', '32'],
+      correctIndex: 2,
+    },
+    {
+      code: 'DEMO-Q-006',
+      content: 'A price of 50 is reduced by 25 percent. Enter the new price.',
+      explanation: '25 percent of 50 is 12.5, so the new price is 37.5.',
+      questionTypeId: QUESTION_TYPE_IDS.NUMERIC,
+      difficulty: QuestionDifficulty.HARD,
+      topicCode: 'DEMO-ARITHMETIC',
+      numericAnswer: 37.5,
+      numericTolerance: 0.01,
+    },
+    {
+      code: 'DEMO-Q-007',
+      content: 'Name the process plants use to convert light into food.',
+      explanation: 'Plants use photosynthesis to convert light energy into food.',
+      questionTypeId: QUESTION_TYPE_IDS.ONE_WORD,
+      difficulty: QuestionDifficulty.MEDIUM,
+      topicCode: 'DEMO-LANGUAGE',
+      textAnswer: 'photosynthesis',
+    },
+    {
+      code: 'DEMO-Q-008',
+      content:
+        '<p>Which option completes the visual pattern?</p><img alt="Pattern showing one, two, then three blue squares" src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27320%27 height=%2780%27 viewBox=%270 0 320 80%27%3E%3Crect x=%2710%27 y=%2725%27 width=%2730%27 height=%2730%27 rx=%274%27 fill=%27%233976ee%27/%3E%3Crect x=%2795%27 y=%2725%27 width=%2730%27 height=%2730%27 rx=%274%27 fill=%27%233976ee%27/%3E%3Crect x=%27132%27 y=%2725%27 width=%2730%27 height=%2730%27 rx=%274%27 fill=%27%233976ee%27/%3E%3Crect x=%27215%27 y=%2725%27 width=%2730%27 height=%2730%27 rx=%274%27 fill=%27%233976ee%27/%3E%3Crect x=%27252%27 y=%2725%27 width=%2730%27 height=%2730%27 rx=%274%27 fill=%27%233976ee%27/%3E%3Ctext x=%27300%27 y=%2748%27 font-size=%2724%27%3E?%3C/text%3E%3C/svg%3E" />',
+      explanation: 'Each group adds one square, so the next group contains four.',
+      questionTypeId: QUESTION_TYPE_IDS.SINGLE_CHOICE,
+      difficulty: QuestionDifficulty.HARD,
+      topicCode: 'DEMO-REASONING',
+      options: ['One square', 'Two squares', 'Three squares', 'Four squares'],
+      correctIndex: 3,
+    },
+    {
+      code: 'DEMO-Q-009',
+      content: 'What change reduced the library’s electricity use?',
+      explanation: 'The library replaced old lights and installed solar panels.',
+      questionTypeId: QUESTION_TYPE_IDS.SINGLE_CHOICE,
+      difficulty: QuestionDifficulty.MEDIUM,
+      topicCode: 'DEMO-LANGUAGE',
+      comprehensionId: comprehension.id,
+      options: [
+        'Shorter opening hours',
+        'New lighting and solar panels',
+        'Fewer visitors',
+        'Removing computers',
+      ],
+      correctIndex: 1,
+    },
+    {
+      code: 'DEMO-Q-010',
+      content: 'Which conclusion is best supported by the passage?',
+      explanation: 'Energy use fell even though visitor numbers increased.',
+      questionTypeId: QUESTION_TYPE_IDS.SINGLE_CHOICE,
+      difficulty: QuestionDifficulty.HARD,
+      topicCode: 'DEMO-REASONING',
+      comprehensionId: comprehension.id,
+      options: [
+        'The library became less popular.',
+        'The energy improvements were effective.',
+        'Solar panels increased consumption.',
+        'Visitor numbers caused the reduction.',
+      ],
+      correctIndex: 1,
     },
   ];
   const versionIds: number[] = [];
@@ -891,9 +1518,12 @@ async function seedDemoQuestions(organizationId: number, subjectId: number) {
       version = await prisma.questionVersion.update({
         where: { id: version.id },
         data: {
-          questionTypeId: QUESTION_TYPE_IDS.SINGLE_CHOICE,
+          questionTypeId: seed.questionTypeId,
+          topicId: topicByCode.get(seed.topicCode),
+          comprehensionId: seed.comprehensionId ?? null,
           content: seed.content,
           explanation: seed.explanation,
+          difficulty: seed.difficulty,
           defaultMarks: 1,
           defaultNegativeMarks: 0,
           virtualKeyboardMode: ExamVirtualKeyboardMode.NONE,
@@ -906,10 +1536,13 @@ async function seedDemoQuestions(organizationId: number, subjectId: number) {
       version = await prisma.questionVersion.create({
         data: {
           questionId: question.id,
-          questionTypeId: QUESTION_TYPE_IDS.SINGLE_CHOICE,
+          questionTypeId: seed.questionTypeId,
+          topicId: topicByCode.get(seed.topicCode),
+          comprehensionId: seed.comprehensionId ?? null,
           versionNumber: 1,
           content: seed.content,
           explanation: seed.explanation,
+          difficulty: seed.difficulty,
           defaultMarks: 1,
           defaultNegativeMarks: 0,
           virtualKeyboardMode: ExamVirtualKeyboardMode.NONE,
@@ -919,15 +1552,39 @@ async function seedDemoQuestions(organizationId: number, subjectId: number) {
         },
       });
     }
-    await prisma.questionOption.createMany({
-      data: seed.options.map((content, index) => ({
-        questionVersionId: version.id,
-        code: String.fromCharCode(65 + index),
-        content,
-        isCorrect: index === seed.correctIndex,
-        sortOrder: index + 1,
-      })),
-    });
+    if (seed.options?.length) {
+      await prisma.questionOption.createMany({
+        data: seed.options.map((content, index) => ({
+          questionVersionId: version.id,
+          code: String.fromCharCode(65 + index),
+          content,
+          isCorrect: index === seed.correctIndex,
+          sortOrder: index + 1,
+        })),
+      });
+    }
+    if (seed.textAnswer !== undefined) {
+      await prisma.questionAcceptedAnswer.create({
+        data: {
+          questionVersionId: version.id,
+          textValue: seed.textAnswer,
+          normalizedText: seed.textAnswer.toLowerCase(),
+          isPrimary: true,
+          sortOrder: 1,
+        },
+      });
+    }
+    if (seed.numericAnswer !== undefined) {
+      await prisma.questionAcceptedAnswer.create({
+        data: {
+          questionVersionId: version.id,
+          numericValue: seed.numericAnswer,
+          numericTolerance: seed.numericTolerance ?? 0,
+          isPrimary: true,
+          sortOrder: 1,
+        },
+      });
+    }
     versionIds.push(version.id);
   }
 

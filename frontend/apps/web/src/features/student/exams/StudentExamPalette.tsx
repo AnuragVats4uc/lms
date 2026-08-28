@@ -20,16 +20,20 @@ import {
 } from "./studentExamAttempt.types";
 
 type StudentExamPaletteProps = {
+  currentIndex: number;
   currentQuestionId: number;
   drafts: Record<number, QuestionDraft>;
   groups: SectionGroup[];
+  sequential: boolean;
   onNavigate: (index: number) => void;
 };
 
 export function StudentExamPalette({
+  currentIndex,
   currentQuestionId,
   drafts,
   groups,
+  sequential,
   onNavigate,
 }: StudentExamPaletteProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -96,6 +100,10 @@ export function StudentExamPalette({
                       draft,
                       question.state.visited,
                     );
+                    const sequentiallyLocked =
+                      sequential &&
+                      globalIndex !== currentIndex &&
+                      globalIndex !== currentIndex + 1;
                     return (
                       <button
                         aria-current={
@@ -103,7 +111,7 @@ export function StudentExamPalette({
                         }
                         aria-label={`Question ${question.order}, ${state}`}
                         className={`${styles.paletteQuestion} ${styles[state]}`}
-                        disabled={group.locked}
+                        disabled={group.locked || sequentiallyLocked}
                         key={question.id}
                         onClick={() => onNavigate(globalIndex)}
                         type="button"

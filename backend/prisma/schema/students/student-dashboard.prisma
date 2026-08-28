@@ -18,17 +18,17 @@ model Student {
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
-  profile        StudentProfile?
-  enrollments    StudentEnrollment[]
-  courseProgress StudentCourseProgress[]
-  videoProgress  StudentVideoProgress[]
-  notifications  StudentNotification[]
-  examAttempts   StudentExamAttempt[]
-  registrationAnswers OrganizationRegistrationAnswer[]
-  authenticationAttempts AuthenticationAttempt[]
-  activitySessions       UserActivitySession[]
+  profile                  StudentProfile?
+  enrollments              StudentEnrollment[]
+  courseProgress           StudentCourseProgress[]
+  videoProgress            StudentVideoProgress[]
+  notifications            StudentNotification[]
+  examAttempts             StudentExamAttempt[]
+  registrationAnswers      OrganizationRegistrationAnswer[]
+  authenticationAttempts   AuthenticationAttempt[]
+  activitySessions         UserActivitySession[]
   resourceActivitySessions StudentResourceActivitySession[]
-  activityEvents         StudentActivityEvent[]
+  activityEvents           StudentActivityEvent[]
 
   @@unique([organizationId, rollNumber], map: "students_organization_id_roll_number_unique")
   @@index([organizationId], map: "students_organization_id_idx")

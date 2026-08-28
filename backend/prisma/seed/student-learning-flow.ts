@@ -788,6 +788,7 @@ async function createExamGraph(
       availableUntil: new Date('2027-12-31T23:59:59.000Z'),
       durationMinutes: seed.minutes,
       attemptLimit: seed.attempts,
+      passingPercentage: index === 0 ? 60 : 70,
       autoSubmitOnTimeout: true,
       allowResume: index !== 4,
       resultReleaseMode:

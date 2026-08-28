@@ -22,7 +22,7 @@ model OrganizationRegistrationPage {
   successTitle     String  @default("Registration Successful") @map("success_title") @db.VarChar(120)
   successMessage   String? @map("success_message") @db.Text
 
-  registrationEnabled    Boolean @default(false) @map("registration_enabled")
+  registrationEnabled      Boolean @default(false) @map("registration_enabled")
   requireEmailVerification Boolean @default(false) @map("require_email_verification")
   requirePhoneVerification Boolean @default(false) @map("require_phone_verification")
 
@@ -67,7 +67,7 @@ model OrganizationRegistrationField {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  registrationPage OrganizationRegistrationPage @relation(fields: [registrationPageId], references: [id], onDelete: Cascade)
+  registrationPage OrganizationRegistrationPage          @relation(fields: [registrationPageId], references: [id], onDelete: Cascade)
   options          OrganizationRegistrationFieldOption[]
   answers          OrganizationRegistrationAnswer[]
 
@@ -134,7 +134,7 @@ model OrganizationEducationOption {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  organization      Organization                              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization      Organization                                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   registrationPages OrganizationRegistrationPageEducationOption[]
 
   @@unique([organizationId, name], map: "organization_education_options_org_name_unique")
@@ -156,7 +156,7 @@ model OrganizationDigitalLibraryLocation {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  organization      Organization                                      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization      Organization                                         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   registrationPages OrganizationRegistrationPageDigitalLibraryLocation[]
 
   @@unique([organizationId, name], map: "organization_library_locations_org_name_unique")
@@ -213,8 +213,8 @@ model OrganizationRegistrationPageDigitalLibraryLocation {
   id   Int    @id @default(autoincrement())
   uuid String @unique(map: "org_registration_page_library_uuid_key") @default(uuid())
 
-  registrationPageId        Int @map("registration_page_id")
-  digitalLibraryLocationId  Int @map("digital_library_location_id")
+  registrationPageId       Int @map("registration_page_id")
+  digitalLibraryLocationId Int @map("digital_library_location_id")
 
   sortOrder Int     @default(0) @map("sort_order")
   isActive  Boolean @default(true) @map("is_active")
@@ -222,8 +222,8 @@ model OrganizationRegistrationPageDigitalLibraryLocation {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  registrationPage       OrganizationRegistrationPage          @relation(fields: [registrationPageId], references: [id], onDelete: Cascade)
-  digitalLibraryLocation OrganizationDigitalLibraryLocation    @relation(fields: [digitalLibraryLocationId], references: [id], onDelete: Cascade)
+  registrationPage       OrganizationRegistrationPage       @relation(fields: [registrationPageId], references: [id], onDelete: Cascade)
+  digitalLibraryLocation OrganizationDigitalLibraryLocation @relation(fields: [digitalLibraryLocationId], references: [id], onDelete: Cascade)
 
   @@unique([registrationPageId, digitalLibraryLocationId], map: "org_registration_page_library_page_location_unique")
   @@index([registrationPageId, sortOrder], map: "org_registration_page_library_page_sort_idx")

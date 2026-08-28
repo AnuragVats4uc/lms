@@ -11,11 +11,14 @@
   --exam-muted: #75809a;
   --exam-border: #e4e8f1;
   min-width: 0;
-  min-height: 100dvh;
+  width: 100%;
+  height: 100dvh;
+  min-height: 600px;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 12px;
-  padding: 12px 14px 10px;
+  gap: 10px;
+  overflow: hidden;
+  padding: clamp(10px, 1.8vh, 16px) clamp(14px, 4vw, 56px);
   background:
     radial-gradient(
       circle at 6% 0%,
@@ -47,13 +50,13 @@
 }
 
 .examHeader {
-  min-height: 96px;
+  min-height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  border-radius: 16px;
-  padding: 16px 18px;
+  border-radius: 13px;
+  padding: 10px 14px;
 }
 
 .examIdentity,
@@ -70,17 +73,17 @@
 
 .examIdentity {
   min-width: 0;
-  gap: 16px;
+  gap: 12px;
 }
 
 .examIcon {
-  width: 50px;
-  height: 50px;
-  flex: 0 0 50px;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
   display: grid;
   place-items: center;
   border: 1px solid #e8e0ff;
-  border-radius: 12px;
+  border-radius: 10px;
   background: linear-gradient(145deg, #f6f2ff, #eee8ff);
   color: var(--exam-purple);
 }
@@ -91,7 +94,7 @@
 
 .examTitleBlock h1 {
   overflow: hidden;
-  margin: 0 0 10px;
+  margin: 0 0 6px;
   color: var(--exam-navy);
   font-size: clamp(17px, 1.2vw, 18px);
   font-weight: 750;
@@ -103,7 +106,7 @@
 
 .examMeta {
   flex-wrap: wrap;
-  gap: 7px 18px;
+  gap: 5px 14px;
   color: #33405e;
   font-size: 11.5px;
   font-weight: 550;
@@ -125,30 +128,30 @@
 .headerActions {
   flex: 0 0 auto;
   justify-content: flex-end;
-  gap: 14px;
+  gap: 10px;
 }
 
 .timerGroup {
   overflow: hidden;
-  min-height: 56px;
+  min-height: 48px;
   border: 1px solid #e6e5f4;
   border-radius: 11px;
   background: #fbfaff;
 }
 
 .timerCard {
-  min-width: 150px;
-  min-height: 56px;
+  min-width: 138px;
+  min-height: 48px;
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: center;
   gap: 10px;
-  padding: 8px 14px;
+  padding: 7px 12px;
 }
 
 .timerCard > svg {
-  width: 24px;
-  height: 24px;
+  width: 21px;
+  height: 21px;
 }
 
 .timerCard + .timerCard {
@@ -161,7 +164,7 @@
 }
 
 .timerCard strong {
-  font-size: 18.5px;
+  font-size: 16.5px;
   font-variant-numeric: tabular-nums;
   font-weight: 650;
   letter-spacing: 0.015em;
@@ -198,8 +201,8 @@
 }
 
 .submitExamButton {
-  width: 150px;
-  height: 48px;
+  width: 142px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -218,23 +221,27 @@
 
 .examLayout {
   min-width: 0;
+  min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  align-items: start;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) clamp(290px, 24vw, 330px);
+  align-items: stretch;
+  gap: 10px;
+  overflow: hidden;
 }
 
 .questionWorkspace,
 .palettePanel {
   min-width: 0;
-  border-radius: 15px;
+  border-radius: 13px;
 }
 
 .questionWorkspace {
-  min-height: calc(100dvh - 182px);
+  min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 16px 17px 18px;
+  overflow: hidden;
+  padding: 0;
 }
 
 .sectionToolbar {
@@ -242,8 +249,9 @@
   display: grid;
   grid-template-columns: minmax(190px, 1fr) auto auto;
   align-items: center;
-  gap: 12px;
-  padding-bottom: 14px;
+  flex: 0 0 auto;
+  gap: 9px;
+  padding: 10px 13px;
 }
 
 .sectionIdentity {
@@ -252,9 +260,9 @@
 }
 
 .sectionIdentity > span {
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
   display: grid;
   place-items: center;
   border-radius: 10px;
@@ -277,7 +285,7 @@
   overflow: hidden;
   max-width: 230px;
   color: var(--exam-navy);
-  font-size: 14.5px;
+  font-size: 13.5px;
   font-weight: 750;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -286,7 +294,7 @@
 .sectionInstructionsButton,
 .sectionMenuTrigger,
 .metric {
-  min-height: 38px;
+  min-height: 34px;
   border: 1px solid #ebe8f7;
   border-radius: 9px;
   background: #fcfbff;
@@ -299,8 +307,8 @@
   justify-content: center;
   flex: 0 0 auto;
   gap: 7px;
-  padding: 0 13px;
-  font-size: 11.5px;
+  padding: 0 11px;
+  font-size: 11px;
   font-weight: 650;
   cursor: pointer;
   white-space: nowrap;
@@ -310,7 +318,7 @@
   min-width: 0;
   justify-content: flex-end;
   flex: 0 0 auto;
-  gap: 8px;
+  gap: 6px;
 }
 
 .metric {
@@ -318,9 +326,9 @@
   align-items: center;
   flex: 0 0 auto;
   gap: 7px;
-  padding: 0 12px;
+  padding: 0 10px;
   color: #17213e;
-  font-size: 11.5px;
+  font-size: 10.5px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -334,7 +342,7 @@
 }
 
 .sectionMenuTrigger {
-  width: 112px;
+  width: 104px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -404,9 +412,11 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  border: 1px solid #e0e5ef;
-  border-radius: 14px;
-  padding: 26px 30px 24px;
+  overflow: hidden;
+  border: 0;
+  border-top: 1px solid #e7eaf1;
+  border-radius: 0;
+  padding: 14px 18px 12px;
   background: #fff;
 }
 
@@ -420,26 +430,44 @@
 .questionHeader h2 {
   margin: 0;
   color: var(--exam-navy);
-  font-size: 16.5px;
+  font-size: 15px;
   font-weight: 750;
   letter-spacing: -0.012em;
 }
 
 .questionHeaderActions {
-  gap: 12px;
+  gap: 9px;
 }
 
 .positiveMarks,
-.negativeMarks {
-  min-width: 62px;
-  min-height: 34px;
+.negativeMarks,
+.questionDifficulty {
+  min-width: 55px;
+  min-height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  font-size: 12.5px;
+  font-size: 11.5px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
+}
+
+.questionDifficulty {
+  min-width: auto;
+  padding: 0 11px;
+  color: #78600d;
+  background: #fff3c9;
+}
+
+.questionDifficulty[data-level="EASY"] {
+  color: #08785c;
+  background: #ddf7ee;
+}
+
+.questionDifficulty[data-level="HARD"] {
+  color: #b8323e;
+  background: #ffe4e7;
 }
 
 .positiveMarks {
@@ -454,16 +482,16 @@
 
 .reviewButton,
 .reviewActive {
-  min-height: 34px;
+  min-height: 30px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
   border: 0;
   border-left: 1px solid var(--exam-border);
   background: transparent;
-  padding: 0 0 0 16px;
+  padding: 0 0 0 13px;
   color: #34415f;
-  font-size: 12.5px;
+  font-size: 11.5px;
   font-weight: 550;
   cursor: pointer;
   white-space: nowrap;
@@ -480,7 +508,7 @@
 .questionDivider {
   position: relative;
   height: 1px;
-  margin-top: 18px;
+  margin-top: 11px;
   background: var(--exam-border);
 }
 
@@ -496,16 +524,20 @@
 
 .questionBody {
   min-width: 0;
+  min-height: 0;
   flex: 1;
-  padding-top: 22px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 5px 10px 0;
+  scrollbar-gutter: stable;
 }
 
 .comprehension {
-  margin-bottom: 18px;
+  margin-bottom: 13px;
   border: 1px solid #e8eaf1;
   border-radius: 11px;
   background: #fafbfe;
-  padding: 14px 16px;
+  padding: 12px 14px;
 }
 
 .comprehension > strong {
@@ -516,9 +548,9 @@
 }
 
 .questionContent {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
   color: #17213e;
-  font-size: 15.5px;
+  font-size: 15px;
   font-weight: 450;
   line-height: 1.55;
 }
@@ -541,12 +573,38 @@
 .richContent :global(img) {
   display: block;
   max-width: 100%;
-  max-height: 390px;
+  max-height: min(320px, 42dvh);
   width: auto;
   height: auto;
   object-fit: contain;
   margin: 12px 0;
   border-radius: 9px;
+}
+
+.missingMedia {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 10px 0;
+  border: 1px dashed #d7a0a0;
+  border-radius: 8px;
+  background: #fff7f7;
+  padding: 10px 12px;
+  color: #a43f3f;
+  font-size: 12px;
+}
+
+.networkBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-bottom: 1px solid #f3d49a;
+  background: #fff8e8;
+  padding: 8px 16px;
+  color: #8a5700;
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .richContent :global(table) {
@@ -559,7 +617,7 @@
 .options {
   min-width: 0;
   display: grid;
-  gap: 12px;
+  gap: 8px;
   margin: 0;
   border: 0;
   padding: 0;
@@ -569,15 +627,15 @@
 .optionSelected {
   position: relative;
   min-width: 0;
-  min-height: 70px;
+  min-height: 54px;
   display: grid;
   grid-template-columns: auto 38px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
+  gap: 11px;
   border: 1px solid #e1e6f0;
   border-radius: 11px;
   background: #fff;
-  padding: 12px 18px;
+  padding: 9px 14px;
   color: #121b39;
   cursor: pointer;
   transition:
@@ -616,14 +674,14 @@
 }
 
 .optionLetter {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: #f1edff;
   color: var(--exam-purple);
-  font-size: 14.5px;
+  font-size: 13.5px;
   font-weight: 650;
 }
 
@@ -700,14 +758,15 @@
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   align-items: center;
-  gap: 16px;
-  margin-top: 22px;
-  padding-top: 20px;
+  flex: 0 0 auto;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 10px;
   border-top: 1px solid #e9ecf2;
 }
 
 .questionActions button {
-  height: 48px;
+  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -724,7 +783,7 @@
 }
 
 .previousButton {
-  width: 126px;
+  width: 118px;
   justify-self: start;
   border: 1px solid #ded7ff;
   background: #fff;
@@ -732,7 +791,7 @@
 }
 
 .clearButton {
-  width: 156px;
+  width: 144px;
   justify-self: center;
   border: 1px solid #ffbec4;
   background: #fff;
@@ -740,7 +799,7 @@
 }
 
 .nextButton {
-  width: 210px;
+  width: 180px;
   justify-self: end;
 }
 
@@ -756,10 +815,13 @@
 }
 
 .palettePanel {
-  align-self: start;
+  min-height: 0;
+  height: 100%;
+  align-self: stretch;
   display: flex;
   flex-direction: column;
-  padding: 17px 17px 16px;
+  overflow: hidden;
+  padding: 13px 14px 12px;
 }
 
 .palettePanel > h2 {
@@ -772,9 +834,9 @@
 .paletteLegend {
   display: flex;
   flex-wrap: wrap;
-  gap: 13px 18px;
-  margin-top: 14px;
-  padding-bottom: 16px;
+  gap: 9px 13px;
+  margin-top: 10px;
+  padding-bottom: 11px;
   border-bottom: 1px solid #e7eaf1;
   color: #50607d;
   font-size: 9.5px;
@@ -815,12 +877,16 @@
 }
 
 .paletteSections {
-  flex: 0 0 auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 3px;
 }
 
 .paletteSection {
   border-bottom: 1px solid #e8ebf2;
-  padding: 16px 0;
+  padding: 12px 0;
 }
 
 .paletteSectionHeader {
@@ -852,16 +918,16 @@
 
 .paletteGrid {
   display: grid;
-  grid-template-columns: repeat(5, 50px);
+  grid-template-columns: repeat(5, minmax(38px, 1fr));
   justify-content: space-between;
-  gap: 10px;
-  margin-top: 16px;
+  gap: 8px;
+  margin-top: 11px;
 }
 
 .paletteQuestion {
   position: relative;
-  width: 50px;
-  height: 45px;
+  width: 100%;
+  height: 38px;
   border: 1px solid #e1e5ee;
   border-radius: 9px;
   background: linear-gradient(145deg, #fff, #f8f9fc);
@@ -926,7 +992,8 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   overflow: hidden;
-  margin-top: 16px;
+  flex: 0 0 auto;
+  margin-top: 10px;
   border: 1px solid #e1e5ee;
   border-radius: 10px;
 }
@@ -938,8 +1005,8 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  min-height: 94px;
-  padding: 9px 3px;
+  min-height: 68px;
+  padding: 7px 3px;
   text-align: center;
 }
 
@@ -960,7 +1027,7 @@
 }
 
 .paletteSummary strong {
-  font-size: 18.5px;
+  font-size: 16px;
   font-weight: 650;
   line-height: 1;
 }
@@ -983,12 +1050,12 @@
 }
 
 .statusFooter {
-  min-height: 50px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   gap: 16px;
-  border-radius: 12px;
-  padding: 0 18px;
+  border-radius: 10px;
+  padding: 0 14px;
   color: #4a5a78;
   font-size: 10.5px;
 }
@@ -1414,7 +1481,7 @@
 }
 
 .loadingLayout > div {
-  min-height: 720px;
+  min-height: 0;
 }
 
 .loadingFooter {
@@ -1467,6 +1534,13 @@
 }
 
 @media (max-width: 1023px) {
+  .page {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+    padding-inline: 18px;
+  }
+
   .examHeader {
     align-items: flex-start;
     flex-direction: column;
@@ -1480,14 +1554,24 @@
   .examLayout,
   .loadingLayout {
     grid-template-columns: 1fr;
+    overflow: visible;
   }
 
   .palettePanel {
     position: static;
+    height: auto;
+    overflow: visible;
   }
 
   .questionWorkspace {
     min-height: auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  .questionBody,
+  .paletteSections {
+    overflow: visible;
   }
 
   .paletteSections {
@@ -1510,10 +1594,13 @@
   }
 
   .examHeader,
-  .questionWorkspace,
   .palettePanel,
   .questionCard {
     padding: 16px;
+  }
+
+  .questionWorkspace {
+    padding: 0;
   }
 
   .examIdentity {

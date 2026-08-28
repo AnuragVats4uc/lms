@@ -2,16 +2,22 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   CalendarClock,
+  CalendarX2,
   CheckCircle2,
   Clock3,
   FileQuestion,
+  Info,
   RefreshCw,
   Trophy,
+  X,
 } from "lucide-react";
 import { studentsApi } from "@repo/api";
+import type { StudentExamActionReason } from "@repo/types";
 
 export function StudentExamResourcePage({
   resourceId,
@@ -19,6 +25,10 @@ export function StudentExamResourcePage({
   resourceId: number;
 }) {
   const router = useRouter();
+  const [accessDialogOpen, setAccessDialogOpen] = useState(false);
+  const [accessDialogMessage, setAccessDialogMessage] = useState<string | null>(
+    null,
+  );
   const query = useQuery({
     queryKey: ["student-exam-resource", resourceId],
     queryFn: () => studentsApi.findMyExamResource(resourceId),
@@ -28,6 +38,11 @@ export function StudentExamResourcePage({
     mutationFn: () => studentsApi.startMyExam(resourceId),
     onSuccess: (result) =>
       router.push(`/student/exam-attempts/${result.attemptUuid}`),
+    onError: (error) => {
+      setAccessDialogMessage(readApiError(error));
+      setAccessDialogOpen(true);
+      void query.refetch();
+    },
   });
   if (query.isLoading)
     return (
@@ -61,8 +76,18 @@ export function StudentExamResourcePage({
       );
       return;
     }
+    if (data.exam.action === "UNAVAILABLE") {
+      setAccessDialogMessage(null);
+      setAccessDialogOpen(true);
+      return;
+    }
     startMutation.mutate();
   };
+  const showReasonAction =
+    data.exam.action === "VIEW_RESULT" &&
+    ["ATTEMPT_LIMIT_EXHAUSTED", "EXAM_ENDED"].includes(
+      data.exam.actionReason,
+    );
   return (
     <main className="student-folder-page">
       <nav className="student-folder-breadcrumb" aria-label="Breadcrumb">
@@ -151,9 +176,7 @@ export function StudentExamResourcePage({
           </p>
           <button
             className="student-folder-primary-button exam-start"
-            disabled={
-              data.exam.action === "UNAVAILABLE" || startMutation.isPending
-            }
+            disabled={startMutation.isPending}
             onClick={openExam}
           >
             {startMutation.isPending
@@ -164,15 +187,154 @@ export function StudentExamResourcePage({
                   ? "View result"
                   : data.exam.action === "START"
                     ? "Start exam"
-                    : "Exam unavailable"}
+                    : unavailableActionLabel(data.exam.actionReason)}
           </button>
+          <div
+            className="student-exam-action-note"
+            data-tone={
+              data.exam.actionReason === "READY" ||
+              data.exam.actionReason === "ACTIVE_ATTEMPT"
+                ? "positive"
+                : "neutral"
+            }
+          >
+            <Info size={15} />
+            <span>{data.exam.actionMessage}</span>
+          </div>
+          {showReasonAction ? (
+            <button
+              className="student-exam-reason-button"
+              onClick={() => {
+                setAccessDialogMessage(null);
+                setAccessDialogOpen(true);
+              }}
+              type="button"
+            >
+              Why can&apos;t I start another attempt?
+            </button>
+          ) : null}
           {startMutation.isError ? (
-            <small role="alert">Unable to start the exam. Please try again.</small>
+            <small role="alert">
+              The exam could not be started. Review the message below.
+            </small>
           ) : null}
         </aside>
       </div>
+      <ExamAccessDialog
+        message={accessDialogMessage ?? data.exam.actionMessage}
+        onClose={() => setAccessDialogOpen(false)}
+        open={accessDialogOpen}
+        reason={data.exam.actionReason}
+      />
     </main>
   );
+}
+
+function ExamAccessDialog({
+  message,
+  onClose,
+  open,
+  reason,
+}: {
+  message: string;
+  onClose: () => void;
+  open: boolean;
+  reason: StudentExamActionReason;
+}) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    closeRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose, open]);
+  if (!open) return null;
+
+  const isEnded = reason === "EXAM_ENDED";
+  const isExhausted = reason === "ATTEMPT_LIMIT_EXHAUSTED";
+  const Icon = isEnded ? CalendarX2 : isExhausted ? AlertTriangle : Info;
+  const title = isEnded
+    ? "This exam has ended"
+    : isExhausted
+      ? "Attempt limit reached"
+      : reason === "EXAM_UPCOMING"
+        ? "This exam has not opened yet"
+        : reason === "RESUME_DISABLED"
+          ? "This attempt cannot be resumed"
+          : "Exam access information";
+
+  return (
+    <div
+      className="student-exam-access-backdrop"
+      onMouseDown={(event) => {
+        if (event.currentTarget === event.target) onClose();
+      }}
+    >
+      <section
+        aria-labelledby="student-exam-access-title"
+        aria-modal="true"
+        className="student-exam-access-dialog"
+        role="dialog"
+      >
+        <button
+          aria-label="Close message"
+          className="student-exam-access-close"
+          onClick={onClose}
+          ref={closeRef}
+          type="button"
+        >
+          <X size={17} />
+        </button>
+        <span className="student-exam-access-icon">
+          <Icon size={25} />
+        </span>
+        <p>EXAM STATUS</p>
+        <h2 id="student-exam-access-title">{title}</h2>
+        <span>{message}</span>
+        <div className="student-exam-access-guidance">
+          <strong>What you can do</strong>
+          <p>
+            {isEnded || isExhausted
+              ? "Open any released result from this page. If another attempt is required, contact your teacher or administrator."
+              : "Check the availability details on this page. Contact your teacher if the schedule or access does not look correct."}
+          </p>
+        </div>
+        <button
+          className="student-folder-primary-button"
+          onClick={onClose}
+          type="button"
+        >
+          I understand
+        </button>
+      </section>
+    </div>
+  );
+}
+
+function unavailableActionLabel(reason: StudentExamActionReason) {
+  if (reason === "EXAM_UPCOMING") return "Exam starts later";
+  if (reason === "EXAM_ENDED") return "Exam ended";
+  if (reason === "ATTEMPT_LIMIT_EXHAUSTED") return "Attempts exhausted";
+  return "View access details";
+}
+
+function readApiError(error: unknown) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error &&
+    typeof error.response === "object" &&
+    error.response !== null &&
+    "data" in error.response
+  ) {
+    const data = error.response.data as { message?: string | string[] };
+    if (Array.isArray(data.message)) return data.message.join(" ");
+    if (typeof data.message === "string") return data.message;
+  }
+  return "The exam could not be started because its availability changed. Refresh the page and review the current status.";
 }
 
 function ExamStat({

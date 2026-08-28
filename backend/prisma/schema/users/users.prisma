@@ -13,14 +13,14 @@ model User {
   isVerified     Boolean    @default(false) @map("is_verified")
   lastLoginAt    DateTime?  @map("last_login_at")
 
-  organization          Organization?      @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  refreshTokens         RefreshToken[]
-  userRoles             UserRole[]
-  student               Student?
-  instructorAssignments CourseInstructor[] @relation("CourseInstructors")
-  examImportJobs        ExamImportJob[]    @relation("ExamImportUploader")
+  organization           Organization?           @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  refreshTokens          RefreshToken[]
+  userRoles              UserRole[]
+  student                Student?
+  instructorAssignments  CourseInstructor[]      @relation("CourseInstructors")
+  examImportJobs         ExamImportJob[]         @relation("ExamImportUploader")
   authenticationAttempts AuthenticationAttempt[]
-  activitySessions      UserActivitySession[]
+  activitySessions       UserActivitySession[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
