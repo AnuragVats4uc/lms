@@ -1,7 +1,5 @@
 import 'dotenv/config';
-import {
-  ConfigService,
-} from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import {
   CourseStatus,
   ExamNavigationMode,
@@ -28,6 +26,8 @@ import { PasswordService } from '../../src/modules/auth/services/password.servic
 import { QUESTION_TYPE_IDS } from '../../src/modules/exam/constants/question-type.constants';
 import { RESOURCE_TYPE_IDS } from '../../src/modules/resource/constants/resource-type.constants';
 import { seedResourceTypes } from './resource-types';
+import { ensureOrganizationActivityPolicies } from './activity-policies';
+import { seedDemoActivityHistory } from './demo-activity-history';
 
 const prisma = new PrismaClient();
 const DEMO_ORG_CODE = 'LMS-DEMO';
@@ -91,6 +91,7 @@ async function main() {
   await seedSystemReferenceData();
   const rolesByCode = await seedRolesAndPermissions();
   const organization = await seedOrganization();
+  await ensureOrganizationActivityPolicies(prisma);
   const users = await seedUsers(organization.id, rolesByCode);
   const session = await seedSession(organization.id);
   const course = await seedCourse();
@@ -111,6 +112,16 @@ async function main() {
     sessionCourse.id,
     folders.gettingStarted.id,
   );
+  const activityHistory = await seedDemoActivityHistory(prisma, {
+    organizationId: organization.id,
+    studentId: users.student.id,
+    studentUserId: users.student.userId,
+    studentEmail: credentials.student.email,
+    adminUserId: users.admin.id,
+    counselorUserId: users.counselor.id,
+    sessionCourseId: sessionCourse.id,
+    examId: exam.id,
+  });
   const educationOptions = await seedEducationOptions(organization.id);
   const libraryLocations = await seedDigitalLibraryLocations(organization.id);
   await seedRegistrationPage(
@@ -127,6 +138,11 @@ async function main() {
   console.log(`Course: ${DEMO_COURSE_CODE}`);
   console.log(`Exam: ${exam.code}`);
   console.log(`Registration: /register/${DEMO_REGISTRATION_SLUG}`);
+  console.log(`Admin report: /admin/students/${users.student.uuid}/activity`);
+  console.log(
+    `Teacher report: /teacher/students/${users.student.uuid}/activity`,
+  );
+  console.log('Activity history:', activityHistory);
   console.log('\nDemo credentials');
   console.table(credentials);
 }
@@ -215,9 +231,11 @@ async function seedRolesAndPermissions() {
     rolesByCode.set(code, { id: role.id });
   }
 
-  await replaceRolePermissions(rolesByCode.get('ADMIN')!.id, [
-    ...allPermissionKeys,
-  ], permissions);
+  await replaceRolePermissions(
+    rolesByCode.get('ADMIN')!.id,
+    [...allPermissionKeys],
+    permissions,
+  );
   await replaceRolePermissions(
     rolesByCode.get('TEACHER')!.id,
     allPermissionKeys.filter((key) => key.endsWith('.read')),
@@ -413,7 +431,11 @@ async function upsertUser(
   });
 }
 
-async function assignRole(userId: number, roleId: number, organizationId: number) {
+async function assignRole(
+  userId: number,
+  roleId: number,
+  organizationId: number,
+) {
   await prisma.userRole.upsert({
     where: {
       userId_roleId_organizationId: { userId, roleId, organizationId },
@@ -457,7 +479,8 @@ async function seedCourse() {
     where: { code: DEMO_COURSE_CODE },
     update: {
       name: 'Competitive Exam Preparation',
-      description: 'A concise demo course covering lessons, resources, and assessment.',
+      description:
+        'A concise demo course covering lessons, resources, and assessment.',
       thumbnail: null,
       durationInDays: 180,
       status: CourseStatus.ACTIVE,
@@ -466,7 +489,8 @@ async function seedCourse() {
     create: {
       name: 'Competitive Exam Preparation',
       code: DEMO_COURSE_CODE,
-      description: 'A concise demo course covering lessons, resources, and assessment.',
+      description:
+        'A concise demo course covering lessons, resources, and assessment.',
       durationInDays: 180,
       status: CourseStatus.ACTIVE,
       isActive: true,
@@ -498,7 +522,10 @@ async function seedSessionCourse(sessionId: number, courseId: number) {
   });
 }
 
-async function seedCourseInstructor(sessionCourseId: number, instructorId: number) {
+async function seedCourseInstructor(
+  sessionCourseId: number,
+  instructorId: number,
+) {
   await prisma.courseInstructor.upsert({
     where: {
       sessionCourseId_instructorId: { sessionCourseId, instructorId },
@@ -571,7 +598,10 @@ async function upsertFolder(
   });
 }
 
-async function seedLearningResources(gettingStartedFolderId: number, studyFolderId: number) {
+async function seedLearningResources(
+  gettingStartedFolderId: number,
+  studyFolderId: number,
+) {
   await prisma.resource.upsert({
     where: { uuid: '10000000-0000-4000-8000-000000000101' },
     update: {
@@ -579,7 +609,8 @@ async function seedLearningResources(gettingStartedFolderId: number, studyFolder
       title: 'Welcome Guide PDF',
       description: 'A short PDF used to demonstrate document resources.',
       resourceTypeId: RESOURCE_TYPE_IDS.DOCUMENT,
-      documentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+      documentUrl:
+        'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       videoUrl: null,
       examId: null,
       mimeType: 'application/pdf',
@@ -597,7 +628,8 @@ async function seedLearningResources(gettingStartedFolderId: number, studyFolder
       title: 'Welcome Guide PDF',
       description: 'A short PDF used to demonstrate document resources.',
       resourceTypeId: RESOURCE_TYPE_IDS.DOCUMENT,
-      documentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+      documentUrl:
+        'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       mimeType: 'application/pdf',
       fileSize: BigInt(13264),
       sortOrder: 1,
@@ -668,7 +700,10 @@ async function seedExamResource(
       isActive: true,
     },
   });
-  const questionVersionIds = await seedDemoQuestions(organizationId, subject.id);
+  const questionVersionIds = await seedDemoQuestions(
+    organizationId,
+    subject.id,
+  );
 
   const template = await prisma.examTemplate.create({
     data: {
@@ -752,7 +787,7 @@ async function seedExamResource(
       availableFrom: new Date('2026-01-01T00:00:00.000Z'),
       availableUntil: new Date('2027-12-31T23:59:59.000Z'),
       durationMinutes: 15,
-      attemptLimit: 3,
+      attemptLimit: 5,
       autoSubmitOnTimeout: true,
       allowResume: true,
       resultReleaseMode: ExamResultReleaseMode.IMMEDIATE,
@@ -771,7 +806,8 @@ async function seedExamResource(
       uuid: DEMO_EXAM_RESOURCE_UUID,
       folderId,
       title: 'Demo Foundation Check',
-      description: 'A minimal published exam resource connected to a valid exam.',
+      description:
+        'A minimal published exam resource connected to a valid exam.',
       resourceTypeId: RESOURCE_TYPE_IDS.EXAM,
       examId: exam.id,
       sortOrder: 1,
@@ -798,7 +834,9 @@ async function cleanupDemoExam(organizationId: number) {
     await prisma.resource.deleteMany({ where: { examId: { in: examIds } } });
     await prisma.exam.deleteMany({ where: { id: { in: examIds } } });
   }
-  await prisma.resource.deleteMany({ where: { uuid: DEMO_EXAM_RESOURCE_UUID } });
+  await prisma.resource.deleteMany({
+    where: { uuid: DEMO_EXAM_RESOURCE_UUID },
+  });
   await prisma.examTemplate.deleteMany({
     where: { organizationId, code: `TPL-${DEMO_EXAM_CODE}` },
   });

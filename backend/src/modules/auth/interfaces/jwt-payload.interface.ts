@@ -7,4 +7,6 @@ export interface JwtPayload {
   organizationId?: number | null;
 
   roles: string[];
+
+  activitySessionUuid?: string;
 }

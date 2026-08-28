@@ -27,6 +27,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ExamModule } from './modules/exam/exam.module';
 import { RegistrationModule } from './modules/registration/registration.module';
 import { TeacherModule } from './modules/teacher/teacher.module';
+import { ActivityModule } from './modules/activity/activity.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { TeacherModule } from './modules/teacher/teacher.module';
     UsersModule,
     ExamModule,
     RegistrationModule,
+    ActivityModule,
   ],
   controllers: [AppController],
   providers: [

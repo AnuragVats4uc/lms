@@ -187,6 +187,33 @@ export interface UpdateStudentVideoProgressRequest {
   ended?: boolean;
 }
 
+export type StudentResourceActivityEventType =
+  | "RESOURCE_DOWNLOAD"
+  | "DOCUMENT_FULLSCREEN_ENTER"
+  | "DOCUMENT_FULLSCREEN_EXIT"
+  | "VIDEO_PLAY"
+  | "VIDEO_PAUSE"
+  | "VIDEO_SEEK"
+  | "VIDEO_COMPLETE";
+
+export type StudentResourceActivityEndReason =
+  "CLOSED" | "NAVIGATED_AWAY" | "COMPLETED";
+
+export interface StudentResourceActivitySession {
+  sessionUuid: string;
+  startedAt: string;
+  heartbeatSeconds: number;
+  idleThresholdSeconds: number;
+}
+
+export interface StudentResourceActivityHeartbeat {
+  sessionUuid: string;
+  lastHeartbeatAt: string;
+  activeDurationSeconds: number;
+  idleDurationSeconds: number;
+  completed: boolean;
+}
+
 export type StudentExamAvailability =
   "AVAILABLE" | "UPCOMING" | "CLOSED" | "UNAVAILABLE";
 

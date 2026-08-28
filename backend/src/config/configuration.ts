@@ -18,4 +18,8 @@ export default () => ({
   bcrypt: {
     saltRounds: Number(process.env.BCRYPT_SALT_ROUNDS),
   },
+  activity: {
+    retentionWorkerEnabled:
+      process.env.ACTIVITY_RETENTION_WORKER_ENABLED !== 'false',
+  },
 });

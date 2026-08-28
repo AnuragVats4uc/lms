@@ -31,6 +31,8 @@ model Resource {
   videoProgress              StudentVideoProgress[]
   exam                       Exam?                   @relation(fields: [examId], references: [id], onDelete: Restrict)
   examAttempts               StudentExamAttempt[]    @relation("StudentExamAttemptSourceResource")
+  activitySessions           StudentResourceActivitySession[]
+  activityEvents             StudentActivityEvent[]
 
   @@index([folderId], map: "resources_folder_id_idx")
   @@index([resourceTypeId], map: "resources_type_idx")

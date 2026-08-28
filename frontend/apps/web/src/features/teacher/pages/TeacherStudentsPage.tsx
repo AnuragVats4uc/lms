@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "next/navigation";
-import { UsersRound } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { BarChart3, UsersRound } from "lucide-react";
 import { teacherApi } from "@repo/api";
 import type { TeacherStudentListItem } from "@repo/types";
 import { PageContainer } from "@repo/ui/dashboard";
@@ -16,12 +16,10 @@ import {
   DataTableTextCell,
   type DataTableColumn,
 } from "@/components/DataTable";
-import {
-  CrudPageHeader,
-  CrudToolbar,
-} from "@/features/admin/components/crud";
+import { CrudPageHeader, CrudToolbar } from "@/features/admin/components/crud";
 
 export function TeacherStudentsPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -91,6 +89,15 @@ export function TeacherStudentsPage() {
         values={{ course: sessionCourseId }}
       />
       <DataTable<TeacherStudentListItem>
+        actions={[
+          {
+            icon: <BarChart3 aria-hidden="true" size={16} />,
+            id: "activity-report",
+            label: "Activity report",
+            onAction: (row) =>
+              router.push(`/teacher/students/${row.student.uuid}/activity`),
+          },
+        ]}
         columns={columns}
         data={data?.items ?? []}
         emptyState={{
@@ -118,6 +125,9 @@ export function TeacherStudentsPage() {
         }
         getRowId={(item) => item.id}
         loading={studentsQuery.isLoading}
+        onRowClick={(row) =>
+          router.push(`/teacher/students/${row.student.uuid}/activity`)
+        }
         onPageChange={setPage}
         onPageSizeChange={(nextLimit) => {
           setLimit(nextLimit);

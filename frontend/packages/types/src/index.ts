@@ -12,6 +12,7 @@ export * from "./session";
 export * from "./session-course";
 export * from "./student-courses";
 export * from "./student-dashboard";
+export * from "./student-activity-report";
 export * from "./student-resources";
 export * from "./teacher-dashboard";
 export * from "./user";

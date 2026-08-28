@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Param,
   ParseIntPipe,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -45,6 +46,13 @@ import { StudentQueryDto } from '../dto/student-query.dto';
 import { UpdateStudentVideoProgressDto } from '../dto/update-student-video-progress.dto';
 import { UpdateStudentDto } from '../dto/update-student.dto';
 import { StudentsService } from '../services/students.service';
+import {
+  DocumentPageActivityDto,
+  EndResourceActivityDto,
+  ResourceActivityEventDto,
+  ResourceActivityHeartbeatDto,
+  StartResourceActivityDto,
+} from '../../activity/dto/resource-activity.dto';
 
 type AuthenticatedRequest = Request & { user: CurrentUser };
 
@@ -248,6 +256,85 @@ export class StudentsController {
     return this.studentsService.recordMyResourceAccess(
       request.user,
       resourceId,
+    );
+  }
+
+  @Post('me/resources/:resourceId/activity')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Start an authorized resource activity session' })
+  startMyResourceActivity(
+    @Req() request: AuthenticatedRequest,
+    @Param('resourceId', ParseIntPipe) resourceId: number,
+    @Body() dto: StartResourceActivityDto,
+  ) {
+    return this.studentsService.startMyResourceActivity(
+      request.user,
+      resourceId,
+      dto,
+    );
+  }
+
+  @Post('me/resource-activity/:sessionUuid/heartbeat')
+  @Roles('STUDENT')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Heartbeat an owned resource activity session' })
+  heartbeatMyResourceActivity(
+    @Req() request: AuthenticatedRequest,
+    @Param('sessionUuid', new ParseUUIDPipe()) sessionUuid: string,
+    @Body() dto: ResourceActivityHeartbeatDto,
+  ) {
+    return this.studentsService.heartbeatMyResourceActivity(
+      request.user,
+      sessionUuid,
+      dto,
+    );
+  }
+
+  @Post('me/resource-activity/:sessionUuid/pages')
+  @Roles('STUDENT')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Record a document page change' })
+  switchMyDocumentPage(
+    @Req() request: AuthenticatedRequest,
+    @Param('sessionUuid', new ParseUUIDPipe()) sessionUuid: string,
+    @Body() dto: DocumentPageActivityDto,
+  ) {
+    return this.studentsService.switchMyDocumentPage(
+      request.user,
+      sessionUuid,
+      dto.pageNumber,
+    );
+  }
+
+  @Post('me/resource-activity/:sessionUuid/events')
+  @Roles('STUDENT')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Record an owned resource activity event' })
+  recordMyResourceActivityEvent(
+    @Req() request: AuthenticatedRequest,
+    @Param('sessionUuid', new ParseUUIDPipe()) sessionUuid: string,
+    @Body() dto: ResourceActivityEventDto,
+  ) {
+    return this.studentsService.recordMyResourceActivityEvent(
+      request.user,
+      sessionUuid,
+      dto,
+    );
+  }
+
+  @Post('me/resource-activity/:sessionUuid/end')
+  @Roles('STUDENT')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'End an owned resource activity session' })
+  endMyResourceActivity(
+    @Req() request: AuthenticatedRequest,
+    @Param('sessionUuid', new ParseUUIDPipe()) sessionUuid: string,
+    @Body() dto: EndResourceActivityDto,
+  ) {
+    return this.studentsService.endMyResourceActivity(
+      request.user,
+      sessionUuid,
+      dto,
     );
   }
 

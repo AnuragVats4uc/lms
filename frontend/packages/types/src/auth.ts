@@ -18,6 +18,7 @@ export interface AuthUser {
 export interface AuthTokenPair {
   accessToken: string;
   refreshToken: string;
+  activitySessionUuid?: string;
 }
 
 export interface LoginResponse extends AuthTokenPair {

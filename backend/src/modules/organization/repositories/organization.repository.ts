@@ -31,7 +31,12 @@ export class OrganizationRepository {
 
   create(data: OrganizationCreateData) {
     return this.prisma.organization.create({
-      data,
+      data: {
+        ...data,
+        activityPolicy: {
+          create: {},
+        },
+      },
     });
   }
 

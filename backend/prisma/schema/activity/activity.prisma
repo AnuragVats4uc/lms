@@ -1,0 +1,214 @@
+model OrganizationActivityPolicy {
+  id             Int @id @default(autoincrement())
+  organizationId Int @unique(map: "organization_activity_policies_organization_id_unique") @map("organization_id")
+
+  activityRetentionDays    Int @default(730) @map("activity_retention_days")
+  failedLoginRetentionDays Int @default(365) @map("failed_login_retention_days")
+  idleThresholdSeconds     Int @default(300) @map("idle_threshold_seconds")
+  authHeartbeatSeconds     Int @default(60) @map("auth_heartbeat_seconds")
+  resourceHeartbeatSeconds Int @default(15) @map("resource_heartbeat_seconds")
+  exportExpiryHours        Int @default(24) @map("export_expiry_hours")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "org_activity_policies_org_id_fkey")
+
+  @@map("organization_activity_policies")
+}
+
+model AuthenticationAttempt {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  organizationId Int? @map("organization_id")
+  userId         Int? @map("user_id")
+  studentId      Int? @map("student_id")
+
+  attemptedEmail String                       @map("attempted_email") @db.VarChar(191)
+  outcome        AuthenticationAttemptOutcome
+  failureReason  AuthenticationFailureReason? @map("failure_reason")
+  occurredAt     DateTime                     @default(now()) @map("occurred_at")
+
+  ipAddress       String?            @map("ip_address") @db.VarChar(45)
+  userAgent       String?            @map("user_agent") @db.Text
+  deviceType      ActivityDeviceType @default(UNKNOWN) @map("device_type")
+  browser         String?            @db.VarChar(100)
+  operatingSystem String?            @map("operating_system") @db.VarChar(100)
+  requestId       String?            @map("request_id") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull, map: "authentication_attempts_org_id_fkey")
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull, map: "authentication_attempts_user_id_fkey")
+  student      Student?      @relation(fields: [studentId], references: [id], onDelete: SetNull, map: "authentication_attempts_student_id_fkey")
+
+  @@index([organizationId, occurredAt], map: "authentication_attempts_organization_occurred_idx")
+  @@index([studentId, occurredAt], map: "authentication_attempts_student_occurred_idx")
+  @@index([attemptedEmail, occurredAt], map: "authentication_attempts_email_occurred_idx")
+  @@index([outcome, occurredAt], map: "authentication_attempts_outcome_occurred_idx")
+  @@index([requestId], map: "authentication_attempts_request_id_idx")
+  @@map("authentication_attempts")
+}
+
+model UserActivitySession {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  organizationId Int? @map("organization_id")
+  userId         Int? @map("user_id")
+  studentId      Int? @map("student_id")
+
+  loginAt    DateTime  @default(now()) @map("login_at")
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at")
+  endedAt    DateTime? @map("ended_at")
+
+  elapsedDurationSeconds Int                       @default(0) @map("elapsed_duration_seconds")
+  activeDurationSeconds  Int                       @default(0) @map("active_duration_seconds")
+  idleDurationSeconds    Int                       @default(0) @map("idle_duration_seconds")
+  endReason              ActivitySessionEndReason? @map("end_reason")
+
+  ipAddress       String?              @map("ip_address") @db.VarChar(45)
+  userAgent       String?              @map("user_agent") @db.Text
+  deviceType      ActivityDeviceType   @default(UNKNOWN) @map("device_type")
+  browser         String?              @db.VarChar(100)
+  operatingSystem String?              @map("operating_system") @db.VarChar(100)
+  source          ActivityRecordSource @default(LIVE)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization     Organization?                    @relation(fields: [organizationId], references: [id], onDelete: SetNull, map: "user_activity_sessions_org_id_fkey")
+  user             User?                            @relation(fields: [userId], references: [id], onDelete: SetNull, map: "user_activity_sessions_user_id_fkey")
+  student          Student?                         @relation(fields: [studentId], references: [id], onDelete: SetNull, map: "user_activity_sessions_student_id_fkey")
+  refreshTokens    RefreshToken[]
+  resourceSessions StudentResourceActivitySession[]
+  activityEvents   StudentActivityEvent[]
+
+  @@index([organizationId, loginAt], map: "user_activity_sessions_organization_login_idx")
+  @@index([studentId, loginAt], map: "user_activity_sessions_student_login_idx")
+  @@index([userId, loginAt], map: "user_activity_sessions_user_login_idx")
+  @@index([endedAt, lastSeenAt], map: "user_activity_sessions_open_last_seen_idx")
+  @@map("user_activity_sessions")
+}
+
+model StudentResourceActivitySession {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  organizationId        Int  @map("organization_id")
+  studentId             Int  @map("student_id")
+  userActivitySessionId Int? @map("user_activity_session_id")
+  sessionCourseId       Int? @map("session_course_id")
+  folderId              Int? @map("folder_id")
+  resourceId            Int? @map("resource_id")
+
+  resourceTitleSnapshot    String  @map("resource_title_snapshot") @db.VarChar(200)
+  resourceTypeCodeSnapshot String  @map("resource_type_code_snapshot") @db.VarChar(30)
+  courseNameSnapshot       String? @map("course_name_snapshot") @db.VarChar(200)
+  folderNameSnapshot       String? @map("folder_name_snapshot") @db.VarChar(150)
+
+  startedAt       DateTime  @default(now()) @map("started_at")
+  lastHeartbeatAt DateTime  @default(now()) @map("last_heartbeat_at")
+  endedAt         DateTime? @map("ended_at")
+
+  activeDurationSeconds Int                        @default(0) @map("active_duration_seconds")
+  idleDurationSeconds   Int                        @default(0) @map("idle_duration_seconds")
+  endReason             ResourceActivityEndReason? @map("end_reason")
+
+  startPositionSeconds Int?                 @map("start_position_seconds")
+  finalPositionSeconds Int?                 @map("final_position_seconds")
+  maxPositionSeconds   Int?                 @map("max_position_seconds")
+  lastDocumentPage     Int?                 @map("last_document_page")
+  completed            Boolean              @default(false)
+  source               ActivityRecordSource @default(LIVE)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization        Organization                  @relation(fields: [organizationId], references: [id], onDelete: Restrict, map: "student_resource_sessions_org_id_fkey")
+  student             Student                       @relation(fields: [studentId], references: [id], onDelete: Restrict, map: "student_resource_sessions_student_id_fkey")
+  userActivitySession UserActivitySession?          @relation(fields: [userActivitySessionId], references: [id], onDelete: SetNull, map: "student_resource_sessions_auth_id_fkey")
+  sessionCourse       SessionCourse?                @relation(fields: [sessionCourseId], references: [id], onDelete: SetNull, map: "student_resource_sessions_course_id_fkey")
+  folder              Folder?                       @relation(fields: [folderId], references: [id], onDelete: SetNull, map: "student_resource_sessions_folder_id_fkey")
+  resource            Resource?                     @relation(fields: [resourceId], references: [id], onDelete: SetNull, map: "student_resource_sessions_resource_id_fkey")
+  documentPages       StudentDocumentPageActivity[]
+  activityEvents      StudentActivityEvent[]
+
+  @@index([organizationId, studentId, startedAt], map: "student_resource_sessions_scope_student_started_idx")
+  @@index([studentId, resourceId, startedAt], map: "student_resource_sessions_student_resource_started_idx")
+  @@index([sessionCourseId, studentId, startedAt], map: "student_resource_sessions_course_student_started_idx")
+  @@index([userActivitySessionId, startedAt], map: "student_resource_sessions_auth_started_idx")
+  @@index([endedAt, lastHeartbeatAt], map: "student_resource_sessions_open_heartbeat_idx")
+  @@map("student_resource_activity_sessions")
+}
+
+model StudentDocumentPageActivity {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  resourceActivitySessionId Int @map("resource_activity_session_id")
+  pageNumber                Int @map("page_number")
+  visitSequence             Int @map("visit_sequence")
+
+  enteredAt             DateTime  @default(now()) @map("entered_at")
+  lastHeartbeatAt       DateTime  @default(now()) @map("last_heartbeat_at")
+  exitedAt              DateTime? @map("exited_at")
+  activeDurationSeconds Int       @default(0) @map("active_duration_seconds")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  resourceActivitySession StudentResourceActivitySession @relation(fields: [resourceActivitySessionId], references: [id], onDelete: Cascade, map: "student_document_pages_resource_session_id_fkey")
+
+  @@unique([resourceActivitySessionId, visitSequence], map: "student_document_pages_session_visit_unique")
+  @@index([resourceActivitySessionId, pageNumber], map: "student_document_pages_session_page_idx")
+  @@index([exitedAt, lastHeartbeatAt], map: "student_document_pages_open_heartbeat_idx")
+  @@map("student_document_page_activities")
+}
+
+model StudentActivityEvent {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  clientEventId String? @unique(map: "student_activity_events_client_event_id_unique") @map("client_event_id") @db.VarChar(100)
+
+  organizationId            Int  @map("organization_id")
+  studentId                 Int  @map("student_id")
+  userActivitySessionId     Int? @map("user_activity_session_id")
+  resourceActivitySessionId Int? @map("resource_activity_session_id")
+  sessionCourseId           Int? @map("session_course_id")
+  resourceId                Int? @map("resource_id")
+  examAttemptId             Int? @map("exam_attempt_id")
+
+  eventType                  StudentActivityEventType @map("event_type")
+  occurredAt                 DateTime                 @default(now()) @map("occurred_at")
+  activeDurationDeltaSeconds Int                      @default(0) @map("active_duration_delta_seconds")
+  pageNumber                 Int?                     @map("page_number")
+  videoPositionSeconds       Int?                     @map("video_position_seconds")
+  metadata                   Json?
+
+  resourceTitleSnapshot    String?              @map("resource_title_snapshot") @db.VarChar(200)
+  resourceTypeCodeSnapshot String?              @map("resource_type_code_snapshot") @db.VarChar(30)
+  courseNameSnapshot       String?              @map("course_name_snapshot") @db.VarChar(200)
+  source                   ActivityRecordSource @default(LIVE)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization            Organization                    @relation(fields: [organizationId], references: [id], onDelete: Restrict, map: "student_activity_events_org_id_fkey")
+  student                 Student                         @relation(fields: [studentId], references: [id], onDelete: Restrict, map: "student_activity_events_student_id_fkey")
+  userActivitySession     UserActivitySession?            @relation(fields: [userActivitySessionId], references: [id], onDelete: SetNull, map: "student_activity_events_auth_id_fkey")
+  resourceActivitySession StudentResourceActivitySession? @relation(fields: [resourceActivitySessionId], references: [id], onDelete: SetNull, map: "student_activity_events_resource_session_id_fkey")
+  sessionCourse           SessionCourse?                  @relation(fields: [sessionCourseId], references: [id], onDelete: SetNull, map: "student_activity_events_course_id_fkey")
+  resource                Resource?                       @relation(fields: [resourceId], references: [id], onDelete: SetNull, map: "student_activity_events_resource_id_fkey")
+  examAttempt             StudentExamAttempt?             @relation(fields: [examAttemptId], references: [id], onDelete: SetNull, map: "student_activity_events_exam_attempt_id_fkey")
+
+  @@index([organizationId, studentId, occurredAt], map: "student_activity_events_scope_student_occurred_idx")
+  @@index([studentId, eventType, occurredAt], map: "student_activity_events_student_type_occurred_idx")
+  @@index([resourceId, occurredAt], map: "student_activity_events_resource_occurred_idx")
+  @@index([sessionCourseId, studentId, occurredAt], map: "student_activity_events_course_student_occurred_idx")
+  @@index([userActivitySessionId, occurredAt], map: "student_activity_events_auth_session_occurred_idx")
+  @@index([resourceActivitySessionId, occurredAt], map: "student_activity_events_resource_session_occurred_idx")
+  @@index([examAttemptId, occurredAt], map: "student_activity_events_exam_attempt_occurred_idx")
+  @@map("student_activity_events")
+}

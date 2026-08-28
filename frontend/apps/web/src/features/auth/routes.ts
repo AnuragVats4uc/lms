@@ -13,11 +13,12 @@ export function getAuthenticatedPath(user: AuthUser | null) {
     return ADMIN_HOME_PATH;
   }
 
-  if (
-    user.roles.includes("SUPER_ADMIN") ||
-    user.roles.includes("ADMIN")
-  ) {
+  if (user.roles.includes("SUPER_ADMIN") || user.roles.includes("ADMIN")) {
     return ADMIN_HOME_PATH;
+  }
+
+  if (user.roles.includes("COUNSELOR")) {
+    return "/admin/students";
   }
 
   if (user.roles.includes("STUDENT")) {

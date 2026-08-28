@@ -8,4 +8,6 @@ export type CurrentUser = {
   roles?: string[];
 
   permissions?: string[];
+
+  activitySessionUuid?: string;
 };

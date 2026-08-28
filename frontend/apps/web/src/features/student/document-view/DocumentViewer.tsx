@@ -2,6 +2,7 @@
 
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -34,6 +35,9 @@ interface DocumentViewerProps {
   fileName: string;
   isDownloadable: boolean;
   onDocumentLoaded: () => void;
+  onDownload: () => void;
+  onFullscreenChange: (fullscreen: boolean) => void;
+  onPageChange: (pageNumber: number) => void;
   onPageCountChange: (pageCount: number) => void;
 }
 
@@ -41,11 +45,21 @@ export const DocumentViewer = forwardRef<
   DocumentViewerHandle,
   DocumentViewerProps
 >(function DocumentViewer(
-  { data, fileName, isDownloadable, onDocumentLoaded, onPageCountChange },
+  {
+    data,
+    fileName,
+    isDownloadable,
+    onDocumentLoaded,
+    onDownload,
+    onFullscreenChange,
+    onPageChange,
+    onPageCountChange,
+  },
   forwardedRef,
 ) {
   const frameRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const onPageChangeRef = useRef(onPageChange);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageCount, setPageCount] = useState(0);
   const [scale, setScale] = useState(1);
@@ -55,6 +69,10 @@ export const DocumentViewer = forwardRef<
     () => ({ data: new Uint8Array(data.slice(0)) }),
     [data],
   );
+
+  useEffect(() => {
+    onPageChangeRef.current = onPageChange;
+  }, [onPageChange]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -69,24 +87,32 @@ export const DocumentViewer = forwardRef<
   }, []);
 
   useEffect(() => {
-    const onFullscreenChange = () =>
-      setIsFullscreen(document.fullscreenElement === frameRef.current);
-    document.addEventListener("fullscreenchange", onFullscreenChange);
+    const handleFullscreenChange = () => {
+      const fullscreen = document.fullscreenElement === frameRef.current;
+      setIsFullscreen(fullscreen);
+      onFullscreenChange(fullscreen);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () =>
-      document.removeEventListener("fullscreenchange", onFullscreenChange);
-  }, []);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, [onFullscreenChange]);
 
-  const enterFullscreen = () => {
+  useEffect(() => {
+    onPageChangeRef.current(pageNumber);
+  }, [pageNumber]);
+
+  const enterFullscreen = useCallback(() => {
     if (!frameRef.current) return;
     if (document.fullscreenElement) {
       void document.exitFullscreen();
       return;
     }
     void frameRef.current.requestFullscreen();
-  };
+  }, []);
 
-  const download = () => {
+  const download = useCallback(() => {
     if (!isDownloadable) return;
+    onDownload();
     const blob = new Blob([data], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -94,13 +120,13 @@ export const DocumentViewer = forwardRef<
     anchor.download = fileName;
     anchor.click();
     URL.revokeObjectURL(url);
-  };
+  }, [data, fileName, isDownloadable, onDownload]);
 
-  useImperativeHandle(forwardedRef, () => ({ download, enterFullscreen }), [
-    data,
-    fileName,
-    isDownloadable,
-  ]);
+  useImperativeHandle(
+    forwardedRef,
+    () => ({ download, enterFullscreen }),
+    [download, enterFullscreen],
+  );
 
   return (
     <div

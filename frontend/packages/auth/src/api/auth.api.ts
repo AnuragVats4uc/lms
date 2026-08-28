@@ -43,6 +43,7 @@ function normalizeLoginData(data: LoginData): LoginData {
   return {
     accessToken: data.accessToken,
     refreshToken: data.refreshToken,
+    activitySessionUuid: data.activitySessionUuid,
     user,
   };
 }

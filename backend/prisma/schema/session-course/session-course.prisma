@@ -27,6 +27,8 @@ model SessionCourse {
   examAssignments          ExamSessionCourse[]
   examAttempts             StudentExamAttempt[]
   registrationPages        OrganizationRegistrationPageCourse[]
+  resourceActivitySessions StudentResourceActivitySession[]
+  studentActivityEvents    StudentActivityEvent[]
 
   @@unique([sessionId, courseId], map: "session_courses_session_id_course_id_unique")
   @@index([sessionId], map: "session_courses_session_id_idx")

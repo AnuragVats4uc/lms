@@ -19,6 +19,8 @@ model User {
   student               Student?
   instructorAssignments CourseInstructor[] @relation("CourseInstructors")
   examImportJobs        ExamImportJob[]    @relation("ExamImportUploader")
+  authenticationAttempts AuthenticationAttempt[]
+  activitySessions      UserActivitySession[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -32,17 +34,22 @@ model RefreshToken {
   id   Int    @id @default(autoincrement())
   uuid String @unique @default(uuid())
 
-  userId    Int                @map("user_id")
-  token     String             @unique(map: "refresh_tokens_token_unique") @db.VarChar(255)
-  status    RefreshTokenStatus @default(ACTIVE)
-  expiresAt DateTime           @map("expires_at")
+  userId                Int                           @map("user_id")
+  userActivitySessionId Int?                          @map("user_activity_session_id")
+  token                 String                        @unique(map: "refresh_tokens_token_unique") @db.VarChar(255)
+  status                RefreshTokenStatus            @default(ACTIVE)
+  expiresAt             DateTime                      @map("expires_at")
+  revokedAt             DateTime?                     @map("revoked_at")
+  revocationReason      RefreshTokenRevocationReason? @map("revocation_reason")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userActivitySession UserActivitySession? @relation(fields: [userActivitySessionId], references: [id], onDelete: SetNull, map: "refresh_tokens_user_activity_session_id_fkey")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([userId], map: "refresh_tokens_user_id_idx")
+  @@index([userActivitySessionId], map: "refresh_tokens_activity_session_id_idx")
   @@index([status], map: "refresh_tokens_status_idx")
   @@map("refresh_tokens")
 }

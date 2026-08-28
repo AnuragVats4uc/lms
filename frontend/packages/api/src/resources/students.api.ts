@@ -22,6 +22,10 @@ import type {
   StudentQuery,
   UpdateStudentRequest,
   UpdateStudentVideoProgressRequest,
+  StudentResourceActivityEndReason,
+  StudentResourceActivityEventType,
+  StudentResourceActivityHeartbeat,
+  StudentResourceActivitySession,
 } from "@repo/types";
 
 import { api } from "../client/axios";
@@ -106,17 +110,25 @@ export const studentsApi = {
 
   startMyExam(resourceId: number) {
     return api
-      .post<
-        ApiResponse<{ attemptUuid: string; resumed: boolean }>
-      >(`${STUDENTS_ENDPOINT}/me/resources/${resourceId}/exam/start`)
+      .post<ApiResponse<{ attemptUuid: string; resumed: boolean }>>(
+        `${STUDENTS_ENDPOINT}/me/resources/${resourceId}/exam/start`,
+      )
       .then(unwrapApiData);
   },
 
   findMyExamAttempt(attemptUuid: string) {
     return api
-      .get<ApiResponse<StudentExamAttempt | { attemptUuid: string; status: string; submitted: true; reportAvailable: boolean }>>(
-        `${STUDENTS_ENDPOINT}/me/exam-attempts/${attemptUuid}`,
-      )
+      .get<
+        ApiResponse<
+          | StudentExamAttempt
+          | {
+              attemptUuid: string;
+              status: string;
+              submitted: true;
+              reportAvailable: boolean;
+            }
+        >
+      >(`${STUDENTS_ENDPOINT}/me/exam-attempts/${attemptUuid}`)
       .then(unwrapApiData);
   },
 
@@ -195,6 +207,79 @@ export const studentsApi = {
     return api
       .post<ApiResponse<StudentDocumentProgress>>(
         `${STUDENTS_ENDPOINT}/me/resources/${resourceId}/access`,
+      )
+      .then(unwrapApiData);
+  },
+
+  startMyResourceActivity(
+    resourceId: number,
+    payload: { startPositionSeconds?: number; clientSessionUuid?: string } = {},
+  ) {
+    return api
+      .post<ApiResponse<StudentResourceActivitySession>>(
+        `${STUDENTS_ENDPOINT}/me/resources/${resourceId}/activity`,
+        payload,
+      )
+      .then(unwrapApiData);
+  },
+
+  heartbeatMyResourceActivity(
+    sessionUuid: string,
+    payload: {
+      active: boolean;
+      currentPositionSeconds?: number;
+      pageNumber?: number;
+      completed?: boolean;
+    },
+  ) {
+    return api
+      .post<ApiResponse<StudentResourceActivityHeartbeat>>(
+        `${STUDENTS_ENDPOINT}/me/resource-activity/${sessionUuid}/heartbeat`,
+        payload,
+      )
+      .then(unwrapApiData);
+  },
+
+  switchMyDocumentPage(sessionUuid: string, pageNumber: number) {
+    return api
+      .post<ApiResponse<{ pageNumber: number; enteredAt: string }>>(
+        `${STUDENTS_ENDPOINT}/me/resource-activity/${sessionUuid}/pages`,
+        { pageNumber },
+      )
+      .then(unwrapApiData);
+  },
+
+  recordMyResourceActivityEvent(
+    sessionUuid: string,
+    payload: {
+      eventType: StudentResourceActivityEventType;
+      clientEventId?: string;
+      videoPositionSeconds?: number;
+      pageNumber?: number;
+      metadata?: Record<string, unknown>;
+    },
+  ) {
+    return api
+      .post<ApiResponse<{ eventUuid: string; occurredAt: string }>>(
+        `${STUDENTS_ENDPOINT}/me/resource-activity/${sessionUuid}/events`,
+        payload,
+      )
+      .then(unwrapApiData);
+  },
+
+  endMyResourceActivity(
+    sessionUuid: string,
+    payload: {
+      reason: StudentResourceActivityEndReason;
+      currentPositionSeconds?: number;
+      pageNumber?: number;
+      completed?: boolean;
+    },
+  ) {
+    return api
+      .post<ApiResponse<{ sessionUuid: string; endedAt: string } | null>>(
+        `${STUDENTS_ENDPOINT}/me/resource-activity/${sessionUuid}/end`,
+        payload,
       )
       .then(unwrapApiData);
   },

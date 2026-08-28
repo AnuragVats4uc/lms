@@ -1,0 +1,529 @@
+.header {
+  align-items: flex-start;
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+}
+
+.headerMain,
+.headerActions,
+.studentTitleRow,
+.studentMeta,
+.filterActions,
+.errorActions {
+  align-items: center;
+  display: flex;
+}
+
+.headerMain {
+  gap: 14px;
+  min-width: 0;
+}
+
+.headerMain h1 {
+  color: #0f1d3a;
+  font-size: clamp(26px, 3vw, 34px);
+  line-height: 1.12;
+  margin: 2px 0 7px;
+}
+
+.headerMain p,
+.panelHeader p {
+  color: #647084;
+  margin: 0;
+}
+
+.eyebrow {
+  color: #047857;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.backButton {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #d8e1ec;
+  border-radius: 12px;
+  color: #1e293b;
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.headerActions {
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.studentCard,
+.filters,
+.panel {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  box-shadow: 0 10px 28px rgb(15 23 42 / 4%);
+}
+
+.studentCard {
+  align-items: center;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 18px 20px;
+}
+
+.avatar {
+  align-items: center;
+  background: linear-gradient(135deg, #047857, #10b981);
+  border-radius: 16px;
+  box-shadow: 0 10px 20px rgb(5 150 105 / 20%);
+  color: #fff;
+  display: flex;
+  font-size: 18px;
+  font-weight: 800;
+  height: 52px;
+  justify-content: center;
+  width: 52px;
+}
+
+.studentIdentity {
+  min-width: 0;
+}
+
+.studentTitleRow {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.studentTitleRow h2,
+.panelHeader h2 {
+  color: #0f1d3a;
+  margin: 0;
+}
+
+.studentTitleRow h2 {
+  font-size: 19px;
+}
+
+.studentIdentity > p {
+  color: #52627a;
+  margin: 4px 0 8px;
+}
+
+.studentMeta {
+  color: #64748b;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 8px 16px;
+}
+
+.studentMeta span:not(:last-child)::after {
+  color: #cbd5e1;
+  content: "•";
+  margin-left: 16px;
+}
+
+.statusBadge,
+.categoryBadge,
+.syncing {
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.statusBadge {
+  background: #dcfce7;
+  color: #047857;
+  padding: 5px 9px;
+}
+
+.retentionNote {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+}
+
+.retentionNote strong {
+  color: #0f1d3a;
+  font-size: 17px;
+}
+
+.retentionNote span,
+.retentionNote small {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.filters {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(5, minmax(130px, 1fr)) auto;
+  padding: 16px;
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.filterField > span {
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.filterField input,
+.filterField select {
+  background: #fbfdff;
+  border: 1px solid #d8e1ec;
+  border-radius: 10px;
+  color: #17233c;
+  font: inherit;
+  font-size: 13px;
+  height: 40px;
+  min-width: 0;
+  padding: 0 10px;
+  width: 100%;
+}
+
+.filterField input:focus,
+.filterField select:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgb(16 185 129 / 12%);
+  outline: none;
+}
+
+.filterActions {
+  gap: 8px;
+}
+
+.filterActions button,
+.errorActions button {
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+  height: 40px;
+  padding: 0 14px;
+}
+
+.resetButton {
+  background: #fff;
+  border: 1px solid #d8e1ec;
+  color: #334155;
+}
+
+.applyButton {
+  background: #047857;
+  border: 1px solid #047857;
+  color: #fff;
+}
+
+.summaryGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.summaryCard {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 15px;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+  padding: 15px;
+}
+
+.summaryIcon {
+  align-items: center;
+  border-radius: 12px;
+  display: flex;
+  flex: 0 0 auto;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+
+.summaryCard span {
+  color: #64748b;
+  display: block;
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+
+.summaryCard strong {
+  color: #0f1d3a;
+  display: block;
+  font-size: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.green {
+  background: #dcfce7;
+  color: #047857;
+}
+.red {
+  background: #fee2e2;
+  color: #b42318;
+}
+.blue {
+  background: #dbeafe;
+  color: #2563eb;
+}
+.amber {
+  background: #fef3c7;
+  color: #b45309;
+}
+.violet {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+.cyan {
+  background: #cffafe;
+  color: #0e7490;
+}
+.pink {
+  background: #fce7f3;
+  color: #be185d;
+}
+.slate {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.panel {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.panelHeader {
+  align-items: center;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  padding: 18px 20px;
+}
+
+.panelHeader h2 {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+.panelHeader p {
+  font-size: 12px;
+}
+
+.syncing {
+  background: #eff6ff;
+  color: #2563eb;
+  padding: 6px 10px;
+}
+
+.activityCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.activityCell strong {
+  color: #17233c;
+  font-size: 13px;
+}
+
+.activityCell small {
+  color: #64748b;
+}
+
+.categoryBadge {
+  align-self: flex-start;
+  padding: 4px 7px;
+}
+
+.authentication {
+  background: #dcfce7;
+  color: #047857;
+}
+.session {
+  background: #f1f5f9;
+  color: #475569;
+}
+.resource {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.document {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.video {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.exam {
+  background: #ffedd5;
+  color: #c2410c;
+}
+.report {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+.resourceTableWrap {
+  border-top: 1px solid #e8edf3;
+  overflow-x: auto;
+}
+
+.resourceTable {
+  border-collapse: collapse;
+  min-width: 860px;
+  width: 100%;
+}
+
+.resourceTable th,
+.resourceTable td {
+  border-bottom: 1px solid #eef2f6;
+  color: #475569;
+  font-size: 12px;
+  padding: 13px 16px;
+  text-align: left;
+}
+
+.resourceTable th {
+  background: #f8fafc;
+  color: #52627a;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.resourceTable td strong,
+.resourceTable td span {
+  display: block;
+}
+
+.resourceTable td strong {
+  color: #17233c;
+  margin-bottom: 3px;
+}
+
+.resourceTable td span {
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+.emptyResources,
+.loadingState,
+.errorState {
+  align-items: center;
+  color: #64748b;
+  display: flex;
+  justify-content: center;
+}
+
+.emptyResources {
+  border-top: 1px solid #e8edf3;
+  min-height: 120px;
+}
+
+.loadingState {
+  flex-direction: column;
+  gap: 12px;
+  min-height: 420px;
+}
+
+.errorState {
+  background: #fff;
+  border: 1px solid #fecaca;
+  border-radius: 18px;
+  color: #b42318;
+  flex-direction: column;
+  min-height: 360px;
+  padding: 30px;
+  text-align: center;
+}
+
+.errorState h1 {
+  color: #0f1d3a;
+  font-size: 22px;
+  margin: 14px 0 6px;
+}
+
+.errorState p {
+  color: #64748b;
+  margin: 0 0 18px;
+  max-width: 560px;
+}
+
+.errorActions {
+  gap: 8px;
+}
+.errorActions button {
+  background: #fff;
+  border: 1px solid #d8e1ec;
+  color: #334155;
+}
+
+.exportError {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: 11px;
+  color: #be123c;
+  font-size: 12px;
+  padding: 10px 13px;
+}
+
+@media (max-width: 1180px) {
+  .filters {
+    grid-template-columns: repeat(3, minmax(150px, 1fr));
+  }
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .header {
+    flex-direction: column;
+  }
+  .headerActions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+  .studentCard {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .retentionNote {
+    align-items: flex-start;
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+  .filters {
+    grid-template-columns: 1fr;
+  }
+  .filterActions {
+    justify-content: flex-end;
+  }
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+  .studentMeta span::after {
+    display: none;
+  }
+}

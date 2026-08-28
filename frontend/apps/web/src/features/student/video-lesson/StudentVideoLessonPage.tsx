@@ -26,6 +26,7 @@ import type {
   StudentVideoUpNextResource,
   UpdateStudentVideoProgressRequest,
 } from "@repo/types";
+import { useResourceActivity } from "../activity/useResourceActivity";
 
 const PROGRESS_SAVE_INTERVAL_MS = 15_000;
 const DESCRIPTION_PREVIEW_LENGTH = 310;
@@ -58,6 +59,12 @@ export function StudentVideoLessonPage({ resourceId }: { resourceId: number }) {
         (current) => (current ? { ...current, progress } : current),
       );
     },
+  });
+  const activity = useResourceActivity({
+    enabled: Boolean(detailQuery.data),
+    initialPositionSeconds:
+      detailQuery.data?.progress.currentPositionSeconds ?? 0,
+    resourceId,
   });
   const saveProgress = progressMutation.mutate;
 
@@ -154,6 +161,10 @@ export function StudentVideoLessonPage({ resourceId }: { resourceId: number }) {
 
     if (typeof nextPosition === "number" && Number.isFinite(nextPosition)) {
       currentPositionRef.current = nextPosition;
+      activity.updateState({
+        active: playing,
+        positionSeconds: nextPosition,
+      });
     }
   };
 
@@ -231,21 +242,61 @@ export function StudentVideoLessonPage({ resourceId }: { resourceId: number }) {
               if (duration) currentPositionRef.current = duration;
               setPlaying(false);
               persistProgress(true, true);
+              activity.updateState({
+                active: false,
+                completed: true,
+                positionSeconds: currentPositionRef.current,
+              });
+              void activity
+                .recordEvent("VIDEO_COMPLETE", {
+                  videoPositionSeconds: currentPositionRef.current,
+                })
+                .then(() =>
+                  activity.end("COMPLETED", {
+                    active: false,
+                    completed: true,
+                    positionSeconds: currentPositionRef.current,
+                  }),
+                )
+                .catch(() => undefined);
             }}
             onError={() => setPlayerError(true)}
             onPause={() => {
               setPlaying(false);
               syncCurrentPosition();
               persistProgress(false, true);
+              activity.updateState({
+                active: false,
+                positionSeconds: currentPositionRef.current,
+              });
+              void activity
+                .recordEvent("VIDEO_PAUSE", {
+                  videoPositionSeconds: currentPositionRef.current,
+                })
+                .catch(() => undefined);
             }}
             onPlay={() => {
               setPlayerActivated(true);
               setPlaying(true);
+              activity.updateState({
+                active: true,
+                positionSeconds: currentPositionRef.current,
+              });
+              void activity
+                .recordEvent("VIDEO_PLAY", {
+                  videoPositionSeconds: currentPositionRef.current,
+                })
+                .catch(() => undefined);
             }}
             onReady={onPlayerReady}
             onSeeked={() => {
               syncCurrentPosition();
               persistProgress(false, true);
+              void activity
+                .recordEvent("VIDEO_SEEK", {
+                  videoPositionSeconds: currentPositionRef.current,
+                })
+                .catch(() => undefined);
             }}
             onTimeUpdate={onTimeUpdate}
             playbackRate={playbackRate}

@@ -19,6 +19,8 @@ export const envValidationSchema = Joi.object({
 
   BCRYPT_SALT_ROUNDS: Joi.number().required(),
 
+  ACTIVITY_RETENTION_WORKER_ENABLED: Joi.boolean().default(true),
+
   FRONTEND_URL: Joi.string().when('NODE_ENV', {
     is: 'production',
     then: Joi.required(),

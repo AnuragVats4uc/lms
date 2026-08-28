@@ -7,6 +7,8 @@ import {
   SessionStatus,
 } from '@prisma/client';
 
+import { ensureOrganizationActivityPolicies } from './activity-policies';
+
 const prisma = new PrismaClient();
 
 const organizationSeed = {
@@ -54,6 +56,7 @@ async function main() {
     },
     select: { id: true },
   });
+  await ensureOrganizationActivityPolicies(prisma);
 
   const session = await prisma.session.upsert({
     where: {

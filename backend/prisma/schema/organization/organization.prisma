@@ -37,6 +37,11 @@ model Organization {
   registrationPages      OrganizationRegistrationPage[]
   educationOptions       OrganizationEducationOption[]
   digitalLibraryLocations OrganizationDigitalLibraryLocation[]
+  activityPolicy         OrganizationActivityPolicy?
+  authenticationAttempts AuthenticationAttempt[]
+  activitySessions       UserActivitySession[]
+  resourceActivitySessions StudentResourceActivitySession[]
+  studentActivityEvents  StudentActivityEvent[]
 
   @@map("organizations")
 }

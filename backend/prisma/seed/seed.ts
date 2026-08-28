@@ -22,6 +22,7 @@ import {
 } from '../../src/modules/resource/constants/resource-type.constants';
 import { seedResourceTypes } from './resource-types';
 import { seedStudentLearningFlow } from './student-learning-flow';
+import { ensureOrganizationActivityPolicies } from './activity-policies';
 
 const prisma = new PrismaClient();
 const BATCH_SIZE = 2_000;
@@ -170,6 +171,7 @@ async function main() {
       permissionsByKey,
     );
     await seedStudentDashboardDemo();
+    await ensureOrganizationActivityPolicies(prisma);
     await seedStudentLearningFlow();
     console.log('Dashboard seed completed successfully');
     return;
@@ -177,6 +179,7 @@ async function main() {
 
   if (process.env.SEED_RESUME === 'true') {
     console.log('Resume mode enabled: preserving existing generated hierarchy');
+    await ensureOrganizationActivityPolicies(prisma);
     const folders = await findSeedFolders();
     await seedResources(folders);
     console.log('Resource resume completed successfully');
@@ -215,6 +218,7 @@ async function main() {
 
   console.log('Stage 3/7: creating 20 organizations');
   const organizations = await seedOrganizations();
+  await ensureOrganizationActivityPolicies(prisma);
 
   console.log(
     'Stage 4/7: creating 20 courses and 20 sessions per organization',
@@ -270,6 +274,18 @@ async function cleanOrganizationData() {
 
   await prisma.$transaction(
     async (tx) => {
+      await tx.studentActivityEvent.deleteMany({
+        where: { organizationId: { in: organizationIds } },
+      });
+      await tx.studentResourceActivitySession.deleteMany({
+        where: { organizationId: { in: organizationIds } },
+      });
+      await tx.authenticationAttempt.deleteMany({
+        where: { organizationId: { in: organizationIds } },
+      });
+      await tx.userActivitySession.deleteMany({
+        where: { organizationId: { in: organizationIds } },
+      });
       await tx.examImportJob.deleteMany({
         where: { organizationId: { in: organizationIds } },
       });

@@ -510,6 +510,7 @@ model StudentExamAttempt {
   slotProgress StudentExamSlotAttempt[]
   answers      StudentExamAnswer[]
   questions    StudentExamAttemptQuestion[]
+  activityEvents StudentActivityEvent[]
 
   @@unique([studentId, examId, attemptNumber], map: "student_exam_attempts_student_exam_number_unique")
   @@index([examId, status], map: "student_exam_attempts_exam_status_idx")

@@ -7,10 +7,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ResourceStatus } from '@prisma/client';
+import { ResourceActivityEndReason, ResourceStatus } from '@prisma/client';
 
 import { PasswordService } from '../../auth/services/password.service';
 import { CurrentUser } from '../../auth/types/current-user.types';
+import { ActivityService } from '../../activity/services/activity.service';
+import {
+  EndResourceActivityDto,
+  ResourceActivityEventDto,
+  ResourceActivityHeartbeatDto,
+  StartResourceActivityDto,
+} from '../../activity/dto/resource-activity.dto';
 import { RolesService } from '../../roles/services/roles.service';
 import { ResourceService } from '../../resource/services/resource.service';
 import {
@@ -53,6 +60,8 @@ export class StudentsService {
     private readonly studentsRepository: StudentsRepository,
     @Inject(ResourceService)
     private readonly resourceService: ResourceService,
+    @Inject(ActivityService)
+    private readonly activityService: ActivityService,
   ) {}
 
   async create(dto: CreateStudentDto, actor?: CurrentUser) {
@@ -818,6 +827,99 @@ export class StudentsService {
     return this.toResourceProgress(progress, resource.id);
   }
 
+  async startMyResourceActivity(
+    user: CurrentUser,
+    resourceId: number,
+    dto: StartResourceActivityDto,
+  ) {
+    const { resource, student } = await this.findStudentResource(
+      user,
+      resourceId,
+    );
+    const session = await this.activityService.startResourceSession({
+      studentId: student.id,
+      resourceId: resource.id,
+      userActivitySessionUuid: user.activitySessionUuid,
+      clientSessionUuid: dto.clientSessionUuid,
+      startPositionSeconds: dto.startPositionSeconds,
+    });
+    if (!session) throw new ConflictException('Unable to start activity');
+    const policy = await this.activityService.getPolicy(user);
+
+    return {
+      sessionUuid: session.uuid,
+      startedAt: session.startedAt,
+      heartbeatSeconds: policy.resourceHeartbeatSeconds,
+      idleThresholdSeconds: policy.idleThresholdSeconds,
+    };
+  }
+
+  async heartbeatMyResourceActivity(
+    user: CurrentUser,
+    sessionUuid: string,
+    dto: ResourceActivityHeartbeatDto,
+  ) {
+    const session = await this.activityService.heartbeatResourceSession(
+      sessionUuid,
+      user.userId,
+      dto,
+    );
+    if (!session) throw new ConflictException('Resource activity was closed');
+
+    return {
+      sessionUuid: session.uuid,
+      lastHeartbeatAt: session.lastHeartbeatAt,
+      activeDurationSeconds: session.activeDurationSeconds,
+      idleDurationSeconds: session.idleDurationSeconds,
+      completed: session.completed,
+    };
+  }
+
+  switchMyDocumentPage(
+    user: CurrentUser,
+    sessionUuid: string,
+    pageNumber: number,
+  ) {
+    return this.activityService.switchDocumentPage(
+      sessionUuid,
+      user.userId,
+      pageNumber,
+    );
+  }
+
+  recordMyResourceActivityEvent(
+    user: CurrentUser,
+    sessionUuid: string,
+    dto: ResourceActivityEventDto,
+  ) {
+    return this.activityService.recordResourceSessionEvent(
+      sessionUuid,
+      user.userId,
+      dto,
+    );
+  }
+
+  endMyResourceActivity(
+    user: CurrentUser,
+    sessionUuid: string,
+    dto: EndResourceActivityDto,
+  ) {
+    const clientEndReasons = new Set<ResourceActivityEndReason>([
+      ResourceActivityEndReason.CLOSED,
+      ResourceActivityEndReason.NAVIGATED_AWAY,
+      ResourceActivityEndReason.COMPLETED,
+    ]);
+    if (!clientEndReasons.has(dto.reason)) {
+      throw new BadRequestException('Unsupported resource end reason');
+    }
+
+    return this.activityService.endResourceSession(
+      sessionUuid,
+      user.userId,
+      dto,
+    );
+  }
+
   async getMyDocumentFile(user: CurrentUser, resourceId: number) {
     const { resource } = await this.findStudentDocument(user, resourceId);
     const documentUrl = resource.documentUrl;
@@ -1426,8 +1528,7 @@ export class StudentsService {
             return {
               id: sessionCourse.id,
               courseId: sessionCourse.course.id,
-              name:
-                sessionCourse.displayName ?? sessionCourse.course.name,
+              name: sessionCourse.displayName ?? sessionCourse.course.name,
               code: sessionCourse.course.code,
             };
           }),

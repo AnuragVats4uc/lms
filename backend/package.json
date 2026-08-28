@@ -27,8 +27,10 @@
     "seed:students": "tsx prisma/seed/student-accounts.ts",
     "seed:resources": "tsx prisma/seed/lms-resources.ts",
     "seed:demo": "tsx prisma/seed/demo.ts",
+    "verify:demo-activity": "tsx scripts/verify-demo-activity-history.ts",
     "seed:student-flow": "tsx prisma/seed/student-learning-flow.ts",
     "verify:student-flow": "tsx scripts/audit-student-learning-flow.ts",
+    "maintenance:activity-retention": "tsx scripts/enforce-activity-retention.ts",
     "audit:exam-reporting": "tsx scripts/audit-exam-topic-reporting.ts",
     "backfill:exam-reporting": "tsx scripts/backfill-exam-topic-reporting.ts"
   },

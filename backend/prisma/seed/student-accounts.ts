@@ -8,6 +8,8 @@ import {
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
+import { ensureOrganizationActivityPolicies } from './activity-policies';
+
 const prisma = new PrismaClient();
 const passwordSaltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 10);
 
@@ -111,6 +113,7 @@ async function main() {
     },
     select: { id: true },
   });
+  await ensureOrganizationActivityPolicies(prisma);
 
   const studentRole = await prisma.role.upsert({
     where: { scope_code: { scope: 'GLOBAL', code: 'STUDENT' } },

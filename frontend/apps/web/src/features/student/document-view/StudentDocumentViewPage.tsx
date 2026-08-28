@@ -25,6 +25,7 @@ import type {
 } from "@repo/types";
 
 import type { DocumentViewerHandle } from "./DocumentViewer";
+import { useResourceActivity } from "../activity/useResourceActivity";
 
 const DocumentViewer = dynamic(
   () => import("./DocumentViewer").then((module) => module.DocumentViewer),
@@ -67,6 +68,11 @@ export function StudentDocumentViewPage({
         (current) => (current ? { ...current, progress } : current),
       );
     },
+  });
+  const activity = useResourceActivity({
+    enabled: Boolean(detailQuery.data && fileQuery.data),
+    initialPageNumber: 1,
+    resourceId,
   });
 
   const recordAccess = () => {
@@ -139,6 +145,23 @@ export function StudentDocumentViewPage({
               fileName={resource.fileName}
               isDownloadable={resource.isDownloadable}
               onDocumentLoaded={recordAccess}
+              onDownload={() => {
+                void activity
+                  .recordEvent("RESOURCE_DOWNLOAD")
+                  .catch(() => undefined);
+              }}
+              onFullscreenChange={(fullscreen) => {
+                void activity
+                  .recordEvent(
+                    fullscreen
+                      ? "DOCUMENT_FULLSCREEN_ENTER"
+                      : "DOCUMENT_FULLSCREEN_EXIT",
+                  )
+                  .catch(() => undefined);
+              }}
+              onPageChange={(pageNumber) => {
+                void activity.changePage(pageNumber).catch(() => undefined);
+              }}
               onPageCountChange={setPageCount}
               ref={viewerRef}
             />

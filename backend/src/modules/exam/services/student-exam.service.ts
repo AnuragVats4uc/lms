@@ -15,6 +15,7 @@ import {
   StudentCourseEnrollmentStatus,
   StudentEnrollmentStatus,
   StudentStatus,
+  StudentActivityEventType,
 } from '@prisma/client';
 import { createHash } from 'node:crypto';
 
@@ -51,6 +52,8 @@ const attemptInclude = Prisma.validator<Prisma.StudentExamAttemptInclude>()({
       },
     },
   },
+  sourceResource: { include: { resourceType: true } },
+  sessionCourse: { include: { course: true } },
   questions: {
     orderBy: { questionOrder: 'asc' },
     include: {
@@ -101,6 +104,10 @@ export class StudentExamService {
     );
     const exam = resource.exam!;
     const now = new Date();
+    const userActivitySessionId = await this.findActivitySessionId(
+      user.activitySessionUuid,
+      student.id,
+    );
     this.ensureExamCanStart(exam, now);
 
     const active = exam.attempts.find(
@@ -113,8 +120,23 @@ export class StudentExamService {
           student.id,
           ExamSubmissionReason.EXAM_TIMEOUT,
           true,
+          userActivitySessionId,
         );
       } else if (exam.allowResume) {
+        await this.prisma.studentActivityEvent.create({
+          data: {
+            organizationId: exam.organizationId,
+            studentId: student.id,
+            userActivitySessionId,
+            sessionCourseId: resource.folder.sessionCourseId,
+            resourceId: resource.id,
+            examAttemptId: active.id,
+            eventType: StudentActivityEventType.EXAM_RESUME,
+            occurredAt: now,
+            resourceTitleSnapshot: resource.title,
+            resourceTypeCodeSnapshot: 'EXAM',
+          },
+        });
         return { attemptUuid: active.uuid, resumed: true };
       } else {
         throw new ConflictException('This exam attempt cannot be resumed');
@@ -240,6 +262,21 @@ export class StudentExamService {
           }
         }
       }
+      await tx.studentActivityEvent.create({
+        data: {
+          clientEventId: `exam:${attempt.uuid}:start`,
+          organizationId: exam.organizationId,
+          studentId: student.id,
+          userActivitySessionId,
+          sessionCourseId: resource.folder.sessionCourseId,
+          resourceId: resource.id,
+          examAttemptId: attempt.id,
+          eventType: StudentActivityEventType.EXAM_START,
+          occurredAt: now,
+          resourceTitleSnapshot: resource.title,
+          resourceTypeCodeSnapshot: 'EXAM',
+        },
+      });
       return attempt;
     });
 
@@ -248,7 +285,11 @@ export class StudentExamService {
 
   async getAttempt(user: CurrentUser, attemptUuid: string) {
     const { student, attempt } = await this.findOwnedAttempt(user, attemptUuid);
-    const current = await this.expireIfRequired(attempt, student.id);
+    const current = await this.expireIfRequired(
+      attempt,
+      student.id,
+      user.activitySessionUuid,
+    );
     if (current.status !== ExamAttemptStatus.IN_PROGRESS) {
       return {
         attemptUuid: current.uuid,
@@ -267,7 +308,11 @@ export class StudentExamService {
     dto: SaveStudentExamAnswerDto,
   ) {
     const { student, attempt } = await this.findOwnedAttempt(user, attemptUuid);
-    const current = await this.expireIfRequired(attempt, student.id);
+    const current = await this.expireIfRequired(
+      attempt,
+      student.id,
+      user.activitySessionUuid,
+    );
     this.ensureAttemptActive(current);
     const attemptQuestion = current.questions.find(
       (question) => question.id === attemptQuestionId,
@@ -378,7 +423,11 @@ export class StudentExamService {
     dto: UpdateStudentExamProgressDto,
   ) {
     const { student, attempt } = await this.findOwnedAttempt(user, attemptUuid);
-    const current = await this.expireIfRequired(attempt, student.id);
+    const current = await this.expireIfRequired(
+      attempt,
+      student.id,
+      user.activitySessionUuid,
+    );
     this.ensureAttemptActive(current);
     const question = current.questions.find(
       (item) => item.id === dto.attemptQuestionId,
@@ -413,12 +462,17 @@ export class StudentExamService {
       student.id,
       ExamSubmissionReason.STUDENT_SUBMITTED,
       false,
+      await this.findActivitySessionId(user.activitySessionUuid, student.id),
     );
   }
 
   async getReport(user: CurrentUser, attemptUuid: string) {
     const { student, attempt } = await this.findOwnedAttempt(user, attemptUuid);
-    const current = await this.expireIfRequired(attempt, student.id);
+    const current = await this.expireIfRequired(
+      attempt,
+      student.id,
+      user.activitySessionUuid,
+    );
     if (current.status === ExamAttemptStatus.IN_PROGRESS) {
       throw new ConflictException('Submit the exam before opening its report');
     }
@@ -867,7 +921,11 @@ export class StudentExamService {
     }
   }
 
-  private async expireIfRequired(attempt: LoadedAttempt, studentId: number) {
+  private async expireIfRequired(
+    attempt: LoadedAttempt,
+    studentId: number,
+    activitySessionUuid?: string,
+  ) {
     const now = new Date();
     const expiredSection = attempt.slotProgress
       .flatMap((slot) => slot.sectionProgress)
@@ -892,7 +950,13 @@ export class StudentExamService {
             ? ExamSubmissionReason.SLOT_TIMEOUT
             : null;
     if (attempt.status === ExamAttemptStatus.IN_PROGRESS && reason) {
-      await this.finishAttempt(attempt.uuid, studentId, reason, true);
+      await this.finishAttempt(
+        attempt.uuid,
+        studentId,
+        reason,
+        true,
+        await this.findActivitySessionId(activitySessionUuid, studentId),
+      );
       const reloaded = await this.prisma.studentExamAttempt.findUnique({
         where: { uuid: attempt.uuid },
         include: attemptInclude,
@@ -908,6 +972,7 @@ export class StudentExamService {
     studentId: number,
     reason: ExamSubmissionReason,
     automatic: boolean,
+    userActivitySessionId?: number | null,
   ) {
     const attempt = await this.prisma.studentExamAttempt.findFirst({
       where: { uuid: attemptUuid, studentId },
@@ -977,6 +1042,27 @@ export class StudentExamService {
         where: { slotAttempt: { studentExamAttemptId: attempt.id } },
         data: { status, submittedAt: now, completionReason: reason },
       });
+      await tx.studentActivityEvent.create({
+        data: {
+          clientEventId: `exam:${attempt.uuid}:${automatic ? 'auto-submit' : 'submit'}`,
+          organizationId: attempt.exam.organizationId,
+          studentId: attempt.studentId,
+          userActivitySessionId,
+          sessionCourseId: attempt.sessionCourseId,
+          resourceId: attempt.sourceResourceId,
+          examAttemptId: attempt.id,
+          eventType: automatic
+            ? StudentActivityEventType.EXAM_AUTO_SUBMIT
+            : StudentActivityEventType.EXAM_SUBMIT,
+          occurredAt: now,
+          metadata: { submissionReason: reason },
+          resourceTitleSnapshot: attempt.sourceResource?.title,
+          resourceTypeCodeSnapshot: attempt.sourceResource?.resourceType.code,
+          courseNameSnapshot:
+            attempt.sessionCourse?.displayName ??
+            attempt.sessionCourse?.course.name,
+        },
+      });
     });
     return {
       attemptUuid: attempt.uuid,
@@ -984,6 +1070,18 @@ export class StudentExamService {
       submittedAt: now,
       reportAvailable: this.isResultReleased(attempt.exam, now),
     };
+  }
+
+  private async findActivitySessionId(
+    sessionUuid: string | undefined,
+    studentId: number,
+  ) {
+    if (!sessionUuid) return null;
+    const session = await this.prisma.userActivitySession.findFirst({
+      where: { uuid: sessionUuid, studentId, endedAt: null },
+      select: { id: true },
+    });
+    return session?.id ?? null;
   }
 
   private toSubmissionResponse(attempt: LoadedAttempt) {

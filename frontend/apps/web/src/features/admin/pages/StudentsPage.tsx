@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import {
   organizationsApi,
   registrationApi,
@@ -19,12 +20,12 @@ import type {
 import { type StudentFormValues, studentSchema } from "@repo/validation";
 import {
   BookOpen,
+  BarChart3,
   CalendarDays,
   Eye,
   EyeOff,
   GraduationCap,
   Mail,
-  MapPin,
   Phone,
   UserRound,
   UsersRound,
@@ -363,9 +364,9 @@ const columns: DataTableColumn<Student>[] = [
     cell: ({ row }) => (
       <DataTableTextCell
         primary={row.enrollments?.[0]?.session.name ?? "Not enrolled"}
-        secondary={
-          row.enrollments?.[0]?.courses.map((course) => course.name).join(", ")
-        }
+        secondary={row.enrollments?.[0]?.courses
+          .map((course) => course.name)
+          .join(", ")}
       />
     ),
     header: "Enrollment",
@@ -403,6 +404,7 @@ const columns: DataTableColumn<Student>[] = [
 ];
 
 export function StudentsPage() {
+  const router = useRouter();
   const { currentUser } = useAuthSession();
   const isSuperAdmin = Boolean(currentUser?.roles.includes("SUPER_ADMIN"));
   const organizationId = currentUser?.organizationId ?? undefined;
@@ -412,7 +414,10 @@ export function StudentsPage() {
     queryKey: ["admin", "student-organizations"],
     staleTime: 60_000,
   });
-  const organizations = organizationsQuery.data?.items ?? [];
+  const organizations = useMemo(
+    () => organizationsQuery.data?.items ?? [],
+    [organizationsQuery.data],
+  );
   const defaultOrganizationId = useMemo(
     () => organizationId ?? organizations[0]?.id,
     [organizationId, organizations],
@@ -426,6 +431,15 @@ export function StudentsPage() {
       UpdateStudentRequest
     >
       columns={columns}
+      additionalRowActions={[
+        {
+          icon: BarChart3,
+          id: "activity-report",
+          label: "Activity report",
+          onAction: (student) =>
+            router.push(`/admin/students/${student.uuid}/activity`),
+        },
+      ]}
       create={(payload) => studentsApi.create(payload)}
       createLabel="Register Student"
       description="Register students, assign their organization, session, and courses."

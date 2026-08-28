@@ -25,6 +25,10 @@ model Student {
   notifications  StudentNotification[]
   examAttempts   StudentExamAttempt[]
   registrationAnswers OrganizationRegistrationAnswer[]
+  authenticationAttempts AuthenticationAttempt[]
+  activitySessions       UserActivitySession[]
+  resourceActivitySessions StudentResourceActivitySession[]
+  activityEvents         StudentActivityEvent[]
 
   @@unique([organizationId, rollNumber], map: "students_organization_id_roll_number_unique")
   @@index([organizationId], map: "students_organization_id_idx")

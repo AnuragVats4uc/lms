@@ -1,5 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { RefreshTokenStatus } from '@prisma/client';
+import {
+  RefreshTokenRevocationReason,
+  RefreshTokenStatus,
+} from '@prisma/client';
 
 import { PrismaService } from '../../../prisma';
 
@@ -13,6 +16,11 @@ export class AuthRepository {
   findUserByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: { email },
+      include: {
+        student: {
+          select: { id: true, organizationId: true },
+        },
+      },
     });
   }
 
@@ -33,23 +41,28 @@ export class AuthRepository {
     userId: number,
     token: string,
     expiresAt: Date,
+    userActivitySessionId?: number | null,
   ) {
     return this.prisma.refreshToken.create({
       data: {
         userId,
         token,
         expiresAt,
+        userActivitySessionId,
       },
     });
   }
 
-  findActiveRefreshTokensByUserId(userId: number) {
+  findActiveRefreshTokensByUserId(userId: number, includeExpired = false) {
     return this.prisma.refreshToken.findMany({
       where: {
         userId,
         status: RefreshTokenStatus.ACTIVE,
-        expiresAt: {
-          gt: new Date(),
+        expiresAt: includeExpired ? undefined : { gt: new Date() },
+      },
+      include: {
+        userActivitySession: {
+          select: { id: true, uuid: true, endedAt: true },
         },
       },
       orderBy: {
@@ -58,10 +71,14 @@ export class AuthRepository {
     });
   }
 
-  revokeRefreshToken(id: number) {
-    return this.prisma.refreshToken.update({
-      where: { id },
-      data: { status: RefreshTokenStatus.REVOKED },
+  revokeRefreshToken(id: number, reason: RefreshTokenRevocationReason) {
+    return this.prisma.refreshToken.updateMany({
+      where: { id, status: RefreshTokenStatus.ACTIVE },
+      data: {
+        status: RefreshTokenStatus.REVOKED,
+        revokedAt: new Date(),
+        revocationReason: reason,
+      },
     });
   }
 }
