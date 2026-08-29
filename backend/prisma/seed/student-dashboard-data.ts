@@ -87,6 +87,12 @@ const notifications = [
 ];
 
 async function main() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'The demo dashboard seed is disabled in production because it creates known development credentials.',
+    );
+  }
+
   await seedResourceTypes(prisma);
   const password = await bcrypt.hash('Admin@123', 10);
   const roles = await prisma.role.findMany({

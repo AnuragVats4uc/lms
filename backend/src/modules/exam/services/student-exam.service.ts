@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Inject,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -108,7 +109,7 @@ type AttemptTimeout = {
 export class StudentExamService {
   private readonly prisma: PrismaService;
 
-  constructor(repository: ExamRepository) {
+  constructor(@Inject(ExamRepository) repository: ExamRepository) {
     this.prisma = repository.client;
   }
 

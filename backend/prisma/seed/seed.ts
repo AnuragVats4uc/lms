@@ -149,6 +149,12 @@ type FolderRecord = Id & {
 };
 
 async function main() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'The demo seed is disabled in production because it creates known development credentials and replaces sample organization data.',
+    );
+  }
+
   console.log('Starting LMS relational seed');
   await seedResourceTypes(prisma);
 

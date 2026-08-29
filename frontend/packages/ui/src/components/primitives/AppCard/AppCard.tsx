@@ -1,12 +1,11 @@
 "use client";
 
 import { memo } from "react";
-import { Card, styled } from "tamagui";
+import { styled, YStack } from "tamagui";
 
 import type { AppCardProps } from "./types";
 
-const AppCardFrame = styled(Card, {
-  background: "$background",
+const AppCardFrame = styled(YStack, {
   borderColor: "$borderColor",
   borderWidth: 1,
   overflow: "hidden",
@@ -33,12 +32,19 @@ const AppCardFrame = styled(Card, {
 });
 
 export const AppCard = memo(function AppCard({
+  background,
   children,
   interactive = false,
   ...props
 }: AppCardProps) {
+  const surfaceBackground = background ?? "#FFFFFF";
+
   return (
-    <AppCardFrame interactive={interactive} {...props}>
+    <AppCardFrame
+      background={surfaceBackground}
+      interactive={interactive}
+      {...props}
+    >
       {children}
     </AppCardFrame>
   );

@@ -16,7 +16,7 @@ async function bootstrap() {
     bufferLogs: true,
   });
 
-  // 👇 Register Pino Logger
+  // Register Pino Logger
   app.useLogger(app.get(Logger));
 
   app.use(
@@ -60,7 +60,9 @@ async function bootstrap() {
 
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  setupSwagger(app);
+  if (process.env.DISABLE_SWAGGER !== 'true') {
+    setupSwagger(app);
+  }
 
   const port = Number(process.env.PORT ?? 5000);
   await app.listen(port, '0.0.0.0');

@@ -31,23 +31,23 @@ const externalDestination = {
 
 const destinations = [
   {
-    cta: "Go to Dashboard",
+    cta: "Go to LMS",
     description:
       "Access courses, exams, learning resources and your academic progress.",
     href: STUDENT_DASHBOARD_PATH,
     imageAlt: "Illustration of academic dashboard resources and progress",
     imageSrc: "/images/dashboard.png",
     isExternal: false,
-    title: "Dashboard",
+    title: "LMS",
   },
   {
-    cta: "Explore Now",
+    cta: "Explore App",
     description: externalDestination.description,
     href: externalDestination.url,
     imageAlt: "Illustration of an external learning portal",
     imageSrc: "/images/external-links.png",
     isExternal: true,
-    title: externalDestination.name,
+    title: "Explore App",
   },
 ];
 

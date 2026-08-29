@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   ExecutionContext,
 } from '@nestjs/common';
@@ -8,7 +9,7 @@ import { IS_PUBLIC_KEY } from '../decorators/public.decorators';
 
 @Injectable()
 export class GlobalJwtAuthGuard extends AuthGuard('jwt') {
-  constructor(private reflector: Reflector) {
+  constructor(@Inject(Reflector) private readonly reflector: Reflector) {
     super();
   }
 
