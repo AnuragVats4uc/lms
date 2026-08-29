@@ -20,6 +20,8 @@ import {
   ValidateNested,
 } from 'class-validator';
 
+import { registrationProfileMapTargets } from '../registration-answer.rules';
+
 export const registrationFieldTypes = [
   'TEXT',
   'SELECT',
@@ -107,6 +109,17 @@ export class RegistrationFieldDto {
   @IsString()
   @MaxLength(255)
   helpText?: string;
+
+  @ApiPropertyOptional({
+    enum: registrationProfileMapTargets,
+    example: 'city',
+    description:
+      'Optional safe StudentProfile field populated from this answer.',
+  })
+  @Transform(({ value }: { value: unknown }) => trimString(value))
+  @IsOptional()
+  @IsIn(registrationProfileMapTargets)
+  mapsTo?: (typeof registrationProfileMapTargets)[number];
 
   @ApiPropertyOptional({ example: 20 })
   @IsOptional()

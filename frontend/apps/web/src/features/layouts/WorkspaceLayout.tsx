@@ -27,7 +27,7 @@ interface WorkspaceLayoutProps {
   workspace?: "admin" | "student" | "teacher";
 }
 
-const   WorkspaceLayout = ({
+const WorkspaceLayout = ({
   children,
   navigation,
   title,
@@ -78,10 +78,15 @@ const   WorkspaceLayout = ({
     ? `${currentUser.firstName} ${currentUser.lastName ?? ""}`.trim()
     : "User";
   const studentProfile = studentDashboardQuery.data?.student;
-  const unreadStudentNotifications =
-    studentDashboardQuery.data?.notifications.filter(
-      (notification) => !notification.isRead,
-    ).length ?? 0;
+  const unreadNotificationsQuery = useQuery({
+    enabled:
+      isStudentWorkspace && !isStudentStandaloneRoute && currentUser != null,
+    queryFn: studentsApi.findMyUnreadNotificationCount,
+    queryKey: ["student-notifications", "unread-count"],
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+  const unreadStudentNotifications = unreadNotificationsQuery.data?.unread ?? 0;
   const profileRole =
     studentProfile?.batch ??
     currentUser?.role ??

@@ -26,6 +26,20 @@ import type {
   StudentResourceActivityEventType,
   StudentResourceActivityHeartbeat,
   StudentResourceActivitySession,
+  StudentSelfProfile,
+  StudentProfilePreferences,
+  UpdateMyStudentProfileRequest,
+  UpdateMyStudentPreferencesRequest,
+  ChangeMyStudentPasswordRequest,
+  ChangeMyStudentPasswordResponse,
+  StudentCalendarQuery,
+  StudentCalendarResponse,
+  StudentNotificationsQuery,
+  StudentNotificationsResponse,
+  StudentUnreadNotificationCount,
+  UpdateStudentNotificationRequest,
+  UpdateStudentNotificationResponse,
+  MarkAllStudentNotificationsReadResponse,
 } from "@repo/types";
 
 import { api } from "../client/axios";
@@ -57,6 +71,99 @@ export const studentsApi = {
   findMyDashboard() {
     return api
       .get<ApiResponse<StudentDashboard>>(`${STUDENTS_ENDPOINT}/me/dashboard`)
+      .then(unwrapApiData);
+  },
+
+  findMyProfile() {
+    return api
+      .get<ApiResponse<StudentSelfProfile>>(`${STUDENTS_ENDPOINT}/me/profile`)
+      .then(unwrapApiData);
+  },
+
+  findMyCalendar(query?: StudentCalendarQuery) {
+    return api
+      .get<ApiResponse<StudentCalendarResponse>>(
+        `${STUDENTS_ENDPOINT}/me/calendar`,
+        {
+          params: query
+            ? {
+                ...query,
+                types: query.types?.join(","),
+              }
+            : undefined,
+        },
+      )
+      .then(unwrapApiData);
+  },
+
+  findMyNotifications(query?: StudentNotificationsQuery) {
+    return api
+      .get<ApiResponse<StudentNotificationsResponse>>(
+        `${STUDENTS_ENDPOINT}/me/notifications`,
+        {
+          params: query
+            ? {
+                ...query,
+                types: query.types?.join(","),
+              }
+            : undefined,
+        },
+      )
+      .then(unwrapApiData);
+  },
+
+  findMyUnreadNotificationCount() {
+    return api
+      .get<ApiResponse<StudentUnreadNotificationCount>>(
+        `${STUDENTS_ENDPOINT}/me/notifications/unread-count`,
+      )
+      .then(unwrapApiData);
+  },
+
+  updateMyNotification(
+    notificationUuid: string,
+    payload: UpdateStudentNotificationRequest,
+  ) {
+    return api
+      .patch<ApiResponse<UpdateStudentNotificationResponse>>(
+        `${STUDENTS_ENDPOINT}/me/notifications/${notificationUuid}`,
+        payload,
+      )
+      .then(unwrapApiData);
+  },
+
+  markAllMyNotificationsRead() {
+    return api
+      .patch<ApiResponse<MarkAllStudentNotificationsReadResponse>>(
+        `${STUDENTS_ENDPOINT}/me/notifications/read-all`,
+      )
+      .then(unwrapApiData);
+  },
+
+  updateMyProfile(payload: UpdateMyStudentProfileRequest) {
+    return api
+      .patch<ApiResponse<StudentSelfProfile>>(
+        `${STUDENTS_ENDPOINT}/me/profile`,
+        payload,
+      )
+      .then(unwrapApiData);
+  },
+
+  updateMyPreferences(payload: UpdateMyStudentPreferencesRequest) {
+    return api
+      .patch<ApiResponse<StudentProfilePreferences>>(
+        `${STUDENTS_ENDPOINT}/me/preferences`,
+        payload,
+      )
+      .then(unwrapApiData);
+  },
+
+  changeMyPassword(payload: ChangeMyStudentPasswordRequest) {
+    return api
+      .patch<ApiResponse<ChangeMyStudentPasswordResponse>>(
+        `${STUDENTS_ENDPOINT}/me/password`,
+        payload,
+      )
       .then(unwrapApiData);
   },
 

@@ -39,6 +39,7 @@ import {
   examReportResultStatus,
   summarizeReportAnswers,
 } from '../reporting/exam-report-metrics';
+import { buildExamResultNotification } from '../../students/student-notification.rules';
 
 const TERMINAL_STATUSES: ExamAttemptStatus[] = [
   ExamAttemptStatus.SUBMITTED,
@@ -670,18 +671,17 @@ export class StudentExamService {
           ? 'NOT_ATTEMPTED'
           : topic.total < 3
             ? 'LIMITED_DATA'
-          : topic.accuracy >= 75
-            ? 'STRONG'
-            : topic.accuracy < 50
-              ? 'WEAK'
-              : 'DEVELOPING',
+            : topic.accuracy >= 75
+              ? 'STRONG'
+              : topic.accuracy < 50
+                ? 'WEAK'
+                : 'DEVELOPING',
     }));
     const difficultyPerformance = aggregateReportPerformance(
       metricItems.map((item) => ({
         groupKey: `difficulty:${item.difficulty}`,
         groupLabel:
-          item.difficulty.charAt(0) +
-          item.difficulty.slice(1).toLowerCase(),
+          item.difficulty.charAt(0) + item.difficulty.slice(1).toLowerCase(),
         metadata: { difficulty: item.difficulty },
         marksAwarded: item.marksAwarded,
         maximumMarks: item.maximumMarks,
@@ -1553,6 +1553,32 @@ export class StudentExamService {
             current.sessionCourse?.course.name,
         },
       });
+      if (
+        current.sourceResourceId &&
+        this.isResultReleased(current.exam, now)
+      ) {
+        const preferences = await tx.studentPreference.findUnique({
+          where: { studentId: current.studentId },
+          select: { inAppNotifications: true },
+        });
+        if (preferences?.inAppNotifications ?? true) {
+          const notification = buildExamResultNotification({
+            title: current.exam.title,
+            resourceId: current.sourceResourceId,
+            attemptId: current.id,
+          });
+          await tx.studentNotification.createMany({
+            data: [
+              {
+                ...notification,
+                studentId: current.studentId,
+                organizationId: current.exam.organizationId,
+              },
+            ],
+            skipDuplicates: true,
+          });
+        }
+      }
       return {
         attemptUuid: current.uuid,
         status,

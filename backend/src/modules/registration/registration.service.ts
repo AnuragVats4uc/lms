@@ -21,10 +21,29 @@ import {
   RegistrationMasterQueryDto,
   UpdateRegistrationMasterOptionDto,
 } from './dto/registration-master.dto';
+import {
+  buildRegistrationProfilePatch,
+  normalizeRegistrationAnswers,
+  RegistrationAnswerValidationError,
+} from './registration-answer.rules';
+import type { NormalizedRegistrationAnswer } from './registration-answer.rules';
 
 const DEFAULT_PRIMARY_COLOR = '#059669';
 const DEFAULT_ACCENT_COLOR = '#2563EB';
 const STUDENT_ROLE_CODE = 'STUDENT';
+const RESERVED_REGISTRATION_FIELD_KEYS = new Set([
+  'first_name',
+  'last_name',
+  'gender',
+  'date_of_birth',
+  'phone',
+  'email',
+  'password',
+  'education',
+  'library_location',
+  'digital_library_location',
+  'courses',
+]);
 
 type RegistrationPageWithRelations =
   Prisma.OrganizationRegistrationPageGetPayload<{
@@ -137,6 +156,20 @@ export class RegistrationService {
       throw new BadRequestException('Digital Library Location is invalid');
     }
 
+    const customFields = this.publicCustomFields(page.fields);
+    let customAnswers: NormalizedRegistrationAnswer[];
+    try {
+      customAnswers = normalizeRegistrationAnswers(
+        customFields,
+        dto.customAnswers,
+      );
+    } catch (error) {
+      if (error instanceof RegistrationAnswerValidationError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+
     const password = await this.passwordService.hash(dto.password);
     const email = dto.email;
     const result = await this.prisma.$transaction(async (tx) => {
@@ -190,6 +223,21 @@ export class RegistrationService {
         education: educationOption.uuid,
         digital_library_location: digitalLibraryLocation.uuid,
       });
+      await this.saveCustomRegistrationAnswers(
+        tx,
+        page.id,
+        student.id,
+        customFields.map((field) => field.id),
+        customAnswers,
+      );
+
+      const profilePatch = buildRegistrationProfilePatch(customAnswers);
+      if (Object.keys(profilePatch).length) {
+        await tx.studentProfile.update({
+          where: { studentId: student.id },
+          data: profilePatch,
+        });
+      }
 
       return { enrollment, student, user };
     });
@@ -710,7 +758,7 @@ export class RegistrationService {
         lastName: dto.lastName,
         organizationId: existing.organizationId ?? page.organizationId,
         password: account.password,
-        phone: existing.phone ?? dto.phone,
+        phone: dto.phone,
       },
     });
   }
@@ -843,6 +891,53 @@ export class RegistrationService {
           },
         });
       }),
+    );
+  }
+
+  private async saveCustomRegistrationAnswers(
+    tx: Prisma.TransactionClient,
+    registrationPageId: number,
+    studentId: number,
+    activeFieldIds: number[],
+    answers: NormalizedRegistrationAnswer[],
+  ) {
+    if (activeFieldIds.length) {
+      const submittedKeys = answers.map((answer) => answer.fieldKey);
+      await tx.organizationRegistrationAnswer.deleteMany({
+        where: {
+          registrationPageId,
+          studentId,
+          fieldId: { in: activeFieldIds },
+          ...(submittedKeys.length
+            ? { fieldKey: { notIn: submittedKeys } }
+            : {}),
+        },
+      });
+    }
+
+    await Promise.all(
+      answers.map((answer) =>
+        tx.organizationRegistrationAnswer.upsert({
+          where: {
+            registrationPageId_studentId_fieldKey: {
+              registrationPageId,
+              studentId,
+              fieldKey: answer.fieldKey,
+            },
+          },
+          create: {
+            registrationPageId,
+            fieldId: answer.fieldId,
+            studentId,
+            fieldKey: answer.fieldKey,
+            value: answer.value,
+          },
+          update: {
+            fieldId: answer.fieldId,
+            value: answer.value,
+          },
+        }),
+      ),
     );
   }
 
@@ -1043,6 +1138,16 @@ export class RegistrationService {
     if (incomingKeys.length !== new Set(incomingKeys).size) {
       throw new BadRequestException('Registration field keys must be unique');
     }
+    const mappedTargets = fields
+      .map((field) => field.mapsTo)
+      .filter((target): target is NonNullable<typeof target> =>
+        Boolean(target),
+      );
+    if (mappedTargets.length !== new Set(mappedTargets).size) {
+      throw new BadRequestException(
+        'A student profile field can only be mapped once per registration page',
+      );
+    }
 
     await tx.organizationRegistrationField.updateMany({
       where: {
@@ -1053,8 +1158,10 @@ export class RegistrationService {
     });
 
     for (const field of fields) {
-      if (field.fieldKey === 'courses') {
-        throw new BadRequestException('Courses are a system field');
+      if (RESERVED_REGISTRATION_FIELD_KEYS.has(field.fieldKey)) {
+        throw new BadRequestException(
+          `${field.fieldKey} is a system registration field`,
+        );
       }
 
       const saved = await tx.organizationRegistrationField.upsert({
@@ -1072,6 +1179,7 @@ export class RegistrationService {
           isRequired: field.isRequired ?? false,
           placeholder: field.placeholder,
           helpText: field.helpText,
+          mapsTo: field.mapsTo,
           sortOrder: field.sortOrder ?? 0,
           isActive: field.isActive ?? true,
         },
@@ -1081,6 +1189,7 @@ export class RegistrationService {
           isRequired: field.isRequired ?? false,
           placeholder: field.placeholder,
           helpText: field.helpText,
+          mapsTo: field.mapsTo,
           sortOrder: field.sortOrder ?? 0,
           isActive: field.isActive ?? true,
         },
@@ -1191,6 +1300,7 @@ export class RegistrationService {
       isRequired: field.isRequired,
       placeholder: field.placeholder,
       helpText: field.helpText,
+      mapsTo: field.mapsTo,
       sortOrder: field.sortOrder,
       isActive: field.isActive,
       options: field.options.map((option) => ({

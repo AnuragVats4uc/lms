@@ -2,6 +2,16 @@ import type { PaginatedData } from "./api";
 
 export type RegistrationPageStatus = "DRAFT" | "ACTIVE" | "ARCHIVED";
 export type RegistrationFieldType = "TEXT" | "SELECT" | "RADIO" | "TEXTAREA";
+export type RegistrationProfileMapTarget =
+  | "alternatePhone"
+  | "address"
+  | "city"
+  | "state"
+  | "postalCode"
+  | "guardianName"
+  | "guardianPhone"
+  | "emergencyContactName"
+  | "emergencyContactPhone";
 
 export interface RegistrationFieldOption {
   id?: number;
@@ -21,6 +31,7 @@ export interface RegistrationField {
   isRequired: boolean;
   placeholder: string | null;
   helpText: string | null;
+  mapsTo: RegistrationProfileMapTarget | null;
   sortOrder: number;
   isActive: boolean;
   options: RegistrationFieldOption[];
@@ -150,6 +161,7 @@ export interface RegistrationFieldPayload {
   isRequired?: boolean;
   placeholder?: string;
   helpText?: string;
+  mapsTo?: RegistrationProfileMapTarget;
   sortOrder?: number;
   isActive?: boolean;
   options?: Array<{

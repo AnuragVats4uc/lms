@@ -58,6 +58,10 @@ import {
   examReportResultStatus,
   summarizeReportAnswers,
 } from '../reporting/exam-report-metrics';
+import {
+  buildExamResultNotification,
+  buildScheduledExamNotification,
+} from '../../students/student-notification.rules';
 
 export interface ExamImportFile {
   buffer: Buffer;
@@ -341,9 +345,7 @@ export class ExamService {
                     ? { questionTypeId: query.questionTypeId }
                     : {}),
                   ...(query.topicId ? { topicId: query.topicId } : {}),
-                  ...(query.difficulty
-                    ? { difficulty: query.difficulty }
-                    : {}),
+                  ...(query.difficulty ? { difficulty: query.difficulty } : {}),
                 },
               }
             : undefined,
@@ -1075,8 +1077,7 @@ export class ExamService {
         ...commonMetric(item),
         groupKey: `difficulty:${item.difficulty}`,
         groupLabel:
-          item.difficulty.charAt(0) +
-          item.difficulty.slice(1).toLowerCase(),
+          item.difficulty.charAt(0) + item.difficulty.slice(1).toLowerCase(),
         metadata: { difficulty: item.difficulty },
       })),
     );
@@ -1307,7 +1308,7 @@ export class ExamService {
           const published =
             dto.status === ExamStatus.SCHEDULED ||
             dto.status === ExamStatus.LIVE;
-          await tx.resource.create({
+          const resource = await tx.resource.create({
             data: {
               folderId: dto.resourceFolderId,
               resourceTypeId: 3,
@@ -1321,6 +1322,72 @@ export class ExamService {
               isDownloadable: false,
             },
           });
+
+          if (published) {
+            const enrollments = await tx.studentCourseEnrollment.findMany({
+              where: {
+                sessionCourseId: { in: dto.sessionCourseIds },
+                isActive: true,
+                status: { in: ['ACTIVE', 'COMPLETED'] },
+                enrollment: {
+                  organizationId,
+                  isActive: true,
+                  status: { in: ['ACTIVE', 'COMPLETED'] },
+                  student: {
+                    organizationId,
+                    isActive: true,
+                    user: { isActive: true },
+                  },
+                },
+              },
+              select: {
+                enrollment: {
+                  select: {
+                    student: {
+                      select: {
+                        id: true,
+                        preferences: {
+                          select: {
+                            inAppNotifications: true,
+                            examReminders: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            });
+            const studentIds = [
+              ...new Set(
+                enrollments
+                  .map(({ enrollment }) => enrollment.student)
+                  .filter(
+                    (student) =>
+                      (student.preferences?.inAppNotifications ?? true) &&
+                      (student.preferences?.examReminders ?? true),
+                  )
+                  .map((student) => student.id),
+              ),
+            ];
+            const notification = buildScheduledExamNotification({
+              title: exam.title,
+              resourceId: resource.id,
+              availableUntil: exam.availableUntil,
+              live: dto.status === ExamStatus.LIVE,
+            });
+
+            if (studentIds.length) {
+              await tx.studentNotification.createMany({
+                data: studentIds.map((studentId) => ({
+                  ...notification,
+                  studentId,
+                  organizationId,
+                })),
+                skipDuplicates: true,
+              });
+            }
+          }
         }
         return exam;
       });
@@ -1336,11 +1403,66 @@ export class ExamService {
     const organizationId = this.organizationId(user);
     const exam = await this.prisma.exam.findFirst({
       where: { id: examId, organizationId, isActive: true },
+      include: {
+        resources: {
+          where: { isActive: true },
+          orderBy: { id: 'asc' },
+          take: 1,
+        },
+        attempts: {
+          where: {
+            status: { in: ['SUBMITTED', 'AUTO_SUBMITTED', 'EVALUATED'] },
+          },
+          select: {
+            student: {
+              select: {
+                id: true,
+                preferences: {
+                  select: { inAppNotifications: true },
+                },
+              },
+            },
+          },
+        },
+      },
     });
     if (!exam) throw new NotFoundException('Exam not found');
-    return this.prisma.exam.update({
-      where: { id: exam.id },
-      data: { resultsReleasedAt: new Date() },
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.exam.update({
+        where: { id: exam.id },
+        data: { resultsReleasedAt: new Date() },
+      });
+      const resource = exam.resources[0];
+
+      if (resource) {
+        const studentIds = [
+          ...new Set(
+            exam.attempts
+              .map(({ student }) => student)
+              .filter(
+                (student) => student.preferences?.inAppNotifications ?? true,
+              )
+              .map((student) => student.id),
+          ),
+        ];
+        const notification = buildExamResultNotification({
+          title: exam.title,
+          resourceId: resource.id,
+        });
+
+        if (studentIds.length) {
+          await tx.studentNotification.createMany({
+            data: studentIds.map((studentId) => ({
+              ...notification,
+              studentId,
+              organizationId,
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      return updated;
     });
   }
 

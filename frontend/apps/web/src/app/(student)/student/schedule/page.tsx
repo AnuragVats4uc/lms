@@ -1,10 +1,5 @@
-import { StudentPlaceholderPage } from "@/features/student/components/StudentPlaceholderPage";
+import { StudentCalendarPage } from "@/features/student/calendar/StudentCalendarPage";
 
 export default function Page() {
-  return (
-    <StudentPlaceholderPage
-      title="Schedule"
-      description="Schedule views are ready for future sessions and timetable APIs."
-    />
-  );
+  return <StudentCalendarPage />;
 }

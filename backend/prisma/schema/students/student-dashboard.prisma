@@ -19,6 +19,7 @@ model Student {
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
   profile                  StudentProfile?
+  preferences              StudentPreference?
   enrollments              StudentEnrollment[]
   courseProgress           StudentCourseProgress[]
   videoProgress            StudentVideoProgress[]
@@ -68,6 +69,31 @@ model StudentProfile {
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@map("student_profiles")
+}
+
+model StudentPreference {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  studentId Int @unique(map: "student_preferences_student_id_unique") @map("student_id")
+
+  timezone String @default("Asia/Kolkata") @db.VarChar(64)
+  language String @default("en") @db.VarChar(20)
+
+  inAppNotifications         Boolean @default(true) @map("in_app_notifications")
+  emailNotifications         Boolean @default(false) @map("email_notifications")
+  examReminders              Boolean @default(true) @map("exam_reminders")
+  resourceUpdates            Boolean @default(true) @map("resource_updates")
+  announcementNotifications  Boolean @default(true) @map("announcement_notifications")
+  securityAlerts             Boolean @default(true) @map("security_alerts")
+  examReminderOffsetsMinutes Json    @map("exam_reminder_offsets_minutes")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("student_preferences")
 }
 
 model StudentEnrollment {
@@ -198,6 +224,7 @@ model StudentNotification {
   student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@unique([studentId, relatedEntity, relatedEntityId], map: "student_notifications_lifecycle_unique")
   @@index([studentId, isRead], map: "student_notifications_student_id_is_read_idx")
   @@index([organizationId, type], map: "student_notifications_organization_id_type_idx")
   @@index([createdAt], map: "student_notifications_created_at_idx")

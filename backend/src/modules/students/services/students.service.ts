@@ -6,6 +6,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ResourceActivityEndReason, ResourceStatus } from '@prisma/client';
 
@@ -25,7 +26,12 @@ import {
   RESOURCE_TYPE_IDS,
 } from '../../resource/constants/resource-type.constants';
 import { CreateStudentDto } from '../dto/create-student.dto';
+import { ChangeMyPasswordDto } from '../dto/change-my-password.dto';
 import { StudentCoursesQueryDto } from '../dto/student-courses-query.dto';
+import {
+  StudentCalendarEventType,
+  StudentCalendarQueryDto,
+} from '../dto/student-calendar-query.dto';
 import { StudentFolderResourcesQueryDto } from '../dto/student-folder-resources-query.dto';
 import { UpdateStudentVideoProgressDto } from '../dto/update-student-video-progress.dto';
 import {
@@ -33,6 +39,10 @@ import {
   StudentResourcesSort,
 } from '../dto/student-resources-query.dto';
 import { StudentQueryDto } from '../dto/student-query.dto';
+import { StudentNotificationsQueryDto } from '../dto/student-notifications-query.dto';
+import { UpdateStudentNotificationDto } from '../dto/update-student-notification.dto';
+import { UpdateMyStudentPreferencesDto } from '../dto/update-my-student-preferences.dto';
+import { UpdateMyStudentProfileDto } from '../dto/update-my-student-profile.dto';
 import { UpdateStudentDto } from '../dto/update-student.dto';
 import {
   NormalizedStudentCoursesQuery,
@@ -42,12 +52,69 @@ import {
   StudentUpdateData,
   StudentsRepository,
 } from '../repositories/students.repository';
+import {
+  STUDENT_CALENDAR_MAX_RANGE_DAYS,
+  isCalendarExamResourceAssigned,
+  normalizeStudentCalendarRange,
+  toStudentExamCalendarStatus,
+  toStudentSessionCalendarStatus,
+} from '../student-calendar.rules';
+import {
+  isSupportedTimeZone,
+  normalizeReminderOffsets,
+  studentProfileCompleteness,
+} from '../student-profile.rules';
+import {
+  buildExamReminderNotifications,
+  normalizeStudentNotificationsQuery,
+  toStudentNotificationAction,
+} from '../student-notification.rules';
 
 type StudentFolderResourceResult = NonNullable<
   Awaited<ReturnType<StudentsRepository['findStudentFolderResources']>>
 >;
 type StudentFolderResourceRecord = StudentFolderResourceResult['items'][number];
 type StudentExamGraph = NonNullable<StudentFolderResourceRecord['exam']>;
+type StudentCalendarCourse = {
+  id: number;
+  uuid: string;
+  sessionCourseId: number;
+  name: string;
+  code: string;
+};
+type StudentCalendarEvent = {
+  id: string;
+  type: StudentCalendarEventType;
+  source: 'EXAM_SCHEDULE' | 'ACADEMIC_SESSION';
+  title: string;
+  description: string | null;
+  startsAt: Date;
+  endsAt: Date;
+  allDay: boolean;
+  endInclusive: boolean;
+  status: string;
+  displayMode: 'STANDARD' | 'BACKGROUND';
+  href: string | null;
+  resource: { id: number; uuid: string; title: string } | null;
+  session: {
+    id: number;
+    uuid: string;
+    name: string;
+    code: string | null;
+  };
+  courses: StudentCalendarCourse[];
+  exam: {
+    id: number;
+    uuid: string;
+    code: string;
+    durationMinutes: number;
+    attemptLimit: number;
+    attemptsUsed: number;
+    allowResume: boolean;
+    activeAttemptUuid: string | null;
+    latestAttemptUuid: string | null;
+  } | null;
+};
 
 @Injectable()
 export class StudentsService {
@@ -158,6 +225,460 @@ export class StudentsService {
         status: student.status,
       },
       profile: student.profile,
+    };
+  }
+
+  async getMyProfile(user: CurrentUser) {
+    const student = await this.findSelfProfileOrThrow(user);
+    const preferences =
+      student.preferences ??
+      (await this.studentsRepository.upsertStudentPreferences(student.id));
+    const answerByKey = new Map(
+      student.registrationAnswers.map((answer) => [
+        answer.fieldKey,
+        answer.value ?? undefined,
+      ]),
+    );
+    const selections =
+      await this.studentsRepository.findRegistrationSelectionNames(
+        student.organizationId,
+        answerByKey.get('education'),
+        answerByKey.get('digital_library_location'),
+      );
+
+    return this.toSelfProfileResponse(student, preferences, selections);
+  }
+
+  async getMyCalendar(user: CurrentUser, query: StudentCalendarQueryDto) {
+    const student = await this.findSelfProfileOrThrow(user);
+    const organizationId = this.requireStudentOrganization(student);
+    let range: { from: Date; to: Date };
+
+    try {
+      range = normalizeStudentCalendarRange(query);
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Invalid calendar range',
+      );
+    }
+
+    const requestedTypes = new Set(
+      query.types?.length
+        ? query.types
+        : [
+            StudentCalendarEventType.EXAM,
+            StudentCalendarEventType.ACADEMIC_SESSION,
+          ],
+    );
+    const [preferences, examResources, enrollments] = await Promise.all([
+      student.preferences
+        ? Promise.resolve(student.preferences)
+        : this.studentsRepository.upsertStudentPreferences(student.id),
+      requestedTypes.has(StudentCalendarEventType.EXAM)
+        ? this.studentsRepository.findStudentCalendarExamResources(
+            student.id,
+            organizationId,
+            range,
+          )
+        : Promise.resolve([]),
+      requestedTypes.has(StudentCalendarEventType.ACADEMIC_SESSION)
+        ? this.studentsRepository.findStudentCalendarEnrollments(
+            student.id,
+            organizationId,
+            range,
+          )
+        : Promise.resolve([]),
+    ]);
+    const eventById = new Map<string, StudentCalendarEvent>();
+
+    for (const resource of examResources) {
+      const exam = resource.exam;
+      const sessionCourse = resource.folder.sessionCourse;
+
+      if (
+        !exam ||
+        exam.organizationId !== organizationId ||
+        sessionCourse.session.organizationId !== organizationId ||
+        !isCalendarExamResourceAssigned({
+          folderSessionCourseId: sessionCourse.id,
+          assignmentSessionCourseIds: exam.courseAssignments.map(
+            (assignment) => assignment.sessionCourseId,
+          ),
+        })
+      ) {
+        continue;
+      }
+
+      const course = this.toStudentCalendarCourse(sessionCourse);
+      const eventId = `exam:${exam.uuid}`;
+      const existing = eventById.get(eventId);
+
+      if (existing) {
+        if (
+          !existing.courses.some(
+            (item) => item.sessionCourseId === course.sessionCourseId,
+          )
+        ) {
+          existing.courses.push(course);
+        }
+        continue;
+      }
+
+      const latestAttempt = exam.attempts[0] ?? null;
+      const activeAttempt =
+        exam.attempts.find((attempt) => attempt.status === 'IN_PROGRESS') ??
+        null;
+      eventById.set(eventId, {
+        id: eventId,
+        type: StudentCalendarEventType.EXAM,
+        source: 'EXAM_SCHEDULE',
+        title: exam.title,
+        description: resource.description,
+        startsAt: exam.availableFrom,
+        endsAt: exam.availableUntil,
+        allDay: false,
+        endInclusive: false,
+        status: toStudentExamCalendarStatus(exam),
+        displayMode: 'STANDARD',
+        href:
+          exam.status === 'CANCELLED'
+            ? null
+            : `/student/resources/${resource.id}/exam`,
+        resource: {
+          id: resource.id,
+          uuid: resource.uuid,
+          title: resource.title,
+        },
+        session: {
+          id: sessionCourse.session.id,
+          uuid: sessionCourse.session.uuid,
+          name: sessionCourse.session.name,
+          code: sessionCourse.session.code,
+        },
+        courses: [course],
+        exam: {
+          id: exam.id,
+          uuid: exam.uuid,
+          code: exam.code,
+          durationMinutes: exam.durationMinutes,
+          attemptLimit: exam.attemptLimit,
+          attemptsUsed: exam.attempts.length,
+          allowResume: exam.allowResume,
+          activeAttemptUuid: activeAttempt?.uuid ?? null,
+          latestAttemptUuid: latestAttempt?.uuid ?? null,
+        },
+      });
+    }
+
+    for (const enrollment of enrollments) {
+      const session = enrollment.session;
+      const courses = enrollment.courseEnrollments.map(({ sessionCourse }) =>
+        this.toStudentCalendarCourse(sessionCourse),
+      );
+
+      eventById.set(`academic-session:${session.uuid}`, {
+        id: `academic-session:${session.uuid}`,
+        type: StudentCalendarEventType.ACADEMIC_SESSION,
+        source: 'ACADEMIC_SESSION',
+        title: session.name,
+        description: session.description,
+        startsAt: session.startDate,
+        endsAt: session.endDate,
+        allDay: true,
+        endInclusive: true,
+        status: toStudentSessionCalendarStatus(session),
+        displayMode: 'BACKGROUND',
+        href: null,
+        resource: null,
+        session: {
+          id: session.id,
+          uuid: session.uuid,
+          name: session.name,
+          code: session.code,
+        },
+        courses,
+        exam: null,
+      });
+    }
+
+    const search = query.search?.trim().toLocaleLowerCase() ?? '';
+    const events = [...eventById.values()]
+      .filter(
+        (event) =>
+          !query.courseId ||
+          event.courses.some((course) => course.id === query.courseId),
+      )
+      .filter((event) => {
+        if (!search) return true;
+        return [
+          event.title,
+          event.description,
+          event.session.name,
+          event.session.code,
+          event.exam?.code,
+          ...event.courses.flatMap((course) => [course.name, course.code]),
+        ].some((value) => value?.toLocaleLowerCase().includes(search));
+      })
+      .sort(
+        (first, second) =>
+          first.startsAt.getTime() - second.startsAt.getTime() ||
+          first.type.localeCompare(second.type) ||
+          first.title.localeCompare(second.title),
+      );
+    const availableCourses = [
+      ...new Map(
+        [...eventById.values()]
+          .flatMap((event) => event.courses)
+          .map((course) => [course.id, course]),
+      ).values(),
+    ].sort((first, second) => first.name.localeCompare(second.name));
+    const now = new Date();
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    return {
+      timezone: preferences.timezone,
+      generatedAt: now,
+      range: {
+        from: range.from,
+        to: range.to,
+        maxDays: STUDENT_CALENDAR_MAX_RANGE_DAYS,
+      },
+      appliedFilters: {
+        types: [...requestedTypes],
+        courseId: query.courseId ?? null,
+        search: query.search?.trim() ?? '',
+      },
+      availableCourses,
+      summary: {
+        total: events.length,
+        exams: events.filter(
+          (event) => event.type === StudentCalendarEventType.EXAM,
+        ).length,
+        academicSessions: events.filter(
+          (event) => event.type === StudentCalendarEventType.ACADEMIC_SESSION,
+        ).length,
+        upcoming: events.filter((event) => event.status === 'UPCOMING').length,
+        availableExams: events.filter(
+          (event) =>
+            event.type === StudentCalendarEventType.EXAM &&
+            event.status === 'AVAILABLE',
+        ).length,
+        closingWithinSevenDays: events.filter(
+          (event) =>
+            event.type === StudentCalendarEventType.EXAM &&
+            event.status !== 'CANCELLED' &&
+            event.endsAt > now &&
+            event.endsAt <= sevenDaysFromNow,
+        ).length,
+      },
+      events,
+    };
+  }
+
+  async getMyNotifications(
+    user: CurrentUser,
+    query: StudentNotificationsQueryDto,
+  ) {
+    const student = await this.findSelfProfileOrThrow(user);
+    const organizationId = this.requireStudentOrganization(student);
+    const preferences =
+      student.preferences ??
+      (await this.studentsRepository.upsertStudentPreferences(student.id));
+
+    await this.synchronizeExamNotifications(
+      student.id,
+      organizationId,
+      preferences,
+    );
+
+    const normalized = normalizeStudentNotificationsQuery(query);
+    const result = await this.studentsRepository.findStudentNotifications(
+      student.id,
+      organizationId,
+      normalized,
+    );
+    return {
+      items: result.items.map((notification) => ({
+        uuid: notification.uuid,
+        type: notification.type,
+        title: notification.title,
+        description: notification.description,
+        isRead: notification.isRead,
+        createdAt: notification.createdAt,
+        expiresAt: notification.expiresAt,
+        action: toStudentNotificationAction(notification),
+      })),
+      meta: {
+        page: normalized.page,
+        limit: normalized.limit,
+        total: result.total,
+        totalPages: Math.ceil(result.total / normalized.limit),
+        unread: result.unread,
+      },
+      summary: {
+        unread: result.unread,
+        byType: {
+          EXAM: result.countsByType.EXAM,
+          RESOURCE: result.countsByType.RESOURCE,
+          ANNOUNCEMENT: result.countsByType.ANNOUNCEMENT,
+          SYSTEM: result.countsByType.SYSTEM,
+        },
+      },
+      delivery: {
+        inAppEnabled: preferences.inAppNotifications,
+        examRemindersEnabled: preferences.examReminders,
+        resourceUpdatesEnabled: preferences.resourceUpdates,
+        announcementNotificationsEnabled: preferences.announcementNotifications,
+        securityAlertsEnabled: preferences.securityAlerts,
+      },
+    };
+  }
+
+  async getMyUnreadNotificationCount(user: CurrentUser) {
+    const student = await this.findSelfProfileOrThrow(user);
+    const organizationId = this.requireStudentOrganization(student);
+    const preferences =
+      student.preferences ??
+      (await this.studentsRepository.upsertStudentPreferences(student.id));
+    await this.synchronizeExamNotifications(
+      student.id,
+      organizationId,
+      preferences,
+    );
+
+    return {
+      unread: await this.studentsRepository.countUnreadStudentNotifications(
+        student.id,
+        organizationId,
+      ),
+    };
+  }
+
+  async updateMyNotification(
+    user: CurrentUser,
+    notificationUuid: string,
+    dto: UpdateStudentNotificationDto,
+  ) {
+    const student = await this.findSelfProfileOrThrow(user);
+    const organizationId = this.requireStudentOrganization(student);
+    const notification =
+      await this.studentsRepository.updateStudentNotificationReadState(
+        student.id,
+        organizationId,
+        notificationUuid,
+        dto.isRead,
+      );
+
+    if (!notification) throw new NotFoundException('Notification not found');
+
+    return {
+      uuid: notification.uuid,
+      isRead: notification.isRead,
+      updatedAt: notification.updatedAt,
+    };
+  }
+
+  async markAllMyNotificationsRead(user: CurrentUser) {
+    const student = await this.findSelfProfileOrThrow(user);
+    const organizationId = this.requireStudentOrganization(student);
+    const result =
+      await this.studentsRepository.markAllStudentNotificationsRead(
+        student.id,
+        organizationId,
+      );
+
+    return { updated: result.count, unread: 0 };
+  }
+
+  async updateMyProfile(user: CurrentUser, dto: UpdateMyStudentProfileDto) {
+    const student = await this.findSelfProfileOrThrow(user);
+    const nullableFields = [
+      'lastName',
+      'gender',
+      'alternatePhone',
+      'address',
+      'city',
+      'state',
+      'postalCode',
+      'avatar',
+      'guardianName',
+      'guardianPhone',
+      'emergencyContactName',
+      'emergencyContactPhone',
+    ] as const;
+    const data = {
+      ...dto,
+      dateOfBirth:
+        dto.dateOfBirth === undefined
+          ? undefined
+          : dto.dateOfBirth
+            ? new Date(dto.dateOfBirth)
+            : null,
+    };
+
+    for (const field of nullableFields) {
+      if (data[field] === '') data[field] = null;
+    }
+
+    await this.studentsRepository.updateSelfProfile(
+      student.id,
+      student.userId,
+      student.user.firstName,
+      data,
+    );
+
+    return this.getMyProfile(user);
+  }
+
+  async updateMyPreferences(
+    user: CurrentUser,
+    dto: UpdateMyStudentPreferencesDto,
+  ) {
+    const student = await this.findSelfProfileOrThrow(user);
+
+    if (dto.timezone && !isSupportedTimeZone(dto.timezone)) {
+      throw new BadRequestException('Unsupported IANA timezone');
+    }
+
+    return this.studentsRepository.upsertStudentPreferences(student.id, {
+      ...dto,
+      examReminderOffsetsMinutes: dto.examReminderOffsetsMinutes
+        ? normalizeReminderOffsets(dto.examReminderOffsetsMinutes)
+        : undefined,
+    });
+  }
+
+  async changeMyPassword(user: CurrentUser, dto: ChangeMyPasswordDto) {
+    await this.findSelfProfileOrThrow(user);
+    const account = await this.studentsRepository.findUserPassword(user.userId);
+
+    if (
+      !account ||
+      !(await this.passwordService.compare(
+        dto.currentPassword,
+        account.password,
+      ))
+    ) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    if (await this.passwordService.compare(dto.newPassword, account.password)) {
+      throw new BadRequestException(
+        'New password must be different from the current password',
+      );
+    }
+
+    const result =
+      await this.studentsRepository.updatePasswordAndRevokeSessions(
+        user.userId,
+        await this.passwordService.hash(dto.newPassword),
+      );
+
+    return {
+      changed: true,
+      reauthenticationRequired: true,
+      revokedSessions: result.revokedSessions,
+      message: 'Password changed. Sign in again on your devices.',
     };
   }
 
@@ -1106,6 +1627,81 @@ export class StudentsService {
     return student.organizationId;
   }
 
+  private async synchronizeExamNotifications(
+    studentId: number,
+    organizationId: number,
+    preferences: {
+      inAppNotifications: boolean;
+      examReminders: boolean;
+      examReminderOffsetsMinutes: unknown;
+    },
+  ) {
+    if (!preferences.inAppNotifications || !preferences.examReminders) return;
+
+    const now = new Date();
+    const reminderOffsets = this.toReminderOffsets(
+      preferences.examReminderOffsetsMinutes,
+    );
+    const maxOffset = Math.max(60, ...reminderOffsets);
+    const examResources =
+      await this.studentsRepository.findStudentCalendarExamResources(
+        studentId,
+        organizationId,
+        {
+          from: now,
+          to: new Date(now.getTime() + maxOffset * 60_000),
+        },
+      );
+    const notifications = examResources.flatMap((resource) => {
+      const exam = resource.exam;
+      const sessionCourseId = resource.folder.sessionCourse.id;
+      if (
+        !exam ||
+        exam.organizationId !== organizationId ||
+        !isCalendarExamResourceAssigned({
+          folderSessionCourseId: sessionCourseId,
+          assignmentSessionCourseIds: exam.courseAssignments.map(
+            (assignment) => assignment.sessionCourseId,
+          ),
+        })
+      ) {
+        return [];
+      }
+
+      return buildExamReminderNotifications(
+        {
+          resourceId: resource.id,
+          title: exam.title,
+          availableFrom: exam.availableFrom,
+          availableUntil: exam.availableUntil,
+          status: exam.status,
+          attemptLimit: exam.attemptLimit,
+          attemptsUsed: exam.attempts.length,
+        },
+        reminderOffsets,
+        now,
+      );
+    });
+
+    await this.studentsRepository.createStudentNotificationsIfMissing(
+      studentId,
+      organizationId,
+      notifications,
+    );
+  }
+
+  private toReminderOffsets(value: unknown) {
+    if (!Array.isArray(value)) return [1440, 60];
+    const offsets = value.filter(
+      (item): item is number =>
+        typeof item === 'number' &&
+        Number.isInteger(item) &&
+        item >= 5 &&
+        item <= 43_200,
+    );
+    return normalizeReminderOffsets(offsets.length ? offsets : [1440, 60]);
+  }
+
   private normalizeStudentFolderResourcesQuery(
     query: StudentFolderResourcesQueryDto,
   ): NormalizedStudentFolderResourcesQuery {
@@ -1350,6 +1946,180 @@ export class StudentsService {
       .replace(/\s+/g, ' ')
       .trim();
     return /\.pdf$/i.test(safeTitle) ? safeTitle : `${safeTitle}.pdf`;
+  }
+
+  private toStudentCalendarCourse(sessionCourse: {
+    id: number;
+    uuid: string;
+    displayName: string | null;
+    course: { id: number; uuid: string; code: string; name: string };
+  }): StudentCalendarCourse {
+    return {
+      id: sessionCourse.course.id,
+      uuid: sessionCourse.course.uuid,
+      sessionCourseId: sessionCourse.id,
+      name: sessionCourse.displayName ?? sessionCourse.course.name,
+      code: sessionCourse.course.code,
+    };
+  }
+
+  private async findSelfProfileOrThrow(user: CurrentUser) {
+    if (!user.roles?.includes('STUDENT')) {
+      throw new ForbiddenException(
+        'Student profile is only available to students',
+      );
+    }
+
+    const student = await this.studentsRepository.findSelfProfile(user.userId);
+    if (!student) throw new NotFoundException('Student not found');
+
+    return student;
+  }
+
+  private toSelfProfileResponse(
+    student: NonNullable<
+      Awaited<ReturnType<StudentsRepository['findSelfProfile']>>
+    >,
+    preferences: Awaited<
+      ReturnType<StudentsRepository['upsertStudentPreferences']>
+    >,
+    selections: Awaited<
+      ReturnType<StudentsRepository['findRegistrationSelectionNames']>
+    >,
+  ) {
+    const profile = {
+      firstName: student.profile?.firstName ?? student.user.firstName,
+      lastName: student.profile?.lastName ?? student.user.lastName,
+      dateOfBirth: student.profile?.dateOfBirth ?? null,
+      gender: student.profile?.gender ?? null,
+      alternatePhone: student.profile?.alternatePhone ?? null,
+      address: student.profile?.address ?? null,
+      city: student.profile?.city ?? null,
+      state: student.profile?.state ?? null,
+      postalCode: student.profile?.postalCode ?? null,
+      avatar: student.profile?.avatar ?? null,
+      guardianName: student.profile?.guardianName ?? null,
+      guardianPhone: student.profile?.guardianPhone ?? null,
+      emergencyContactName: student.profile?.emergencyContactName ?? null,
+      emergencyContactPhone: student.profile?.emergencyContactPhone ?? null,
+      updatedAt: student.profile?.updatedAt ?? null,
+    };
+    const completeness = studentProfileCompleteness({
+      ...profile,
+      phone: student.user.phone,
+    });
+    const customRegistrationAnswers = student.registrationAnswers
+      .filter(
+        (answer) =>
+          !['education', 'digital_library_location'].includes(answer.fieldKey),
+      )
+      .map((answer) => ({
+        fieldKey: answer.fieldKey,
+        label: answer.field?.label ?? this.humanizeFieldKey(answer.fieldKey),
+        fieldType: answer.field?.fieldType ?? null,
+        mapsTo: answer.field?.mapsTo ?? null,
+        value: answer.value,
+        updatedAt: answer.updatedAt,
+      }));
+
+    return {
+      account: {
+        id: student.user.id,
+        email: student.user.email,
+        phone: student.user.phone,
+        firstName: student.user.firstName,
+        lastName: student.user.lastName,
+        isVerified: student.user.isVerified,
+        lastLoginAt: student.user.lastLoginAt,
+        verification: {
+          account: student.user.isVerified ? 'VERIFIED' : 'UNVERIFIED',
+          emailChangeAvailable: false,
+          phoneChangeAvailable: false,
+          note: 'Primary email and phone are managed by the institute until a verification provider is configured.',
+        },
+      },
+      student: {
+        id: student.id,
+        uuid: student.uuid,
+        organizationId: student.organizationId,
+        studentCode: student.studentCode,
+        admissionNumber: student.admissionNumber,
+        rollNumber: student.rollNumber,
+        status: student.status,
+        organization: student.organization,
+      },
+      profile,
+      academic: {
+        education: selections.education,
+        digitalLibraryLocation: selections.digitalLibraryLocation,
+        enrollments: student.enrollments.map((enrollment) => ({
+          id: enrollment.id,
+          status: enrollment.status,
+          session: enrollment.session,
+          courses: enrollment.courseEnrollments.map((courseEnrollment) => ({
+            enrollmentId: courseEnrollment.id,
+            sessionCourseId: courseEnrollment.sessionCourse.id,
+            uuid: courseEnrollment.sessionCourse.uuid,
+            name:
+              courseEnrollment.sessionCourse.displayName ??
+              courseEnrollment.sessionCourse.course.name,
+            course: courseEnrollment.sessionCourse.course,
+          })),
+        })),
+      },
+      preferences: {
+        ...preferences,
+        examReminderOffsetsMinutes: this.toNumberArray(
+          preferences.examReminderOffsetsMinutes,
+        ),
+      },
+      customRegistrationAnswers,
+      profileCompleteness: completeness,
+      fieldAccess: {
+        studentEditable: [
+          'firstName',
+          'lastName',
+          'dateOfBirth',
+          'gender',
+          'alternatePhone',
+          'address',
+          'city',
+          'state',
+          'postalCode',
+          'avatar',
+          'guardianName',
+          'guardianPhone',
+          'emergencyContactName',
+          'emergencyContactPhone',
+        ],
+        instituteManaged: [
+          'email',
+          'phone',
+          'studentCode',
+          'admissionNumber',
+          'rollNumber',
+          'organization',
+          'education',
+          'digitalLibraryLocation',
+          'session',
+          'courses',
+        ],
+      },
+    };
+  }
+
+  private toNumberArray(value: unknown) {
+    if (!Array.isArray(value)) return [];
+    return value.filter(
+      (item): item is number =>
+        typeof item === 'number' && Number.isFinite(item),
+    );
+  }
+
+  private humanizeFieldKey(value: string) {
+    return value
+      .replace(/[_-]+/g, ' ')
+      .replace(/\b\w/g, (character) => character.toUpperCase());
   }
 
   private async findExisting(id: number) {

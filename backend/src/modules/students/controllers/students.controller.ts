@@ -30,7 +30,10 @@ import { Request } from 'express';
 import { Permissions } from '../../auth/permissions/permissions.decorator';
 import { Roles } from '../../auth/roles/roles.decorator';
 import { CurrentUser } from '../../auth/types/current-user.types';
+import { ChangeMyPasswordDto } from '../dto/change-my-password.dto';
 import { CreateStudentDto } from '../dto/create-student.dto';
+import { StudentCalendarQueryDto } from '../dto/student-calendar-query.dto';
+import { StudentNotificationsQueryDto } from '../dto/student-notifications-query.dto';
 import { StudentDashboardResponseDto } from '../dto/student-dashboard-response.dto';
 import { StudentCoursesQueryDto } from '../dto/student-courses-query.dto';
 import { StudentCoursesResponseDto } from '../dto/student-courses-response.dto';
@@ -43,8 +46,11 @@ import { StudentResourcesResponseDto } from '../dto/student-resources-response.d
 import { StudentResourceDetailResponseDto } from '../dto/student-resource-detail-response.dto';
 import { StudentVideoResourceResponseDto } from '../dto/student-video-resource-response.dto';
 import { StudentQueryDto } from '../dto/student-query.dto';
+import { UpdateMyStudentPreferencesDto } from '../dto/update-my-student-preferences.dto';
+import { UpdateMyStudentProfileDto } from '../dto/update-my-student-profile.dto';
 import { UpdateStudentVideoProgressDto } from '../dto/update-student-video-progress.dto';
 import { UpdateStudentDto } from '../dto/update-student.dto';
+import { UpdateStudentNotificationDto } from '../dto/update-student-notification.dto';
 import { StudentsService } from '../services/students.service';
 import {
   DocumentPageActivityDto,
@@ -92,6 +98,72 @@ export class StudentsController {
   })
   getMyDashboard(@Req() request: AuthenticatedRequest) {
     return this.studentsService.getMyDashboard(request.user);
+  }
+
+  @Get('me/calendar')
+  @Roles('STUDENT')
+  @ApiOperation({
+    summary: 'Get authenticated student exam and academic-session calendar',
+  })
+  @ApiOkResponse({
+    description: 'Student calendar fetched successfully',
+  })
+  getMyCalendar(
+    @Req() request: AuthenticatedRequest,
+    @Query() query: StudentCalendarQueryDto,
+  ) {
+    return this.studentsService.getMyCalendar(request.user, query);
+  }
+
+  @Get('me/notifications')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Get authenticated student notifications' })
+  @ApiOkResponse({ description: 'Student notifications fetched successfully' })
+  getMyNotifications(
+    @Req() request: AuthenticatedRequest,
+    @Query() query: StudentNotificationsQueryDto,
+  ) {
+    return this.studentsService.getMyNotifications(request.user, query);
+  }
+
+  @Get('me/notifications/unread-count')
+  @Roles('STUDENT')
+  @ApiOperation({
+    summary: 'Get authenticated student unread notification count',
+  })
+  @ApiOkResponse({
+    description: 'Unread notification count fetched successfully',
+  })
+  getMyUnreadNotificationCount(@Req() request: AuthenticatedRequest) {
+    return this.studentsService.getMyUnreadNotificationCount(request.user);
+  }
+
+  @Patch('me/notifications/read-all')
+  @Roles('STUDENT')
+  @ApiOperation({
+    summary: 'Mark all authenticated student notifications as read',
+  })
+  @ApiOkResponse({ description: 'Notifications marked as read' })
+  markAllMyNotificationsRead(@Req() request: AuthenticatedRequest) {
+    return this.studentsService.markAllMyNotificationsRead(request.user);
+  }
+
+  @Patch('me/notifications/:notificationUuid')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Update authenticated student notification state' })
+  @ApiParam({ name: 'notificationUuid', format: 'uuid' })
+  @ApiBody({ type: UpdateStudentNotificationDto })
+  @ApiOkResponse({ description: 'Notification updated successfully' })
+  updateMyNotification(
+    @Req() request: AuthenticatedRequest,
+    @Param('notificationUuid', ParseUUIDPipe) notificationUuid: string,
+    @Body() dto: UpdateStudentNotificationDto,
+  ) {
+    return this.studentsService.updateMyNotification(
+      request.user,
+      notificationUuid,
+      dto,
+    );
   }
 
   @Get('me/courses')
@@ -351,6 +423,50 @@ export class StudentsController {
     @Param('resourceId', ParseIntPipe) resourceId: number,
   ) {
     return this.studentsService.getMyResource(request.user, resourceId);
+  }
+
+  @Get('me/profile')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Get authenticated student profile workspace' })
+  @ApiOkResponse({ description: 'Student profile fetched successfully' })
+  getMyProfile(@Req() request: AuthenticatedRequest) {
+    return this.studentsService.getMyProfile(request.user);
+  }
+
+  @Patch('me/profile')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Update authenticated student editable profile' })
+  @ApiBody({ type: UpdateMyStudentProfileDto })
+  @ApiOkResponse({ description: 'Student profile updated successfully' })
+  updateMyProfile(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: UpdateMyStudentProfileDto,
+  ) {
+    return this.studentsService.updateMyProfile(request.user, dto);
+  }
+
+  @Patch('me/preferences')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Update authenticated student preferences' })
+  @ApiBody({ type: UpdateMyStudentPreferencesDto })
+  @ApiOkResponse({ description: 'Student preferences updated successfully' })
+  updateMyPreferences(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: UpdateMyStudentPreferencesDto,
+  ) {
+    return this.studentsService.updateMyPreferences(request.user, dto);
+  }
+
+  @Patch('me/password')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Change authenticated student password' })
+  @ApiBody({ type: ChangeMyPasswordDto })
+  @ApiOkResponse({ description: 'Student password changed successfully' })
+  changeMyPassword(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: ChangeMyPasswordDto,
+  ) {
+    return this.studentsService.changeMyPassword(request.user, dto);
   }
 
   @Get('me')

@@ -206,8 +206,7 @@ async function main() {
         (permission) =>
           permission.module !== 'organizations' &&
           !(
-            permission.module === 'permissions' &&
-            permission.action !== 'read'
+            permission.module === 'permissions' && permission.action !== 'read'
           ),
       )
       .map((permission) => permission.key),
@@ -529,7 +528,7 @@ async function seedStudentDashboardDemo() {
         'Logical Reasoning Practice Set 05',
         RESOURCE_TYPE_IDS.DOCUMENT,
       ],
-      folder: 'Mock Test Assignments',
+      folder: 'Mock Test Practice',
       sortOrder: 3,
     },
   ] as const;
@@ -666,28 +665,45 @@ async function seedStudentDashboardDemo() {
     });
   }
 
+  await prisma.studentNotification.deleteMany({
+    where: {
+      studentId: studentRecord.id,
+      organizationId: organization.id,
+      OR: [
+        {
+          type: StudentNotificationType.ASSIGNMENT,
+          title: 'Assignment Reminder',
+        },
+        {
+          type: StudentNotificationType.EVENT,
+          title: 'Upcoming Event',
+        },
+      ],
+    },
+  });
+
   await seedDashboardNotification(
     studentRecord.id,
     organization.id,
-    StudentNotificationType.ASSIGNMENT,
-    'Assignment Reminder',
-    'Logical Reasoning Set 04 is due tomorrow.',
+    StudentNotificationType.RESOURCE,
+    'New Practice Resource',
+    'A new Logical Reasoning practice resource is ready in your course.',
     new Date(now.getTime() - 2 * 60 * 60 * 1000),
   );
   await seedDashboardNotification(
     studentRecord.id,
     organization.id,
     StudentNotificationType.ANNOUNCEMENT,
-    'Important Announcement',
-    'IPMAT Mock Test on Sunday at 11:00 AM.',
+    'Exam Guidance Updated',
+    'Review the latest mock-test instructions and permitted exam actions before starting.',
     new Date(now.getTime() - 5 * 60 * 60 * 1000),
   );
   await seedDashboardNotification(
     studentRecord.id,
     organization.id,
-    StudentNotificationType.EVENT,
-    'Upcoming Event',
-    'Verbal Ability Live Class at 4:30 PM today.',
+    StudentNotificationType.SYSTEM,
+    'Student Account Ready',
+    'Your student profile and notification preferences are available from the account menu.',
     new Date(now.getTime() - 24 * 60 * 60 * 1000),
   );
 

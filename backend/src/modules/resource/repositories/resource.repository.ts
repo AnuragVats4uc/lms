@@ -47,7 +47,14 @@ export class ResourceRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   create(data: ResourceCreateData) {
-    return this.prisma.resource.create({ data, include: resourceInclude });
+    return this.prisma.$transaction(async (tx) => {
+      const resource = await tx.resource.create({
+        data,
+        include: resourceInclude,
+      });
+      await this.createPublishedResourceNotifications(tx, resource);
+      return resource;
+    });
   }
 
   findActiveResourceTypes() {
@@ -130,10 +137,14 @@ export class ResourceRepository {
   }
 
   update(id: number, data: ResourceUpdateData) {
-    return this.prisma.resource.update({
-      where: { id },
-      data,
-      include: resourceInclude,
+    return this.prisma.$transaction(async (tx) => {
+      const resource = await tx.resource.update({
+        where: { id },
+        data,
+        include: resourceInclude,
+      });
+      await this.createPublishedResourceNotifications(tx, resource);
+      return resource;
     });
   }
 
@@ -171,5 +182,90 @@ export class ResourceRepository {
     if (search) where.title = { contains: search };
 
     return where;
+  }
+
+  private async createPublishedResourceNotifications(
+    tx: Prisma.TransactionClient,
+    resource: ResourceWithType,
+  ) {
+    if (
+      resource.resourceTypeId === RESOURCE_TYPE_IDS.EXAM ||
+      !resource.isActive ||
+      !resource.isPublished ||
+      resource.status !== ResourceStatus.PUBLISHED
+    ) {
+      return;
+    }
+
+    const folder = await tx.folder.findFirst({
+      where: { id: resource.folderId, isActive: true },
+      select: {
+        sessionCourse: {
+          select: {
+            id: true,
+            session: { select: { organizationId: true } },
+            studentCourseEnrollments: {
+              where: {
+                isActive: true,
+                status: { in: ['ACTIVE', 'COMPLETED'] },
+                enrollment: {
+                  isActive: true,
+                  status: { in: ['ACTIVE', 'COMPLETED'] },
+                  student: { isActive: true, user: { isActive: true } },
+                },
+              },
+              select: {
+                enrollment: {
+                  select: {
+                    organizationId: true,
+                    student: {
+                      select: {
+                        id: true,
+                        preferences: {
+                          select: {
+                            inAppNotifications: true,
+                            resourceUpdates: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!folder) return;
+
+    const organizationId = folder.sessionCourse.session.organizationId;
+    const studentIds = [
+      ...new Set(
+        folder.sessionCourse.studentCourseEnrollments
+          .filter(
+            ({ enrollment }) =>
+              enrollment.organizationId === organizationId &&
+              (enrollment.student.preferences?.inAppNotifications ?? true) &&
+              (enrollment.student.preferences?.resourceUpdates ?? true),
+          )
+          .map(({ enrollment }) => enrollment.student.id),
+      ),
+    ];
+    if (!studentIds.length) return;
+
+    await tx.studentNotification.createMany({
+      data: studentIds.map((studentId) => ({
+        studentId,
+        organizationId,
+        type: 'RESOURCE',
+        title: `New resource: ${resource.title}`,
+        description:
+          'A new learning resource is available in one of your assigned courses.',
+        relatedEntity: 'RESOURCE',
+        relatedEntityId: resource.id,
+      })),
+      skipDuplicates: true,
+    });
   }
 }

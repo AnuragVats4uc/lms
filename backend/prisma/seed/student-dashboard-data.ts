@@ -54,7 +54,7 @@ const courses = [
     completion: 75,
     documentUrl:
       'https://digital.nios.ac.in/content/311en/311_Maths_Eng_Lesson10.pdf',
-    folderName: 'Mock Test Assignments',
+    folderName: 'Mock Test Practice',
     instructor: { firstName: 'Test', lastName: 'Series' },
     name: 'Mock Tests',
     resourceTitle: 'Logical Reasoning Practice Set 05',
@@ -64,22 +64,25 @@ const courses = [
 
 const notifications = [
   {
-    description: 'Logical Reasoning Set 04 is due tomorrow.',
+    description:
+      'A new Logical Reasoning practice resource is ready in your course.',
     hoursAgo: 2,
-    title: 'Assignment Reminder',
-    type: StudentNotificationType.ASSIGNMENT,
+    title: 'New Practice Resource',
+    type: StudentNotificationType.RESOURCE,
   },
   {
-    description: 'IPMAT Mock Test on Sunday at 11:00 AM.',
+    description:
+      'Review the latest mock-test instructions and permitted exam actions before starting.',
     hoursAgo: 5,
-    title: 'Important Announcement',
+    title: 'Exam Guidance Updated',
     type: StudentNotificationType.ANNOUNCEMENT,
   },
   {
-    description: 'Verbal Ability Live Class at 4:30 PM today.',
+    description:
+      'Your student profile and notification preferences are available from the account menu.',
     hoursAgo: 24,
-    title: 'Upcoming Event',
-    type: StudentNotificationType.EVENT,
+    title: 'Student Account Ready',
+    type: StudentNotificationType.SYSTEM,
   },
 ];
 
@@ -332,9 +335,32 @@ async function seedForStudent(
     });
   }
 
+  await removeUnsupportedLegacyNotifications(student.id, organizationId);
   for (const notification of notifications) {
     await upsertNotification(student.id, organizationId, notification, now);
   }
+}
+
+function removeUnsupportedLegacyNotifications(
+  studentId: number,
+  organizationId: number,
+) {
+  return prisma.studentNotification.deleteMany({
+    where: {
+      studentId,
+      organizationId,
+      OR: [
+        {
+          type: StudentNotificationType.ASSIGNMENT,
+          title: 'Assignment Reminder',
+        },
+        {
+          type: StudentNotificationType.EVENT,
+          title: 'Upcoming Event',
+        },
+      ],
+    },
+  });
 }
 
 async function ensureRole(

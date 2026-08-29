@@ -196,6 +196,11 @@ export const studentNavigation: NavigationItem[] = [
     label: "Dashboard",
   },
   {
+    href: "/student/schedule",
+    icon: CalendarRange,
+    label: "Calendar",
+  },
+  {
     href: "/student/my-courses",
     icon: BookOpen,
     label: "My Courses",

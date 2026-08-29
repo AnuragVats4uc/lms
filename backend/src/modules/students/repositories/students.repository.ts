@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   Prisma,
   ResourceStatus,
+  StudentNotificationType,
   StudentStatus,
   UserStatus,
 } from '@prisma/client';
@@ -10,6 +11,11 @@ import { PrismaService } from '../../../prisma';
 import { RESOURCE_TYPE_IDS } from '../../resource/constants/resource-type.constants';
 import { StudentQueryDto } from '../dto/student-query.dto';
 import { StudentResourcesSort } from '../dto/student-resources-query.dto';
+import { StudentNotificationReadStatus } from '../dto/student-notifications-query.dto';
+import type {
+  NormalizedStudentNotificationsQuery,
+  StudentNotificationCreateCandidate,
+} from '../student-notification.rules';
 
 export interface StudentCreateData {
   organizationId?: number;
@@ -78,6 +84,35 @@ export interface NormalizedStudentFolderResourcesQuery {
   resourceTypeId?: number;
   uploadedOn?: string;
   sort: StudentResourcesSort;
+}
+
+export interface StudentSelfProfileUpdateData {
+  firstName?: string;
+  lastName?: string | null;
+  dateOfBirth?: Date | null;
+  gender?: string | null;
+  alternatePhone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  avatar?: string | null;
+  guardianName?: string | null;
+  guardianPhone?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+}
+
+export interface StudentPreferenceUpdateData {
+  timezone?: string;
+  language?: string;
+  inAppNotifications?: boolean;
+  emailNotifications?: boolean;
+  examReminders?: boolean;
+  resourceUpdates?: boolean;
+  announcementNotifications?: boolean;
+  securityAlerts?: boolean;
+  examReminderOffsetsMinutes?: number[];
 }
 
 @Injectable()
@@ -161,6 +196,177 @@ export class StudentsRepository {
     });
   }
 
+  findSelfProfile(userId: number) {
+    return this.prisma.student.findFirst({
+      where: {
+        userId,
+        isActive: true,
+        user: { isActive: true },
+      },
+      include: {
+        organization: {
+          select: { id: true, uuid: true, name: true, code: true },
+        },
+        profile: true,
+        preferences: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            phone: true,
+            firstName: true,
+            lastName: true,
+            isVerified: true,
+            lastLoginAt: true,
+          },
+        },
+        enrollments: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            session: {
+              select: {
+                id: true,
+                uuid: true,
+                name: true,
+                code: true,
+                status: true,
+                startDate: true,
+                endDate: true,
+              },
+            },
+            courseEnrollments: {
+              where: { isActive: true },
+              orderBy: { createdAt: 'asc' },
+              include: {
+                sessionCourse: {
+                  select: {
+                    id: true,
+                    uuid: true,
+                    displayName: true,
+                    course: {
+                      select: { id: true, uuid: true, code: true, name: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        registrationAnswers: {
+          orderBy: { updatedAt: 'desc' },
+          select: {
+            fieldKey: true,
+            value: true,
+            updatedAt: true,
+            field: {
+              select: {
+                label: true,
+                fieldType: true,
+                mapsTo: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async updateSelfProfile(
+    studentId: number,
+    userId: number,
+    fallbackFirstName: string,
+    data: StudentSelfProfileUpdateData,
+  ) {
+    const { firstName, lastName, ...profileData } = data;
+
+    return this.prisma.$transaction(async (tx) => {
+      if (firstName !== undefined || lastName !== undefined) {
+        await tx.user.update({
+          where: { id: userId },
+          data: this.removeUndefined({ firstName, lastName }),
+        });
+      }
+
+      await tx.studentProfile.upsert({
+        where: { studentId },
+        create: {
+          studentId,
+          firstName: firstName ?? fallbackFirstName,
+          lastName,
+          ...profileData,
+        },
+        update: this.removeUndefined({
+          firstName,
+          lastName,
+          ...profileData,
+        }),
+      });
+
+      return tx.student.findUnique({
+        where: { id: studentId },
+        include: { profile: true },
+      });
+    });
+  }
+
+  upsertStudentPreferences(
+    studentId: number,
+    data: StudentPreferenceUpdateData = {},
+  ) {
+    return this.prisma.studentPreference.upsert({
+      where: { studentId },
+      create: {
+        studentId,
+        timezone: data.timezone ?? 'Asia/Kolkata',
+        language: data.language ?? 'en',
+        inAppNotifications: data.inAppNotifications ?? true,
+        emailNotifications: data.emailNotifications ?? false,
+        examReminders: data.examReminders ?? true,
+        resourceUpdates: data.resourceUpdates ?? true,
+        announcementNotifications: data.announcementNotifications ?? true,
+        securityAlerts: data.securityAlerts ?? true,
+        examReminderOffsetsMinutes: data.examReminderOffsetsMinutes ?? [
+          1440, 60,
+        ],
+      },
+      update: {
+        ...data,
+        examReminderOffsetsMinutes: data.examReminderOffsetsMinutes,
+      },
+    });
+  }
+
+  findUserPassword(userId: number) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, password: true },
+    });
+  }
+
+  updatePasswordAndRevokeSessions(userId: number, password: string) {
+    const now = new Date();
+    return this.prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: userId }, data: { password } });
+      const revokedTokens = await tx.refreshToken.updateMany({
+        where: { userId, status: 'ACTIVE' },
+        data: {
+          status: 'REVOKED',
+          revokedAt: now,
+          revocationReason: 'FORCED_LOGOUT',
+        },
+      });
+      await tx.userActivitySession.updateMany({
+        where: { userId, endedAt: null },
+        data: {
+          endedAt: now,
+          endReason: 'FORCED_LOGOUT',
+        },
+      });
+      return { revokedSessions: revokedTokens.count };
+    });
+  }
+
   findActiveEnrollment(studentId: number, organizationId?: number | null) {
     return this.prisma.studentEnrollment.findFirst({
       where: {
@@ -213,11 +419,226 @@ export class StudentsRepository {
       where: {
         studentId,
         organizationId,
+        type: {
+          in: [
+            StudentNotificationType.EXAM,
+            StudentNotificationType.RESOURCE,
+            StudentNotificationType.ANNOUNCEMENT,
+            StudentNotificationType.SYSTEM,
+          ],
+        },
         OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
       orderBy: { createdAt: 'desc' },
       take: 5,
     });
+  }
+
+  async findStudentNotifications(
+    studentId: number,
+    organizationId: number,
+    query: NormalizedStudentNotificationsQuery,
+  ) {
+    const now = new Date();
+    const visibleWhere: Prisma.StudentNotificationWhereInput = {
+      studentId,
+      organizationId,
+      type: { in: query.types as StudentNotificationType[] },
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+    };
+    const filteredWhere: Prisma.StudentNotificationWhereInput = {
+      AND: [
+        visibleWhere,
+        query.status === StudentNotificationReadStatus.ALL
+          ? {}
+          : {
+              isRead: query.status === StudentNotificationReadStatus.READ,
+            },
+        query.search
+          ? {
+              OR: [
+                { title: { contains: query.search } },
+                { description: { contains: query.search } },
+              ],
+            }
+          : {},
+      ],
+    };
+    const skip = (query.page - 1) * query.limit;
+    const summaryWhere: Prisma.StudentNotificationWhereInput = {
+      studentId,
+      organizationId,
+      type: {
+        in: [
+          StudentNotificationType.EXAM,
+          StudentNotificationType.RESOURCE,
+          StudentNotificationType.ANNOUNCEMENT,
+          StudentNotificationType.SYSTEM,
+        ],
+      },
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+    };
+
+    const [
+      items,
+      total,
+      unread,
+      examCount,
+      resourceCount,
+      announcementCount,
+      systemCount,
+    ] = await this.prisma.$transaction([
+      this.prisma.studentNotification.findMany({
+        where: filteredWhere,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip,
+        take: query.limit,
+      }),
+      this.prisma.studentNotification.count({ where: filteredWhere }),
+      this.prisma.studentNotification.count({
+        where: { AND: [summaryWhere, { isRead: false }] },
+      }),
+      this.prisma.studentNotification.count({
+        where: { ...summaryWhere, type: StudentNotificationType.EXAM },
+      }),
+      this.prisma.studentNotification.count({
+        where: { ...summaryWhere, type: StudentNotificationType.RESOURCE },
+      }),
+      this.prisma.studentNotification.count({
+        where: {
+          ...summaryWhere,
+          type: StudentNotificationType.ANNOUNCEMENT,
+        },
+      }),
+      this.prisma.studentNotification.count({
+        where: { ...summaryWhere, type: StudentNotificationType.SYSTEM },
+      }),
+    ]);
+
+    return {
+      items,
+      total,
+      unread,
+      countsByType: {
+        EXAM: examCount,
+        RESOURCE: resourceCount,
+        ANNOUNCEMENT: announcementCount,
+        SYSTEM: systemCount,
+      },
+    };
+  }
+
+  countUnreadStudentNotifications(studentId: number, organizationId: number) {
+    return this.prisma.studentNotification.count({
+      where: {
+        studentId,
+        organizationId,
+        type: {
+          in: [
+            StudentNotificationType.EXAM,
+            StudentNotificationType.RESOURCE,
+            StudentNotificationType.ANNOUNCEMENT,
+            StudentNotificationType.SYSTEM,
+          ],
+        },
+        isRead: false,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+    });
+  }
+
+  async updateStudentNotificationReadState(
+    studentId: number,
+    organizationId: number,
+    notificationUuid: string,
+    isRead: boolean,
+  ) {
+    const result = await this.prisma.studentNotification.updateMany({
+      where: {
+        uuid: notificationUuid,
+        studentId,
+        organizationId,
+        type: {
+          in: [
+            StudentNotificationType.EXAM,
+            StudentNotificationType.RESOURCE,
+            StudentNotificationType.ANNOUNCEMENT,
+            StudentNotificationType.SYSTEM,
+          ],
+        },
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      data: { isRead },
+    });
+    if (!result.count) return null;
+
+    return this.prisma.studentNotification.findFirst({
+      where: { uuid: notificationUuid, studentId, organizationId },
+    });
+  }
+
+  markAllStudentNotificationsRead(studentId: number, organizationId: number) {
+    return this.prisma.studentNotification.updateMany({
+      where: {
+        studentId,
+        organizationId,
+        isRead: false,
+        type: {
+          in: [
+            StudentNotificationType.EXAM,
+            StudentNotificationType.RESOURCE,
+            StudentNotificationType.ANNOUNCEMENT,
+            StudentNotificationType.SYSTEM,
+          ],
+        },
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      data: { isRead: true },
+    });
+  }
+
+  createStudentNotificationsIfMissing(
+    studentId: number,
+    organizationId: number,
+    notifications: StudentNotificationCreateCandidate[],
+  ) {
+    if (!notifications.length) return Promise.resolve({ count: 0 });
+
+    return this.prisma.studentNotification.createMany({
+      data: notifications.map((notification) => ({
+        ...notification,
+        studentId,
+        organizationId,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  async findRegistrationSelectionNames(
+    organizationId: number | null,
+    educationUuid?: string,
+    digitalLibraryLocationUuid?: string,
+  ) {
+    if (!organizationId) {
+      return { education: null, digitalLibraryLocation: null };
+    }
+
+    const [education, digitalLibraryLocation] = await Promise.all([
+      educationUuid
+        ? this.prisma.organizationEducationOption.findFirst({
+            where: { organizationId, uuid: educationUuid },
+            select: { uuid: true, name: true },
+          })
+        : Promise.resolve(null),
+      digitalLibraryLocationUuid
+        ? this.prisma.organizationDigitalLibraryLocation.findFirst({
+            where: { organizationId, uuid: digitalLibraryLocationUuid },
+            select: { uuid: true, name: true },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    return { education, digitalLibraryLocation };
   }
 
   findContentUpdates(sessionCourseIds: number[]) {
@@ -250,6 +671,176 @@ export class StudentsRepository {
           select: {
             id: true,
             sessionCourseId: true,
+          },
+        },
+      },
+    });
+  }
+
+  findStudentCalendarExamResources(
+    studentId: number,
+    organizationId: number,
+    range: { from: Date; to: Date },
+  ) {
+    return this.prisma.resource.findMany({
+      where: {
+        resourceTypeId: RESOURCE_TYPE_IDS.EXAM,
+        isActive: true,
+        isPublished: true,
+        status: ResourceStatus.PUBLISHED,
+        folder: {
+          parentFolderId: null,
+          isActive: true,
+          status: 'ACTIVE',
+          sessionCourse: {
+            isActive: true,
+            isPublished: true,
+            status: 'ACTIVE',
+            session: { organizationId },
+            studentCourseEnrollments: {
+              some: {
+                isActive: true,
+                status: { in: ['ACTIVE', 'COMPLETED'] },
+                enrollment: {
+                  studentId,
+                  organizationId,
+                  isActive: true,
+                  status: { in: ['ACTIVE', 'COMPLETED'] },
+                },
+              },
+            },
+          },
+        },
+        exam: {
+          organizationId,
+          isActive: true,
+          status: {
+            in: ['SCHEDULED', 'LIVE', 'CLOSED', 'CANCELLED'],
+          },
+          availableFrom: { lt: range.to },
+          availableUntil: { gte: range.from },
+        },
+      },
+      orderBy: [{ exam: { availableFrom: 'asc' } }, { id: 'asc' }],
+      select: {
+        id: true,
+        uuid: true,
+        title: true,
+        description: true,
+        exam: {
+          select: {
+            id: true,
+            uuid: true,
+            code: true,
+            title: true,
+            organizationId: true,
+            availableFrom: true,
+            availableUntil: true,
+            durationMinutes: true,
+            attemptLimit: true,
+            allowResume: true,
+            status: true,
+            courseAssignments: {
+              select: { sessionCourseId: true },
+            },
+            attempts: {
+              where: { studentId },
+              orderBy: { attemptNumber: 'desc' },
+              select: {
+                uuid: true,
+                attemptNumber: true,
+                status: true,
+                expiresAt: true,
+                submittedAt: true,
+              },
+            },
+          },
+        },
+        folder: {
+          select: {
+            sessionCourseId: true,
+            sessionCourse: {
+              select: {
+                id: true,
+                uuid: true,
+                displayName: true,
+                course: {
+                  select: { id: true, uuid: true, code: true, name: true },
+                },
+                session: {
+                  select: {
+                    id: true,
+                    uuid: true,
+                    name: true,
+                    code: true,
+                    organizationId: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  findStudentCalendarEnrollments(
+    studentId: number,
+    organizationId: number,
+    range: { from: Date; to: Date },
+  ) {
+    return this.prisma.studentEnrollment.findMany({
+      where: {
+        studentId,
+        organizationId,
+        isActive: true,
+        status: { in: ['ACTIVE', 'COMPLETED'] },
+        session: {
+          organizationId,
+          isActive: true,
+          status: { not: 'ARCHIVED' },
+          startDate: { lt: range.to },
+          endDate: { gte: range.from },
+        },
+      },
+      orderBy: [{ session: { startDate: 'asc' } }, { id: 'asc' }],
+      select: {
+        id: true,
+        status: true,
+        session: {
+          select: {
+            id: true,
+            uuid: true,
+            name: true,
+            code: true,
+            description: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
+        courseEnrollments: {
+          where: {
+            isActive: true,
+            status: { in: ['ACTIVE', 'COMPLETED'] },
+            sessionCourse: {
+              isActive: true,
+              isPublished: true,
+              status: 'ACTIVE',
+            },
+          },
+          orderBy: { createdAt: 'asc' },
+          select: {
+            sessionCourse: {
+              select: {
+                id: true,
+                uuid: true,
+                displayName: true,
+                course: {
+                  select: { id: true, uuid: true, code: true, name: true },
+                },
+              },
+            },
           },
         },
       },
