@@ -1,9 +1,14 @@
 import { readFile } from 'node:fs/promises';
+import { loadEnvFile } from 'node:process';
 
 import { PrismaClient, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 import { seedResourceTypes } from '../prisma/seed/resource-types';
+
+if (!process.env.DATABASE_URL) {
+  loadEnvFile();
+}
 
 const prisma = new PrismaClient();
 
