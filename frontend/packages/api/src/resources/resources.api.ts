@@ -15,6 +15,8 @@ function endpoint(folderId: number) {
   return "/folders/" + folderId + "/resources";
 }
 
+const RESOURCE_UPLOAD_TIMEOUT_MS = 180_000;
+
 export const resourcesApi = {
   findTypes() {
     return api
@@ -30,6 +32,7 @@ export const resourcesApi = {
     return api
       .post<ApiResponse<Resource>>(endpoint(folderId) + "/upload", payload, {
         headers: { "Content-Type": "multipart/form-data" },
+        timeout: RESOURCE_UPLOAD_TIMEOUT_MS,
       })
       .then(unwrapApiData);
   },
@@ -56,7 +59,10 @@ export const resourcesApi = {
       .patch<ApiResponse<Resource>>(
         endpoint(folderId) + "/" + resourceId + "/upload",
         payload,
-        { headers: { "Content-Type": "multipart/form-data" } },
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+          timeout: RESOURCE_UPLOAD_TIMEOUT_MS,
+        },
       )
       .then(unwrapApiData);
   },

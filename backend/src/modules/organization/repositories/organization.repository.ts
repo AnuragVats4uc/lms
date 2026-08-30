@@ -17,11 +17,12 @@ export interface OrganizationCreateData {
   isActive?: boolean;
 }
 
-export type OrganizationUpdateData =
-  Partial<OrganizationCreateData>;
+export type OrganizationUpdateData = Partial<OrganizationCreateData>;
 
-export interface NormalizedOrganizationQuery
-  extends Required<Omit<OrganizationQueryDto, 'status'>> {
+export interface NormalizedOrganizationQuery extends Required<
+  Omit<OrganizationQueryDto, 'status'>
+> {
+  organizationId?: number;
   status?: OrganizationQueryDto['status'];
 }
 
@@ -121,16 +122,19 @@ export class OrganizationRepository {
     });
   }
 
-  private buildWhere(
-    query: NormalizedOrganizationQuery,
-  ) {
+  private buildWhere(query: NormalizedOrganizationQuery) {
     const where: {
+      id?: number;
       status?: OrganizationStatus;
       OR?: Array<{
         name?: { contains: string };
         code?: { contains: string };
       }>;
     } = {};
+
+    if (query.organizationId) {
+      where.id = query.organizationId;
+    }
 
     if (query.status) {
       where.status = query.status;

@@ -1,16 +1,15 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  Organization,
-  OrganizationStatus,
-} from '@prisma/client';
+import { Organization, OrganizationStatus } from '@prisma/client';
 
 import { CreateOrganizationDto } from '../dto/create-organization.dto';
 import { OrganizationQueryDto } from '../dto/organization-query.dto';
 import { UpdateOrganizationDto } from '../dto/update-organization.dto';
+import { CurrentUser } from '../../auth/types/current-user.types';
 import {
   NormalizedOrganizationQuery,
   OrganizationUpdateData,
@@ -23,7 +22,8 @@ export class OrganizationService {
     private readonly organizationRepository: OrganizationRepository,
   ) {}
 
-  async create(dto: CreateOrganizationDto) {
+  async create(dto: CreateOrganizationDto, actor: CurrentUser) {
+    this.assertIsSuperAdmin(actor);
     await this.ensureNameIsUnique(dto.name);
     await this.ensureCodeIsUnique(dto.code);
 
@@ -35,18 +35,13 @@ export class OrganizationService {
     return this.toResponse(organization);
   }
 
-  async findAll(query: OrganizationQueryDto) {
-    const paginationQuery = this.normalizeQuery(query);
-    const result =
-      await this.organizationRepository.findMany(paginationQuery);
-    const totalPages = Math.ceil(
-      result.total / paginationQuery.limit,
-    );
+  async findAll(query: OrganizationQueryDto, actor: CurrentUser) {
+    const paginationQuery = this.normalizeQuery(query, actor);
+    const result = await this.organizationRepository.findMany(paginationQuery);
+    const totalPages = Math.ceil(result.total / paginationQuery.limit);
 
     return {
-      items: result.items.map((organization) =>
-        this.toResponse(organization),
-      ),
+      items: result.items.map((organization) => this.toResponse(organization)),
       meta: {
         page: paginationQuery.page,
         limit: paginationQuery.limit,
@@ -56,13 +51,15 @@ export class OrganizationService {
     };
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, actor: CurrentUser) {
+    this.assertCanAccessOrganization(id, actor);
     const organization = await this.findExisting(id);
 
     return this.toResponse(organization);
   }
 
-  async update(id: number, dto: UpdateOrganizationDto) {
+  async update(id: number, dto: UpdateOrganizationDto, actor: CurrentUser) {
+    this.assertCanAccessOrganization(id, actor);
     await this.findExisting(id);
 
     if (dto.name) {
@@ -81,18 +78,17 @@ export class OrganizationService {
     return this.toResponse(organization);
   }
 
-  async remove(id: number) {
+  async remove(id: number, actor: CurrentUser) {
+    this.assertCanAccessOrganization(id, actor);
     await this.findExisting(id);
 
-    const organization =
-      await this.organizationRepository.softDelete(id);
+    const organization = await this.organizationRepository.softDelete(id);
 
     return this.toResponse(organization);
   }
 
   private async findExisting(id: number) {
-    const organization =
-      await this.organizationRepository.findById(id);
+    const organization = await this.organizationRepository.findById(id);
 
     if (!organization) {
       throw new NotFoundException('Organization not found');
@@ -101,60 +97,70 @@ export class OrganizationService {
     return organization;
   }
 
-  private async ensureNameIsUnique(
-    name: string,
-    excludeId?: number,
-  ) {
+  private async ensureNameIsUnique(name: string, excludeId?: number) {
     const organization = excludeId
-      ? await this.organizationRepository.findByNameExcludingId(
-          name,
-          excludeId,
-        )
+      ? await this.organizationRepository.findByNameExcludingId(name, excludeId)
       : await this.organizationRepository.findByName(name);
 
     if (organization) {
-      throw new ConflictException(
-        'Organization name already exists',
-      );
+      throw new ConflictException('Organization name already exists');
     }
   }
 
-  private async ensureCodeIsUnique(
-    code: string,
-    excludeId?: number,
-  ) {
+  private async ensureCodeIsUnique(code: string, excludeId?: number) {
     const organization = excludeId
-      ? await this.organizationRepository.findByCodeExcludingId(
-          code,
-          excludeId,
-        )
+      ? await this.organizationRepository.findByCodeExcludingId(code, excludeId)
       : await this.organizationRepository.findByCode(code);
 
     if (organization) {
-      throw new ConflictException(
-        'Organization code already exists',
-      );
+      throw new ConflictException('Organization code already exists');
     }
   }
 
   private normalizeQuery(
     query: OrganizationQueryDto,
+    actor: CurrentUser,
   ): NormalizedOrganizationQuery {
     return {
       page: query.page ?? 1,
       limit: query.limit ?? 10,
       search: query.search ?? '',
       status: query.status ?? undefined,
+      organizationId: this.isSuperAdmin(actor)
+        ? undefined
+        : this.requireOrganizationId(actor),
     };
   }
 
-  private toUpdateInput(
-    dto: UpdateOrganizationDto,
-  ): OrganizationUpdateData {
+  private assertIsSuperAdmin(actor: CurrentUser) {
+    if (!this.isSuperAdmin(actor)) {
+      throw new ForbiddenException(
+        'Only a super admin can create an organization',
+      );
+    }
+  }
+
+  private assertCanAccessOrganization(id: number, actor: CurrentUser) {
+    if (this.isSuperAdmin(actor)) return;
+    if (this.requireOrganizationId(actor) !== id) {
+      throw new ForbiddenException('Cannot access another organization');
+    }
+  }
+
+  private requireOrganizationId(actor: CurrentUser) {
+    if (!actor.organizationId) {
+      throw new ForbiddenException('Organization context is required');
+    }
+    return actor.organizationId;
+  }
+
+  private isSuperAdmin(actor: CurrentUser) {
+    return Boolean(actor.roles?.includes('SUPER_ADMIN'));
+  }
+
+  private toUpdateInput(dto: UpdateOrganizationDto): OrganizationUpdateData {
     return Object.fromEntries(
-      Object.entries(dto).filter(
-        ([, value]) => value !== undefined,
-      ),
+      Object.entries(dto).filter(([, value]) => value !== undefined),
     ) as OrganizationUpdateData;
   }
 

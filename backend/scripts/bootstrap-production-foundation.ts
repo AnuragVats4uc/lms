@@ -176,11 +176,16 @@ async function ensureFoundationPermissions() {
   return permissionsByKey;
 }
 
-async function ensureRolePermissions(roleId: number, permissionIds: number[]) {
-  await prisma.rolePermission.createMany({
-    data: permissionIds.map((permissionId) => ({ roleId, permissionId })),
-    skipDuplicates: true,
-  });
+async function syncRolePermissions(roleId: number, permissionIds: number[]) {
+  await prisma.$transaction([
+    prisma.rolePermission.deleteMany({
+      where: { roleId, permissionId: { notIn: permissionIds } },
+    }),
+    prisma.rolePermission.createMany({
+      data: permissionIds.map((permissionId) => ({ roleId, permissionId })),
+      skipDuplicates: true,
+    }),
+  ]);
 }
 async function ensureSuperAdmin(password: string, superAdminRoleId: number) {
   const existingUser = await prisma.user.findUnique({
@@ -259,18 +264,19 @@ async function main() {
     throw new Error('SUPER_ADMIN and ADMIN roles must be initialized');
   }
 
-  await ensureRolePermissions(
+  await syncRolePermissions(
     superAdminRole.id,
     [...permissionsByKey.values()].map(({ id }) => id),
   );
-  await ensureRolePermissions(
+  await syncRolePermissions(
     adminRole.id,
     foundationPermissions
-      .filter(
-        ({ module, action }) =>
-          action === 'create' ||
-          (module !== 'organizations' &&
-            !(module === 'permissions' && action !== 'read')),
+      .filter(({ module, action }) =>
+        module === 'organizations'
+          ? action === 'read' || action === 'update'
+          : module === 'permissions'
+            ? action === 'read'
+            : true,
       )
       .map(({ key }) => permissionsByKey.get(key)!.id),
   );

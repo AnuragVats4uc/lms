@@ -10,6 +10,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -22,6 +23,7 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
+import type { Request } from 'express';
 
 import { CreateOrganizationDto } from '../dto/create-organization.dto';
 import { OrganizationQueryDto } from '../dto/organization-query.dto';
@@ -32,14 +34,15 @@ import {
 import { UpdateOrganizationDto } from '../dto/update-organization.dto';
 import { OrganizationService } from '../services/organization.service';
 import { Permissions } from '../../auth/permissions/permissions.decorator';
+import type { CurrentUser } from '../../auth/types/current-user.types';
+
+type AuthenticatedRequest = Request & { user: CurrentUser };
 
 @ApiTags('Organizations')
 @ApiBearerAuth('access-token')
 @Controller('organizations')
 export class OrganizationController {
-  constructor(
-    private readonly organizationService: OrganizationService,
-  ) {}
+  constructor(private readonly organizationService: OrganizationService) {}
 
   @Post()
   @Permissions('organizations.create')
@@ -52,8 +55,11 @@ export class OrganizationController {
   @ApiConflictResponse({
     description: 'Organization name or code already exists',
   })
-  create(@Body() dto: CreateOrganizationDto) {
-    return this.organizationService.create(dto);
+  create(
+    @Body() dto: CreateOrganizationDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.organizationService.create(dto, request.user);
   }
 
   @Get()
@@ -63,8 +69,11 @@ export class OrganizationController {
     description: 'Organization list fetched successfully',
     type: OrganizationListResponseDto,
   })
-  findAll(@Query() query: OrganizationQueryDto) {
-    return this.organizationService.findAll(query);
+  findAll(
+    @Query() query: OrganizationQueryDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.organizationService.findAll(query, request.user);
   }
 
   @Get(':id')
@@ -82,8 +91,11 @@ export class OrganizationController {
   @ApiNotFoundResponse({
     description: 'Organization not found',
   })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.organizationService.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.organizationService.findOne(id, request.user);
   }
 
   @Patch(':id')
@@ -108,8 +120,9 @@ export class OrganizationController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOrganizationDto,
+    @Req() request: AuthenticatedRequest,
   ) {
-    return this.organizationService.update(id, dto);
+    return this.organizationService.update(id, dto, request.user);
   }
 
   @Delete(':id')
@@ -128,7 +141,10 @@ export class OrganizationController {
   @ApiNotFoundResponse({
     description: 'Organization not found',
   })
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.organizationService.remove(id);
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.organizationService.remove(id, request.user);
   }
 }
