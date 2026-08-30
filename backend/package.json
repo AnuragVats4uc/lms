@@ -41,6 +41,7 @@
     "verify:student-notifications": "tsx scripts/verify-student-notifications.ts",
     "verify:utho-storage": "tsx scripts/verify-utho-storage.ts",
     "maintenance:activity-retention": "tsx scripts/enforce-activity-retention.ts",
+    "bootstrap:production": "tsx scripts/bootstrap-production-foundation.ts",
     "audit:exam-reporting": "tsx scripts/audit-exam-topic-reporting.ts",
     "backfill:exam-reporting": "tsx scripts/backfill-exam-topic-reporting.ts",
     "backfill:student-profile-integrity": "tsx scripts/backfill-student-profile-integrity.ts",
