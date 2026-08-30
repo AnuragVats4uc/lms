@@ -268,8 +268,9 @@ async function main() {
     foundationPermissions
       .filter(
         ({ module, action }) =>
-          module !== 'organizations' &&
-          !(module === 'permissions' && action !== 'read'),
+          action === 'create' ||
+          (module !== 'organizations' &&
+            !(module === 'permissions' && action !== 'read')),
       )
       .map(({ key }) => permissionsByKey.get(key)!.id),
   );
