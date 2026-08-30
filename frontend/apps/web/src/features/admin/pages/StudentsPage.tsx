@@ -437,7 +437,9 @@ export function StudentsPage() {
           id: "activity-report",
           label: "Activity report",
           onAction: (student) =>
-            router.push(`/admin/students/${student.uuid}/activity`),
+            router.push(
+              `/admin/students/${student.id}/${student.uuid}/activity`,
+            ),
         },
       ]}
       create={(payload) => studentsApi.create(payload)}

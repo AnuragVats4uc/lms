@@ -39,6 +39,7 @@ type AttemptQuestion = {
   };
 };
 type AttemptResponse = {
+  attemptId: number;
   attemptUuid: string;
   status: string;
   timeoutState: {
@@ -458,6 +459,7 @@ async function main() {
     assert.equal(detailResponse.status, 200);
 
     const startResponse = await request<{
+      attemptId: number;
       attemptUuid: string;
       resumed: boolean;
     }>(`/students/me/resources/${resource.id}/exam/start`, {
@@ -465,27 +467,29 @@ async function main() {
       headers: studentHeaders,
     });
     assert.equal(startResponse.status, 201);
+    const firstAttemptId = data(startResponse).attemptId;
     const firstAttemptUuid = data(startResponse).attemptUuid;
     assert.equal(data(startResponse).resumed, false);
 
     const concurrentStarts = await Promise.all([
-      request<{ attemptUuid: string; resumed: boolean }>(
+      request<{ attemptId: number; attemptUuid: string; resumed: boolean }>(
         `/students/me/resources/${resource.id}/exam/start`,
         { method: 'POST', headers: studentHeaders },
       ),
-      request<{ attemptUuid: string; resumed: boolean }>(
+      request<{ attemptId: number; attemptUuid: string; resumed: boolean }>(
         `/students/me/resources/${resource.id}/exam/start`,
         { method: 'POST', headers: studentHeaders },
       ),
     ]);
     for (const response of concurrentStarts) {
       assert.ok([200, 201].includes(response.status));
+      assert.equal(data(response).attemptId, firstAttemptId);
       assert.equal(data(response).attemptUuid, firstAttemptUuid);
       assert.equal(data(response).resumed, true);
     }
 
     const attemptResponse = await request<AttemptResponse>(
-      `/students/me/exam-attempts/${firstAttemptUuid}`,
+      `/students/me/exam-attempts/${firstAttemptId}/${firstAttemptUuid}`,
       { headers: studentHeaders },
     );
     assert.equal(attemptResponse.status, 200);
@@ -509,7 +513,7 @@ async function main() {
       (question) => question.questionType.code === 'SINGLE_CHOICE',
     )!;
     const invalidAnswer = await request(
-      `/students/me/exam-attempts/${firstAttemptUuid}/answers/${choiceQuestion.id}`,
+      `/students/me/exam-attempts/${firstAttemptId}/${firstAttemptUuid}/answers/${choiceQuestion.id}`,
       {
         method: 'PATCH',
         headers: studentHeaders,
@@ -520,7 +524,7 @@ async function main() {
 
     for (const [index, question] of attempt.questions.entries()) {
       const progress = await request(
-        `/students/me/exam-attempts/${firstAttemptUuid}/progress`,
+        `/students/me/exam-attempts/${firstAttemptId}/${firstAttemptUuid}/progress`,
         {
           method: 'PATCH',
           headers: studentHeaders,
@@ -534,7 +538,7 @@ async function main() {
       if (index === attempt.questions.length - 1) continue;
       const answer = payloads.get(question.id)!;
       const saved = await request(
-        `/students/me/exam-attempts/${firstAttemptUuid}/answers/${question.id}`,
+        `/students/me/exam-attempts/${firstAttemptId}/${firstAttemptUuid}/answers/${question.id}`,
         {
           method: 'PATCH',
           headers: studentHeaders,
@@ -549,7 +553,7 @@ async function main() {
     }
 
     const refreshResponse = await request<AttemptResponse>(
-      `/students/me/exam-attempts/${firstAttemptUuid}`,
+      `/students/me/exam-attempts/${firstAttemptId}/${firstAttemptUuid}`,
       { headers: studentHeaders },
     );
     assert.equal(refreshResponse.status, 200);
@@ -563,24 +567,30 @@ async function main() {
     );
 
     const unauthorizedAttempt = await request(
-      `/students/me/exam-attempts/${firstAttemptUuid}`,
+      `/students/me/exam-attempts/${firstAttemptId}/${firstAttemptUuid}`,
       { headers: otherStudentHeaders },
     );
     assert.equal(unauthorizedAttempt.status, 404);
 
     const submissions = await Promise.all([
-      request(`/students/me/exam-attempts/${firstAttemptUuid}/submit`, {
-        method: 'POST',
-        headers: studentHeaders,
-      }),
-      request(`/students/me/exam-attempts/${firstAttemptUuid}/submit`, {
-        method: 'POST',
-        headers: studentHeaders,
-      }),
+      request(
+        `/students/me/exam-attempts/${firstAttemptId}/${firstAttemptUuid}/submit`,
+        {
+          method: 'POST',
+          headers: studentHeaders,
+        },
+      ),
+      request(
+        `/students/me/exam-attempts/${firstAttemptId}/${firstAttemptUuid}/submit`,
+        {
+          method: 'POST',
+          headers: studentHeaders,
+        },
+      ),
     ]);
     assert.ok(submissions.every((response) => response.status === 201));
     const duplicateSubmission = await request(
-      `/students/me/exam-attempts/${firstAttemptUuid}/submit`,
+      `/students/me/exam-attempts/${firstAttemptId}/${firstAttemptUuid}/submit`,
       { method: 'POST', headers: studentHeaders },
     );
     assert.equal(duplicateSubmission.status, 201);
@@ -593,9 +603,12 @@ async function main() {
         unattempted: number;
       };
       result: { status: string };
-    }>(`/students/me/exam-attempts/${firstAttemptUuid}/report`, {
-      headers: studentHeaders,
-    });
+    }>(
+      `/students/me/exam-attempts/${firstAttemptId}/${firstAttemptUuid}/report`,
+      {
+        headers: studentHeaders,
+      },
+    );
     assert.equal(reportResponse.status, 200);
     const report = data(reportResponse);
     assert.equal(report.released, true);
@@ -603,18 +616,22 @@ async function main() {
     assert.ok(report.summary.incorrect > 0);
     assert.equal(report.summary.unattempted, 1);
 
-    const secondStart = await request<{ attemptUuid: string }>(
-      `/students/me/resources/${resource.id}/exam/start`,
-      { method: 'POST', headers: studentHeaders },
-    );
+    const secondStart = await request<{
+      attemptId: number;
+      attemptUuid: string;
+    }>(`/students/me/resources/${resource.id}/exam/start`, {
+      method: 'POST',
+      headers: studentHeaders,
+    });
     assert.equal(secondStart.status, 201);
+    const secondAttemptId = data(secondStart).attemptId;
     const secondAttemptUuid = data(secondStart).attemptUuid;
     await prisma.studentExamAttempt.update({
       where: { uuid: secondAttemptUuid },
       data: { expiresAt: new Date(Date.now() - 1_000) },
     });
     const automaticTimeout = await request<Record<string, unknown>>(
-      `/students/me/exam-attempts/${secondAttemptUuid}`,
+      `/students/me/exam-attempts/${secondAttemptId}/${secondAttemptUuid}`,
       { headers: studentHeaders },
     );
     assert.equal(automaticTimeout.status, 200);
@@ -628,18 +645,22 @@ async function main() {
       where: { id: examId },
       data: { autoSubmitOnTimeout: false },
     });
-    const thirdStart = await request<{ attemptUuid: string }>(
-      `/students/me/resources/${resource.id}/exam/start`,
-      { method: 'POST', headers: studentHeaders },
-    );
+    const thirdStart = await request<{
+      attemptId: number;
+      attemptUuid: string;
+    }>(`/students/me/resources/${resource.id}/exam/start`, {
+      method: 'POST',
+      headers: studentHeaders,
+    });
     assert.equal(thirdStart.status, 201);
+    const thirdAttemptId = data(thirdStart).attemptId;
     const thirdAttemptUuid = data(thirdStart).attemptUuid;
     await prisma.studentExamAttempt.update({
       where: { uuid: thirdAttemptUuid },
       data: { expiresAt: new Date(Date.now() - 1_000) },
     });
     const manualTimeout = await request<AttemptResponse>(
-      `/students/me/exam-attempts/${thirdAttemptUuid}`,
+      `/students/me/exam-attempts/${thirdAttemptId}/${thirdAttemptUuid}`,
       { headers: studentHeaders },
     );
     assert.equal(manualTimeout.status, 200);
@@ -647,7 +668,7 @@ async function main() {
     assert.equal(data(manualTimeout).timeoutState?.scope, 'EXAM');
     assert.equal(data(manualTimeout).timeoutState?.autoSubmitOnTimeout, false);
     const continued = await request<Record<string, unknown>>(
-      `/students/me/exam-attempts/${thirdAttemptUuid}/continue-after-timeout`,
+      `/students/me/exam-attempts/${thirdAttemptId}/${thirdAttemptUuid}/continue-after-timeout`,
       { method: 'POST', headers: studentHeaders },
     );
     assert.equal(continued.status, 201);

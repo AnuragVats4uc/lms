@@ -10,25 +10,33 @@ import { unwrapApiData } from "../client/response";
 const REPORTS_ENDPOINT = "/reports/students";
 
 export const activityReportsApi = {
-  findStudentActivity(studentUuid: string, query?: StudentActivityReportQuery) {
+  findStudentActivity(
+    studentId: number,
+    studentUuid: string,
+    query?: StudentActivityReportQuery,
+  ) {
     return api
       .get<ApiResponse<StudentActivityReport>>(
-        `${REPORTS_ENDPOINT}/${studentUuid}/activity`,
+        `${REPORTS_ENDPOINT}/${studentId}/${studentUuid}/activity`,
         { params: query },
       )
       .then(unwrapApiData);
   },
 
   exportStudentActivity(
+    studentId: number,
     studentUuid: string,
     format: "csv" | "xlsx",
     query?: StudentActivityReportQuery,
   ) {
     return api
-      .get<Blob>(`${REPORTS_ENDPOINT}/${studentUuid}/activity/export`, {
-        params: { ...query, format },
-        responseType: "blob",
-      })
+      .get<Blob>(
+        `${REPORTS_ENDPOINT}/${studentId}/${studentUuid}/activity/export`,
+        {
+          params: { ...query, format },
+          responseType: "blob",
+        },
+      )
       .then((response) => response.data);
   },
 };

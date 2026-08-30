@@ -6,11 +6,12 @@ model Course {
   code        String  @unique(map: "courses_code_unique") @db.VarChar(30)
   description String? @db.Text
 
-  thumbnail      String?
-  durationInDays Int?     @map("duration_in_days")
-  price          Decimal? @db.Decimal(10, 2)
-  discount       Decimal? @db.Decimal(10, 2)
-  type           String?  @db.VarChar(80)
+  thumbnail         String?
+  thumbnailObjectId Int?     @unique(map: "courses_thumbnail_object_id_unique") @map("thumbnail_object_id")
+  durationInDays    Int?     @map("duration_in_days")
+  price             Decimal? @db.Decimal(10, 2)
+  discount          Decimal? @db.Decimal(10, 2)
+  type              String?  @db.VarChar(80)
 
   status   CourseStatus @default(DRAFT)
   isActive Boolean      @default(true) @map("is_active")
@@ -18,7 +19,8 @@ model Course {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  sessionCourses SessionCourse[]
+  sessionCourses  SessionCourse[]
+  thumbnailObject StoredObject?   @relation("CourseThumbnailObject", fields: [thumbnailObjectId], references: [id], onDelete: SetNull)
 
   @@index([status], map: "courses_status_idx")
   @@index([isActive], map: "courses_is_active_idx")

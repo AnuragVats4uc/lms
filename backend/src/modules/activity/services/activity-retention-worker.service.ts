@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   Logger,
   OnModuleDestroy,
@@ -21,7 +22,9 @@ export class ActivityRetentionWorkerService
   private destroyed = false;
 
   constructor(
+    @Inject(ConfigService)
     private readonly configService: ConfigService,
+    @Inject(ActivityRetentionService)
     private readonly activityRetentionService: ActivityRetentionService,
   ) {}
 

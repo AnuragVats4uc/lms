@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { studentsApi } from "@repo/api";
 import type {
@@ -29,9 +36,23 @@ import {
   type SectionGroup,
 } from "./studentExamAttempt.types";
 
+const subscribeToNetworkStatus = (onStoreChange: () => void) => {
+  window.addEventListener("online", onStoreChange);
+  window.addEventListener("offline", onStoreChange);
+  return () => {
+    window.removeEventListener("online", onStoreChange);
+    window.removeEventListener("offline", onStoreChange);
+  };
+};
+
+const readNetworkStatus = () => window.navigator.onLine;
+const readServerNetworkStatus = () => true;
+
 export function StudentExamAttemptPage({
+  attemptId,
   attemptUuid,
 }: {
+  attemptId: number;
   attemptUuid: string;
 }) {
   const router = useRouter();
@@ -47,7 +68,11 @@ export function StudentExamAttemptPage({
   const [submissionDialogOpen, setSubmissionDialogOpen] = useState(false);
   const [timedOutLocally, setTimedOutLocally] = useState(false);
   const [timeoutError, setTimeoutError] = useState<string | null>(null);
-  const [isOnline, setIsOnline] = useState(true);
+  const isOnline = useSyncExternalStore(
+    subscribeToNetworkStatus,
+    readNetworkStatus,
+    readServerNetworkStatus,
+  );
   const enteredAt = useRef<number | null>(null);
   const handledTimeout = useRef<string | null>(null);
   const restoredPosition = useRef(false);
@@ -55,8 +80,8 @@ export function StudentExamAttemptPage({
   const saveQueue = useRef<Promise<boolean>>(Promise.resolve(true));
 
   const query = useQuery({
-    queryKey: ["student-exam-attempt", attemptUuid],
-    queryFn: () => studentsApi.findMyExamAttempt(attemptUuid),
+    queryKey: ["student-exam-attempt", attemptId, attemptUuid],
+    queryFn: () => studentsApi.findMyExamAttempt(attemptId, attemptUuid),
     staleTime: 5_000,
     refetchOnWindowFocus: false,
   });
@@ -71,20 +96,28 @@ export function StudentExamAttemptPage({
   const questionId = question?.id ?? null;
 
   const submitMutation = useMutation({
-    mutationFn: () => studentsApi.submitMyExam(attemptUuid),
+    mutationFn: () => studentsApi.submitMyExam(attemptId, attemptUuid),
     onSuccess: () =>
-      router.replace(`/student/exam-attempts/${attemptUuid}/report`),
+      router.replace(
+        `/student/exam-attempts/${attemptId}/${attemptUuid}/report`,
+      ),
   });
 
   const timeoutMutation = useMutation({
-    mutationFn: () => studentsApi.continueMyExamAfterTimeout(attemptUuid),
+    mutationFn: () =>
+      studentsApi.continueMyExamAfterTimeout(attemptId, attemptUuid),
     onMutate: () => setTimeoutError(null),
     onSuccess: (result) => {
       if (!("questions" in result)) {
-        router.replace(`/student/exam-attempts/${attemptUuid}/report`);
+        router.replace(
+          `/student/exam-attempts/${attemptId}/${attemptUuid}/report`,
+        );
         return;
       }
-      queryClient.setQueryData(["student-exam-attempt", attemptUuid], result);
+      queryClient.setQueryData(
+        ["student-exam-attempt", attemptId, attemptUuid],
+        result,
+      );
       const nextIndex = result.currentQuestionId
         ? result.questions.findIndex(
             (item) => item.id === result.currentQuestionId,
@@ -118,17 +151,17 @@ export function StudentExamAttemptPage({
     if (!questionId) return;
     enteredAt.current = Date.now();
     void studentsApi
-      .updateMyExamProgress(attemptUuid, {
+      .updateMyExamProgress(attemptId, attemptUuid, {
         attemptQuestionId: questionId,
       })
       .then((result) => {
         setLastSavedAt(result.savedAt);
         void queryClient.invalidateQueries({
-          queryKey: ["student-exam-attempt", attemptUuid],
+          queryKey: ["student-exam-attempt", attemptId, attemptUuid],
         });
       })
       .catch(() => undefined);
-  }, [attemptUuid, questionId, queryClient]);
+  }, [attemptId, attemptUuid, questionId, queryClient]);
 
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
@@ -157,18 +190,6 @@ export function StudentExamAttemptPage({
     return () => window.removeEventListener("popstate", guardBackNavigation);
   }, []);
 
-  useEffect(() => {
-    const online = () => setIsOnline(true);
-    const offline = () => setIsOnline(false);
-    setIsOnline(window.navigator.onLine);
-    window.addEventListener("online", online);
-    window.addEventListener("offline", offline);
-    return () => {
-      window.removeEventListener("online", online);
-      window.removeEventListener("offline", offline);
-    };
-  }, []);
-
   const persistQuestion = useCallback(
     (
       targetQuestion: StudentExamAttemptQuestion,
@@ -193,6 +214,7 @@ export function StudentExamAttemptPage({
           setSaveErrorMessage(null);
           try {
             const result = await studentsApi.saveMyExamAnswer(
+              attemptId,
               attemptUuid,
               targetQuestion.id,
               {
@@ -224,7 +246,7 @@ export function StudentExamAttemptPage({
               }));
             }
             void queryClient.invalidateQueries({
-              queryKey: ["student-exam-attempt", attemptUuid],
+              queryKey: ["student-exam-attempt", attemptId, attemptUuid],
             });
             return true;
           } catch {
@@ -238,7 +260,7 @@ export function StudentExamAttemptPage({
       saveQueue.current = save;
       return save;
     },
-    [attemptUuid, queryClient],
+    [attemptId, attemptUuid, queryClient],
   );
 
   useEffect(() => {
@@ -373,7 +395,7 @@ export function StudentExamAttemptPage({
   useEffect(() => {
     if (!effectiveTimer || handledTimeout.current === effectiveTimer.key)
       return;
-    const remaining = effectiveTimer.deadline - (Date.now() + serverOffsetMs);
+    let deadlineTimer: number | undefined;
     const handleTimeout = () => {
       if (handledTimeout.current === effectiveTimer.key) return;
       handledTimeout.current = effectiveTimer.key;
@@ -384,15 +406,22 @@ export function StudentExamAttemptPage({
         void query.refetch();
       }
     };
-    if (remaining <= 0) {
-      handleTimeout();
-      return;
-    }
-    const timer = window.setTimeout(
-      handleTimeout,
-      Math.min(remaining + 250, 2_147_000_000),
-    );
-    return () => window.clearTimeout(timer);
+    const evaluationTimer = window.setTimeout(() => {
+      const remaining =
+        effectiveTimer.deadline - (Date.now() + serverOffsetMs);
+      if (remaining <= 0) {
+        handleTimeout();
+        return;
+      }
+      deadlineTimer = window.setTimeout(
+        handleTimeout,
+        Math.min(remaining + 250, 2_147_000_000),
+      );
+    }, 0);
+    return () => {
+      window.clearTimeout(evaluationTimer);
+      if (deadlineTimer !== undefined) window.clearTimeout(deadlineTimer);
+    };
   }, [effectiveTimer, query, serverOffsetMs, timeoutMutation]);
 
   if (query.isLoading) return <ExamLoading />;
@@ -410,7 +439,9 @@ export function StudentExamAttemptPage({
       <ExamState title="This attempt has already been submitted">
         <button
           onClick={() =>
-            router.replace(`/student/exam-attempts/${attemptUuid}/report`)
+            router.replace(
+              `/student/exam-attempts/${attemptId}/${attemptUuid}/report`,
+            )
           }
           type="button"
         >

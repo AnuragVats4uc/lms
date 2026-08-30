@@ -74,7 +74,7 @@ async function main() {
         ],
       },
     },
-    select: { uuid: true, examId: true },
+    select: { id: true, uuid: true, examId: true },
     orderBy: { submittedAt: 'desc' },
   });
   assert.ok(attempt, 'No completed demo student attempt is available');
@@ -92,7 +92,7 @@ async function main() {
 
   try {
     const studentResponse = await request<StudentReport>(
-      `/students/me/exam-attempts/${attempt.uuid}/report`,
+      `/students/me/exam-attempts/${attempt.id}/${attempt.uuid}/report`,
       { headers: studentHeaders },
     );
     assert.equal(studentResponse.status, 200);

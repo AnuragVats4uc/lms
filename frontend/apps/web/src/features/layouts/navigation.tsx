@@ -215,11 +215,6 @@ export const studentNavigation: NavigationItem[] = [
     icon: FileText,
     label: "Resources",
   },
-  {
-    href: "/student/courses",
-    icon: GraduationCap,
-    label: "Courses",
-  },
 ];
 
 export const teacherNavigation: NavigationItem[] = [

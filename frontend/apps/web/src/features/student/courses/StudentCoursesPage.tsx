@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   BookOpen,
+  CheckCircle2,
   ChevronRight,
+  CircleDashed,
+  Clock3,
   FileText,
   Grid3X3,
   HelpCircle,
   List,
-  MoreVertical,
   Play,
   RefreshCw,
   Trophy,
@@ -25,7 +27,6 @@ import {
   XStack,
   YStack,
 } from "@repo/ui";
-import { AppBadge } from "@repo/ui/primitives";
 import { studentsApi } from "@repo/api";
 import type { StudentCourseItem, StudentCourseStatus } from "@repo/types";
 
@@ -79,58 +80,57 @@ export function StudentCoursesPage() {
   const columns = useMemo<DataTableColumn<StudentCourseItem>[]>(
     () => [
       {
-        cell: ({ row }) => (
-          <DataTableTextCell
-            primary={row.title}
-            secondary={`${row.program} • ${row.instructor}`}
+        cell: ({ row, rowIndex }) => (
+          <CourseTableNameCell
+            course={row}
+            variant={
+              courseVisualVariants[rowIndex % courseVisualVariants.length]
+            }
           />
         ),
         header: "Course",
         id: "course",
         sticky: true,
-        width: 280,
+        width: 270,
       },
       {
-        cell: ({ row }) => (
-          <AppBadge tone={statusTone(row.status)}>
-            {statusLabels[row.status]}
-          </AppBadge>
+        cell: ({ row, rowIndex }) => (
+          <CourseStatusBadge
+            status={row.status}
+            variant={
+              courseVisualVariants[rowIndex % courseVisualVariants.length]
+            }
+          />
         ),
         header: "Status",
         id: "status",
-        width: 130,
+        width: 122,
       },
       {
-        cell: ({ row }) => (
-          <DataTableTextCell
-            primary={`${clampPercentage(row.completionPercentage)}%`}
-            secondary="Completed"
+        cell: ({ row, rowIndex }) => (
+          <CourseProgressBar
+            value={row.completionPercentage}
+            variant={
+              courseVisualVariants[rowIndex % courseVisualVariants.length]
+            }
           />
         ),
         header: "Progress",
         id: "progress",
-        width: 120,
+        width: 145,
       },
       {
-        align: "right",
-        accessorFn: (row) => row.resourceCounts.videos,
-        header: "Videos",
-        id: "videos",
-        width: 100,
-      },
-      {
-        align: "right",
-        accessorFn: (row) => row.resourceCounts.documents,
-        header: "Documents",
-        id: "documents",
-        width: 120,
-      },
-      {
-        align: "right",
-        accessorFn: (row) => row.resourceCounts.exams,
-        header: "Exams",
-        id: "exams",
-        width: 90,
+        cell: ({ row, rowIndex }) => (
+          <CourseResourceSummary
+            counts={row.resourceCounts}
+            variant={
+              courseVisualVariants[rowIndex % courseVisualVariants.length]
+            }
+          />
+        ),
+        header: "Resources",
+        id: "resources",
+        width: 215,
       },
       {
         cell: ({ row }) => (
@@ -145,10 +145,29 @@ export function StudentCoursesPage() {
         ),
         header: "Last Accessed",
         id: "lastAccessed",
-        width: 240,
+        width: 225,
+      },
+      {
+        align: "right",
+        cell: ({ row, rowIndex }) => (
+          <button
+            className={`student-course-table-action ${
+              courseVisualVariants[rowIndex % courseVisualVariants.length]
+            }`}
+            onClick={() => router.push(row.continuePath)}
+            type="button"
+          >
+            {getCompactActionLabel(row)}
+            <ChevronRight aria-hidden="true" size={13} strokeWidth={2.4} />
+          </button>
+        ),
+        header: "Action",
+        id: "action",
+        meta: { stickyEnd: true },
+        width: 112,
       },
     ],
-    [],
+    [router],
   );
 
   return (
@@ -207,40 +226,32 @@ export function StudentCoursesPage() {
             />
           </YStack>
         ) : (
-          <DataTable<StudentCourseItem>
-            actions={[
-              {
-                id: "continue",
-                label: "Continue",
-                icon: (
-                  <ChevronRight aria-hidden="true" color="#059669" size={15} />
-                ),
-                onAction: (course) => router.push(course.continuePath),
-              },
-            ]}
-            columns={columns}
-            data={courses}
-            emptyState={{
-              description: "Your assigned courses will appear here.",
-              title: "No courses assigned yet",
-            }}
-            getRowId={(course) => course.id}
-            loading={coursesQuery.isLoading}
-            onPageChange={setPage}
-            pagination={{
-              entityLabel: "courses",
-              mode: "server",
-              page,
-              pageSize: PAGE_SIZE,
-              pageSizeOptions: [10],
-              total: coursesQuery.data?.meta.total ?? 0,
-              totalPages: coursesQuery.data?.meta.totalPages ?? 1,
-            }}
-            renderToolbar={() => null}
-            searchable={false}
-            stickyFirstColumn
-            stickyHeader
-          />
+          <div className="student-courses-table-view">
+            <DataTable<StudentCourseItem>
+              columns={columns}
+              data={courses}
+              emptyState={{
+                description: "Your assigned courses will appear here.",
+                title: "No courses assigned yet",
+              }}
+              getRowId={(course) => course.id}
+              loading={coursesQuery.isLoading}
+              onPageChange={setPage}
+              pagination={{
+                entityLabel: "courses",
+                mode: "server",
+                page,
+                pageSize: PAGE_SIZE,
+                pageSizeOptions: [10],
+                total: coursesQuery.data?.meta.total ?? 0,
+                totalPages: coursesQuery.data?.meta.totalPages ?? 1,
+              }}
+              renderToolbar={() => null}
+              searchable={false}
+              stickyFirstColumn
+              stickyHeader
+            />
+          </div>
         )
       ) : (
         <AppEmptyState
@@ -317,61 +328,39 @@ function StudentCourseCard({
         )}
         <YStack className="student-course-card-details">
           <XStack className="student-course-card-head">
-            <AppBadge tone={statusTone(course.status)}>
-              {statusLabels[course.status]}
-            </AppBadge>
-            <button
-              aria-label={`Open ${course.title}`}
-              className="student-course-menu-button"
-              onClick={() => router.push(course.continuePath)}
-              type="button"
-            >
-              <MoreVertical aria-hidden="true" size={18} strokeWidth={2.2} />
-            </button>
+            <div>
+              <Text className="student-course-main-title" numberOfLines={1}>
+                {course.title}
+              </Text>
+              <Text className="student-course-program" numberOfLines={1}>
+                {course.program} • {course.instructor}
+              </Text>
+            </div>
+            <CourseStatusBadge status={course.status} variant={variant} />
           </XStack>
-          <Text className="student-course-main-title" numberOfLines={2}>
-            {course.title}
-          </Text>
-          <Text className="student-course-program" numberOfLines={1}>
-            {course.program}
-          </Text>
-          <Text className="student-course-description" numberOfLines={2}>
+          <Text className="student-course-description" numberOfLines={1}>
             {course.description ??
               "Course content assigned through your active batch."}
           </Text>
           <XStack className="student-course-stats-row">
             <CircularProgress value={progress} variant={variant} />
-            <div className="student-course-stat-grid">
-              <CourseStat
-                Icon={Video}
-                label="Videos"
-                value={course.resourceCounts.videos}
-                variant={variant}
-              />
-              <CourseStat
-                Icon={FileText}
-                label="Documents"
-                value={course.resourceCounts.documents}
-                variant={variant}
-              />
-              <CourseStat
-                Icon={Trophy}
-                label="Exams"
-                value={course.resourceCounts.exams}
-                variant={variant}
-              />
-            </div>
+            <CourseProgressBar
+              value={course.completionPercentage}
+              variant={variant}
+            />
           </XStack>
         </YStack>
       </XStack>
       <XStack className="student-course-card-footer">
+        <CourseResourceSummary
+          counts={course.resourceCounts}
+          variant={variant}
+        />
         <YStack className="student-course-last-accessed">
           <Text>Last accessed</Text>
           <XStack>
             <strong>
-              {course.lastAccessed
-                ? `${course.lastAccessed.title} (${formatResourceType(course.lastAccessed.resourceType.code)})`
-                : "-"}
+              {course.lastAccessed ? course.lastAccessed.title : "-"}
             </strong>
             {course.lastAccessed ? (
               <span>
@@ -385,7 +374,7 @@ function StudentCourseCard({
           onClick={() => router.push(course.continuePath)}
           type="button"
         >
-          <span>{course.actionLabel}</span>
+          <span>{getCompactActionLabel(course)}</span>
           <Play
             aria-hidden="true"
             fill="currentColor"
@@ -422,6 +411,114 @@ function CourseVisual({
   );
 }
 
+function CourseTableNameCell({
+  course,
+  variant,
+}: {
+  course: StudentCourseItem;
+  variant: CourseVisualVariant;
+}) {
+  return (
+    <div className="student-course-table-name">
+      <span className={`student-course-table-icon ${variant}`}>
+        {course.shortCode}
+      </span>
+      <div>
+        <DataTableTextCell
+          primary={course.title}
+          secondary={`${course.program} • ${course.instructor}`}
+        />
+      </div>
+    </div>
+  );
+}
+
+function CourseStatusBadge({
+  status,
+  variant,
+}: {
+  status: StudentCourseStatus;
+  variant: CourseVisualVariant;
+}) {
+  return (
+    <span
+      className={`student-course-status-badge ${variant} ${status.toLowerCase()}`}
+    >
+      {renderCourseStatusIcon(status)}
+      {statusLabels[status]}
+    </span>
+  );
+}
+
+function renderCourseStatusIcon(status: StudentCourseStatus) {
+  const props = { "aria-hidden": true as const, size: 11, strokeWidth: 2.3 };
+  if (status === "COMPLETED") return <CheckCircle2 {...props} />;
+  if (status === "IN_PROGRESS") return <Clock3 {...props} />;
+  return <CircleDashed {...props} />;
+}
+
+function CourseProgressBar({
+  value,
+  variant,
+}: {
+  value: number;
+  variant: CourseVisualVariant;
+}) {
+  const progress = clampPercentage(value);
+
+  return (
+    <div className={`student-course-progress-bar ${variant}`}>
+      <div>
+        <strong>{progress}%</strong>
+        <span>Completed</span>
+      </div>
+      <span className="student-course-progress-track">
+        <i style={{ width: `${progress}%` }} />
+      </span>
+    </div>
+  );
+}
+
+function CourseResourceSummary({
+  counts,
+  variant,
+}: {
+  counts: StudentCourseItem["resourceCounts"];
+  variant: CourseVisualVariant;
+}) {
+  return (
+    <div className={`student-course-resource-summary ${variant}`}>
+      <CourseResourceMetric Icon={Video} label="Videos" value={counts.videos} />
+      <CourseResourceMetric
+        Icon={FileText}
+        label="Documents"
+        value={counts.documents}
+      />
+      <CourseResourceMetric Icon={Trophy} label="Exams" value={counts.exams} />
+    </div>
+  );
+}
+
+function CourseResourceMetric({
+  Icon,
+  label,
+  value,
+}: {
+  Icon: typeof Video;
+  label: string;
+  value: number;
+}) {
+  return (
+    <span className="student-course-resource-metric">
+      <span>
+        <Icon aria-hidden="true" size={12} strokeWidth={2.3} />
+        <strong>{value}</strong>
+      </span>
+      <small>{label}</small>
+    </span>
+  );
+}
+
 function CircularProgress({
   value,
   variant,
@@ -429,18 +526,18 @@ function CircularProgress({
   value: number;
   variant: CourseVisualVariant;
 }) {
-  const radius = 29;
+  const radius = 22;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (value / 100) * circumference;
 
   return (
     <div className={`student-course-progress-ring ${variant}`}>
-      <svg aria-hidden="true" height="70" viewBox="0 0 70 70" width="70">
-        <circle className="track" cx="35" cy="35" r={radius} />
+      <svg aria-hidden="true" height="56" viewBox="0 0 56 56" width="56">
+        <circle className="track" cx="28" cy="28" r={radius} />
         <circle
           className="value"
-          cx="35"
-          cy="35"
+          cx="28"
+          cy="28"
           r={radius}
           strokeDasharray={circumference}
           strokeDashoffset={offset}
@@ -451,30 +548,6 @@ function CircularProgress({
         <span>Completed</span>
       </div>
     </div>
-  );
-}
-
-function CourseStat({
-  Icon,
-  label,
-  value,
-  variant,
-}: {
-  Icon: typeof Video;
-  label: string;
-  value: number;
-  variant: CourseVisualVariant;
-}) {
-  return (
-    <YStack className={`student-course-stat ${variant}`}>
-      <XStack gap={4} style={{ alignItems: "center" }}>
-        <Icon aria-hidden="true" size={13} strokeWidth={2.3} />
-        <strong>{value}</strong>
-      </XStack>
-      <YStack>
-        <span>{label}</span>
-      </YStack>
-    </YStack>
   );
 }
 
@@ -509,19 +582,13 @@ function StudentCoursesError({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-function statusTone(status: StudentCourseStatus) {
-  if (status === "COMPLETED") return "green" as const;
-  if (status === "NOT_STARTED") return "gray" as const;
-  return "orange" as const;
-}
-
 function clampPercentage(value: number) {
   if (!Number.isFinite(value)) return 0;
   return Math.min(100, Math.max(0, Math.round(value)));
 }
 
-function formatResourceType(type: string) {
-  return type.charAt(0) + type.slice(1).toLowerCase();
+function getCompactActionLabel(course: StudentCourseItem) {
+  return course.completionPercentage > 0 ? "Continue" : "Start";
 }
 
 function formatRelativeTimestamp(value: string) {

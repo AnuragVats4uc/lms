@@ -7,6 +7,7 @@ import {
   useState,
   type ComponentProps,
   type ElementRef,
+  type MouseEventHandler,
   type ReactNode,
 } from "react";
 import { ExternalLink } from "lucide-react";
@@ -37,6 +38,7 @@ export interface DataTableLinkCellProps {
   href: string;
   label?: string;
   external?: boolean;
+  onClick?: MouseEventHandler<HTMLAnchorElement>;
 }
 
 export interface DataTableDateCellProps {
@@ -324,7 +326,7 @@ export const DataTablePhoneCell = memo(
 DataTablePhoneCell.displayName = "DataTablePhoneCell";
 
 export const DataTableWebsiteCell = memo(
-  ({ external = true, href, label }: DataTableLinkCellProps) => {
+  ({ external = true, href, label, onClick }: DataTableLinkCellProps) => {
     return (
       <XStack gap="$1" style={{ alignItems: "center", minWidth: 0 }}>
         <YStack style={{ flex: 1, minWidth: 0 }}>
@@ -336,6 +338,7 @@ export const DataTableWebsiteCell = memo(
           >
             <a
               href={href}
+              onClick={onClick}
               rel={external ? "noreferrer" : undefined}
               style={{ color: "inherit", textDecoration: "none" }}
               target={external ? "_blank" : undefined}

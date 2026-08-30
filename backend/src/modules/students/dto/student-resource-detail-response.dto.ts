@@ -6,6 +6,15 @@ class StudentDocumentProgressDto {
   @ApiProperty({ example: 62 })
   percentage: number;
 
+  @ApiProperty({ example: 5 })
+  pagesRead: number;
+
+  @ApiPropertyOptional({ nullable: true, example: 34 })
+  totalPages: number | null;
+
+  @ApiPropertyOptional({ nullable: true, example: 5 })
+  lastPage: number | null;
+
   @ApiProperty({ enum: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'] })
   status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 

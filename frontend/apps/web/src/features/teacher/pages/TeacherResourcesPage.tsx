@@ -15,10 +15,11 @@ import {
   DataTableWebsiteCell,
   type DataTableColumn,
 } from "@/components/DataTable";
+import { CrudPageHeader, CrudToolbar } from "@/features/admin/components/crud";
 import {
-  CrudPageHeader,
-  CrudToolbar,
-} from "@/features/admin/components/crud";
+  isManagedResourceDocument,
+  openManagedResourceDocument,
+} from "@/features/resources/openManagedResourceDocument";
 
 const statusOptions = [
   { label: "All statuses", value: "" },
@@ -152,6 +153,17 @@ export function TeacherResourcesPage() {
             id: "open",
             label: "Open",
             onAction: (resource) => {
+              const document = {
+                ...resource,
+                folderId: resource.folder.id,
+              };
+              if (
+                resource.documentUrl &&
+                isManagedResourceDocument(document)
+              ) {
+                void openManagedResourceDocument(document);
+                return;
+              }
               const href = resource.documentUrl ?? resource.videoUrl;
               if (href) window.open(href, "_blank", "noopener,noreferrer");
             },
@@ -236,7 +248,9 @@ function createResourceColumns(): DataTableColumn<TeacherDashboardRecentResource
       cell: ({ row }) => (
         <DataTableTextCell
           primary={row.sessionCourse.title}
-          secondary={row.sessionCourse.session?.name ?? row.sessionCourse.courseCode}
+          secondary={
+            row.sessionCourse.session?.name ?? row.sessionCourse.courseCode
+          }
         />
       ),
       header: "Course",
@@ -263,7 +277,24 @@ function createResourceColumns(): DataTableColumn<TeacherDashboardRecentResource
     {
       cell: ({ row }) =>
         row.documentUrl ? (
-          <DataTableWebsiteCell href={row.documentUrl} label="Open document" />
+          <DataTableWebsiteCell
+            href={row.documentUrl}
+            label="Open document"
+            onClick={
+              isManagedResourceDocument({
+                ...row,
+                folderId: row.folder.id,
+              })
+                ? (event) => {
+                    event.preventDefault();
+                    void openManagedResourceDocument({
+                      ...row,
+                      folderId: row.folder.id,
+                    });
+                  }
+                : undefined
+            }
+          />
         ) : row.videoUrl ? (
           <DataTableWebsiteCell href={row.videoUrl} label="Open video" />
         ) : (

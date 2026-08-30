@@ -9,12 +9,15 @@ model Resource {
   resourceTypeId Int     @map("type")
 
   documentUrl       String? @map("document_url")
+  documentObjectId  Int?    @unique(map: "resources_document_object_id_unique") @map("document_object_id")
   videoUrl          String? @map("video_url")
   examId            Int?    @map("exam_id")
   thumbnail         String?
+  thumbnailObjectId Int?    @unique(map: "resources_thumbnail_object_id_unique") @map("thumbnail_object_id")
   mimeType          String? @map("mime_type") @db.VarChar(150)
   fileSize          BigInt? @map("file_size")
   durationInSeconds Int?    @map("duration_in_seconds")
+  documentPageCount Int?    @map("document_page_count")
 
   sortOrder      Int            @default(0) @map("sort_order")
   status         ResourceStatus @default(DRAFT)
@@ -33,6 +36,8 @@ model Resource {
   examAttempts               StudentExamAttempt[]             @relation("StudentExamAttemptSourceResource")
   activitySessions           StudentResourceActivitySession[]
   activityEvents             StudentActivityEvent[]
+  documentObject             StoredObject?                    @relation("ResourceDocumentObject", fields: [documentObjectId], references: [id], onDelete: SetNull)
+  thumbnailObject            StoredObject?                    @relation("ResourceThumbnailObject", fields: [thumbnailObjectId], references: [id], onDelete: SetNull)
 
   @@index([folderId], map: "resources_folder_id_idx")
   @@index([resourceTypeId], map: "resources_type_idx")

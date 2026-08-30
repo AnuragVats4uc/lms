@@ -22,13 +22,13 @@ import {
   ExamVirtualKeyboardMode,
 } from '@prisma/client';
 import { createHash } from 'node:crypto';
-import { extname, join } from 'node:path';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { extname } from 'node:path';
 import * as mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import { deflateSync } from 'node:zlib';
 
 import { CurrentUser } from '../../auth/types/current-user.types';
+import { ManagedObjectService } from '../../storage/managed-object.service';
 import {
   CreateExamDto,
   CreateExamImportDto,
@@ -210,7 +210,10 @@ const templateInclude = {
 
 @Injectable()
 export class ExamService {
-  constructor(private readonly repository: ExamRepository) {}
+  constructor(
+    private readonly repository: ExamRepository,
+    private readonly managedObjects?: ManagedObjectService,
+  ) {}
 
   private get prisma() {
     return this.repository.client;
@@ -1500,7 +1503,11 @@ export class ExamService {
       throw new BadRequestException('The mapping file must be a .xlsx file');
     const version = await this.prisma.examTemplateVersion.findUnique({
       where: { id: dto.examTemplateVersionId },
-      include: { examTemplate: true },
+      include: {
+        examTemplate: {
+          include: { organization: { select: { id: true, uuid: true } } },
+        },
+      },
     });
     if (!version)
       throw new NotFoundException('Exam template version not found');
@@ -1583,25 +1590,15 @@ export class ExamService {
       effectiveDto,
       rows,
     );
-    const directory = join(process.cwd(), 'uploads', 'exam-imports');
-    await mkdir(directory, { recursive: true });
-    const wordStoragePath = join(
-      directory,
-      `${importFingerprint}.content.docx`,
-    );
-    const excelStoragePath = excelFile
-      ? join(directory, `${importFingerprint}.mapping.xlsx`)
-      : undefined;
-    await Promise.all(
-      [
-        writeFile(wordStoragePath, wordFile.buffer),
-        excelStoragePath && writeFile(excelStoragePath, excelFile!.buffer),
-      ].filter(Boolean) as Array<Promise<void>>,
-    );
     const counts = this.importCounts(rows);
+    const managedObjects = this.managedObjects;
+    if (!managedObjects) {
+      throw new Error('Managed object storage is not configured');
+    }
+    let importJob: { id: number; uuid: string };
 
     try {
-      return await this.prisma.examImportJob.create({
+      importJob = await this.prisma.examImportJob.create({
         data: {
           importFingerprint,
           organizationId: version.examTemplate.organizationId,
@@ -1611,6 +1608,53 @@ export class ExamService {
           subjectId: effectiveDto.subjectId,
           uploadedById: user.userId,
           scope: effectiveDto.scope,
+          status: ExamImportStatus.UPLOADED,
+        },
+        select: { id: true, uuid: true },
+      });
+    } catch (error) {
+      this.rethrowUnique(
+        error,
+        'This Word and Excel file pair has already been uploaded for this destination',
+      );
+    }
+
+    const storedObjects: Array<{ id: number; uuid: string }> = [];
+    const organization = version.examTemplate.organization;
+    try {
+      const wordObject = await managedObjects.upload({
+        organization,
+        owner: {
+          category: 'exam-imports',
+          id: importJob.id,
+          uuid: importJob.uuid,
+        },
+        uploadedById: user.userId,
+        originalFileName: wordFile.originalname,
+        mimeType: wordFile.mimetype,
+        body: wordFile.buffer,
+      });
+      storedObjects.push(wordObject);
+
+      const excelObject = excelFile
+        ? await managedObjects.upload({
+            organization,
+            owner: {
+              category: 'exam-imports',
+              id: importJob.id,
+              uuid: importJob.uuid,
+            },
+            uploadedById: user.userId,
+            originalFileName: excelFile.originalname,
+            mimeType: excelFile.mimetype,
+            body: excelFile.buffer,
+          })
+        : null;
+      if (excelObject) storedObjects.push(excelObject);
+
+      return await this.prisma.examImportJob.update({
+        where: { id: importJob.id },
+        data: {
           status: counts.errorRows
             ? ExamImportStatus.VALIDATION_FAILED
             : ExamImportStatus.READY_FOR_REVIEW,
@@ -1620,17 +1664,17 @@ export class ExamService {
               {
                 kind: ExamImportFileKind.CONTENT_DOCX,
                 originalFileName: wordFile.originalname,
-                storagePath: wordStoragePath,
+                storedObjectId: wordObject.id,
                 fileHash: wordFileHash,
                 mimeType: wordFile.mimetype,
                 sizeBytes: wordFile.size,
               },
-              ...(excelFile && excelStoragePath
+              ...(excelFile && excelObject
                 ? [
                     {
                       kind: ExamImportFileKind.MAPPING_XLSX,
                       originalFileName: excelFile.originalname,
-                      storagePath: excelStoragePath,
+                      storedObjectId: excelObject.id,
                       fileHash: excelFileHash,
                       mimeType: excelFile.mimetype,
                       sizeBytes: excelFile.size,
@@ -1677,6 +1721,16 @@ export class ExamService {
         },
       });
     } catch (error) {
+      await Promise.all(
+        storedObjects.map((object) =>
+          managedObjects
+            .delete(object.id, object.uuid, organization.id)
+            .catch(() => undefined),
+        ),
+      );
+      await this.prisma.examImportJob
+        .delete({ where: { id: importJob.id } })
+        .catch(() => undefined);
       this.rethrowUnique(
         error,
         'This Word and Excel file pair has already been uploaded for this destination',

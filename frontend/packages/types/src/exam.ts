@@ -362,6 +362,7 @@ export interface StudentExamAttemptQuestion {
 }
 
 export interface StudentExamAttempt {
+  attemptId: number;
   attemptUuid: string;
   attemptNumber: number;
   attemptLimit: number;
@@ -413,6 +414,7 @@ export interface StudentExamAttempt {
 }
 
 export interface StudentExamReport {
+  attemptId: number;
   attemptUuid: string;
   status: ExamAttemptStatus;
   released: boolean;
@@ -471,11 +473,7 @@ export interface StudentExamReport {
         subjectId: number;
         subjectName: string;
         classification:
-          | "STRONG"
-          | "DEVELOPING"
-          | "WEAK"
-          | "NOT_ATTEMPTED"
-          | "LIMITED_DATA";
+          "STRONG" | "DEVELOPING" | "WEAK" | "NOT_ATTEMPTED" | "LIMITED_DATA";
       }
     >;
   };
@@ -500,6 +498,7 @@ export interface StudentExamReport {
     marksToPass: number | null;
   };
   trend?: Array<{
+    attemptId: number;
     attemptUuid: string;
     attemptNumber: number;
     submittedAt: string;

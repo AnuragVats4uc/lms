@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseIntPipe,
   ParseUUIDPipe,
   Query,
   Req,
@@ -32,33 +33,37 @@ type AuthenticatedRequest = Request & { user: CurrentUser };
 export class ActivityReportController {
   constructor(private readonly activityReportService: ActivityReportService) {}
 
-  @Get(':studentUuid/activity')
+  @Get(':studentId/:studentUuid/activity')
   @ApiOperation({ summary: 'Get a student-specific activity report' })
   @ApiOkResponse({
     description: 'Student activity report fetched successfully',
   })
   getStudentReport(
     @Req() request: AuthenticatedRequest,
+    @Param('studentId', ParseIntPipe) studentId: number,
     @Param('studentUuid', new ParseUUIDPipe()) studentUuid: string,
     @Query() query: StudentActivityReportQueryDto,
   ) {
     return this.activityReportService.getStudentReport(
       request.user,
+      studentId,
       studentUuid,
       query,
     );
   }
 
-  @Get(':studentUuid/activity/export')
+  @Get(':studentId/:studentUuid/activity/export')
   @ApiOperation({ summary: 'Export a student activity report as CSV or XLSX' })
   @ApiOkResponse({ description: 'Student activity report export' })
   async exportStudentReport(
     @Req() request: AuthenticatedRequest,
+    @Param('studentId', ParseIntPipe) studentId: number,
     @Param('studentUuid', new ParseUUIDPipe()) studentUuid: string,
     @Query() query: StudentActivityReportExportQueryDto,
   ) {
     const result = await this.activityReportService.exportStudentReport(
       request.user,
+      studentId,
       studentUuid,
       query,
     );

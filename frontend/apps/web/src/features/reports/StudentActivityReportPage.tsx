@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import {
   Activity,
-  ArrowLeft,
+  BarChart3,
   BookOpen,
+  CheckCircle2,
   Clock3,
   Download,
   FileDown,
@@ -18,11 +19,13 @@ import {
 } from "lucide-react";
 import { activityReportsApi } from "@repo/api";
 import type {
+  StudentActivityReportData,
   StudentActivityReportQuery,
   StudentActivityTimelineItem,
+  StudentReportActivityCategory,
   StudentReportActivityType,
 } from "@repo/types";
-import { Button, Spinner, Text } from "@repo/ui";
+import { Spinner, Text } from "@repo/ui";
 import { PageContainer } from "@repo/ui/dashboard";
 import { useAuthSession } from "@repo/auth";
 
@@ -32,6 +35,11 @@ import {
   DataTableTextCell,
   type DataTableColumn,
 } from "@/components/DataTable";
+import {
+  StudentAccessActivity,
+  StudentActivityOverview,
+  StudentResourceActivity,
+} from "./StudentActivityReportSections";
 import styles from "./StudentActivityReportPage.module.css";
 
 type FilterState = {
@@ -41,6 +49,8 @@ type FilterState = {
   sessionCourseId: string;
   to: string;
 };
+
+type ReportTab = "overview" | "timeline" | "resources" | "access";
 
 const today = new Date().toISOString().slice(0, 10);
 const thirtyDaysAgo = new Date(Date.now() - 29 * 86_400_000)
@@ -53,9 +63,23 @@ const initialFilters: FilterState = {
   sessionCourseId: "",
   to: today,
 };
+const reportTabs: Array<{
+  id: ReportTab;
+  label: string;
+  icon: typeof Activity;
+}> = [
+  { id: "overview", label: "Overview", icon: BarChart3 },
+  { id: "timeline", label: "Timeline", icon: Activity },
+  { id: "resources", label: "Resources", icon: BookOpen },
+  { id: "access", label: "Access & Devices", icon: MonitorSmartphone },
+];
 
 export function StudentActivityReportPage() {
-  const { studentUuid } = useParams<{ studentUuid: string }>();
+  const { studentId: rawStudentId, studentUuid } = useParams<{
+    studentId: string;
+    studentUuid: string;
+  }>();
+  const studentId = Number(rawStudentId);
   const router = useRouter();
   const { currentUser } = useAuthSession();
   const isTeacherWorkspace =
@@ -65,6 +89,7 @@ export function StudentActivityReportPage() {
     );
   const [draftFilters, setDraftFilters] = useState(initialFilters);
   const [filters, setFilters] = useState(initialFilters);
+  const [activeTab, setActiveTab] = useState<ReportTab>("overview");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [exporting, setExporting] = useState<"csv" | "xlsx" | null>(null);
@@ -74,10 +99,12 @@ export function StudentActivityReportPage() {
     [filters, limit, page],
   );
   const reportQuery = useQuery({
-    enabled: Boolean(studentUuid),
+    enabled:
+      Number.isSafeInteger(studentId) && studentId > 0 && Boolean(studentUuid),
     placeholderData: keepPreviousData,
-    queryFn: () => activityReportsApi.findStudentActivity(studentUuid, query),
-    queryKey: ["student-activity-report", studentUuid, query],
+    queryFn: () =>
+      activityReportsApi.findStudentActivity(studentId, studentUuid, query),
+    queryKey: ["student-activity-report", studentId, studentUuid, query],
     staleTime: 30_000,
   });
   const report = reportQuery.data?.data;
@@ -87,6 +114,20 @@ export function StudentActivityReportPage() {
     [],
   );
 
+  useEffect(() => {
+    const syncHash = () => {
+      const hash = window.location.hash.slice(1) as ReportTab;
+      if (reportTabs.some((tab) => tab.id === hash)) setActiveTab(hash);
+    };
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
+  }, []);
+
+  const selectTab = (tab: ReportTab) => {
+    setActiveTab(tab);
+    window.history.replaceState(null, "", `#${tab}`);
+  };
   const applyFilters = () => {
     setFilters(draftFilters);
     setPage(1);
@@ -101,6 +142,7 @@ export function StudentActivityReportPage() {
     setExporting(format);
     try {
       const blob = await activityReportsApi.exportStudentActivity(
+        studentId,
         studentUuid,
         format,
         toReportQuery(filters),
@@ -157,285 +199,377 @@ export function StudentActivityReportPage() {
     );
   }
 
-  const summaryCards = [
-    {
-      icon: LogIn,
-      label: "Successful logins",
-      value: report.summary.successfulLogins.toLocaleString(),
-      tone: "green",
-    },
-    {
-      icon: ShieldAlert,
-      label: "Failed logins",
-      value: report.summary.failedLogins.toLocaleString(),
-      tone: report.summary.failedLogins ? "red" : "slate",
-    },
-    {
-      icon: Clock3,
-      label: "Active time",
-      value: formatDuration(report.summary.totalActiveDurationSeconds),
-      tone: "blue",
-    },
-    {
-      icon: Clock3,
-      label: "Idle time",
-      value: formatDuration(report.summary.totalIdleDurationSeconds),
-      tone: "amber",
-    },
-    {
-      icon: Activity,
-      label: "Resource time",
-      value: formatDuration(report.summary.resourceActiveDurationSeconds),
-      tone: "violet",
-    },
-    {
-      icon: BookOpen,
-      label: "Resources opened",
-      value: report.summary.distinctResources.toLocaleString(),
-      tone: "cyan",
-    },
-    {
-      icon: FileText,
-      label: "Page visits",
-      value: report.summary.documentPageVisits.toLocaleString(),
-      tone: "pink",
-    },
-    {
-      icon: MonitorSmartphone,
-      label: "Activity entries",
-      value: report.summary.activityLogEntries.toLocaleString(),
-      tone: "slate",
-    },
-  ];
-
   return (
     <PageContainer>
-      <header className={styles.header}>
-        <div className={styles.headerMain}>
-          <button
-            aria-label="Back to students"
-            className={styles.backButton}
-            onClick={() =>
-              router.push(
-                isTeacherWorkspace ? "/teacher/students" : "/admin/students",
-              )
-            }
-            type="button"
-          >
-            <ArrowLeft aria-hidden="true" size={18} />
-          </button>
-          <div>
-            <div className={styles.eyebrow}>Student-specific report</div>
-            <h1>Activity report</h1>
-            <p>
-              Authentication, duration, resource, document, video and exam
-              activity.
-            </p>
-          </div>
-        </div>
-        <div className={styles.headerActions}>
-          <Button
-            aria-label="Refresh report"
-            background="#FFFFFF"
-            borderColor="#D8E1EC"
-            borderWidth={1}
-            disabled={reportQuery.isFetching}
-            onPress={() => void reportQuery.refetch()}
-          >
-            <RefreshCw aria-hidden="true" size={16} />
-            <Button.Text>Refresh</Button.Text>
-          </Button>
-          <Button
-            aria-label="Export CSV"
-            background="#FFFFFF"
-            borderColor="#BFD4CA"
-            borderWidth={1}
-            disabled={exporting !== null}
-            onPress={() => void downloadReport("csv")}
-          >
-            <FileDown aria-hidden="true" size={16} />
-            <Button.Text>
-              {exporting === "csv" ? "Exporting…" : "CSV"}
-            </Button.Text>
-          </Button>
-          <Button
-            aria-label="Export XLSX"
-            background="#047857"
-            borderColor="#047857"
-            borderWidth={1}
-            disabled={exporting !== null}
-            onPress={() => void downloadReport("xlsx")}
-          >
-            <Download aria-hidden="true" color="#FFFFFF" size={16} />
-            <Button.Text color="#FFFFFF">
-              {exporting === "xlsx" ? "Exporting…" : "Excel"}
-            </Button.Text>
-          </Button>
-        </div>
-      </header>
+      <div className={styles.reportPage}>
+        <ReportHero
+          exporting={exporting}
+          isFetching={reportQuery.isFetching}
+          onExport={downloadReport}
+          onRefresh={() => void reportQuery.refetch()}
+          report={report}
+        />
 
-      {exportError ? (
-        <div className={styles.exportError}>{exportError}</div>
-      ) : null}
+        {exportError ? (
+          <div className={styles.exportError}>{exportError}</div>
+        ) : null}
 
-      <section className={styles.studentCard}>
-        <div className={styles.avatar}>{initials(report.student.name)}</div>
-        <div className={styles.studentIdentity}>
-          <div className={styles.studentTitleRow}>
-            <h2>{report.student.name}</h2>
-            <span className={styles.statusBadge}>{report.student.status}</span>
+        <nav aria-label="Activity report sections" className={styles.tabs}>
+          {reportTabs.map(({ id, icon: Icon, label }) => (
+            <button
+              aria-selected={activeTab === id}
+              className={activeTab === id ? styles.activeTab : undefined}
+              key={id}
+              onClick={() => selectTab(id)}
+              role="tab"
+              type="button"
+            >
+              <Icon aria-hidden="true" size={15} />
+              {label}
+            </button>
+          ))}
+        </nav>
+
+        <ReportFilters
+          draftFilters={draftFilters}
+          onApply={applyFilters}
+          onChange={setDraftFilters}
+          onReset={resetFilters}
+          report={report}
+        />
+
+        {activeTab === "overview" ? (
+          <StudentActivityOverview onSelectTab={selectTab} report={report} />
+        ) : null}
+        {activeTab === "timeline" ? (
+          <TimelineSection
+            columns={columns}
+            isFetching={reportQuery.isFetching}
+            limit={limit}
+            meta={meta}
+            onLimitChange={setLimit}
+            onPageChange={setPage}
+            page={page}
+            report={report}
+          />
+        ) : null}
+        {activeTab === "resources" ? (
+          <StudentResourceActivity report={report} />
+        ) : null}
+        {activeTab === "access" ? (
+          <StudentAccessActivity report={report} />
+        ) : null}
+      </div>
+    </PageContainer>
+  );
+}
+
+function ReportHero({
+  exporting,
+  isFetching,
+  onExport,
+  onRefresh,
+  report,
+}: {
+  exporting: "csv" | "xlsx" | null;
+  isFetching: boolean;
+  onExport: (format: "csv" | "xlsx") => Promise<void>;
+  onRefresh: () => void;
+  report: StudentActivityReportData;
+}) {
+  return (
+    <section className={styles.heroGrid}>
+      <article className={styles.heroCard}>
+        <div className={styles.heroCopy}>
+          <p>Student-specific report</p>
+          <h1>Activity Report</h1>
+          <span>
+            Authentication, duration, resource, document, video and exam
+            activity.
+          </span>
+          <div className={styles.heroIdentity}>
+            <strong>{report.student.name}</strong>
+            <em>{report.student.status}</em>
           </div>
-          <p>{report.student.email}</p>
-          <div className={styles.studentMeta}>
-            <span>{report.student.studentCode}</span>
-            <span>{report.organization.name}</span>
-            {report.student.rollNumber ? (
-              <span>Roll {report.student.rollNumber}</span>
-            ) : null}
-            <span>
-              {report.scope.roleScope === "ASSIGNED_COURSES"
-                ? "Assigned courses only"
-                : "Organization activity"}
-            </span>
-          </div>
-        </div>
-        <div className={styles.retentionNote}>
-          <strong>{report.range.retentionDays} days</strong>
-          <span>Activity retention</span>
           <small>
-            Failed logins: {report.range.failedLoginRetentionDays} days
+            {report.student.email} · {report.student.studentCode}
           </small>
         </div>
-      </section>
+        <img
+          alt=""
+          aria-hidden="true"
+          src="/activity-report-assets/student-analytics-illustration.png"
+        />
+      </article>
 
-      <form
-        className={styles.filters}
-        onSubmit={(event) => {
-          event.preventDefault();
-          applyFilters();
-        }}
-      >
-        <FilterField label="From">
-          <input
-            max={draftFilters.to}
-            onChange={(event) =>
-              setDraftFilters((current) => ({
-                ...current,
-                from: event.target.value,
-              }))
-            }
-            type="date"
-            value={draftFilters.from}
-          />
-        </FilterField>
-        <FilterField label="To">
-          <input
-            max={today}
-            min={draftFilters.from}
-            onChange={(event) =>
-              setDraftFilters((current) => ({
-                ...current,
-                to: event.target.value,
-              }))
-            }
-            type="date"
-            value={draftFilters.to}
-          />
-        </FilterField>
-        <FilterField label="Course">
-          <select
-            onChange={(event) =>
-              setDraftFilters((current) => ({
-                ...current,
-                sessionCourseId: event.target.value,
-              }))
-            }
-            value={draftFilters.sessionCourseId}
-          >
-            <option value="">All courses</option>
-            {report.filterOptions.courses.map((course) => (
-              <option
-                key={course.sessionCourseId}
-                value={course.sessionCourseId}
-              >
-                {course.name} · {course.sessionName}
-              </option>
-            ))}
-          </select>
-        </FilterField>
-        <FilterField label="Resource type">
-          <select
-            onChange={(event) =>
-              setDraftFilters((current) => ({
-                ...current,
-                resourceType: event.target.value,
-              }))
-            }
-            value={draftFilters.resourceType}
-          >
-            <option value="">All resource types</option>
-            {[
-              "DOCUMENT",
-              "VIDEO",
-              "EXAM",
-              ...report.filterOptions.resourceTypes,
-            ]
-              .filter((value, index, values) => values.indexOf(value) === index)
-              .map((resourceType) => (
-                <option key={resourceType} value={resourceType}>
-                  {formatLabel(resourceType)}
-                </option>
-              ))}
-          </select>
-        </FilterField>
-        <FilterField label="Activity type">
-          <select
-            onChange={(event) =>
-              setDraftFilters((current) => ({
-                ...current,
-                activityType: event.target.value as
-                  "" | StudentReportActivityType,
-              }))
-            }
-            value={draftFilters.activityType}
-          >
-            <option value="">All activity</option>
-            {report.filterOptions.activityTypes.map((activityType) => (
-              <option key={activityType} value={activityType}>
-                {formatLabel(activityType)}
-              </option>
-            ))}
-          </select>
-        </FilterField>
-        <div className={styles.filterActions}>
+      <article className={styles.eventCountCard}>
+        <Activity aria-hidden="true" size={34} />
+        <strong>{report.summary.activityLogEntries.toLocaleString()}</strong>
+        <p>Activity entries</p>
+      </article>
+
+      <article className={styles.insightsCard}>
+        <p>Activity insights</p>
+        <h2>
+          <CheckCircle2 aria-hidden="true" size={25} />
+          {formatDuration(report.summary.totalActiveDurationSeconds)} active
+          time
+        </h2>
+        <div className={styles.insightChips}>
+          <span>
+            <CheckCircle2 aria-hidden="true" size={14} />
+            {report.summary.distinctResources} learning resources
+          </span>
+          <span>
+            <CheckCircle2 aria-hidden="true" size={14} />
+            {report.summary.successfulLogins} successful logins
+          </span>
+        </div>
+        <div className={styles.heroActions}>
           <button
-            className={styles.resetButton}
-            onClick={resetFilters}
+            aria-label="Refresh report"
+            disabled={isFetching}
+            onClick={onRefresh}
             type="button"
           >
-            Reset
+            <RefreshCw aria-hidden="true" size={14} />
           </button>
-          <button className={styles.applyButton} type="submit">
-            Apply filters
+          <button
+            disabled={exporting !== null}
+            onClick={() => void onExport("csv")}
+            type="button"
+          >
+            <FileDown aria-hidden="true" size={14} />
+            {exporting === "csv" ? "Exporting…" : "CSV"}
+          </button>
+          <button
+            disabled={exporting !== null}
+            onClick={() => void onExport("xlsx")}
+            type="button"
+          >
+            <Download aria-hidden="true" size={14} />
+            {exporting === "xlsx" ? "Exporting…" : "Excel"}
           </button>
         </div>
-      </form>
+      </article>
+    </section>
+  );
+}
 
-      <section aria-label="Activity summary" className={styles.summaryGrid}>
-        {summaryCards.map(({ icon: Icon, label, tone, value }) => (
-          <article className={styles.summaryCard} key={label}>
-            <div className={`${styles.summaryIcon} ${styles[tone]}`}>
-              <Icon aria-hidden="true" size={19} />
+function ReportFilters({
+  draftFilters,
+  onApply,
+  onChange,
+  onReset,
+  report,
+}: {
+  draftFilters: FilterState;
+  onApply: () => void;
+  onChange: React.Dispatch<React.SetStateAction<FilterState>>;
+  onReset: () => void;
+  report: StudentActivityReportData;
+}) {
+  return (
+    <form
+      className={styles.filters}
+      onSubmit={(event) => {
+        event.preventDefault();
+        onApply();
+      }}
+    >
+      <FilterField label="From">
+        <input
+          max={draftFilters.to}
+          onChange={(event) =>
+            onChange((current) => ({ ...current, from: event.target.value }))
+          }
+          type="date"
+          value={draftFilters.from}
+        />
+      </FilterField>
+      <FilterField label="To">
+        <input
+          max={today}
+          min={draftFilters.from}
+          onChange={(event) =>
+            onChange((current) => ({ ...current, to: event.target.value }))
+          }
+          type="date"
+          value={draftFilters.to}
+        />
+      </FilterField>
+      <FilterField label="Course">
+        <select
+          onChange={(event) =>
+            onChange((current) => ({
+              ...current,
+              sessionCourseId: event.target.value,
+            }))
+          }
+          value={draftFilters.sessionCourseId}
+        >
+          <option value="">All courses</option>
+          {report.filterOptions.courses.map((course) => (
+            <option key={course.sessionCourseId} value={course.sessionCourseId}>
+              {course.name} · {course.sessionName}
+            </option>
+          ))}
+        </select>
+      </FilterField>
+      <FilterField label="Resource type">
+        <select
+          onChange={(event) =>
+            onChange((current) => ({
+              ...current,
+              resourceType: event.target.value,
+            }))
+          }
+          value={draftFilters.resourceType}
+        >
+          <option value="">All resource types</option>
+          {["DOCUMENT", "VIDEO", "EXAM", ...report.filterOptions.resourceTypes]
+            .filter((value, index, values) => values.indexOf(value) === index)
+            .map((resourceType) => (
+              <option key={resourceType} value={resourceType}>
+                {formatLabel(resourceType)}
+              </option>
+            ))}
+        </select>
+      </FilterField>
+      <FilterField label="Activity type">
+        <select
+          onChange={(event) =>
+            onChange((current) => ({
+              ...current,
+              activityType: event.target.value as
+                "" | StudentReportActivityType,
+            }))
+          }
+          value={draftFilters.activityType}
+        >
+          <option value="">All activity</option>
+          {report.filterOptions.activityTypes.map((activityType) => (
+            <option key={activityType} value={activityType}>
+              {formatLabel(activityType)}
+            </option>
+          ))}
+        </select>
+      </FilterField>
+      <div className={styles.filterActions}>
+        <button className={styles.resetButton} onClick={onReset} type="button">
+          Reset
+        </button>
+        <button className={styles.applyButton} type="submit">
+          Apply filters
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function FilterField({
+  children,
+  label,
+}: {
+  children: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <label className={styles.filterField}>
+      <span>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function TimelineSection({
+  columns,
+  isFetching,
+  limit,
+  meta,
+  onLimitChange,
+  onPageChange,
+  page,
+  report,
+}: {
+  columns: DataTableColumn<StudentActivityTimelineItem>[];
+  isFetching: boolean;
+  limit: number;
+  meta: { total: number; totalPages: number } | undefined;
+  onLimitChange: (limit: number) => void;
+  onPageChange: (page: number) => void;
+  page: number;
+  report: StudentActivityReportData;
+}) {
+  const categoryCounts = new Map(
+    (report.analytics?.activityCategoryBreakdown ?? []).map((item) => [
+      item.category,
+      item.count,
+    ]),
+  );
+  const cards: Array<{
+    category?: StudentReportActivityCategory;
+    icon: typeof Activity;
+    label: string;
+    tone: string;
+    value: number;
+  }> = [
+    {
+      icon: Activity,
+      label: "All",
+      tone: "blue",
+      value: report.summary.activityLogEntries,
+    },
+    {
+      category: "AUTHENTICATION",
+      icon: ShieldAlert,
+      label: "Authentication",
+      tone: "green",
+      value: categoryCounts.get("AUTHENTICATION") ?? 0,
+    },
+    {
+      category: "RESOURCE",
+      icon: BookOpen,
+      label: "Resources",
+      tone: "violet",
+      value: categoryCounts.get("RESOURCE") ?? 0,
+    },
+    {
+      category: "DOCUMENT",
+      icon: FileText,
+      label: "Documents",
+      tone: "amber",
+      value: categoryCounts.get("DOCUMENT") ?? 0,
+    },
+    {
+      category: "VIDEO",
+      icon: MonitorSmartphone,
+      label: "Video",
+      tone: "orange",
+      value: categoryCounts.get("VIDEO") ?? 0,
+    },
+    {
+      category: "EXAM",
+      icon: BarChart3,
+      label: "Exams",
+      tone: "red",
+      value: categoryCounts.get("EXAM") ?? 0,
+    },
+  ];
+  return (
+    <div className={styles.tabContent}>
+      <section className={styles.timelineStats}>
+        {cards.map(({ icon: Icon, label, tone, value }) => (
+          <article key={label}>
+            <div className={`${styles.metricIcon} ${styles[tone]}`}>
+              <Icon aria-hidden="true" size={18} />
             </div>
-            <div>
-              <span>{label}</span>
-              <strong>{value}</strong>
-            </div>
+            <span>{label}</span>
+            <strong>{value.toLocaleString()}</strong>
           </article>
         ))}
       </section>
-
-      <section className={styles.panel}>
+      <section className={`${styles.panel} ${styles.timelinePanel}`}>
         <div className={styles.panelHeader}>
           <div>
             <h2>Activity timeline</h2>
@@ -444,7 +578,7 @@ export function StudentActivityReportPage() {
               contribute additively to total duration.
             </p>
           </div>
-          {reportQuery.isFetching ? (
+          {isFetching ? (
             <span className={styles.syncing}>Updating…</span>
           ) : null}
         </div>
@@ -458,11 +592,11 @@ export function StudentActivityReportPage() {
             title: "No activity in this range",
           }}
           getRowId={(item) => item.id}
-          loading={reportQuery.isFetching && !reportQuery.isPlaceholderData}
-          onPageChange={setPage}
+          loading={isFetching}
+          onPageChange={onPageChange}
           onPageSizeChange={(nextLimit) => {
-            setLimit(nextLimit);
-            setPage(1);
+            onLimitChange(nextLimit);
+            onPageChange(1);
           }}
           pagination={{
             entityLabel: "activity entries",
@@ -480,72 +614,7 @@ export function StudentActivityReportPage() {
           stickyHeader
         />
       </section>
-
-      <section className={styles.panel}>
-        <div className={styles.panelHeader}>
-          <div>
-            <h2>Resource activity</h2>
-            <p>Time spent and visit counts grouped by learning resource.</p>
-          </div>
-        </div>
-        {report.resourceBreakdown.length ? (
-          <div className={styles.resourceTableWrap}>
-            <table className={styles.resourceTable}>
-              <thead>
-                <tr>
-                  <th>Resource</th>
-                  <th>Course</th>
-                  <th>Visits</th>
-                  <th>Active time</th>
-                  <th>Idle time</th>
-                  <th>Last activity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.resourceBreakdown.map((resource, index) => (
-                  <tr
-                    key={`${resource.resourceId ?? resource.resourceTitle}-${index}`}
-                  >
-                    <td>
-                      <strong>{resource.resourceTitle}</strong>
-                      <span>{formatLabel(resource.resourceType)}</span>
-                    </td>
-                    <td>{resource.courseName ?? "—"}</td>
-                    <td>{resource.sessionCount}</td>
-                    <td>{formatDuration(resource.activeDurationSeconds)}</td>
-                    <td>{formatDuration(resource.idleDurationSeconds)}</td>
-                    <td>
-                      {resource.lastActivityAt
-                        ? formatDateTime(resource.lastActivityAt)
-                        : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className={styles.emptyResources}>
-            No resource activity in this range.
-          </div>
-        )}
-      </section>
-    </PageContainer>
-  );
-}
-
-function FilterField({
-  children,
-  label,
-}: {
-  children: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <label className={styles.filterField}>
-      <span>{label}</span>
-      {children}
-    </label>
+    </div>
   );
 }
 
@@ -596,7 +665,7 @@ function createActivityColumns(): DataTableColumn<StudentActivityTimelineItem>[]
       ),
       header: "Context",
       id: "context",
-      width: 260,
+      width: 270,
     },
     {
       cell: ({ row }) => (
@@ -627,7 +696,7 @@ function createActivityColumns(): DataTableColumn<StudentActivityTimelineItem>[]
       ),
       header: "Device",
       id: "device",
-      width: 220,
+      width: 230,
     },
     {
       cell: ({ row }) => (
@@ -665,7 +734,7 @@ function toReportQuery(
   };
 }
 
-function formatDuration(totalSeconds: number) {
+export function formatDuration(totalSeconds: number) {
   const seconds = Math.max(0, Math.round(totalSeconds));
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
@@ -675,26 +744,17 @@ function formatDuration(totalSeconds: number) {
   return `${remainingSeconds}s`;
 }
 
-function formatDateTime(value: string) {
+export function formatDateTime(value: string) {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
 }
 
-function formatLabel(value: string) {
+export function formatLabel(value: string) {
   return value
     .toLowerCase()
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-}
-
-function initials(name: string) {
-  return name
-    .split(/\s+/u)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
 }

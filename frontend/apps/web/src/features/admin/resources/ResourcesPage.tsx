@@ -45,6 +45,10 @@ import {
 } from "../components/crud/CrudManagementPage";
 import { useAcademicSessions } from "../academic/useAcademicSessions";
 import {
+  isManagedResourceDocument,
+  openManagedResourceDocument,
+} from "@/features/resources/openManagedResourceDocument";
+import {
   AppInput,
   FormCheckbox,
   FormControllerField,
@@ -147,8 +151,14 @@ interface ResourceFormProps extends ResourceFormContext<ResourceForm> {
   resourceTypes: ResourceType[];
 }
 
-function ResourceForm({ error, fixedTypeId, resourceTypes }: ResourceFormProps) {
-  const resourceTypeId = useWatch<ResourceForm, "resourceTypeId">({ name: "resourceTypeId" });
+function ResourceForm({
+  error,
+  fixedTypeId,
+  resourceTypes,
+}: ResourceFormProps) {
+  const resourceTypeId = useWatch<ResourceForm, "resourceTypeId">({
+    name: "resourceTypeId",
+  });
   const documentSource = useWatch<ResourceForm, "documentSource">({
     name: "documentSource",
   });
@@ -171,7 +181,9 @@ function ResourceForm({ error, fixedTypeId, resourceTypes }: ResourceFormProps) 
         <div className="lms-form-field">
           {fixedTypeId ? (
             <Text color="#52627A" fontSize="$caption">
-              Type: {resourceTypes.find(({ id }) => id === fixedTypeId)?.name ?? "Resource"}
+              Type:{" "}
+              {resourceTypes.find(({ id }) => id === fixedTypeId)?.name ??
+                "Resource"}
             </Text>
           ) : (
             <CrudFormSelect
@@ -335,7 +347,9 @@ const columns: DataTableColumn<Resource>[] = [
   },
   {
     cell: ({ row }) => (
-      <CrudBadge tone={resourceTone(row.resourceType.code)}>{row.resourceType.name}</CrudBadge>
+      <CrudBadge tone={resourceTone(row.resourceType.code)}>
+        {row.resourceType.name}
+      </CrudBadge>
     ),
     header: "Type",
     id: "type",
@@ -387,12 +401,27 @@ const columns: DataTableColumn<Resource>[] = [
   {
     cell: ({ row }) =>
       row.resourceTypeId === RESOURCE_TYPE_IDS.DOCUMENT && row.documentUrl ? (
-        <DataTableWebsiteCell href={row.documentUrl} label="Open document" />
+        <DataTableWebsiteCell
+          href={row.documentUrl}
+          label="Open document"
+          onClick={
+            isManagedResourceDocument(row)
+              ? (event) => {
+                  event.preventDefault();
+                  void openManagedResourceDocument(row);
+                }
+              : undefined
+          }
+        />
       ) : row.resourceTypeId === RESOURCE_TYPE_IDS.VIDEO && row.videoUrl ? (
         <DataTableWebsiteCell href={row.videoUrl} label="Open video" />
       ) : (
         <DataTableTextCell
-          primary={row.resourceTypeId === RESOURCE_TYPE_IDS.EXAM ? `Exam #${row.examId ?? "-"}` : "-"}
+          primary={
+            row.resourceTypeId === RESOURCE_TYPE_IDS.EXAM
+              ? `Exam #${row.examId ?? "-"}`
+              : "-"
+          }
         />
       ),
     header: "Source",
@@ -569,17 +598,19 @@ export function ResourcesPage({ resourceTypeId }: ResourcesPageProps = {}) {
     requestedFolderId,
   );
   const resourceInitialForm = useMemo(
-    () => ({ ...initialForm, resourceTypeId: String(resourceTypeId ?? RESOURCE_TYPE_IDS.DOCUMENT) as ResourceForm["resourceTypeId"] }),
+    () => ({
+      ...initialForm,
+      resourceTypeId: String(
+        resourceTypeId ?? RESOURCE_TYPE_IDS.DOCUMENT,
+      ) as ResourceForm["resourceTypeId"],
+    }),
     [resourceTypeId],
   );
-  const resourceInitialFilters = useMemo<Record<string, string>>(
-    () => {
-      const filters: Record<string, string> = {};
-      if (resourceTypeId) filters.type = String(resourceTypeId);
-      return filters;
-    },
-    [resourceTypeId],
-  );
+  const resourceInitialFilters = useMemo<Record<string, string>>(() => {
+    const filters: Record<string, string> = {};
+    if (resourceTypeId) filters.type = String(resourceTypeId);
+    return filters;
+  }, [resourceTypeId]);
 
   useEffect(() => {
     if (
@@ -735,10 +766,7 @@ export function ResourcesPage({ resourceTypeId }: ResourcesPageProps = {}) {
           );
           return resourcesApi.uploadDocument(effectiveFolderId, formData);
         }
-        return resourcesApi.create(
-          effectiveFolderId,
-          toJsonPayload(payload),
-        );
+        return resourcesApi.create(effectiveFolderId, toJsonPayload(payload));
       }}
       description={
         resourceTypeId === RESOURCE_TYPE_IDS.EXAM
@@ -761,12 +789,16 @@ export function ResourcesPage({ resourceTypeId }: ResourcesPageProps = {}) {
         {
           icon: <FileText color="#059669" size={20} />,
           label: "Documents",
-          value: rows.filter((row) => row.resourceTypeId === RESOURCE_TYPE_IDS.DOCUMENT).length,
+          value: rows.filter(
+            (row) => row.resourceTypeId === RESOURCE_TYPE_IDS.DOCUMENT,
+          ).length,
         },
         {
           icon: <Video color="#2563EB" size={20} />,
           label: "Videos",
-          value: rows.filter((row) => row.resourceTypeId === RESOURCE_TYPE_IDS.VIDEO).length,
+          value: rows.filter(
+            (row) => row.resourceTypeId === RESOURCE_TYPE_IDS.VIDEO,
+          ).length,
         },
         {
           icon: <ShieldCheck color="#059669" size={20} />,
@@ -790,10 +822,17 @@ export function ResourcesPage({ resourceTypeId }: ResourcesPageProps = {}) {
               published: query.published,
               search: query.search,
               status: query.status as ResourceStatus | undefined,
-              resourceTypeId: query.type ? Number(query.type) as ResourceTypeId : undefined,
+              resourceTypeId: query.type
+                ? (Number(query.type) as ResourceTypeId)
+                : undefined,
             })
       }
-      queryKey={["admin", "resources", resourceTypeId ?? "all", effectiveFolderId]}
+      queryKey={[
+        "admin",
+        "resources",
+        resourceTypeId ?? "all",
+        effectiveFolderId,
+      ]}
       remove={(id) =>
         effectiveFolderId === null
           ? Promise.reject(new Error("Select a folder first."))
@@ -830,17 +869,23 @@ export function ResourcesPage({ resourceTypeId }: ResourcesPageProps = {}) {
         status: resource.status,
         thumbnail: resource.thumbnail ?? "",
         title: resource.title,
-        resourceTypeId: String(resource.resourceTypeId) as ResourceForm["resourceTypeId"],
+        resourceTypeId: String(
+          resource.resourceTypeId,
+        ) as ResourceForm["resourceTypeId"],
         videoUrl: resource.videoUrl ?? "",
       })}
       toUpdatePayload={toPayload}
-      typeOptions={resourceTypeId ? undefined : [
-        { label: "All", value: "ALL" },
-        ...resourceTypes.map((type) => ({
-          label: type.name,
-          value: String(type.id),
-        })),
-      ]}
+      typeOptions={
+        resourceTypeId
+          ? undefined
+          : [
+              { label: "All", value: "ALL" },
+              ...resourceTypes.map((type) => ({
+                label: type.name,
+                value: String(type.id),
+              })),
+            ]
+      }
       update={(id, payload) => {
         if (effectiveFolderId === null) {
           return Promise.reject(new Error("Select a folder first."));

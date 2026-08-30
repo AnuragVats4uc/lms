@@ -1,0 +1,37 @@
+model StoredObject {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  organizationId Int? @map("organization_id")
+  uploadedById   Int? @map("uploaded_by_id")
+
+  provider         StorageProvider
+  bucket           String             @db.VarChar(191)
+  objectKey        String             @map("object_key") @db.VarChar(500)
+  originalFileName String             @map("original_file_name") @db.VarChar(255)
+  mimeType         String             @map("mime_type") @db.VarChar(150)
+  sizeBytes        BigInt             @map("size_bytes")
+  checksumSha256   String             @map("checksum_sha256") @db.VarChar(64)
+  etag             String?            @db.VarChar(191)
+  versionId        String?            @map("version_id") @db.VarChar(191)
+  status           StoredObjectStatus @default(PENDING)
+  failureMessage   String?            @map("failure_message") @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  organization      Organization?   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  uploadedBy        User?           @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  documentResource  Resource?       @relation("ResourceDocumentObject")
+  thumbnailResource Resource?       @relation("ResourceThumbnailObject")
+  examImportFile    ExamImportFile?
+  studentAvatar     StudentProfile? @relation("StudentAvatarObject")
+  courseThumbnail   Course?         @relation("CourseThumbnailObject")
+
+  @@unique([provider, bucket, objectKey], map: "stored_objects_provider_bucket_key_unique")
+  @@index([organizationId, status], map: "stored_objects_organization_status_idx")
+  @@index([uploadedById], map: "stored_objects_uploaded_by_id_idx")
+  @@index([status, createdAt], map: "stored_objects_status_created_at_idx")
+  @@map("stored_objects")
+}

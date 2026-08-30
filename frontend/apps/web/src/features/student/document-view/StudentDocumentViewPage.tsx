@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
@@ -61,24 +61,33 @@ export function StudentDocumentViewPage({
     staleTime: Number.POSITIVE_INFINITY,
   });
   const accessMutation = useMutation({
-    mutationFn: () => studentsApi.recordMyResourceAccess(resourceId),
+    mutationFn: (totalPages: number) =>
+      studentsApi.recordMyResourceAccess(resourceId, totalPages),
     onSuccess: (progress) => {
       queryClient.setQueryData<StudentResourceDetail>(
         detailQueryKey,
         (current) => (current ? { ...current, progress } : current),
       );
+      void queryClient.invalidateQueries({ queryKey: ["student-courses"] });
     },
   });
+  const refreshProgress = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: ["student-resource", resourceId],
+    });
+    void queryClient.invalidateQueries({ queryKey: ["student-courses"] });
+  }, [queryClient, resourceId]);
   const activity = useResourceActivity({
     enabled: Boolean(detailQuery.data && fileQuery.data),
     initialPageNumber: 1,
+    onHeartbeat: refreshProgress,
     resourceId,
   });
 
-  const recordAccess = () => {
+  const recordAccess = (totalPages: number) => {
     if (accessRecordedRef.current) return;
     accessRecordedRef.current = true;
-    accessMutation.mutate();
+    accessMutation.mutate(totalPages);
   };
 
   if (detailQuery.isLoading) {
@@ -144,7 +153,7 @@ export function StudentDocumentViewPage({
               data={fileQuery.data}
               fileName={resource.fileName}
               isDownloadable={resource.isDownloadable}
-              onDocumentLoaded={recordAccess}
+              onDocumentLoaded={() => undefined}
               onDownload={() => {
                 void activity
                   .recordEvent("RESOURCE_DOWNLOAD")
@@ -160,9 +169,15 @@ export function StudentDocumentViewPage({
                   .catch(() => undefined);
               }}
               onPageChange={(pageNumber) => {
-                void activity.changePage(pageNumber).catch(() => undefined);
+                void activity
+                  .changePage(pageNumber)
+                  .then(refreshProgress)
+                  .catch(() => undefined);
               }}
-              onPageCountChange={setPageCount}
+              onPageCountChange={(count) => {
+                setPageCount(count);
+                recordAccess(count);
+              }}
               ref={viewerRef}
             />
           )}
@@ -303,6 +318,11 @@ function ReadingProgressCard({
         <div className="student-document-progress-copy">
           <span>Last opened</span>
           <strong>{formatLastOpened(progress.lastOpenedAt)}</strong>
+          <small>
+            {progress.totalPages
+              ? `${progress.pagesRead} of ${progress.totalPages} pages`
+              : "Calculating page progress"}
+          </small>
           <div aria-hidden="true">
             <span style={{ width: `${percentage}%` }} />
           </div>

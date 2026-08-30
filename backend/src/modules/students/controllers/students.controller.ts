@@ -13,11 +13,15 @@ import {
   Query,
   Req,
   StreamableFile,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiBody,
   ApiConflictResponse,
+  ApiConsumes,
   ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -46,12 +50,16 @@ import { StudentResourcesResponseDto } from '../dto/student-resources-response.d
 import { StudentResourceDetailResponseDto } from '../dto/student-resource-detail-response.dto';
 import { StudentVideoResourceResponseDto } from '../dto/student-video-resource-response.dto';
 import { StudentQueryDto } from '../dto/student-query.dto';
+import { RecordStudentDocumentAccessDto } from '../dto/record-student-document-access.dto';
 import { UpdateMyStudentPreferencesDto } from '../dto/update-my-student-preferences.dto';
 import { UpdateMyStudentProfileDto } from '../dto/update-my-student-profile.dto';
 import { UpdateStudentVideoProgressDto } from '../dto/update-student-video-progress.dto';
 import { UpdateStudentDto } from '../dto/update-student.dto';
 import { UpdateStudentNotificationDto } from '../dto/update-student-notification.dto';
-import { StudentsService } from '../services/students.service';
+import {
+  StudentAvatarFile,
+  StudentsService,
+} from '../services/students.service';
 import {
   DocumentPageActivityDto,
   EndResourceActivityDto,
@@ -324,10 +332,12 @@ export class StudentsController {
   recordMyResourceAccess(
     @Req() request: AuthenticatedRequest,
     @Param('resourceId', ParseIntPipe) resourceId: number,
+    @Body() dto: RecordStudentDocumentAccessDto,
   ) {
     return this.studentsService.recordMyResourceAccess(
       request.user,
       resourceId,
+      dto,
     );
   }
 
@@ -443,6 +453,52 @@ export class StudentsController {
     @Body() dto: UpdateMyStudentProfileDto,
   ) {
     return this.studentsService.updateMyProfile(request.user, dto);
+  }
+
+  @Post('me/profile/avatar')
+  @Roles('STUDENT')
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  @ApiOperation({ summary: 'Upload authenticated student profile photo' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiOkResponse({ description: 'Profile photo uploaded successfully' })
+  uploadMyAvatar(
+    @Req() request: AuthenticatedRequest,
+    @UploadedFile() file: StudentAvatarFile | undefined,
+  ) {
+    return this.studentsService.uploadMyAvatar(request.user, file);
+  }
+
+  @Get('me/profile/avatar')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Stream authenticated student profile photo' })
+  @ApiOkResponse({ description: 'Profile photo streamed successfully' })
+  async getMyAvatar(@Req() request: AuthenticatedRequest) {
+    const file = await this.studentsService.getMyAvatar(request.user);
+    const safeName = file.fileName
+      .normalize('NFKD')
+      .replace(/[^\x20-\x7e]/g, '-')
+      .replace(/["\\]/g, '');
+    return new StreamableFile(file.content, {
+      type: file.mimeType,
+      disposition: `inline; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,
+    });
+  }
+
+  @Delete('me/profile/avatar')
+  @Roles('STUDENT')
+  @ApiOperation({ summary: 'Delete authenticated student profile photo' })
+  @ApiOkResponse({ description: 'Profile photo deleted successfully' })
+  deleteMyAvatar(@Req() request: AuthenticatedRequest) {
+    return this.studentsService.deleteMyAvatar(request.user);
   }
 
   @Patch('me/preferences')

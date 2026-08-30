@@ -21,6 +21,7 @@ import {
 } from '../../activity/dto/resource-activity.dto';
 import { RolesService } from '../../roles/services/roles.service';
 import { ResourceService } from '../../resource/services/resource.service';
+import { ManagedObjectService } from '../../storage/managed-object.service';
 import {
   RESOURCE_TYPE_CODES,
   RESOURCE_TYPE_IDS,
@@ -39,6 +40,7 @@ import {
   StudentResourcesSort,
 } from '../dto/student-resources-query.dto';
 import { StudentQueryDto } from '../dto/student-query.dto';
+import { RecordStudentDocumentAccessDto } from '../dto/record-student-document-access.dto';
 import { StudentNotificationsQueryDto } from '../dto/student-notifications-query.dto';
 import { UpdateStudentNotificationDto } from '../dto/update-student-notification.dto';
 import { UpdateMyStudentPreferencesDto } from '../dto/update-my-student-preferences.dto';
@@ -49,6 +51,7 @@ import {
   NormalizedStudentFolderResourcesQuery,
   NormalizedStudentResourcesQuery,
   NormalizedStudentQuery,
+  StudentSelfProfileUpdateData,
   StudentUpdateData,
   StudentsRepository,
 } from '../repositories/students.repository';
@@ -111,10 +114,26 @@ type StudentCalendarEvent = {
     attemptLimit: number;
     attemptsUsed: number;
     allowResume: boolean;
+    activeAttemptId: number | null;
     activeAttemptUuid: string | null;
+    latestAttemptId: number | null;
     latestAttemptUuid: string | null;
   } | null;
 };
+
+export interface StudentAvatarFile {
+  buffer: Buffer;
+  mimetype: string;
+  originalname: string;
+  size: number;
+}
+
+const MAX_STUDENT_AVATAR_SIZE = 5 * 1024 * 1024;
+const STUDENT_AVATAR_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
 
 @Injectable()
 export class StudentsService {
@@ -129,6 +148,8 @@ export class StudentsService {
     private readonly resourceService: ResourceService,
     @Inject(ActivityService)
     private readonly activityService: ActivityService,
+    @Inject(ManagedObjectService)
+    private readonly managedObjects: ManagedObjectService,
   ) {}
 
   async create(dto: CreateStudentDto, actor?: CurrentUser) {
@@ -364,7 +385,9 @@ export class StudentsService {
           attemptLimit: exam.attemptLimit,
           attemptsUsed: exam.attempts.length,
           allowResume: exam.allowResume,
+          activeAttemptId: activeAttempt?.id ?? null,
           activeAttemptUuid: activeAttempt?.uuid ?? null,
+          latestAttemptId: latestAttempt?.id ?? null,
           latestAttemptUuid: latestAttempt?.uuid ?? null,
         },
       });
@@ -606,7 +629,7 @@ export class StudentsService {
       'emergencyContactName',
       'emergencyContactPhone',
     ] as const;
-    const data = {
+    const data: StudentSelfProfileUpdateData = {
       ...dto,
       dateOfBirth:
         dto.dateOfBirth === undefined
@@ -615,6 +638,10 @@ export class StudentsService {
             ? new Date(dto.dateOfBirth)
             : null,
     };
+
+    if (dto.avatar !== undefined && student.profile?.avatarObject) {
+      data.avatarObjectId = null;
+    }
 
     for (const field of nullableFields) {
       if (data[field] === '') data[field] = null;
@@ -627,6 +654,101 @@ export class StudentsService {
       data,
     );
 
+    if (dto.avatar !== undefined && student.profile?.avatarObject) {
+      await this.managedObjects
+        .delete(
+          student.profile.avatarObject.id,
+          student.profile.avatarObject.uuid,
+          student.organizationId,
+        )
+        .catch(() => undefined);
+    }
+
+    return this.getMyProfile(user);
+  }
+
+  async uploadMyAvatar(user: CurrentUser, file: StudentAvatarFile | undefined) {
+    const student = await this.findSelfProfileOrThrow(user);
+    const organizationId = this.requireStudentOrganization(student);
+    if (!student.organization) {
+      throw new ForbiddenException('Student organization is required');
+    }
+    const validFile = this.validateStudentAvatar(file);
+    const previousObject = student.profile?.avatarObject;
+    const storedObject = await this.managedObjects.upload({
+      organization: {
+        id: organizationId,
+        uuid: student.organization.uuid,
+      },
+      owner: {
+        category: 'student-avatars',
+        id: student.id,
+        uuid: student.uuid,
+      },
+      uploadedById: user.userId,
+      originalFileName: validFile.originalname,
+      mimeType: validFile.mimetype,
+      body: validFile.buffer,
+    });
+
+    try {
+      await this.studentsRepository.updateSelfProfile(
+        student.id,
+        student.userId,
+        student.user.firstName,
+        {
+          avatar: this.studentAvatarUrl(),
+          avatarObjectId: storedObject.id,
+        },
+      );
+    } catch (error) {
+      await this.managedObjects
+        .delete(storedObject.id, storedObject.uuid, organizationId)
+        .catch(() => undefined);
+      throw error;
+    }
+
+    if (previousObject) {
+      await this.managedObjects
+        .delete(previousObject.id, previousObject.uuid, organizationId)
+        .catch(() => undefined);
+    }
+    return this.getMyProfile(user);
+  }
+
+  async getMyAvatar(user: CurrentUser) {
+    const student = await this.findSelfProfileOrThrow(user);
+    const organizationId = this.requireStudentOrganization(student);
+    const avatarObject = student.profile?.avatarObject;
+    if (!avatarObject) throw new NotFoundException('Profile photo not found');
+
+    const stored = await this.managedObjects.open({
+      id: avatarObject.id,
+      uuid: avatarObject.uuid,
+      organizationId,
+    });
+    return {
+      content: stored.stream,
+      fileName: stored.object.originalFileName,
+      mimeType: stored.contentType ?? stored.object.mimeType,
+    };
+  }
+
+  async deleteMyAvatar(user: CurrentUser) {
+    const student = await this.findSelfProfileOrThrow(user);
+    const organizationId = this.requireStudentOrganization(student);
+    const avatarObject = student.profile?.avatarObject;
+    await this.studentsRepository.updateSelfProfile(
+      student.id,
+      student.userId,
+      student.user.firstName,
+      { avatar: null, avatarObjectId: null },
+    );
+    if (avatarObject) {
+      await this.managedObjects
+        .delete(avatarObject.id, avatarObject.uuid, organizationId)
+        .catch(() => undefined);
+    }
     return this.getMyProfile(user);
   }
 
@@ -1110,7 +1232,11 @@ export class StudentsService {
     const documentIndex = documentResources.findIndex(
       (item) => item.id === resource.id,
     );
-    const progress = resource.folder.sessionCourse.studentCourseProgress[0];
+    const documentActivity =
+      await this.studentsRepository.findStudentDocumentActivity(
+        student.id,
+        resource.id,
+      );
 
     return {
       id: resource.id,
@@ -1136,7 +1262,10 @@ export class StudentsService {
       },
       subject: { id: resource.folder.id, name: resource.folder.name },
       organization: resource.folder.sessionCourse.session.organization,
-      progress: this.toResourceProgress(progress, resource.id),
+      progress: this.toDocumentProgress(
+        resource.documentPageCount,
+        documentActivity,
+      ),
       estimatedReadingMinutes: null,
       relatedResources: folderResources
         .filter((item) => item.id !== resource.id)
@@ -1312,7 +1441,9 @@ export class StudentsService {
         action,
         actionReason,
         actionMessage,
+        activeAttemptId: activeAttempt?.id ?? null,
         activeAttemptUuid: activeAttempt?.uuid ?? null,
+        latestAttemptId: resource.exam.attempts[0]?.id ?? null,
         latestAttemptUuid: resource.exam.attempts[0]?.uuid ?? null,
         allowResume: resource.exam.allowResume,
         resultReleaseMode: resource.exam.resultReleaseMode,
@@ -1370,18 +1501,38 @@ export class StudentsService {
     return this.toVideoProgress(progress);
   }
 
-  async recordMyResourceAccess(user: CurrentUser, resourceId: number) {
+  async recordMyResourceAccess(
+    user: CurrentUser,
+    resourceId: number,
+    dto: RecordStudentDocumentAccessDto,
+  ) {
     const { resource, student } = await this.findStudentDocument(
       user,
       resourceId,
     );
-    const progress = await this.studentsRepository.upsertStudentResourceAccess(
-      student.id,
-      resource.folder.sessionCourse.id,
-      resource.id,
-    );
+    await Promise.all([
+      this.studentsRepository.upsertStudentResourceAccess(
+        student.id,
+        resource.folder.sessionCourse.id,
+        resource.id,
+      ),
+      dto.totalPages
+        ? this.studentsRepository.updateDocumentPageCount(
+            resource.id,
+            dto.totalPages,
+          )
+        : Promise.resolve(),
+    ]);
+    const activity =
+      await this.studentsRepository.findStudentDocumentActivity(
+        student.id,
+        resource.id,
+      );
 
-    return this.toResourceProgress(progress, resource.id);
+    return this.toDocumentProgress(
+      dto.totalPages ?? resource.documentPageCount,
+      activity,
+    );
   }
 
   async startMyResourceActivity(
@@ -1479,6 +1630,20 @@ export class StudentsService {
 
   async getMyDocumentFile(user: CurrentUser, resourceId: number) {
     const { resource } = await this.findStudentDocument(user, resourceId);
+
+    if (resource.documentObject) {
+      const storedFile = await this.resourceService.readManagedDocumentFile(
+        resource.folderId,
+        resource.id,
+        resource.uuid,
+      );
+      return {
+        content: storedFile.stream,
+        fileName: storedFile.fileName,
+        mimeType: storedFile.mimeType,
+      };
+    }
+
     const documentUrl = resource.documentUrl;
 
     if (!documentUrl) {
@@ -1905,37 +2070,6 @@ export class StudentsService {
     };
   }
 
-  private toResourceProgress(
-    progress:
-      | {
-          completionPercentage: number;
-          lastAccessedResourceId: number | null;
-          updatedAt: Date;
-        }
-      | undefined,
-    resourceId: number,
-  ) {
-    const percentage = Math.max(
-      0,
-      Math.min(100, progress?.completionPercentage ?? 0),
-    );
-    const status =
-      percentage >= 100
-        ? 'COMPLETED'
-        : percentage > 0 || progress?.lastAccessedResourceId === resourceId
-          ? 'IN_PROGRESS'
-          : 'NOT_STARTED';
-
-    return {
-      percentage,
-      status,
-      lastOpenedAt:
-        progress?.lastAccessedResourceId === resourceId
-          ? progress.updatedAt
-          : null,
-    };
-  }
-
   private toResourceNavigation(resource: { id: number; title: string }) {
     return { id: resource.id, title: resource.title };
   }
@@ -1961,6 +2095,51 @@ export class StudentsService {
       name: sessionCourse.displayName ?? sessionCourse.course.name,
       code: sessionCourse.course.code,
     };
+  }
+
+  private validateStudentAvatar(file: StudentAvatarFile | undefined) {
+    if (!file?.buffer || file.size <= 0) {
+      throw new BadRequestException('A non-empty profile photo is required');
+    }
+    if (file.size > MAX_STUDENT_AVATAR_SIZE) {
+      throw new BadRequestException('Profile photo must not exceed 5 MB');
+    }
+    if (!STUDENT_AVATAR_MIME_TYPES.has(file.mimetype)) {
+      throw new BadRequestException(
+        'Profile photo must be a JPEG, PNG, or WebP image',
+      );
+    }
+
+    const isJpeg =
+      file.buffer.length >= 3 &&
+      file.buffer[0] === 0xff &&
+      file.buffer[1] === 0xd8 &&
+      file.buffer[2] === 0xff;
+    const isPng =
+      file.buffer.length >= 8 &&
+      file.buffer
+        .subarray(0, 8)
+        .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    const isWebp =
+      file.buffer.length >= 12 &&
+      file.buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+      file.buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+    const signatureMatches =
+      (file.mimetype === 'image/jpeg' && isJpeg) ||
+      (file.mimetype === 'image/png' && isPng) ||
+      (file.mimetype === 'image/webp' && isWebp);
+    if (!signatureMatches) {
+      throw new BadRequestException('Profile photo content is invalid');
+    }
+    return file;
+  }
+
+  private studentAvatarUrl() {
+    const publicBaseUrl = (
+      process.env.PUBLIC_API_URL ??
+      `http://localhost:${process.env.PORT ?? '5000'}`
+    ).replace(/\/$/, '');
+    return `${publicBaseUrl}/api/v1/students/me/profile/avatar`;
   }
 
   private async findSelfProfileOrThrow(user: CurrentUser) {
@@ -2405,11 +2584,11 @@ export class StudentsService {
     const sessionCourse = courseEnrollment.sessionCourse;
     const course = sessionCourse.course;
     const progress = sessionCourse.studentCourseProgress[0];
-    const completionPercentage = progress?.completionPercentage ?? 0;
     const instructor = sessionCourse.instructors[0]?.instructor;
     const resources = sessionCourse.folders.flatMap(
       (folder) => folder.resources,
     );
+    const completionPercentage = this.calculateCourseCompletion(resources);
     const counts = resources.reduce(
       (totals, resource) => {
         if (resource.resourceTypeId === RESOURCE_TYPE_IDS.VIDEO) {
@@ -2478,6 +2657,105 @@ export class StudentsService {
     }
 
     return 'NOT_STARTED';
+  }
+
+  private calculateCourseCompletion(resources: any[]) {
+    if (!resources.length) return 0;
+
+    const total = resources.reduce((sum: number, resource: any) => {
+      if (resource.resourceTypeId === RESOURCE_TYPE_IDS.VIDEO) {
+        return sum + (resource.videoProgress?.[0]?.watchedPercentage ?? 0);
+      }
+      if (resource.resourceTypeId === RESOURCE_TYPE_IDS.DOCUMENT) {
+        return (
+          sum +
+          this.documentPercentage(
+            resource.documentPageCount,
+            resource.activitySessions ?? [],
+          )
+        );
+      }
+      if (resource.resourceTypeId === RESOURCE_TYPE_IDS.EXAM) {
+        const completed = resource.exam?.attempts?.some(
+          (attempt: { status: string }) =>
+            ['SUBMITTED', 'AUTO_SUBMITTED', 'EVALUATED'].includes(
+              attempt.status,
+            ),
+        );
+        return sum + (completed ? 100 : 0);
+      }
+      return sum;
+    }, 0);
+
+    return Math.round(total / resources.length);
+  }
+
+  private documentPercentage(
+    totalPages: number | null | undefined,
+    sessions: Array<{
+      documentPages: Array<{
+        pageNumber: number;
+        activeDurationSeconds: number;
+      }>;
+    }>,
+  ) {
+    if (!totalPages || totalPages < 1) return 0;
+    const pageDurations = new Map<number, number>();
+    for (const session of sessions) {
+      for (const page of session.documentPages) {
+        pageDurations.set(
+          page.pageNumber,
+          (pageDurations.get(page.pageNumber) ?? 0) +
+            page.activeDurationSeconds,
+        );
+      }
+    }
+    const pagesRead = [...pageDurations.values()].filter(
+      (seconds) => seconds >= 3,
+    ).length;
+    return Math.min(100, Math.round((pagesRead / totalPages) * 100));
+  }
+
+  private toDocumentProgress(
+    totalPages: number | null | undefined,
+    sessions: Array<{
+      startedAt: Date;
+      lastHeartbeatAt: Date;
+      lastDocumentPage: number | null;
+      documentPages: Array<{
+        pageNumber: number;
+        activeDurationSeconds: number;
+      }>;
+    }>,
+  ) {
+    const percentage = this.documentPercentage(totalPages, sessions);
+    const qualifiedPages = new Map<number, number>();
+    for (const session of sessions) {
+      for (const page of session.documentPages) {
+        qualifiedPages.set(
+          page.pageNumber,
+          (qualifiedPages.get(page.pageNumber) ?? 0) +
+            page.activeDurationSeconds,
+        );
+      }
+    }
+    const pagesRead = [...qualifiedPages.values()].filter(
+      (seconds) => seconds >= 3,
+    ).length;
+
+    return {
+      percentage,
+      pagesRead,
+      totalPages: totalPages ?? null,
+      lastPage: sessions[0]?.lastDocumentPage ?? null,
+      status:
+        percentage >= 100
+          ? ('COMPLETED' as const)
+          : sessions.length
+            ? ('IN_PROGRESS' as const)
+            : ('NOT_STARTED' as const),
+      lastOpenedAt: sessions[0]?.lastHeartbeatAt ?? null,
+    };
   }
 
   private displayName(user: {

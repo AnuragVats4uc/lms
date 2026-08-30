@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   BellRing,
   BookOpen,
   Building2,
+  Camera,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -29,6 +36,7 @@ import {
   Settings2,
   ShieldCheck,
   Smartphone,
+  Trash2,
   UserRound,
   UsersRound,
   X,
@@ -112,6 +120,19 @@ export function StudentProfilePage() {
     staleTime: 60_000,
   });
 
+  const managedAvatar = isManagedAvatar(profileQuery.data?.profile.avatar);
+  const avatarQuery = useQuery({
+    queryKey: ["student-profile-avatar", profileQuery.data?.profile.avatar],
+    queryFn: studentsApi.findMyAvatar,
+    enabled: managedAvatar,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const managedAvatarUrl = useMemo(
+    () => (avatarQuery.data ? URL.createObjectURL(avatarQuery.data) : null),
+    [avatarQuery.data],
+  );
+
   useEffect(() => {
     const selectHashTab = () => {
       const requestedTab = window.location.hash.slice(1) as ProfileTab;
@@ -126,9 +147,18 @@ export function StudentProfilePage() {
 
   useEffect(() => {
     if (!profileQuery.data) return;
-    setProfileForm(toProfileForm(profileQuery.data));
-    setPreferenceForm(toPreferenceForm(profileQuery.data.preferences));
+    const timer = window.setTimeout(() => {
+      setProfileForm(toProfileForm(profileQuery.data));
+      setPreferenceForm(toPreferenceForm(profileQuery.data.preferences));
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [profileQuery.data]);
+
+  useEffect(() => {
+    return () => {
+      if (managedAvatarUrl) URL.revokeObjectURL(managedAvatarUrl);
+    };
+  }, [managedAvatarUrl]);
 
   useEffect(() => {
     if (!toast) return;
@@ -145,6 +175,38 @@ export function StudentProfilePage() {
     },
     onError: (error) =>
       showToast("Could not save profile", readApiError(error), "error"),
+  });
+
+  const avatarUploadMutation = useMutation({
+    mutationFn: studentsApi.uploadMyAvatar,
+    onSuccess: async (profile) => {
+      queryClient.setQueryData(["student-profile"], profile);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["student-profile-avatar"] }),
+        queryClient.invalidateQueries({ queryKey: ["student-dashboard"] }),
+      ]);
+      showToast(
+        "Profile photo updated",
+        "Your new photo is now saved securely.",
+      );
+    },
+    onError: (error) =>
+      showToast("Could not upload photo", readApiError(error), "error"),
+  });
+
+  const avatarDeleteMutation = useMutation({
+    mutationFn: studentsApi.deleteMyAvatar,
+    onSuccess: async (profile) => {
+      queryClient.setQueryData(["student-profile"], profile);
+      queryClient.removeQueries({ queryKey: ["student-profile-avatar"] });
+      await queryClient.invalidateQueries({ queryKey: ["student-dashboard"] });
+      showToast(
+        "Profile photo removed",
+        "Your initials will be shown instead.",
+      );
+    },
+    onError: (error) =>
+      showToast("Could not remove photo", readApiError(error), "error"),
   });
 
   const preferenceMutation = useMutation({
@@ -190,8 +252,10 @@ export function StudentProfilePage() {
 
   const handleProfileSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const { avatar: _avatar, ...editableProfile } = profileForm;
+    void _avatar;
     profileMutation.mutate({
-      ...profileForm,
+      ...editableProfile,
       dateOfBirth: profileForm.dateOfBirth || null,
     });
   };
@@ -241,15 +305,16 @@ export function StudentProfilePage() {
     .join(" ");
   const activeEnrollment = profile.academic.enrollments[0];
   const initials = getInitials(fullName);
+  const avatarSrc = managedAvatar ? managedAvatarUrl : profile.profile.avatar;
 
   return (
     <main className={styles.page}>
       <section className={styles.hero}>
         <div className={styles.heroIdentity}>
           <div className={styles.avatar} aria-label={`${fullName} avatar`}>
-            {profile.profile.avatar ? (
+            {avatarSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img alt="" src={profile.profile.avatar} />
+              <img alt="" src={avatarSrc} />
             ) : (
               <span>{initials}</span>
             )}
@@ -333,8 +398,14 @@ export function StudentProfilePage() {
       ) : null}
       {activeTab === "personal" ? (
         <PersonalTab
+          avatarSrc={avatarSrc}
           form={profileForm}
+          isAvatarBusy={
+            avatarUploadMutation.isPending || avatarDeleteMutation.isPending
+          }
           isSaving={profileMutation.isPending}
+          onAvatarDelete={() => avatarDeleteMutation.mutate()}
+          onAvatarSelect={(file) => avatarUploadMutation.mutate(file)}
           onChange={(field, value) =>
             setProfileForm((current) => ({ ...current, [field]: value }))
           }
@@ -561,15 +632,23 @@ function OverviewTab({
 }
 
 function PersonalTab({
+  avatarSrc,
   form,
+  isAvatarBusy,
   isSaving,
+  onAvatarDelete,
+  onAvatarSelect,
   onChange,
   onReset,
   onSubmit,
   profile,
 }: {
+  avatarSrc: string | null;
   form: ProfileForm;
+  isAvatarBusy: boolean;
   isSaving: boolean;
+  onAvatarDelete: () => void;
+  onAvatarSelect: (file: File) => void;
   onChange: (field: keyof ProfileForm, value: string) => void;
   onReset: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -584,6 +663,47 @@ function PersonalTab({
           title="About you"
           description="Keep your name and personal details accurate."
         />
+        <div className={styles.avatarEditor}>
+          <div className={styles.avatarPreview}>
+            {avatarSrc ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img alt="Your profile" src={avatarSrc} />
+            ) : (
+              <span>{getInitials(`${form.firstName} ${form.lastName}`)}</span>
+            )}
+          </div>
+          <div className={styles.avatarEditorCopy}>
+            <strong>Profile photo</strong>
+            <span>JPEG, PNG, or WebP. Maximum file size 5 MB.</span>
+            <div>
+              <label className={styles.secondaryButton}>
+                <Camera size={15} />
+                {isAvatarBusy ? "Updating..." : "Choose photo"}
+                <input
+                  accept="image/jpeg,image/png,image/webp"
+                  className={styles.hiddenFileInput}
+                  disabled={isAvatarBusy}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) onAvatarSelect(file);
+                    event.currentTarget.value = "";
+                  }}
+                  type="file"
+                />
+              </label>
+              {profile.profile.avatar ? (
+                <button
+                  className={styles.avatarRemoveButton}
+                  disabled={isAvatarBusy}
+                  onClick={onAvatarDelete}
+                  type="button"
+                >
+                  <Trash2 size={14} /> Remove
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
         <div className={styles.formGrid}>
           <Field label="First name" required>
             <input
@@ -620,15 +740,6 @@ function PersonalTab({
               <option value="Non-binary">Non-binary</option>
               <option value="Other">Other</option>
             </select>
-          </Field>
-          <Field label="Avatar image URL" wide>
-            <input
-              maxLength={2048}
-              onChange={(event) => onChange("avatar", event.target.value)}
-              placeholder="https://example.com/my-photo.jpg"
-              type="url"
-              value={form.avatar}
-            />
           </Field>
         </div>
       </section>
@@ -1433,6 +1544,10 @@ function getInitials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join("");
+}
+
+function isManagedAvatar(value: string | null | undefined) {
+  return Boolean(value?.includes("/api/v1/students/me/profile/avatar"));
 }
 
 function sentenceCase(value: string) {

@@ -42,6 +42,7 @@ model Organization {
   activitySessions         UserActivitySession[]
   resourceActivitySessions StudentResourceActivitySession[]
   studentActivityEvents    StudentActivityEvent[]
+  storedObjects            StoredObject[]
 
   @@map("organizations")
 }

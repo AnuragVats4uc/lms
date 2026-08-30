@@ -89,6 +89,9 @@ export type StudentResourceProgressStatus =
 
 export interface StudentDocumentProgress {
   percentage: number;
+  pagesRead: number;
+  totalPages: number | null;
+  lastPage: number | null;
   status: StudentResourceProgressStatus;
   lastOpenedAt: string | null;
 }
@@ -299,7 +302,9 @@ export interface StudentExamResourceDetail {
     actionReason: StudentExamActionReason;
     actionMessage: string;
     attemptsRemaining: number;
+    activeAttemptId: number | null;
     activeAttemptUuid: string | null;
+    latestAttemptId: number | null;
     latestAttemptUuid: string | null;
     allowResume: boolean;
     resultReleaseMode: "IMMEDIATE" | "SCHEDULED" | "MANUAL";

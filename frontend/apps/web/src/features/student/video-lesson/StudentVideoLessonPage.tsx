@@ -37,7 +37,9 @@ export function StudentVideoLessonPage({ resourceId }: { resourceId: number }) {
   const currentPositionRef = useRef(0);
   const lastPersistedAtRef = useRef(0);
   const lastPersistedPositionRef = useRef(0);
+  const pendingInitialPlayEventRef = useRef(false);
   const resumeAppliedRef = useRef(false);
+  const [activityStarted, setActivityStarted] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [playerActivated, setPlayerActivated] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
@@ -58,15 +60,27 @@ export function StudentVideoLessonPage({ resourceId }: { resourceId: number }) {
         detailQueryKey,
         (current) => (current ? { ...current, progress } : current),
       );
+      void queryClient.invalidateQueries({ queryKey: ["student-courses"] });
     },
   });
   const activity = useResourceActivity({
-    enabled: Boolean(detailQuery.data),
+    enabled: Boolean(detailQuery.data && activityStarted),
+    initialActive: false,
     initialPositionSeconds:
       detailQuery.data?.progress.currentPositionSeconds ?? 0,
     resourceId,
   });
+  const { recordEvent } = activity;
   const saveProgress = progressMutation.mutate;
+
+  useEffect(() => {
+    if (!activityStarted || !pendingInitialPlayEventRef.current) return;
+    pendingInitialPlayEventRef.current = false;
+    void recordEvent("VIDEO_PLAY", {
+        videoPositionSeconds: currentPositionRef.current,
+      })
+      .catch(() => undefined);
+  }, [activityStarted, recordEvent]);
 
   const persistProgress = useCallback(
     (ended = false, force = false) => {
@@ -282,11 +296,16 @@ export function StudentVideoLessonPage({ resourceId }: { resourceId: number }) {
                 active: true,
                 positionSeconds: currentPositionRef.current,
               });
-              void activity
-                .recordEvent("VIDEO_PLAY", {
-                  videoPositionSeconds: currentPositionRef.current,
-                })
-                .catch(() => undefined);
+              if (!activityStarted) {
+                pendingInitialPlayEventRef.current = true;
+                setActivityStarted(true);
+              } else {
+                void activity
+                  .recordEvent("VIDEO_PLAY", {
+                    videoPositionSeconds: currentPositionRef.current,
+                  })
+                  .catch(() => undefined);
+              }
             }}
             onReady={onPlayerReady}
             onSeeked={() => {

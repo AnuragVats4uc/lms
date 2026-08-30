@@ -15,9 +15,9 @@ import {
 export class ActivityReportRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findStudent(studentUuid: string) {
-    return this.prisma.student.findUnique({
-      where: { uuid: studentUuid },
+  findStudent(studentId: number, studentUuid: string) {
+    return this.prisma.student.findFirst({
+      where: { id: studentId, uuid: studentUuid },
       include: {
         user: { select: { firstName: true, lastName: true, email: true } },
         profile: { select: { firstName: true, lastName: true, phone: true } },
@@ -129,6 +129,18 @@ export class ActivityReportRepository {
     });
   }
 
+  userSessionDeviceBreakdown(filters: ActivityReportFilters) {
+    return this.prisma.userActivitySession.groupBy({
+      by: ['deviceType', 'browser', 'operatingSystem'],
+      where: this.userSessionWhere(filters),
+      _count: { _all: true },
+      _sum: {
+        activeDurationSeconds: true,
+        idleDurationSeconds: true,
+      },
+    });
+  }
+
   resourceSessions(filters: ActivityReportFilters, take?: number) {
     return this.prisma.studentResourceActivitySession.findMany({
       where: this.resourceSessionWhere(filters),
@@ -162,6 +174,18 @@ export class ActivityReportRepository {
       _count: { _all: true },
       _sum: { activeDurationSeconds: true, idleDurationSeconds: true },
       _max: { lastHeartbeatAt: true },
+    });
+  }
+
+  resourceSessionTrendRows(filters: ActivityReportFilters) {
+    return this.prisma.studentResourceActivitySession.findMany({
+      where: this.resourceSessionWhere(filters),
+      select: {
+        startedAt: true,
+        activeDurationSeconds: true,
+        idleDurationSeconds: true,
+      },
+      orderBy: [{ startedAt: 'asc' }, { id: 'asc' }],
     });
   }
 
@@ -222,6 +246,14 @@ export class ActivityReportRepository {
   countActivityEvents(filters: ActivityReportFilters) {
     return this.prisma.studentActivityEvent.count({
       where: this.activityEventWhere(filters),
+    });
+  }
+
+  activityEventCounts(filters: ActivityReportFilters) {
+    return this.prisma.studentActivityEvent.groupBy({
+      by: ['eventType'],
+      where: this.activityEventWhere(filters),
+      _count: { _all: true },
     });
   }
 

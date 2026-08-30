@@ -7,9 +7,11 @@ import {
   HttpStatus,
   Param,
   ParseIntPipe,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
+  Req,
   StreamableFile,
   UploadedFile,
   UseInterceptors,
@@ -28,8 +30,10 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
+import type { Request } from 'express';
 
 import { Permissions } from '../../auth/permissions/permissions.decorator';
+import type { CurrentUser } from '../../auth/types/current-user.types';
 import { CreateDocumentUploadDto } from '../dto/create-document-upload.dto';
 import { CreateResourceDto } from '../dto/create-resource.dto';
 import { ResourceQueryDto } from '../dto/resource-query.dto';
@@ -42,6 +46,8 @@ import {
   ResourceService,
   ResourceUploadFile,
 } from '../services/resource.service';
+
+type AuthenticatedRequest = Request & { user: CurrentUser };
 
 @ApiTags('Resources')
 @ApiBearerAuth('access-token')
@@ -63,10 +69,11 @@ export class ResourceController {
   })
   @ApiNotFoundResponse({ description: 'Folder not found' })
   create(
+    @Req() request: AuthenticatedRequest,
     @Param('folderId', ParseIntPipe) folderId: number,
     @Body() dto: CreateResourceDto,
   ) {
-    return this.resourceService.create(folderId, dto);
+    return this.resourceService.create(folderId, dto, request.user);
   }
 
   @Post('upload')
@@ -101,11 +108,17 @@ export class ResourceController {
   @ApiBadRequestResponse({ description: 'Document upload is invalid' })
   @ApiNotFoundResponse({ description: 'Folder not found' })
   uploadDocument(
+    @Req() request: AuthenticatedRequest,
     @Param('folderId', ParseIntPipe) folderId: number,
     @UploadedFile() file: ResourceUploadFile | undefined,
     @Body() dto: CreateDocumentUploadDto,
   ) {
-    return this.resourceService.createUploadedDocument(folderId, dto, file);
+    return this.resourceService.createUploadedDocument(
+      folderId,
+      dto,
+      file,
+      request.user,
+    );
   }
 
   @Get('file/:filename')
@@ -116,12 +129,40 @@ export class ResourceController {
   @ApiOkResponse({ description: 'Uploaded document file' })
   @ApiNotFoundResponse({ description: 'Document file not found' })
   async readDocumentFile(
+    @Req() request: AuthenticatedRequest,
     @Param('folderId', ParseIntPipe) folderId: number,
     @Param('filename') filename: string,
   ) {
     const file = await this.resourceService.readDocumentFile(
       folderId,
       filename,
+      request.user,
+    );
+    return new StreamableFile(file.stream, {
+      type: file.mimeType,
+      disposition: `inline; filename="${file.fileName}"`,
+    });
+  }
+
+  @Get(':resourceId/:resourceUuid/file')
+  @Permissions('resource.read')
+  @ApiOperation({ summary: 'Read a managed document using its ID and UUID' })
+  @ApiParam({ name: 'folderId', type: Number, example: 1 })
+  @ApiParam({ name: 'resourceId', type: Number, example: 1 })
+  @ApiParam({ name: 'resourceUuid', type: String, format: 'uuid' })
+  @ApiOkResponse({ description: 'Managed document file' })
+  @ApiNotFoundResponse({ description: 'Document file not found' })
+  async readManagedDocumentFile(
+    @Req() request: AuthenticatedRequest,
+    @Param('folderId', ParseIntPipe) folderId: number,
+    @Param('resourceId', ParseIntPipe) resourceId: number,
+    @Param('resourceUuid', ParseUUIDPipe) resourceUuid: string,
+  ) {
+    const file = await this.resourceService.readManagedDocumentFile(
+      folderId,
+      resourceId,
+      resourceUuid,
+      request.user,
     );
     return new StreamableFile(file.stream, {
       type: file.mimeType,
@@ -139,10 +180,11 @@ export class ResourceController {
   })
   @ApiNotFoundResponse({ description: 'Folder not found' })
   findAll(
+    @Req() request: AuthenticatedRequest,
     @Param('folderId', ParseIntPipe) folderId: number,
     @Query() query: ResourceQueryDto,
   ) {
-    return this.resourceService.findAll(folderId, query);
+    return this.resourceService.findAll(folderId, query, request.user);
   }
 
   @Get(':resourceId')
@@ -156,10 +198,11 @@ export class ResourceController {
   })
   @ApiNotFoundResponse({ description: 'Folder or resource not found' })
   findOne(
+    @Req() request: AuthenticatedRequest,
     @Param('folderId', ParseIntPipe) folderId: number,
     @Param('resourceId', ParseIntPipe) resourceId: number,
   ) {
-    return this.resourceService.findOne(folderId, resourceId);
+    return this.resourceService.findOne(folderId, resourceId, request.user);
   }
 
   @Patch(':resourceId')
@@ -177,11 +220,12 @@ export class ResourceController {
   })
   @ApiNotFoundResponse({ description: 'Folder or resource not found' })
   update(
+    @Req() request: AuthenticatedRequest,
     @Param('folderId', ParseIntPipe) folderId: number,
     @Param('resourceId', ParseIntPipe) resourceId: number,
     @Body() dto: UpdateResourceDto,
   ) {
-    return this.resourceService.update(folderId, resourceId, dto);
+    return this.resourceService.update(folderId, resourceId, dto, request.user);
   }
 
   @Patch(':resourceId/upload')
@@ -211,11 +255,17 @@ export class ResourceController {
   @ApiBadRequestResponse({ description: 'Document upload is invalid' })
   @ApiNotFoundResponse({ description: 'Folder or resource not found' })
   replaceDocument(
+    @Req() request: AuthenticatedRequest,
     @Param('folderId', ParseIntPipe) folderId: number,
     @Param('resourceId', ParseIntPipe) resourceId: number,
     @UploadedFile() file: ResourceUploadFile | undefined,
   ) {
-    return this.resourceService.replaceDocumentFile(folderId, resourceId, file);
+    return this.resourceService.replaceDocumentFile(
+      folderId,
+      resourceId,
+      file,
+      request.user,
+    );
   }
 
   @Delete(':resourceId')
@@ -230,9 +280,10 @@ export class ResourceController {
   })
   @ApiNotFoundResponse({ description: 'Folder or resource not found' })
   remove(
+    @Req() request: AuthenticatedRequest,
     @Param('folderId', ParseIntPipe) folderId: number,
     @Param('resourceId', ParseIntPipe) resourceId: number,
   ) {
-    return this.resourceService.remove(folderId, resourceId);
+    return this.resourceService.remove(folderId, resourceId, request.user);
   }
 }

@@ -35,11 +35,17 @@ export class ActivityReportService {
 
   async getStudentReport(
     currentUser: CurrentUser,
+    studentId: number,
     studentUuid: string,
     query: StudentActivityReportQueryDto,
     auditAccess = true,
   ) {
-    const context = await this.resolveContext(currentUser, studentUuid, query);
+    const context = await this.resolveContext(
+      currentUser,
+      studentId,
+      studentUuid,
+      query,
+    );
     const page = query.page ?? 1;
     const limit = query.limit ?? 50;
     const take = page * limit;
@@ -53,9 +59,12 @@ export class ActivityReportService {
       endedSessionCount,
       resourceSessionSummary,
       resourceBreakdown,
+      resourceSessionTrendRows,
       courseOptions,
       documentPageVisits,
       eventCount,
+      activityEventCounts,
+      userSessionDeviceBreakdown,
     ] = await Promise.all([
       this.activityReportRepository.authenticationAttempts(
         context.filters,
@@ -70,9 +79,12 @@ export class ActivityReportService {
       this.activityReportRepository.countEndedUserSessions(context.filters),
       this.activityReportRepository.summarizeResourceSessions(context.filters),
       this.activityReportRepository.resourceBreakdown(context.filters),
+      this.activityReportRepository.resourceSessionTrendRows(context.filters),
       this.activityReportRepository.courseOptions(context.filters),
       this.activityReportRepository.countDocumentPageVisits(context.filters),
       this.activityReportRepository.countActivityEvents(context.filters),
+      this.activityReportRepository.activityEventCounts(context.filters),
+      this.activityReportRepository.userSessionDeviceBreakdown(context.filters),
     ]);
 
     const timeline = [
@@ -93,6 +105,27 @@ export class ActivityReportService {
       )?._count._all ?? 0;
     const total =
       successfulLogins + failedLogins + endedSessionCount + eventCount;
+    const activityCategoryBreakdown = this.activityCategoryBreakdown(
+      successfulLogins,
+      failedLogins,
+      endedSessionCount,
+      activityEventCounts,
+    );
+    const dailyTrend = this.dailyResourceTrend(resourceSessionTrendRows);
+    const deviceBreakdown = userSessionDeviceBreakdown
+      .map((row) => ({
+        deviceType: row.deviceType,
+        browser: row.browser,
+        operatingSystem: row.operatingSystem,
+        sessionCount: row._count._all,
+        activeDurationSeconds: row._sum.activeDurationSeconds ?? 0,
+        idleDurationSeconds: row._sum.idleDurationSeconds ?? 0,
+      }))
+      .sort(
+        (left, right) =>
+          right.activeDurationSeconds - left.activeDurationSeconds,
+      );
+    const resourceTypeBreakdown = this.resourceTypeBreakdown(resourceBreakdown);
 
     const report = {
       data: {
@@ -149,6 +182,12 @@ export class ActivityReportService {
             (left, right) =>
               right.activeDurationSeconds - left.activeDurationSeconds,
           ),
+        analytics: {
+          dailyTrend,
+          activityCategoryBreakdown,
+          deviceBreakdown,
+          resourceTypeBreakdown,
+        },
         filterOptions: {
           courses: courseOptions.map(({ sessionCourse }) => ({
             sessionCourseId: sessionCourse.id,
@@ -188,13 +227,20 @@ export class ActivityReportService {
 
   async exportStudentReport(
     currentUser: CurrentUser,
+    studentId: number,
     studentUuid: string,
     query: StudentActivityReportExportQueryDto,
   ) {
     const format = query.format ?? 'xlsx';
-    const context = await this.resolveContext(currentUser, studentUuid, query);
+    const context = await this.resolveContext(
+      currentUser,
+      studentId,
+      studentUuid,
+      query,
+    );
     const report = await this.getStudentReport(
       currentUser,
+      studentId,
       studentUuid,
       {
         ...query,
@@ -321,11 +367,14 @@ export class ActivityReportService {
 
   private async resolveContext(
     currentUser: CurrentUser,
+    studentId: number,
     studentUuid: string,
     query: StudentActivityReportQueryDto,
   ) {
-    const student =
-      await this.activityReportRepository.findStudent(studentUuid);
+    const student = await this.activityReportRepository.findStudent(
+      studentId,
+      studentUuid,
+    );
     if (!student) throw new NotFoundException('Student not found');
     if (!student.organizationId || !student.organization) {
       throw new BadRequestException('Student organization context is missing');
@@ -528,6 +577,102 @@ export class ActivityReportService {
     if (eventType.startsWith('REPORT_')) return 'REPORT' as const;
     if (eventType.startsWith('RESOURCE_')) return 'RESOURCE' as const;
     return 'SESSION' as const;
+  }
+
+  private activityCategoryBreakdown(
+    successfulLogins: number,
+    failedLogins: number,
+    endedSessionCount: number,
+    eventCounts: Awaited<
+      ReturnType<ActivityReportRepository['activityEventCounts']>
+    >,
+  ) {
+    const categoryOrder = [
+      'AUTHENTICATION',
+      'RESOURCE',
+      'DOCUMENT',
+      'VIDEO',
+      'EXAM',
+      'REPORT',
+      'SESSION',
+    ] as const;
+    const counts = new Map<(typeof categoryOrder)[number], number>([
+      ['AUTHENTICATION', successfulLogins + failedLogins],
+      ['SESSION', endedSessionCount],
+    ]);
+    for (const row of eventCounts) {
+      const category = this.eventCategory(row.eventType);
+      counts.set(category, (counts.get(category) ?? 0) + row._count._all);
+    }
+    return categoryOrder.map((category) => ({
+      category,
+      count: counts.get(category) ?? 0,
+    }));
+  }
+
+  private dailyResourceTrend(
+    rows: Awaited<
+      ReturnType<ActivityReportRepository['resourceSessionTrendRows']>
+    >,
+  ) {
+    const trend = new Map<
+      string,
+      {
+        date: string;
+        sessionCount: number;
+        activeDurationSeconds: number;
+        idleDurationSeconds: number;
+      }
+    >();
+    for (const row of rows) {
+      const date = row.startedAt.toISOString().slice(0, 10);
+      const point = trend.get(date) ?? {
+        date,
+        sessionCount: 0,
+        activeDurationSeconds: 0,
+        idleDurationSeconds: 0,
+      };
+      point.sessionCount += 1;
+      point.activeDurationSeconds += row.activeDurationSeconds;
+      point.idleDurationSeconds += row.idleDurationSeconds;
+      trend.set(date, point);
+    }
+    return [...trend.values()].sort((left, right) =>
+      left.date.localeCompare(right.date),
+    );
+  }
+
+  private resourceTypeBreakdown(
+    rows: Awaited<ReturnType<ActivityReportRepository['resourceBreakdown']>>,
+  ) {
+    const breakdown = new Map<
+      string,
+      {
+        resourceType: string;
+        resourceCount: number;
+        sessionCount: number;
+        activeDurationSeconds: number;
+        idleDurationSeconds: number;
+      }
+    >();
+    for (const row of rows) {
+      const resourceType = row.resourceTypeCodeSnapshot.toUpperCase();
+      const item = breakdown.get(resourceType) ?? {
+        resourceType,
+        resourceCount: 0,
+        sessionCount: 0,
+        activeDurationSeconds: 0,
+        idleDurationSeconds: 0,
+      };
+      item.resourceCount += 1;
+      item.sessionCount += row._count._all;
+      item.activeDurationSeconds += row._sum.activeDurationSeconds ?? 0;
+      item.idleDurationSeconds += row._sum.idleDurationSeconds ?? 0;
+      breakdown.set(resourceType, item);
+    }
+    return [...breakdown.values()].sort(
+      (left, right) => right.activeDurationSeconds - left.activeDurationSeconds,
+    );
   }
 
   private eventTitle(eventType: StudentActivityEventType) {

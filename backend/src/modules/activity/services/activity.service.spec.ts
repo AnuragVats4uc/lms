@@ -1,5 +1,8 @@
 import { ConflictException, ForbiddenException } from '@nestjs/common';
-import { StudentActivityEventType } from '@prisma/client';
+import {
+  ResourceActivityEndReason,
+  StudentActivityEventType,
+} from '@prisma/client';
 
 import { ActivityRepository } from '../repositories/activity.repository';
 import { ActivityService } from './activity.service';
@@ -13,6 +16,9 @@ describe('ActivityService', () => {
       findPolicyByOrganizationId: jest.fn(),
       findOpenUserSession: jest.fn(),
       updateUserSessionHeartbeat: jest.fn(),
+      findOpenResourceSession: jest.fn(),
+      findOpenDocumentPage: jest.fn(),
+      endResourceSession: jest.fn(),
       findResourceSessionByUuid: jest.fn(),
       findStudentContext: jest.fn(),
       createEventIdempotently: jest.fn(),
@@ -157,5 +163,42 @@ describe('ActivityService', () => {
         eventType: StudentActivityEventType.VIDEO_PLAY,
       }),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('does not credit paused video time as active when the session ends', async () => {
+    const startedAt = new Date('2026-08-30T10:00:00.000Z');
+    const endedAt = new Date('2026-08-30T10:00:15.000Z');
+    repository.findOpenResourceSession.mockResolvedValue({
+      id: 12,
+      uuid: '123c6a30-caba-4921-b012-4df28a9d7478',
+      organizationId: 4,
+      studentId: 20,
+      lastHeartbeatAt: startedAt,
+      maxPositionSeconds: 90,
+    } as never);
+    repository.findStudentContext.mockResolvedValue({
+      id: 20,
+      userId: 10,
+      organizationId: 4,
+    });
+    repository.findPolicyByOrganizationId.mockResolvedValue(null);
+    repository.findOpenDocumentPage.mockResolvedValue(null);
+    repository.endResourceSession.mockResolvedValue({ count: 1 });
+
+    await service.endResourceSession(
+      '123c6a30-caba-4921-b012-4df28a9d7478',
+      10,
+      {
+        reason: ResourceActivityEndReason.NAVIGATED_AWAY,
+        active: false,
+        currentPositionSeconds: 90,
+        occurredAt: endedAt,
+      },
+    );
+
+    expect(repository.endResourceSession.mock.calls[0][2]).toMatchObject({
+      activeDurationSeconds: { increment: 0 },
+      idleDurationSeconds: { increment: 15 },
+    });
   });
 });

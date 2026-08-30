@@ -390,7 +390,7 @@ export class ActivityService {
       const duration = calculateHeartbeatDuration({
         previousAt: session.lastHeartbeatAt,
         currentAt: occurredAt,
-        active: true,
+        active: input.active ?? true,
         heartbeatSeconds: policy.resourceHeartbeatSeconds,
         idleThresholdSeconds: policy.idleThresholdSeconds,
       });
@@ -402,7 +402,7 @@ export class ActivityService {
         ? calculateHeartbeatDuration({
             previousAt: openPage.lastHeartbeatAt,
             currentAt: occurredAt,
-            active: true,
+            active: input.active ?? true,
             heartbeatSeconds: policy.resourceHeartbeatSeconds,
             idleThresholdSeconds: policy.idleThresholdSeconds,
           })

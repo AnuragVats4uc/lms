@@ -261,3 +261,16 @@ enum ExamImportRowStatus {
   IMPORTED
   SKIPPED
 }
+
+enum StorageProvider {
+  LOCAL
+  UTHO_S3
+}
+
+enum StoredObjectStatus {
+  PENDING
+  READY
+  FAILED
+  DELETE_PENDING
+  DELETED
+}

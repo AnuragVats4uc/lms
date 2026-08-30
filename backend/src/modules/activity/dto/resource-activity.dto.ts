@@ -98,6 +98,13 @@ export class EndResourceActivityDto {
   @IsEnum(ResourceActivityEndReason)
   reason: ResourceActivityEndReason;
 
+  @ApiPropertyOptional({
+    description: 'Whether the resource was actively being used when closed',
+  })
+  @IsBoolean()
+  @IsOptional()
+  active?: boolean;
+
   @ApiPropertyOptional({ minimum: 0 })
   @Type(() => Number)
   @IsInt()

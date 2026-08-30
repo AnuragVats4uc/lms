@@ -60,6 +60,7 @@ describe('ActivityReportService', () => {
         _min: { loginAt: null },
         _max: { lastSeenAt: null },
       }),
+      userSessionDeviceBreakdown: jest.fn().mockResolvedValue([]),
       resourceSessions: jest.fn().mockResolvedValue([]),
       summarizeResourceSessions: jest.fn().mockResolvedValue({
         _count: { _all: 0 },
@@ -68,10 +69,12 @@ describe('ActivityReportService', () => {
         _max: { lastHeartbeatAt: null },
       }),
       resourceBreakdown: jest.fn().mockResolvedValue([]),
+      resourceSessionTrendRows: jest.fn().mockResolvedValue([]),
       courseOptions: jest.fn().mockResolvedValue([]),
       countDocumentPageVisits: jest.fn().mockResolvedValue(0),
       activityEvents: jest.fn().mockResolvedValue([]),
       countActivityEvents: jest.fn().mockResolvedValue(0),
+      activityEventCounts: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<ActivityReportRepository>;
     service = new ActivityReportService(repository);
   });
@@ -117,6 +120,28 @@ describe('ActivityReportService', () => {
     ] as never);
     repository.countDocumentPageVisits.mockResolvedValue(4);
     repository.countActivityEvents.mockResolvedValue(7);
+    repository.activityEventCounts.mockResolvedValue([
+      {
+        eventType: 'RESOURCE_OPEN',
+        _count: { _all: 7 },
+      },
+    ] as never);
+    repository.resourceSessionTrendRows.mockResolvedValue([
+      {
+        startedAt: new Date('2026-08-10T10:01:00.000Z'),
+        activeDurationSeconds: 420,
+        idleDurationSeconds: 30,
+      },
+    ]);
+    repository.userSessionDeviceBreakdown.mockResolvedValue([
+      {
+        deviceType: ActivityDeviceType.DESKTOP,
+        browser: 'Chrome',
+        operatingSystem: 'Windows',
+        _count: { _all: 2 },
+        _sum: { activeDurationSeconds: 600, idleDurationSeconds: 300 },
+      },
+    ] as never);
 
     const result = await service.getStudentReport(
       {
@@ -125,6 +150,7 @@ describe('ActivityReportService', () => {
         organizationId: 4,
         roles: ['ADMIN'],
       },
+      student.id,
       student.uuid,
       range,
     );
@@ -148,6 +174,26 @@ describe('ActivityReportService', () => {
       mode: 'ADDITIVE_SESSION_TIME',
       concurrentTabsAndDevicesIncluded: true,
     });
+    expect(result.data.analytics.dailyTrend).toEqual([
+      {
+        date: '2026-08-10',
+        sessionCount: 1,
+        activeDurationSeconds: 420,
+        idleDurationSeconds: 30,
+      },
+    ]);
+    expect(result.data.analytics.activityCategoryBreakdown).toEqual(
+      expect.arrayContaining([
+        { category: 'AUTHENTICATION', count: 3 },
+        { category: 'RESOURCE', count: 7 },
+        { category: 'SESSION', count: 2 },
+      ]),
+    );
+    expect(result.data.analytics.deviceBreakdown[0]).toMatchObject({
+      deviceType: ActivityDeviceType.DESKTOP,
+      browser: 'Chrome',
+      sessionCount: 2,
+    });
     expect(repository.createReportAccessEvent.mock.calls[0][0]).toMatchObject({
       organizationId: 4,
       studentId: 20,
@@ -170,6 +216,7 @@ describe('ActivityReportService', () => {
           organizationId: 4,
           roles: ['TEACHER'],
         },
+        student.id,
         student.uuid,
         range,
       ),
@@ -184,6 +231,7 @@ describe('ActivityReportService', () => {
         organizationId: 4,
         roles: ['TEACHER'],
       },
+      student.id,
       student.uuid,
       { ...range, sessionCourseId: 21 },
     );
@@ -226,6 +274,7 @@ describe('ActivityReportService', () => {
         organizationId: 4,
         roles: ['COUNSELOR'],
       },
+      student.id,
       student.uuid,
       { ...range, format: 'csv', activityTypes: ['LOGIN_FAILED'] },
     );
@@ -276,6 +325,7 @@ describe('ActivityReportService', () => {
         organizationId: 4,
         roles: ['ADMIN'],
       },
+      student.id,
       student.uuid,
       { ...range, format: 'xlsx' },
     );

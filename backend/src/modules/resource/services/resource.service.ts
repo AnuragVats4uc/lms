@@ -1,14 +1,16 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { ResourceStatus } from '@prisma/client';
-import { randomUUID } from 'node:crypto';
 import { basename, extname, join } from 'node:path';
 import { createReadStream } from 'node:fs';
-import { mkdir, stat, unlink, writeFile } from 'node:fs/promises';
+import { stat, unlink } from 'node:fs/promises';
 
+import type { CurrentUser } from '../../auth/types/current-user.types';
+import { ManagedObjectService } from '../../storage/managed-object.service';
 import { CreateDocumentUploadDto } from '../dto/create-document-upload.dto';
 import { RESOURCE_TYPE_IDS } from '../constants/resource-type.constants';
 import { CreateResourceDto } from '../dto/create-resource.dto';
@@ -46,39 +48,124 @@ export interface ResourceUploadFile {
   size: number;
 }
 
+function hasValidDocumentSignature(extension: string, body: Buffer) {
+  if (extension === '.pdf') return body.subarray(0, 5).toString() === '%PDF-';
+  if (extension === '.doc' || extension === '.ppt') {
+    const compoundFile = Buffer.from('d0cf11e0a1b11ae1', 'hex');
+    const richText = body.subarray(0, 5).toString() === '{\\rtf';
+    return (
+      body.subarray(0, compoundFile.length).equals(compoundFile) || richText
+    );
+  }
+  if (extension === '.docx' || extension === '.pptx') {
+    const signature = body.subarray(0, 4).toString('hex');
+    return ['504b0304', '504b0506', '504b0708'].includes(signature);
+  }
+  if (extension === '.txt') return !body.includes(0);
+  return false;
+}
+
+export function validateResourceDocumentFile(
+  file: ResourceUploadFile | undefined,
+) {
+  if (!file?.buffer || file.size <= 0) {
+    throw new BadRequestException('A non-empty document file is required');
+  }
+  if (file.size > MAX_DOCUMENT_SIZE) {
+    throw new BadRequestException('Document file must not exceed 25 MB');
+  }
+
+  const extension = extname(file.originalname).toLowerCase();
+  if (
+    !ALLOWED_DOCUMENT_MIME_TYPES.has(file.mimetype) ||
+    !ALLOWED_DOCUMENT_EXTENSIONS.has(extension)
+  ) {
+    throw new BadRequestException(
+      'Only PDF, DOC, DOCX, PPT, PPTX, and TXT documents are supported',
+    );
+  }
+  if (!hasValidDocumentSignature(extension, file.buffer)) {
+    throw new BadRequestException(
+      'Document content does not match its file extension',
+    );
+  }
+
+  return file;
+}
+
 @Injectable()
 export class ResourceService {
-  constructor(private readonly resourceRepository: ResourceRepository) {}
+  constructor(
+    @Inject(ResourceRepository)
+    private readonly resourceRepository: ResourceRepository,
+    @Inject(ManagedObjectService)
+    private readonly managedObjects: ManagedObjectService,
+  ) {}
 
   async createUploadedDocument(
     folderId: number,
     dto: CreateDocumentUploadDto,
     file: ResourceUploadFile | undefined,
+    user?: CurrentUser,
   ) {
-    await this.ensureFolderExists(folderId);
-    const storedFile = await this.storeDocumentFile(folderId, file);
+    const folder = await this.ensureFolderExists(folderId);
+    this.ensureOrganizationAccess(
+      user,
+      folder.sessionCourse.session.organizationId,
+    );
+    const validFile = validateResourceDocumentFile(file);
+    const organization = folder.sessionCourse.session.organization;
+    const placeholder = await this.resourceRepository.create({
+      folderId,
+      title: dto.title.trim(),
+      description: dto.description,
+      resourceTypeId: RESOURCE_TYPE_IDS.DOCUMENT,
+      documentUrl: null,
+      documentObjectId: null,
+      videoUrl: null,
+      examId: null,
+      mimeType: validFile.mimetype,
+      fileSize: BigInt(validFile.size),
+      durationInSeconds: null,
+      sortOrder: dto.sortOrder ?? 0,
+      status: ResourceStatus.DRAFT,
+      isPublished: false,
+      isDownloadable: dto.isDownloadable ?? true,
+    });
 
     try {
-      const resource = await this.resourceRepository.create({
-        folderId,
-        title: dto.title.trim(),
-        description: dto.description,
-        resourceTypeId: RESOURCE_TYPE_IDS.DOCUMENT,
-        documentUrl: storedFile.url,
-        videoUrl: null,
-        examId: null,
-        mimeType: file?.mimetype,
-        fileSize: BigInt(file?.size ?? 0),
-        durationInSeconds: null,
-        sortOrder: dto.sortOrder ?? 0,
-        status: dto.status ?? ResourceStatus.DRAFT,
-        isPublished: dto.isPublished ?? false,
-        isDownloadable: dto.isDownloadable ?? true,
+      const storedObject = await this.managedObjects.upload({
+        organization,
+        owner: {
+          category: 'resources',
+          id: placeholder.id,
+          uuid: placeholder.uuid,
+        },
+        uploadedById: user?.userId,
+        originalFileName: validFile.originalname,
+        mimeType: validFile.mimetype,
+        body: validFile.buffer,
       });
 
-      return this.toResponse(resource);
+      try {
+        const publicBaseUrl = this.publicBaseUrl();
+        const updated = await this.resourceRepository.update(placeholder.id, {
+          documentUrl: `${publicBaseUrl}/api/v1/folders/${folderId}/resources/${placeholder.id}/${placeholder.uuid}/file`,
+          documentObjectId: storedObject.id,
+          status: dto.status ?? ResourceStatus.DRAFT,
+          isPublished: dto.isPublished ?? false,
+        });
+        return this.toResponse(updated);
+      } catch (error) {
+        await this.managedObjects
+          .delete(storedObject.id, storedObject.uuid, organization.id)
+          .catch(() => undefined);
+        throw error;
+      }
     } catch (error) {
-      await this.removeStoredFile(storedFile.path);
+      await this.resourceRepository
+        .hardDelete(placeholder.id)
+        .catch(() => undefined);
       throw error;
     }
   }
@@ -87,8 +174,13 @@ export class ResourceService {
     folderId: number,
     id: number,
     file: ResourceUploadFile | undefined,
+    user?: CurrentUser,
   ) {
-    await this.ensureFolderExists(folderId);
+    const folder = await this.ensureFolderExists(folderId);
+    this.ensureOrganizationAccess(
+      user,
+      folder.sessionCourse.session.organizationId,
+    );
     const existing = await this.findExisting(folderId, id);
 
     if (existing.resourceTypeId !== RESOURCE_TYPE_IDS.DOCUMENT) {
@@ -97,24 +189,52 @@ export class ResourceService {
       );
     }
 
-    const storedFile = await this.storeDocumentFile(folderId, file);
+    const validFile = validateResourceDocumentFile(file);
+    const organization = folder.sessionCourse.session.organization;
+    const storedObject = await this.managedObjects.upload({
+      organization,
+      owner: { category: 'resources', id: existing.id, uuid: existing.uuid },
+      uploadedById: user?.userId,
+      originalFileName: validFile.originalname,
+      mimeType: validFile.mimetype,
+      body: validFile.buffer,
+    });
     try {
       const resource = await this.resourceRepository.update(id, {
-        documentUrl: storedFile.url,
-        mimeType: file?.mimetype,
-        fileSize: BigInt(file?.size ?? 0),
+        documentUrl: `${this.publicBaseUrl()}/api/v1/folders/${folderId}/resources/${existing.id}/${existing.uuid}/file`,
+        documentObjectId: storedObject.id,
+        mimeType: validFile.mimetype,
+        fileSize: BigInt(validFile.size),
       });
 
-      await this.removeStoredFile(this.storedPathFromUrl(existing.documentUrl));
+      if (existing.documentObject) {
+        await this.managedObjects
+          .delete(
+            existing.documentObject.id,
+            existing.documentObject.uuid,
+            organization.id,
+          )
+          .catch(() => undefined);
+      } else {
+        await this.removeStoredFile(
+          this.storedPathFromUrl(existing.documentUrl),
+        );
+      }
       return this.toResponse(resource);
     } catch (error) {
-      await this.removeStoredFile(storedFile.path);
+      await this.managedObjects
+        .delete(storedObject.id, storedObject.uuid, organization.id)
+        .catch(() => undefined);
       throw error;
     }
   }
 
-  async create(folderId: number, dto: CreateResourceDto) {
+  async create(folderId: number, dto: CreateResourceDto, user?: CurrentUser) {
     const folder = await this.ensureFolderExists(folderId);
+    this.ensureOrganizationAccess(
+      user,
+      folder.sessionCourse.session.organizationId,
+    );
     await this.ensureResourceTypeExists(dto.resourceTypeId);
     const normalized = this.normalizeResourceData(dto);
     await this.ensureExamMatchesFolder(folder, normalized.examId);
@@ -133,8 +253,12 @@ export class ResourceService {
     return this.toResponse(resource);
   }
 
-  async findAll(folderId: number, query: ResourceQueryDto) {
-    await this.ensureFolderExists(folderId);
+  async findAll(folderId: number, query: ResourceQueryDto, user?: CurrentUser) {
+    const folder = await this.ensureFolderExists(folderId);
+    this.ensureOrganizationAccess(
+      user,
+      folder.sessionCourse.session.organizationId,
+    );
 
     const normalizedQuery = this.normalizeQuery(query);
     const result = await this.resourceRepository.findMany(
@@ -153,15 +277,28 @@ export class ResourceService {
     };
   }
 
-  async findOne(folderId: number, id: number) {
-    await this.ensureFolderExists(folderId);
+  async findOne(folderId: number, id: number, user?: CurrentUser) {
+    const folder = await this.ensureFolderExists(folderId);
+    this.ensureOrganizationAccess(
+      user,
+      folder.sessionCourse.session.organizationId,
+    );
     const resource = await this.findExisting(folderId, id);
 
     return this.toResponse(resource);
   }
 
-  async update(folderId: number, id: number, dto: UpdateResourceDto) {
+  async update(
+    folderId: number,
+    id: number,
+    dto: UpdateResourceDto,
+    user?: CurrentUser,
+  ) {
     const folder = await this.ensureFolderExists(folderId);
+    this.ensureOrganizationAccess(
+      user,
+      folder.sessionCourse.session.organizationId,
+    );
     const existing = await this.findExisting(folderId, id);
     if (dto.resourceTypeId !== undefined) {
       await this.ensureResourceTypeExists(dto.resourceTypeId);
@@ -169,14 +306,35 @@ export class ResourceService {
     const normalized = this.normalizeResourceData(dto, existing);
     await this.ensureExamMatchesFolder(folder, normalized.examId);
     const data = this.toUpdateInput(dto, normalized);
+    const shouldDetachDocumentObject = Boolean(
+      existing.documentObject &&
+      (normalized.resourceTypeId !== RESOURCE_TYPE_IDS.DOCUMENT ||
+        (dto.documentUrl !== undefined &&
+          dto.documentUrl !== existing.documentUrl)),
+    );
+    if (shouldDetachDocumentObject) data.documentObjectId = null;
 
     const resource = await this.resourceRepository.update(id, data);
+
+    if (shouldDetachDocumentObject && existing.documentObject) {
+      await this.managedObjects
+        .delete(
+          existing.documentObject.id,
+          existing.documentObject.uuid,
+          folder.sessionCourse.session.organizationId,
+        )
+        .catch(() => undefined);
+    }
 
     return this.toResponse(resource);
   }
 
-  async remove(folderId: number, id: number) {
-    await this.ensureFolderExists(folderId);
+  async remove(folderId: number, id: number, user?: CurrentUser) {
+    const folder = await this.ensureFolderExists(folderId);
+    this.ensureOrganizationAccess(
+      user,
+      folder.sessionCourse.session.organizationId,
+    );
     await this.findExisting(folderId, id);
 
     const resource = await this.resourceRepository.softDelete(id);
@@ -188,7 +346,16 @@ export class ResourceService {
     return this.resourceRepository.findActiveResourceTypes();
   }
 
-  async readDocumentFile(folderId: number, filename: string) {
+  async readDocumentFile(
+    folderId: number,
+    filename: string,
+    user?: CurrentUser,
+  ) {
+    const folder = await this.ensureFolderExists(folderId);
+    this.ensureOrganizationAccess(
+      user,
+      folder.sessionCourse.session.organizationId,
+    );
     const safeFilename = basename(filename);
     if (safeFilename !== filename) {
       throw new BadRequestException('Invalid document filename');
@@ -220,6 +387,37 @@ export class ResourceService {
     };
   }
 
+  async readManagedDocumentFile(
+    folderId: number,
+    resourceId: number,
+    resourceUuid: string,
+    user?: CurrentUser,
+  ) {
+    const folder = await this.ensureFolderExists(folderId);
+    this.ensureOrganizationAccess(
+      user,
+      folder.sessionCourse.session.organizationId,
+    );
+    const resource = await this.resourceRepository.findByIdAndUuid(
+      folderId,
+      resourceId,
+      resourceUuid,
+    );
+    if (!resource?.documentObject) {
+      throw new NotFoundException('Document file not found');
+    }
+    const stored = await this.managedObjects.open({
+      id: resource.documentObject.id,
+      uuid: resource.documentObject.uuid,
+      organizationId: folder.sessionCourse.session.organization.id,
+    });
+    return {
+      fileName: stored.object.originalFileName,
+      mimeType: stored.contentType ?? stored.object.mimeType,
+      stream: stored.stream,
+    };
+  }
+
   private async ensureFolderExists(folderId: number) {
     const folder = await this.resourceRepository.findFolderById(folderId);
 
@@ -228,6 +426,16 @@ export class ResourceService {
     }
 
     return folder;
+  }
+
+  private ensureOrganizationAccess(
+    user: CurrentUser | undefined,
+    organizationId: number,
+  ) {
+    if (!user || user.roles?.includes('SUPER_ADMIN')) return;
+    if (user.organizationId !== organizationId) {
+      throw new NotFoundException('Folder not found');
+    }
   }
 
   private async ensureExamMatchesFolder(
@@ -421,42 +629,11 @@ export class ResourceService {
     }
   }
 
-  private async storeDocumentFile(
-    folderId: number,
-    file: ResourceUploadFile | undefined,
-  ) {
-    if (!file || !file.buffer || file.size <= 0) {
-      throw new BadRequestException('A non-empty document file is required');
-    }
-    if (file.size > MAX_DOCUMENT_SIZE) {
-      throw new BadRequestException('Document file must not exceed 25 MB');
-    }
-
-    const extension = extname(file.originalname).toLowerCase();
-    if (
-      !ALLOWED_DOCUMENT_MIME_TYPES.has(file.mimetype) ||
-      !ALLOWED_DOCUMENT_EXTENSIONS.has(extension)
-    ) {
-      throw new BadRequestException(
-        'Only PDF, DOC, DOCX, PPT, PPTX, and TXT documents are supported',
-      );
-    }
-
-    const directory = join(process.cwd(), 'uploads', 'resources');
-    const filename = `${randomUUID()}${extension}`;
-    const path = join(directory, filename);
-    await mkdir(directory, { recursive: true });
-    await writeFile(path, file.buffer, { flag: 'wx' });
-
-    const publicBaseUrl = (
+  private publicBaseUrl() {
+    return (
       process.env.PUBLIC_API_URL ??
       `http://localhost:${process.env.PORT ?? '5000'}`
     ).replace(/\/$/, '');
-
-    return {
-      path,
-      url: `${publicBaseUrl}/api/v1/folders/${folderId}/resources/file/${filename}`,
-    };
   }
 
   private storedPathFromUrl(url: string | null) {
@@ -481,6 +658,18 @@ export class ResourceService {
       ...resource,
       fileSize:
         resource.fileSize === null ? null : resource.fileSize.toString(),
+      documentObject: resource.documentObject
+        ? {
+            ...resource.documentObject,
+            sizeBytes: resource.documentObject.sizeBytes.toString(),
+          }
+        : null,
+      thumbnailObject: resource.thumbnailObject
+        ? {
+            ...resource.thumbnailObject,
+            sizeBytes: resource.thumbnailObject.sizeBytes.toString(),
+          }
+        : null,
     };
   }
 }

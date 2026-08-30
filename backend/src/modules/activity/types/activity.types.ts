@@ -55,6 +55,7 @@ export type ResourceHeartbeatInput = {
 
 export type EndResourceActivityInput = {
   reason: ResourceActivityEndReason;
+  active?: boolean;
   currentPositionSeconds?: number | null;
   pageNumber?: number | null;
   completed?: boolean;

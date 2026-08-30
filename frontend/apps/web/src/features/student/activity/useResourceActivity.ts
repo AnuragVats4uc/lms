@@ -16,24 +16,33 @@ interface ResourceActivityState {
 
 interface ResourceActivityOptions {
   enabled: boolean;
+  initialActive?: boolean;
   initialPageNumber?: number;
   initialPositionSeconds?: number;
+  onHeartbeat?: () => void;
   resourceId: number;
 }
 
 export function useResourceActivity({
   enabled,
+  initialActive = true,
   initialPageNumber,
   initialPositionSeconds,
+  onHeartbeat,
   resourceId,
 }: ResourceActivityOptions) {
   const sessionUuidRef = useRef<string | null>(null);
   const sessionPromiseRef = useRef<Promise<string | null> | null>(null);
-  const activeRef = useRef(true);
+  const activeRef = useRef(initialActive);
   const completedRef = useRef(false);
   const endedRef = useRef(false);
   const pageNumberRef = useRef(initialPageNumber);
   const positionSecondsRef = useRef(initialPositionSeconds);
+  const onHeartbeatRef = useRef(onHeartbeat);
+
+  useEffect(() => {
+    onHeartbeatRef.current = onHeartbeat;
+  }, [onHeartbeat]);
 
   useEffect(() => {
     if (!sessionUuidRef.current && initialPageNumber !== undefined) {
@@ -61,6 +70,7 @@ export function useResourceActivity({
       pageNumber: pageNumberRef.current,
       currentPositionSeconds: positionSecondsRef.current,
     });
+    onHeartbeatRef.current?.();
   }, [getSessionUuid]);
 
   useEffect(() => {
@@ -79,12 +89,20 @@ export function useResourceActivity({
         if (cancelled) {
           await studentsApi.endMyResourceActivity(session.sessionUuid, {
             reason: "NAVIGATED_AWAY",
+            active:
+              activeRef.current && document.visibilityState === "visible",
             currentPositionSeconds: positionSecondsRef.current,
             pageNumber: pageNumberRef.current,
           });
           return null;
         }
         sessionUuidRef.current = session.sessionUuid;
+        if (pageNumberRef.current !== undefined) {
+          await studentsApi.switchMyDocumentPage(
+            session.sessionUuid,
+            pageNumberRef.current,
+          );
+        }
         heartbeatInterval = window.setInterval(
           () => {
             void heartbeat().catch(() => undefined);
@@ -112,6 +130,8 @@ export function useResourceActivity({
         void studentsApi
           .endMyResourceActivity(ownedSessionUuid, {
             reason: "NAVIGATED_AWAY",
+            active:
+              activeRef.current && document.visibilityState === "visible",
             currentPositionSeconds: positionSecondsRef.current,
             pageNumber: pageNumberRef.current,
             completed: completedRef.current,
@@ -184,6 +204,7 @@ export function useResourceActivity({
       endedRef.current = true;
       await studentsApi.endMyResourceActivity(sessionUuid, {
         reason,
+        active: activeRef.current && document.visibilityState === "visible",
         currentPositionSeconds: positionSecondsRef.current,
         pageNumber: pageNumberRef.current,
         completed: completedRef.current,

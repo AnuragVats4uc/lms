@@ -664,6 +664,91 @@
   gap: 14px;
 }
 
+.avatarEditor {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 13px;
+  border: 1px solid #e0e8e6;
+  border-radius: 11px;
+  background: #f8fbfa;
+}
+
+.avatarPreview {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  flex: 0 0 62px;
+  overflow: hidden;
+  border: 3px solid #ffffff;
+  border-radius: 18px;
+  color: #ffffff;
+  background: linear-gradient(145deg, #0ba879, #08755c);
+  box-shadow: 0 8px 18px rgb(5 150 105 / 15%);
+  font-size: 20px;
+  font-weight: 760;
+}
+
+.avatarPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarEditorCopy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.avatarEditorCopy > strong {
+  color: #1e2f49;
+  font-size: 12px;
+}
+
+.avatarEditorCopy > span {
+  color: #708096;
+  font-size: 10px;
+}
+
+.avatarEditorCopy > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.avatarEditorCopy .secondaryButton {
+  min-height: 34px;
+  cursor: pointer;
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
+.avatarRemoveButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #b42318;
+  background: #fff7f7;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.avatarRemoveButton:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 .formGrid label,
 .passwordFields > label {
   display: grid;

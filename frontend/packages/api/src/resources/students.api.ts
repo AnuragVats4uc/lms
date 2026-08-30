@@ -46,6 +46,8 @@ import { api } from "../client/axios";
 import { unwrapApiData } from "../client/response";
 
 const STUDENTS_ENDPOINT = "/students";
+const examAttemptEndpoint = (attemptId: number, attemptUuid: string) =>
+  `${STUDENTS_ENDPOINT}/me/exam-attempts/${attemptId}/${attemptUuid}`;
 
 export const studentsApi = {
   create(payload: CreateStudentRequest) {
@@ -149,6 +151,34 @@ export const studentsApi = {
       .then(unwrapApiData);
   },
 
+  findMyAvatar() {
+    return api
+      .get<Blob>(`${STUDENTS_ENDPOINT}/me/profile/avatar`, {
+        responseType: "blob",
+      })
+      .then((response) => response.data);
+  },
+
+  uploadMyAvatar(file: File) {
+    const payload = new FormData();
+    payload.append("file", file);
+    return api
+      .post<ApiResponse<StudentSelfProfile>>(
+        `${STUDENTS_ENDPOINT}/me/profile/avatar`,
+        payload,
+        { headers: { "Content-Type": "multipart/form-data" } },
+      )
+      .then(unwrapApiData);
+  },
+
+  deleteMyAvatar() {
+    return api
+      .delete<ApiResponse<StudentSelfProfile>>(
+        `${STUDENTS_ENDPOINT}/me/profile/avatar`,
+      )
+      .then(unwrapApiData);
+  },
+
   updateMyPreferences(payload: UpdateMyStudentPreferencesRequest) {
     return api
       .patch<ApiResponse<StudentProfilePreferences>>(
@@ -217,29 +247,35 @@ export const studentsApi = {
 
   startMyExam(resourceId: number) {
     return api
-      .post<ApiResponse<{ attemptUuid: string; resumed: boolean }>>(
-        `${STUDENTS_ENDPOINT}/me/resources/${resourceId}/exam/start`,
-      )
+      .post<
+        ApiResponse<{
+          attemptId: number;
+          attemptUuid: string;
+          resumed: boolean;
+        }>
+      >(`${STUDENTS_ENDPOINT}/me/resources/${resourceId}/exam/start`)
       .then(unwrapApiData);
   },
 
-  findMyExamAttempt(attemptUuid: string) {
+  findMyExamAttempt(attemptId: number, attemptUuid: string) {
     return api
       .get<
         ApiResponse<
           | StudentExamAttempt
           | {
+              attemptId: number;
               attemptUuid: string;
               status: string;
               submitted: true;
               reportAvailable: boolean;
             }
         >
-      >(`${STUDENTS_ENDPOINT}/me/exam-attempts/${attemptUuid}`)
+      >(examAttemptEndpoint(attemptId, attemptUuid))
       .then(unwrapApiData);
   },
 
   saveMyExamAnswer(
+    attemptId: number,
     attemptUuid: string,
     attemptQuestionId: number,
     payload: {
@@ -252,59 +288,60 @@ export const studentsApi = {
   ) {
     return api
       .patch<ApiResponse<{ saved: boolean; savedAt: string }>>(
-        `${STUDENTS_ENDPOINT}/me/exam-attempts/${attemptUuid}/answers/${attemptQuestionId}`,
+        `${examAttemptEndpoint(attemptId, attemptUuid)}/answers/${attemptQuestionId}`,
         payload,
       )
       .then(unwrapApiData);
   },
 
   updateMyExamProgress(
+    attemptId: number,
     attemptUuid: string,
     payload: { attemptQuestionId: number; timeSpentSeconds?: number },
   ) {
     return api
       .patch<ApiResponse<{ saved: boolean; savedAt: string }>>(
-        `${STUDENTS_ENDPOINT}/me/exam-attempts/${attemptUuid}/progress`,
+        `${examAttemptEndpoint(attemptId, attemptUuid)}/progress`,
         payload,
       )
       .then(unwrapApiData);
   },
 
-  submitMyExam(attemptUuid: string) {
+  submitMyExam(attemptId: number, attemptUuid: string) {
     return api
       .post<
         ApiResponse<{
+          attemptId: number;
           attemptUuid: string;
           status: string;
           submittedAt: string | null;
           reportAvailable: boolean;
         }>
-      >(`${STUDENTS_ENDPOINT}/me/exam-attempts/${attemptUuid}/submit`)
+      >(`${examAttemptEndpoint(attemptId, attemptUuid)}/submit`)
       .then(unwrapApiData);
   },
 
-  continueMyExamAfterTimeout(attemptUuid: string) {
+  continueMyExamAfterTimeout(attemptId: number, attemptUuid: string) {
     return api
       .post<
         ApiResponse<
           | StudentExamAttempt
           | {
+              attemptId: number;
               attemptUuid: string;
               status: string;
               submitted: true;
               reportAvailable: boolean;
             }
         >
-      >(
-        `${STUDENTS_ENDPOINT}/me/exam-attempts/${attemptUuid}/continue-after-timeout`,
-      )
+      >(`${examAttemptEndpoint(attemptId, attemptUuid)}/continue-after-timeout`)
       .then(unwrapApiData);
   },
 
-  findMyExamReport(attemptUuid: string) {
+  findMyExamReport(attemptId: number, attemptUuid: string) {
     return api
       .get<ApiResponse<StudentExamReport>>(
-        `${STUDENTS_ENDPOINT}/me/exam-attempts/${attemptUuid}/report`,
+        `${examAttemptEndpoint(attemptId, attemptUuid)}/report`,
       )
       .then(unwrapApiData);
   },
@@ -328,10 +365,11 @@ export const studentsApi = {
       .then((response) => response.data);
   },
 
-  recordMyResourceAccess(resourceId: number) {
+  recordMyResourceAccess(resourceId: number, totalPages?: number) {
     return api
       .post<ApiResponse<StudentDocumentProgress>>(
         `${STUDENTS_ENDPOINT}/me/resources/${resourceId}/access`,
+        totalPages ? { totalPages } : {},
       )
       .then(unwrapApiData);
   },
@@ -396,6 +434,7 @@ export const studentsApi = {
     sessionUuid: string,
     payload: {
       reason: StudentResourceActivityEndReason;
+      active?: boolean;
       currentPositionSeconds?: number;
       pageNumber?: number;
       completed?: boolean;

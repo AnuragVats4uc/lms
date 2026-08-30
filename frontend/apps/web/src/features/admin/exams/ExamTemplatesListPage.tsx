@@ -47,7 +47,6 @@ export function ExamTemplatesListPage() {
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<
     number | undefined
   >(currentUser?.organizationId ?? undefined);
-  const organizationId = currentUser?.organizationId ?? selectedOrganizationId;
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState("all");
@@ -65,11 +64,10 @@ export function ExamTemplatesListPage() {
     queryFn: () => organizationsApi.findAll({ page: 1, limit: 100 }),
     enabled: !currentUser?.organizationId,
   });
-  useEffect(() => {
-    if (currentUser?.organizationId || selectedOrganizationId) return;
-    const firstOrganization = organizations.data?.items[0];
-    if (firstOrganization) setSelectedOrganizationId(firstOrganization.id);
-  }, [currentUser?.organizationId, organizations.data?.items, selectedOrganizationId]);
+  const organizationId =
+    currentUser?.organizationId ??
+    selectedOrganizationId ??
+    organizations.data?.items[0]?.id;
 
   const templates = useQuery({
     queryKey: [
@@ -178,7 +176,7 @@ export function ExamTemplatesListPage() {
                 })) ?? []
               }
               placeholder="Choose organization"
-              value={selectedOrganizationId?.toString() ?? ""}
+              value={organizationId?.toString() ?? ""}
               width="100%"
             />
           ) : null}

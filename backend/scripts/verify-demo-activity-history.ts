@@ -157,8 +157,20 @@ async function main() {
       organizationId: organization.id,
       roles: ['ADMIN'],
     },
+    student.id,
     student.uuid,
-    { from: from.toISOString(), to: to.toISOString(), page: 1, limit: 100 },
+    {
+      from: from.toISOString(),
+      to: to.toISOString(),
+      activityTypes: [
+        'LOGIN_SUCCESS',
+        'LOGIN_FAILED',
+        'LOGOUT',
+        'SESSION_TIMEOUT',
+      ],
+      page: 1,
+      limit: 100,
+    },
     false,
   );
   const visibleTypes = new Set(
@@ -187,13 +199,14 @@ async function main() {
     `${JSON.stringify(
       {
         student: {
+          id: student.id,
           uuid: student.uuid,
           studentCode: student.studentCode,
           email: student.user.email,
         },
         routes: {
-          admin: `/admin/students/${student.uuid}/activity`,
-          teacher: `/teacher/students/${student.uuid}/activity`,
+          admin: `/admin/students/${student.id}/${student.uuid}/activity`,
+          teacher: `/teacher/students/${student.id}/${student.uuid}/activity`,
         },
         records: {
           authenticationAttempts: authenticationAttempts.length,

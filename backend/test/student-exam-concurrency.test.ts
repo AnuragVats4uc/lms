@@ -167,7 +167,7 @@ void test('answer saving stops when submission has already claimed the attempt',
   internals.activateQuestionScope = () => Promise.resolve();
 
   await assert.rejects(
-    service.saveAnswer(user, attempt.uuid, question.id, {
+    service.saveAnswer(user, attempt.id, attempt.uuid, question.id, {
       selectedOptionIds: [71],
     }),
     /no longer active/,

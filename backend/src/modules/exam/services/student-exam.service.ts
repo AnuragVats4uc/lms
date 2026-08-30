@@ -153,7 +153,11 @@ export class StudentExamService {
             resourceTypeCodeSnapshot: 'EXAM',
           },
         });
-        return { attemptUuid: active.uuid, resumed: true };
+        return {
+          attemptId: active.id,
+          attemptUuid: active.uuid,
+          resumed: true,
+        };
       } else {
         throw new ConflictException('This exam attempt cannot be resumed');
       }
@@ -173,7 +177,7 @@ export class StudentExamService {
       ),
     );
 
-    let created: { uuid: string };
+    let created: { id: number; uuid: string };
     try {
       created = await this.prisma.$transaction(async (tx) => {
         const attempt = await tx.studentExamAttempt.create({
@@ -315,18 +319,26 @@ export class StudentExamService {
         concurrentAttempt.expiresAt > new Date() &&
         exam.allowResume
       ) {
-        return { attemptUuid: concurrentAttempt.uuid, resumed: true };
+        return {
+          attemptId: concurrentAttempt.id,
+          attemptUuid: concurrentAttempt.uuid,
+          resumed: true,
+        };
       }
       throw new ConflictException(
         'Another exam attempt was created at the same time. Refresh to continue.',
       );
     }
 
-    return { attemptUuid: created.uuid, resumed: false };
+    return { attemptId: created.id, attemptUuid: created.uuid, resumed: false };
   }
 
-  async getAttempt(user: CurrentUser, attemptUuid: string) {
-    const { student, attempt } = await this.findOwnedAttempt(user, attemptUuid);
+  async getAttempt(user: CurrentUser, attemptId: number, attemptUuid: string) {
+    const { student, attempt } = await this.findOwnedAttempt(
+      user,
+      attemptId,
+      attemptUuid,
+    );
     const synchronized = await this.synchronizeExpiredScopes(
       attempt,
       student.id,
@@ -335,6 +347,7 @@ export class StudentExamService {
     const current = synchronized.attempt;
     if (current.status !== ExamAttemptStatus.IN_PROGRESS) {
       return {
+        attemptId: current.id,
         attemptUuid: current.uuid,
         status: current.status,
         submitted: true,
@@ -346,11 +359,16 @@ export class StudentExamService {
 
   async saveAnswer(
     user: CurrentUser,
+    attemptId: number,
     attemptUuid: string,
     attemptQuestionId: number,
     dto: SaveStudentExamAnswerDto,
   ) {
-    const { student, attempt } = await this.findOwnedAttempt(user, attemptUuid);
+    const { student, attempt } = await this.findOwnedAttempt(
+      user,
+      attemptId,
+      attemptUuid,
+    );
     const synchronized = await this.synchronizeExpiredScopes(
       attempt,
       student.id,
@@ -472,10 +490,15 @@ export class StudentExamService {
 
   async updateProgress(
     user: CurrentUser,
+    attemptId: number,
     attemptUuid: string,
     dto: UpdateStudentExamProgressDto,
   ) {
-    const { student, attempt } = await this.findOwnedAttempt(user, attemptUuid);
+    const { student, attempt } = await this.findOwnedAttempt(
+      user,
+      attemptId,
+      attemptUuid,
+    );
     const synchronized = await this.synchronizeExpiredScopes(
       attempt,
       student.id,
@@ -513,8 +536,12 @@ export class StudentExamService {
     return { saved: true, savedAt: now };
   }
 
-  async submit(user: CurrentUser, attemptUuid: string) {
-    const { student, attempt } = await this.findOwnedAttempt(user, attemptUuid);
+  async submit(user: CurrentUser, attemptId: number, attemptUuid: string) {
+    const { student, attempt } = await this.findOwnedAttempt(
+      user,
+      attemptId,
+      attemptUuid,
+    );
     const synchronized = await this.synchronizeExpiredScopes(
       attempt,
       student.id,
@@ -534,8 +561,16 @@ export class StudentExamService {
     );
   }
 
-  async continueAfterTimeout(user: CurrentUser, attemptUuid: string) {
-    const { student, attempt } = await this.findOwnedAttempt(user, attemptUuid);
+  async continueAfterTimeout(
+    user: CurrentUser,
+    attemptId: number,
+    attemptUuid: string,
+  ) {
+    const { student, attempt } = await this.findOwnedAttempt(
+      user,
+      attemptId,
+      attemptUuid,
+    );
     const synchronized = await this.synchronizeExpiredScopes(
       attempt,
       student.id,
@@ -545,6 +580,7 @@ export class StudentExamService {
     const current = synchronized.attempt;
     if (current.status !== ExamAttemptStatus.IN_PROGRESS) {
       return {
+        attemptId: current.id,
         attemptUuid: current.uuid,
         status: current.status,
         submitted: true,
@@ -554,8 +590,12 @@ export class StudentExamService {
     return this.toAttemptResponse(current, synchronized.pendingTimeout);
   }
 
-  async getReport(user: CurrentUser, attemptUuid: string) {
-    const { student, attempt } = await this.findOwnedAttempt(user, attemptUuid);
+  async getReport(user: CurrentUser, attemptId: number, attemptUuid: string) {
+    const { student, attempt } = await this.findOwnedAttempt(
+      user,
+      attemptId,
+      attemptUuid,
+    );
     const synchronized = await this.synchronizeExpiredScopes(
       attempt,
       student.id,
@@ -567,6 +607,7 @@ export class StudentExamService {
     }
     if (!this.isResultReleased(current.exam, new Date())) {
       return {
+        attemptId: current.id,
         attemptUuid: current.uuid,
         status: current.status,
         released: false,
@@ -724,6 +765,7 @@ export class StudentExamService {
       ? Math.round((totalDurationSeconds / summary.attempted) * 100) / 100
       : 0;
     const response: Record<string, unknown> = {
+      attemptId: current.id,
       attemptUuid: current.uuid,
       status: current.status,
       released: true,
@@ -948,6 +990,7 @@ export class StudentExamService {
       orderBy: { submittedAt: 'desc' },
       take: 10,
       select: {
+        id: true,
         uuid: true,
         attemptNumber: true,
         submittedAt: true,
@@ -960,6 +1003,7 @@ export class StudentExamService {
       const score = Number(row.score ?? 0);
       const maximumScore = Number(row.maximumScore ?? 0);
       return {
+        attemptId: row.id,
         attemptUuid: row.uuid,
         attemptNumber: row.attemptNumber,
         submittedAt: row.submittedAt,
@@ -1071,7 +1115,11 @@ export class StudentExamService {
     return { resource, student };
   }
 
-  private async findOwnedAttempt(user: CurrentUser, attemptUuid: string) {
+  private async findOwnedAttempt(
+    user: CurrentUser,
+    attemptId: number,
+    attemptUuid: string,
+  ) {
     this.ensureStudentRole(user);
     const student = await this.prisma.student.findFirst({
       where: {
@@ -1083,6 +1131,7 @@ export class StudentExamService {
     if (!student) throw new NotFoundException('Student not found');
     const attempt = await this.prisma.studentExamAttempt.findFirst({
       where: {
+        id: attemptId,
         uuid: attemptUuid,
         studentId: student.id,
         exam: {
@@ -1581,6 +1630,7 @@ export class StudentExamService {
         }
       }
       return {
+        attemptId: current.id,
         attemptUuid: current.uuid,
         status,
         submittedAt: now,
@@ -1611,6 +1661,7 @@ export class StudentExamService {
 
   private toSubmissionResponse(attempt: LoadedAttempt) {
     return {
+      attemptId: attempt.id,
       attemptUuid: attempt.uuid,
       status: attempt.status,
       submittedAt: attempt.submittedAt,
@@ -1657,6 +1708,7 @@ export class StudentExamService {
       this.findAvailableQuestion(attempt)?.id ??
       null;
     return {
+      attemptId: attempt.id,
       attemptUuid: attempt.uuid,
       attemptNumber: attempt.attemptNumber,
       attemptLimit: attempt.exam.attemptLimit,

@@ -409,15 +409,17 @@ model ExamImportJob {
 model ExamImportFile {
   id               Int                @id @default(autoincrement())
   examImportJobId  Int                @map("exam_import_job_id")
+  storedObjectId   Int?               @unique(map: "exam_import_files_stored_object_id_unique") @map("stored_object_id")
   kind             ExamImportFileKind
   originalFileName String             @map("original_file_name") @db.VarChar(255)
-  storagePath      String             @map("storage_path") @db.VarChar(500)
+  storagePath      String?            @map("storage_path") @db.VarChar(500)
   fileHash         String             @map("file_hash") @db.VarChar(64)
   mimeType         String             @map("mime_type") @db.VarChar(120)
   sizeBytes        Int                @map("size_bytes")
   createdAt        DateTime           @default(now()) @map("created_at")
 
-  importJob ExamImportJob @relation(fields: [examImportJobId], references: [id], onDelete: Cascade)
+  importJob    ExamImportJob @relation(fields: [examImportJobId], references: [id], onDelete: Cascade)
+  storedObject StoredObject? @relation(fields: [storedObjectId], references: [id], onDelete: SetNull)
 
   @@unique([examImportJobId, kind], map: "exam_import_files_job_kind_unique")
   @@index([fileHash], map: "exam_import_files_hash_idx")

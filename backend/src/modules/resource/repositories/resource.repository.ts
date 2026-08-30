@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Prisma, ResourceStatus } from '@prisma/client';
 
 import { PrismaService } from '../../../prisma';
@@ -7,6 +7,26 @@ import { ResourceQueryDto } from '../dto/resource-query.dto';
 
 const resourceInclude = {
   resourceType: true,
+  documentObject: {
+    select: {
+      id: true,
+      uuid: true,
+      originalFileName: true,
+      mimeType: true,
+      sizeBytes: true,
+      status: true,
+    },
+  },
+  thumbnailObject: {
+    select: {
+      id: true,
+      uuid: true,
+      originalFileName: true,
+      mimeType: true,
+      sizeBytes: true,
+      status: true,
+    },
+  },
 } satisfies Prisma.ResourceInclude;
 
 export type ResourceWithType = Prisma.ResourceGetPayload<{
@@ -19,9 +39,11 @@ export interface ResourceCreateData {
   description?: string;
   resourceTypeId: number;
   documentUrl?: string | null;
+  documentObjectId?: number | null;
   videoUrl?: string | null;
   examId?: number | null;
   thumbnail?: string | null;
+  thumbnailObjectId?: number | null;
   mimeType?: string | null;
   fileSize?: bigint | null;
   durationInSeconds?: number | null;
@@ -44,7 +66,7 @@ export interface NormalizedResourceQuery extends Required<
 
 @Injectable()
 export class ResourceRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   create(data: ResourceCreateData) {
     return this.prisma.$transaction(async (tx) => {
@@ -77,7 +99,12 @@ export class ResourceRepository {
         sessionCourse: {
           select: {
             id: true,
-            session: { select: { organizationId: true } },
+            session: {
+              select: {
+                organizationId: true,
+                organization: { select: { id: true, uuid: true } },
+              },
+            },
           },
         },
       },
@@ -103,6 +130,13 @@ export class ResourceRepository {
   findById(folderId: number, id: number) {
     return this.prisma.resource.findFirst({
       where: { id, folderId },
+      include: resourceInclude,
+    });
+  }
+
+  findByIdAndUuid(folderId: number, id: number, uuid: string) {
+    return this.prisma.resource.findFirst({
+      where: { id, uuid, folderId },
       include: resourceInclude,
     });
   }
@@ -157,6 +191,10 @@ export class ResourceRepository {
       },
       include: resourceInclude,
     });
+  }
+
+  hardDelete(id: number) {
+    return this.prisma.resource.delete({ where: { id } });
   }
 
   private buildWhere(

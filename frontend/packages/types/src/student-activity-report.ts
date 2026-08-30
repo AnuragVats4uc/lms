@@ -89,6 +89,35 @@ export interface StudentActivityResourceBreakdown {
   lastActivityAt: string | null;
 }
 
+export interface StudentActivityDailyTrendPoint {
+  date: string;
+  sessionCount: number;
+  activeDurationSeconds: number;
+  idleDurationSeconds: number;
+}
+
+export interface StudentActivityCategoryBreakdown {
+  category: StudentReportActivityCategory;
+  count: number;
+}
+
+export interface StudentActivityDeviceBreakdown {
+  deviceType: string;
+  browser: string | null;
+  operatingSystem: string | null;
+  sessionCount: number;
+  activeDurationSeconds: number;
+  idleDurationSeconds: number;
+}
+
+export interface StudentActivityResourceTypeBreakdown {
+  resourceType: string;
+  resourceCount: number;
+  sessionCount: number;
+  activeDurationSeconds: number;
+  idleDurationSeconds: number;
+}
+
 export interface StudentActivityReportData {
   student: StudentActivityReportStudent;
   organization: { id: number; name: string; code: string };
@@ -124,6 +153,12 @@ export interface StudentActivityReportData {
     activityLogEntries: number;
   };
   resourceBreakdown: StudentActivityResourceBreakdown[];
+  analytics: {
+    dailyTrend: StudentActivityDailyTrendPoint[];
+    activityCategoryBreakdown: StudentActivityCategoryBreakdown[];
+    deviceBreakdown: StudentActivityDeviceBreakdown[];
+    resourceTypeBreakdown: StudentActivityResourceTypeBreakdown[];
+  };
   filterOptions: {
     courses: Array<{
       sessionCourseId: number;

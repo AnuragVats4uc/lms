@@ -37,7 +37,9 @@ export function StudentExamResourcePage({
   const startMutation = useMutation({
     mutationFn: () => studentsApi.startMyExam(resourceId),
     onSuccess: (result) =>
-      router.push(`/student/exam-attempts/${result.attemptUuid}`),
+      router.push(
+        `/student/exam-attempts/${result.attemptId}/${result.attemptUuid}`,
+      ),
     onError: (error) => {
       setAccessDialogMessage(readApiError(error));
       setAccessDialogOpen(true);
@@ -66,13 +68,23 @@ export function StudentExamResourcePage({
     );
   const data = query.data;
   const openExam = () => {
-    if (data.exam.action === "RESUME" && data.exam.activeAttemptUuid) {
-      router.push(`/student/exam-attempts/${data.exam.activeAttemptUuid}`);
+    if (
+      data.exam.action === "RESUME" &&
+      data.exam.activeAttemptId &&
+      data.exam.activeAttemptUuid
+    ) {
+      router.push(
+        `/student/exam-attempts/${data.exam.activeAttemptId}/${data.exam.activeAttemptUuid}`,
+      );
       return;
     }
-    if (data.exam.action === "VIEW_RESULT" && data.exam.latestAttemptUuid) {
+    if (
+      data.exam.action === "VIEW_RESULT" &&
+      data.exam.latestAttemptId &&
+      data.exam.latestAttemptUuid
+    ) {
       router.push(
-        `/student/exam-attempts/${data.exam.latestAttemptUuid}/report`,
+        `/student/exam-attempts/${data.exam.latestAttemptId}/${data.exam.latestAttemptUuid}/report`,
       );
       return;
     }
@@ -85,9 +97,7 @@ export function StudentExamResourcePage({
   };
   const showReasonAction =
     data.exam.action === "VIEW_RESULT" &&
-    ["ATTEMPT_LIMIT_EXHAUSTED", "EXAM_ENDED"].includes(
-      data.exam.actionReason,
-    );
+    ["ATTEMPT_LIMIT_EXHAUSTED", "EXAM_ENDED"].includes(data.exam.actionReason);
   return (
     <main className="student-folder-page">
       <nav className="student-folder-breadcrumb" aria-label="Breadcrumb">

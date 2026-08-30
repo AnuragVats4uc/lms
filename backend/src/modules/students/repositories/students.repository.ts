@@ -97,6 +97,7 @@ export interface StudentSelfProfileUpdateData {
   state?: string | null;
   postalCode?: string | null;
   avatar?: string | null;
+  avatarObjectId?: number | null;
   guardianName?: string | null;
   guardianPhone?: string | null;
   emergencyContactName?: string | null;
@@ -207,7 +208,20 @@ export class StudentsRepository {
         organization: {
           select: { id: true, uuid: true, name: true, code: true },
         },
-        profile: true,
+        profile: {
+          include: {
+            avatarObject: {
+              select: {
+                id: true,
+                uuid: true,
+                originalFileName: true,
+                mimeType: true,
+                sizeBytes: true,
+                status: true,
+              },
+            },
+          },
+        },
         preferences: true,
         user: {
           select: {
@@ -747,6 +761,7 @@ export class StudentsRepository {
               where: { studentId },
               orderBy: { attemptNumber: 'desc' },
               select: {
+                id: true,
                 uuid: true,
                 attemptNumber: true,
                 status: true,
@@ -901,8 +916,34 @@ export class StudentsRepository {
                       title: true,
                       resourceTypeId: true,
                       resourceType: true,
+                      documentPageCount: true,
                       createdAt: true,
                       updatedAt: true,
+                      videoProgress: {
+                        where: { studentId },
+                        select: { watchedPercentage: true },
+                        take: 1,
+                      },
+                      exam: {
+                        select: {
+                          attempts: {
+                            where: { studentId },
+                            select: { status: true },
+                          },
+                        },
+                      },
+                      activitySessions: {
+                        where: { studentId },
+                        select: {
+                          startedAt: true,
+                          documentPages: {
+                            select: {
+                              pageNumber: true,
+                              activeDurationSeconds: true,
+                            },
+                          },
+                        },
+                      },
                     },
                   },
                 },
@@ -1292,6 +1333,16 @@ export class StudentsRepository {
       },
       include: {
         resourceType: true,
+        documentObject: {
+          select: {
+            id: true,
+            uuid: true,
+            originalFileName: true,
+            mimeType: true,
+            sizeBytes: true,
+            status: true,
+          },
+        },
         exam: {
           include: {
             attempts: {
@@ -1465,6 +1516,41 @@ export class StudentsRepository {
         lastAccessedResourceId: resourceId,
       },
       update: { lastAccessedResourceId: resourceId },
+    });
+  }
+
+  updateDocumentPageCount(resourceId: number, totalPages: number) {
+    return this.prisma.resource.updateMany({
+      where: {
+        id: resourceId,
+        OR: [
+          { documentPageCount: null },
+          { documentPageCount: { not: totalPages } },
+        ],
+      },
+      data: { documentPageCount: totalPages },
+    });
+  }
+
+  findStudentDocumentActivity(studentId: number, resourceId: number) {
+    return this.prisma.studentResourceActivitySession.findMany({
+      where: {
+        studentId,
+        resourceId,
+        resourceTypeCodeSnapshot: 'DOCUMENT',
+      },
+      orderBy: { startedAt: 'desc' },
+      select: {
+        startedAt: true,
+        lastHeartbeatAt: true,
+        lastDocumentPage: true,
+        documentPages: {
+          select: {
+            pageNumber: true,
+            activeDurationSeconds: true,
+          },
+        },
+      },
     });
   }
 

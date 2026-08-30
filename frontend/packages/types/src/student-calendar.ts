@@ -52,7 +52,9 @@ export interface StudentCalendarEvent {
     attemptLimit: number;
     attemptsUsed: number;
     allowResume: boolean;
+    activeAttemptId: number | null;
     activeAttemptUuid: string | null;
+    latestAttemptId: number | null;
     latestAttemptUuid: string | null;
   } | null;
 }

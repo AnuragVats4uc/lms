@@ -52,11 +52,12 @@ model StudentProfile {
   phone          String? @db.VarChar(30)
   alternatePhone String? @map("alternate_phone") @db.VarChar(30)
 
-  address    String? @db.Text
-  city       String? @db.VarChar(100)
-  state      String? @db.VarChar(100)
-  postalCode String? @map("postal_code") @db.VarChar(20)
-  avatar     String?
+  address        String? @db.Text
+  city           String? @db.VarChar(100)
+  state          String? @db.VarChar(100)
+  postalCode     String? @map("postal_code") @db.VarChar(20)
+  avatar         String?
+  avatarObjectId Int?    @unique(map: "student_profiles_avatar_object_id_unique") @map("avatar_object_id")
 
   guardianName          String? @map("guardian_name") @db.VarChar(150)
   guardianPhone         String? @map("guardian_phone") @db.VarChar(30)
@@ -66,7 +67,8 @@ model StudentProfile {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student      Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  avatarObject StoredObject? @relation("StudentAvatarObject", fields: [avatarObjectId], references: [id], onDelete: SetNull)
 
   @@map("student_profiles")
 }

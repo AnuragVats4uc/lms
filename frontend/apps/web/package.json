@@ -16,6 +16,13 @@
   "dependencies": {
     "@floating-ui/react": "^0.27.20",
     "@hookform/resolvers": "^5.2.2",
+    "@tamagui/config": "^2.4.2",
+    "@tamagui/constants": "^2.4.2",
+    "@tamagui/core": "^2.4.2",
+    "@tamagui/font-inter": "^2.4.2",
+    "@tamagui/native": "^2.4.2",
+    "@tamagui/start-transition": "^2.4.2",
+    "@tamagui/themes": "^2.4.2",
     "@repo/api": "workspace:*",
     "@repo/auth": "workspace:*",
     "@repo/hooks": "workspace:*",
@@ -23,6 +30,7 @@
     "@repo/validation": "workspace:*",
     "@tanstack/react-query": "^5.101.2",
     "lucide-react": "^1.23.0",
+    "lucide-react-native": "^1.23.0",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-datepicker": "^9.1.0",
@@ -30,7 +38,10 @@
     "react-hook-form": "^7.62.0",
     "react-pdf": "10.4.1",
     "react-player": "^3.4.0",
+    "react-native-svg": "^15.15.5",
+    "react-native-web": "~0.21.0",
     "tamagui": "^2.4.2",
+    "zod": "^4.1.5",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

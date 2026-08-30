@@ -95,7 +95,9 @@ export function TeacherStudentsPage() {
             id: "activity-report",
             label: "Activity report",
             onAction: (row) =>
-              router.push(`/teacher/students/${row.student.uuid}/activity`),
+              router.push(
+                `/teacher/students/${row.student.id}/${row.student.uuid}/activity`,
+              ),
           },
         ]}
         columns={columns}
@@ -126,7 +128,9 @@ export function TeacherStudentsPage() {
         getRowId={(item) => item.id}
         loading={studentsQuery.isLoading}
         onRowClick={(row) =>
-          router.push(`/teacher/students/${row.student.uuid}/activity`)
+          router.push(
+            `/teacher/students/${row.student.id}/${row.student.uuid}/activity`,
+          )
         }
         onPageChange={setPage}
         onPageSizeChange={(nextLimit) => {

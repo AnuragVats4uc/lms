@@ -22,12 +22,11 @@ export const resourcesApi = {
       .then(unwrapApiData);
   },
   create(folderId: number, payload: CreateResourceRequest) {
-    return api.post<ApiResponse<Resource>>(endpoint(folderId), payload).then(unwrapApiData);
+    return api
+      .post<ApiResponse<Resource>>(endpoint(folderId), payload)
+      .then(unwrapApiData);
   },
-  uploadDocument(
-    folderId: number,
-    payload: FormData,
-  ) {
+  uploadDocument(folderId: number, payload: FormData) {
     return api
       .post<ApiResponse<Resource>>(endpoint(folderId) + "/upload", payload, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -35,19 +34,24 @@ export const resourcesApi = {
       .then(unwrapApiData);
   },
   findAll(folderId: number, query?: ResourceQuery) {
-    return api.get<ApiResponse<ResourceList>>(endpoint(folderId), { params: query }).then(unwrapApiData);
+    return api
+      .get<ApiResponse<ResourceList>>(endpoint(folderId), { params: query })
+      .then(unwrapApiData);
   },
   findOne(folderId: number, resourceId: number) {
-    return api.get<ApiResponse<Resource>>(endpoint(folderId) + "/" + resourceId).then(unwrapApiData);
+    return api
+      .get<ApiResponse<Resource>>(endpoint(folderId) + "/" + resourceId)
+      .then(unwrapApiData);
   },
   update(folderId: number, resourceId: number, payload: UpdateResourceRequest) {
-    return api.patch<ApiResponse<Resource>>(endpoint(folderId) + "/" + resourceId, payload).then(unwrapApiData);
+    return api
+      .patch<ApiResponse<Resource>>(
+        endpoint(folderId) + "/" + resourceId,
+        payload,
+      )
+      .then(unwrapApiData);
   },
-  replaceDocument(
-    folderId: number,
-    resourceId: number,
-    payload: FormData,
-  ) {
+  replaceDocument(folderId: number, resourceId: number, payload: FormData) {
     return api
       .patch<ApiResponse<Resource>>(
         endpoint(folderId) + "/" + resourceId + "/upload",
@@ -56,7 +60,17 @@ export const resourcesApi = {
       )
       .then(unwrapApiData);
   },
+  findDocumentFile(folderId: number, resourceId: number, resourceUuid: string) {
+    return api
+      .get<Blob>(
+        endpoint(folderId) + "/" + resourceId + "/" + resourceUuid + "/file",
+        { responseType: "blob" },
+      )
+      .then((response) => response.data);
+  },
   remove(folderId: number, resourceId: number) {
-    return api.delete<ApiResponse<Resource>>(endpoint(folderId) + "/" + resourceId).then(unwrapApiData);
+    return api
+      .delete<ApiResponse<Resource>>(endpoint(folderId) + "/" + resourceId)
+      .then(unwrapApiData);
   },
 };

@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  ParseUUIDPipe,
   Patch,
   Post,
   Req,
@@ -36,59 +37,75 @@ export class StudentExamController {
     return this.service.start(request.user, resourceId);
   }
 
-  @Get('exam-attempts/:attemptUuid')
+  @Get('exam-attempts/:attemptId/:attemptUuid')
   getAttempt(
     @Req() request: AuthenticatedRequest,
-    @Param('attemptUuid') attemptUuid: string,
+    @Param('attemptId', ParseIntPipe) attemptId: number,
+    @Param('attemptUuid', ParseUUIDPipe) attemptUuid: string,
   ) {
-    return this.service.getAttempt(request.user, attemptUuid);
+    return this.service.getAttempt(request.user, attemptId, attemptUuid);
   }
 
-  @Patch('exam-attempts/:attemptUuid/answers/:attemptQuestionId')
+  @Patch('exam-attempts/:attemptId/:attemptUuid/answers/:attemptQuestionId')
   saveAnswer(
     @Req() request: AuthenticatedRequest,
-    @Param('attemptUuid') attemptUuid: string,
+    @Param('attemptId', ParseIntPipe) attemptId: number,
+    @Param('attemptUuid', ParseUUIDPipe) attemptUuid: string,
     @Param('attemptQuestionId', ParseIntPipe) attemptQuestionId: number,
     @Body() dto: SaveStudentExamAnswerDto,
   ) {
     return this.service.saveAnswer(
       request.user,
+      attemptId,
       attemptUuid,
       attemptQuestionId,
       dto,
     );
   }
 
-  @Patch('exam-attempts/:attemptUuid/progress')
+  @Patch('exam-attempts/:attemptId/:attemptUuid/progress')
   updateProgress(
     @Req() request: AuthenticatedRequest,
-    @Param('attemptUuid') attemptUuid: string,
+    @Param('attemptId', ParseIntPipe) attemptId: number,
+    @Param('attemptUuid', ParseUUIDPipe) attemptUuid: string,
     @Body() dto: UpdateStudentExamProgressDto,
   ) {
-    return this.service.updateProgress(request.user, attemptUuid, dto);
+    return this.service.updateProgress(
+      request.user,
+      attemptId,
+      attemptUuid,
+      dto,
+    );
   }
 
-  @Post('exam-attempts/:attemptUuid/submit')
+  @Post('exam-attempts/:attemptId/:attemptUuid/submit')
   submit(
     @Req() request: AuthenticatedRequest,
-    @Param('attemptUuid') attemptUuid: string,
+    @Param('attemptId', ParseIntPipe) attemptId: number,
+    @Param('attemptUuid', ParseUUIDPipe) attemptUuid: string,
   ) {
-    return this.service.submit(request.user, attemptUuid);
+    return this.service.submit(request.user, attemptId, attemptUuid);
   }
 
-  @Post('exam-attempts/:attemptUuid/continue-after-timeout')
+  @Post('exam-attempts/:attemptId/:attemptUuid/continue-after-timeout')
   continueAfterTimeout(
     @Req() request: AuthenticatedRequest,
-    @Param('attemptUuid') attemptUuid: string,
+    @Param('attemptId', ParseIntPipe) attemptId: number,
+    @Param('attemptUuid', ParseUUIDPipe) attemptUuid: string,
   ) {
-    return this.service.continueAfterTimeout(request.user, attemptUuid);
+    return this.service.continueAfterTimeout(
+      request.user,
+      attemptId,
+      attemptUuid,
+    );
   }
 
-  @Get('exam-attempts/:attemptUuid/report')
+  @Get('exam-attempts/:attemptId/:attemptUuid/report')
   report(
     @Req() request: AuthenticatedRequest,
-    @Param('attemptUuid') attemptUuid: string,
+    @Param('attemptId', ParseIntPipe) attemptId: number,
+    @Param('attemptUuid', ParseUUIDPipe) attemptUuid: string,
   ) {
-    return this.service.getReport(request.user, attemptUuid);
+    return this.service.getReport(request.user, attemptId, attemptUuid);
   }
 }
