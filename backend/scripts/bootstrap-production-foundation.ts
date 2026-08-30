@@ -38,6 +38,35 @@ const foundationRoles = [
   },
 ] as const;
 
+const permissionModules = [
+  'organizations',
+  'users',
+  'students',
+  'roles',
+  'permissions',
+  'session',
+  'course',
+  'session-course',
+  'folder',
+  'resource',
+  'dashboard',
+  'subject',
+  'question',
+  'exam-template',
+  'exam',
+  'exam-import',
+] as const;
+
+const permissionActions = ['create', 'read', 'update', 'delete'] as const;
+
+const foundationPermissions = permissionModules.flatMap((module) =>
+  permissionActions.map((action) => ({
+    module,
+    action,
+    key: `${module}.${action}`,
+    description: `Allows ${action} access for ${module}`,
+  })),
+);
 async function readSuperAdminPassword() {
   const passwordFile = process.env.SUPER_ADMIN_PASSWORD_FILE;
   if (!passwordFile) {
@@ -105,6 +134,54 @@ async function ensureFoundationRoles() {
   return rolesByCode;
 }
 
+async function ensureFoundationPermissions() {
+  const permissionsByKey = new Map<string, { id: number }>();
+
+  for (const permission of foundationPermissions) {
+    const conflictingPermission = await prisma.permission.findFirst({
+      where: {
+        OR: [
+          { key: permission.key },
+          { module: permission.module, action: permission.action },
+        ],
+        NOT: {
+          key: permission.key,
+          module: permission.module,
+          action: permission.action,
+        },
+      },
+      select: { module: true, action: true, key: true },
+    });
+
+    if (conflictingPermission) {
+      throw new Error(
+        `Permission mapping conflict for ${permission.key}: found ${conflictingPermission.key}`,
+      );
+    }
+
+    const savedPermission = await prisma.permission.upsert({
+      where: { key: permission.key },
+      update: {
+        module: permission.module,
+        action: permission.action,
+        description: permission.description,
+      },
+      create: permission,
+      select: { id: true },
+    });
+
+    permissionsByKey.set(permission.key, savedPermission);
+  }
+
+  return permissionsByKey;
+}
+
+async function ensureRolePermissions(roleId: number, permissionIds: number[]) {
+  await prisma.rolePermission.createMany({
+    data: permissionIds.map((permissionId) => ({ roleId, permissionId })),
+    skipDuplicates: true,
+  });
+}
 async function ensureSuperAdmin(password: string, superAdminRoleId: number) {
   const existingUser = await prisma.user.findUnique({
     where: { email: SUPER_ADMIN_EMAIL },
@@ -175,16 +252,34 @@ async function main() {
 
   await seedResourceTypes(prisma);
   const rolesByCode = await ensureFoundationRoles();
+  const permissionsByKey = await ensureFoundationPermissions();
   const superAdminRole = rolesByCode.get('SUPER_ADMIN');
-  if (!superAdminRole) {
-    throw new Error('SUPER_ADMIN role was not initialized');
+  const adminRole = rolesByCode.get('ADMIN');
+  if (!superAdminRole || !adminRole) {
+    throw new Error('SUPER_ADMIN and ADMIN roles must be initialized');
   }
+
+  await ensureRolePermissions(
+    superAdminRole.id,
+    [...permissionsByKey.values()].map(({ id }) => id),
+  );
+  await ensureRolePermissions(
+    adminRole.id,
+    foundationPermissions
+      .filter(
+        ({ module, action }) =>
+          module !== 'organizations' &&
+          !(module === 'permissions' && action !== 'read'),
+      )
+      .map(({ key }) => permissionsByKey.get(key)!.id),
+  );
 
   const accountResult = await ensureSuperAdmin(password, superAdminRole.id);
 
   console.log('Production foundation initialized successfully');
   console.log(`Roles: ${foundationRoles.map(({ code }) => code).join(', ')}`);
   console.log('Resource types: DOCUMENT, VIDEO, EXAM');
+  console.log(`Permissions: ${foundationPermissions.length}`);
   console.log(`Super admin: ${SUPER_ADMIN_EMAIL} (${accountResult})`);
 }
 
