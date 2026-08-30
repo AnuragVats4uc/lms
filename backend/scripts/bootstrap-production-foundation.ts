@@ -45,9 +45,9 @@ async function readSuperAdminPassword() {
   }
 
   const password = (await readFile(passwordFile, 'utf8')).trim();
-  if (password.length < 16) {
+  if (password.length < 12) {
     throw new Error(
-      'The super-admin password must contain at least 16 characters',
+      'The super-admin password must contain at least 12 characters',
     );
   }
 
