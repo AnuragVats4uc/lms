@@ -1,18 +1,21 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OrganizationStatus } from '@prisma/client';
-import { Transform } from 'class-transformer';
+import { Transform, type TransformFnParams } from 'class-transformer';
 import {
   IsEmail,
   IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUppercase,
   IsUrl,
-  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
+
+const trimString = ({ value }: TransformFnParams): unknown => {
+  const candidate: unknown = value;
+  return typeof candidate === 'string' ? candidate.trim() : candidate;
+};
 
 export class CreateOrganizationDto {
   @ApiProperty({
@@ -20,31 +23,12 @@ export class CreateOrganizationDto {
     minLength: 3,
     maxLength: 150,
   })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsString()
   @IsNotEmpty()
   @MinLength(3)
   @MaxLength(150)
   name: string;
-
-  @ApiProperty({
-    example: 'ACME',
-    maxLength: 20,
-  })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
-  @IsString()
-  @IsNotEmpty()
-  @IsUppercase()
-  @MaxLength(20)
-  @Matches(/^[A-Z0-9_-]+$/, {
-    message:
-      'code must contain only uppercase letters, numbers, underscores, or hyphens',
-  })
-  code: string;
 
   @ApiPropertyOptional({
     example: 'Online learning programs.',

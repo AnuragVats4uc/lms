@@ -89,9 +89,14 @@
 
 .lms-crud-select.is-form .lms-crud-select-value {
   color: #0f1d3a;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   line-height: 16px;
+}
+
+.lms-crud-select.is-form .lms-crud-select-value.is-placeholder {
+  color: #94a3b8;
+  font-weight: 500;
 }
 
 .lms-crud-select-chevron {

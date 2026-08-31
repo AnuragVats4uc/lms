@@ -16,7 +16,6 @@ export interface SessionFiltersState {
 
 export interface SessionFormState {
   name: string;
-  code: string;
   description: string;
   startDate: string;
   endDate: string;

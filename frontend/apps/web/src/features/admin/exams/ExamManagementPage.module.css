@@ -3985,7 +3985,7 @@
 }
 .slotSetupGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   align-items: end;
 }
@@ -4197,7 +4197,7 @@
   margin-top: 0;
 }
 .slotBlueprintCard .sectionCard > .rowFields {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .slotBlueprintCard .sectionCard > .policyGrid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5137,6 +5137,32 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 13px;
+}
+.sampleFiles {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 13px;
+  padding: 12px;
+  border: 1px solid #d9e6ee;
+  border-radius: 9px;
+  background: #f8fbfd;
+}
+.sampleFiles > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+.sampleFiles strong {
+  color: #142440;
+  font-size: 12px;
+}
+.sampleFiles span {
+  color: #617086;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.sampleFiles .templateActions {
+  margin-bottom: 0;
 }
 .importStats {
   display: grid;

@@ -12,7 +12,10 @@ export function FormLabel({ children, ...props }: FormLabelProps) {
       mb="$0"
       fontSize="$caption"
       fontWeight="$button"
+      height="auto"
       letterSpacing="$body"
+      lineHeight={16}
+      minH={0}
       {...props}
     >
       {children}

@@ -19,6 +19,7 @@ import {
   RoleUpdateData,
   RolesRepository,
 } from '../repositories/roles.repository';
+import { generateInternalCode } from '../../../common/utils/internal-code';
 
 export interface UserAccessContext {
   roles: string[];
@@ -43,19 +44,26 @@ export class RolesService {
       dto.organizationId,
     );
     const scope = this.scopeForOrganization(organizationId);
+    const code = await generateInternalCode({
+      fallback: 'ROLE',
+      isTaken: async (candidate) =>
+        Boolean(await this.rolesRepository.findByCode(candidate, scope)),
+      maxLength: 50,
+      separator: '_',
+      source: dto.name,
+    });
 
-    if (!this.isSuperAdmin(user) && dto.code === SUPER_ADMIN_ROLE) {
+    if (!this.isSuperAdmin(user) && code === SUPER_ADMIN_ROLE) {
       throw new ForbiddenException('Only a super admin can create this role');
     }
 
     await this.ensureNameIsUnique(dto.name, scope);
-    await this.ensureCodeIsUnique(dto.code, scope);
 
     const role = await this.rolesRepository.create({
       organizationId,
       scope,
       name: dto.name,
-      code: dto.code,
+      code,
       description: dto.description,
       isSystem: organizationId === undefined,
       isActive: dto.isActive ?? true,
@@ -100,10 +108,6 @@ export class RolesService {
 
     if (dto.name) {
       await this.ensureNameIsUnique(dto.name, existing.scope, id);
-    }
-
-    if (dto.code) {
-      await this.ensureCodeIsUnique(dto.code, existing.scope, id);
     }
 
     let role = await this.rolesRepository.update(id, this.toUpdateInput(dto));
@@ -371,20 +375,6 @@ export class RolesService {
 
     if (role) {
       throw new ConflictException('Role name already exists');
-    }
-  }
-
-  private async ensureCodeIsUnique(
-    code: string,
-    scope: string,
-    excludeId?: number,
-  ) {
-    const role = excludeId
-      ? await this.rolesRepository.findByCodeExcludingId(code, scope, excludeId)
-      : await this.rolesRepository.findByCode(code, scope);
-
-    if (role) {
-      throw new ConflictException('Role code already exists');
     }
   }
 

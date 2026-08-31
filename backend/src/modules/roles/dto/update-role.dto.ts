@@ -7,8 +7,6 @@ import {
   IsInt,
   IsOptional,
   IsString,
-  IsUppercase,
-  Matches,
   MaxLength,
   Min,
   MinLength,
@@ -24,17 +22,6 @@ export class UpdateRoleDto {
   @MinLength(3)
   @MaxLength(150)
   name?: string;
-
-  @ApiPropertyOptional({ example: 'ORGANIZATION_ADMIN' })
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
-  @IsOptional()
-  @IsString()
-  @IsUppercase()
-  @MaxLength(50)
-  @Matches(/^[A-Z0-9_]+$/)
-  code?: string;
 
   @ApiPropertyOptional({
     example: 'Can manage organization-scoped LMS data',

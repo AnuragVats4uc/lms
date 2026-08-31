@@ -283,6 +283,19 @@ export class ExamImportController {
     });
   }
 
+  @Get('template-codeless.xlsx')
+  @Permissions('exam-import.read')
+  codelessExcelTemplate() {
+    return new StreamableFile(
+      this.service.createCodelessExcelImportTemplate(),
+      {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        disposition:
+          'attachment; filename="exam-question-code-free-mapping-template.xlsx"',
+      },
+    );
+  }
+
   @Post()
   @Permissions('exam-import.create')
   @UseInterceptors(

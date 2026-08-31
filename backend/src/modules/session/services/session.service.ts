@@ -14,6 +14,7 @@ import {
   SessionRepository,
   SessionUpdateData,
 } from '../repositories/session.repository';
+import { generateInternalCode } from '../../../common/utils/internal-code';
 
 @Injectable()
 export class SessionService {
@@ -25,11 +26,21 @@ export class SessionService {
 
     const startDate = this.toDate(dto.startDate);
     const endDate = this.toDate(dto.endDate);
+    const code = await generateInternalCode({
+      fallback: 'SESSION',
+      isTaken: async (candidate) =>
+        Boolean(
+          await this.sessionRepository.findByCode(organizationId, candidate),
+        ),
+      maxLength: 20,
+      source: dto.name,
+    });
 
     this.ensureStartDateIsBeforeEndDate(startDate, endDate);
 
     const session = await this.sessionRepository.create({
       ...dto,
+      code,
       organizationId,
       startDate,
       endDate,
@@ -158,10 +169,6 @@ export class SessionService {
 
     if (dto.name !== undefined) {
       data.name = dto.name;
-    }
-
-    if (dto.code !== undefined) {
-      data.code = dto.code;
     }
 
     if (dto.description !== undefined) {

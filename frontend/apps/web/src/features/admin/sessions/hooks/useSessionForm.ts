@@ -12,7 +12,6 @@ import type { SessionFormState, SessionToastState } from "../types";
 import { sessionSchema } from "@repo/validation";
 
 export const DEFAULT_SESSION_FORM: SessionFormState = {
-  code: "",
   description: "",
   endDate: "",
   name: "",
@@ -29,7 +28,6 @@ function toInputDate(value: string) {
 
 function toForm(session: Session): SessionFormState {
   return {
-    code: session.code ?? "",
     description: session.description ?? "",
     endDate: toInputDate(session.endDate),
     name: session.name,
@@ -45,7 +43,6 @@ function toPayload(form: SessionFormState): CreateSessionRequest {
     startDate: new Date(form.startDate).toISOString(),
     status: form.status,
   };
-  if (form.code.trim()) payload.code = form.code.trim().toUpperCase();
   if (form.description.trim()) payload.description = form.description.trim();
   return payload;
 }

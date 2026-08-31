@@ -240,7 +240,7 @@ const QuestionDetails = ({
       {comprehensionContent ? (
         <section className={styles.detailSection}>
           <div className={styles.detailHeading}>
-            <strong>Comprehension</strong>
+            <strong>Passage / Directions</strong>
             {comprehensionCode ? <span>{comprehensionCode}</span> : null}
           </div>
           <RichContent value={comprehensionContent} />
@@ -831,6 +831,7 @@ const TemplatesPanel = ({
     enforceSlotTimers,
     enforceSectionTimers,
     slots: slots.map((slot) => ({
+      code: slot.code?.trim() || undefined,
       name: slot.name,
       description: slot.description || undefined,
       instructions: slot.instructions || undefined,
@@ -838,6 +839,7 @@ const TemplatesPanel = ({
       navigationMode: slot.navigationMode,
       autoSubmitOnTimeout: slot.autoSubmitOnTimeout,
       sections: slot.sections.map((section) => ({
+        code: section.code?.trim() || undefined,
         name: section.name,
         durationMinutes: section.durationMinutes,
         questionsToAttempt: section.questionsToAttempt,
@@ -2009,6 +2011,20 @@ const TemplatesPanel = ({
                     <div className={styles.slotSetupPanel}>
                       <div className={styles.slotSetupGrid}>
                         <label>
+                          Slot code
+                          <input
+                            disabled={!isSelectedDraft}
+                            maxLength={60}
+                            onChange={(event) =>
+                              updateSlot(slotIndex, {
+                                code: event.target.value,
+                              })
+                            }
+                            placeholder="e.g., CUET-SLOT-1"
+                            value={slot.code ?? ""}
+                          />
+                        </label>
+                        <label>
                           Slot name
                           <input
                             disabled={!isSelectedDraft}
@@ -2213,6 +2229,20 @@ const TemplatesPanel = ({
                           Complete the section settings and choose its subject.
                         </p>
                         <div className={styles.rowFields}>
+                          <label>
+                            Section code
+                            <input
+                              disabled={!isSelectedDraft}
+                              maxLength={60}
+                              onChange={(event) =>
+                                updateSection(slotIndex, sectionIndex, {
+                                  code: event.target.value,
+                                })
+                              }
+                              placeholder="e.g., QUANT"
+                              value={section.code ?? ""}
+                            />
+                          </label>
                           <label>
                             Section name
                             <input
@@ -2618,7 +2648,7 @@ const SubjectsPanel = ({
               report(
                 examsApi.subjects.create({
                   organizationId,
-                  code: String(form.get("code")),
+                  code: String(form.get("code") || "").trim() || undefined,
                   name: String(form.get("name")),
                   description: String(form.get("description") || ""),
                 }),
@@ -2629,12 +2659,20 @@ const SubjectsPanel = ({
           >
             {organizationSelector}
             <label>
-              Subject name
-              <input name="name" required placeholder="Quantitative Aptitude" />
+              Subject code
+              <input
+                autoComplete="off"
+                maxLength={40}
+                name="code"
+                placeholder="e.g., QUANTITATIVE-APTITUDE"
+              />
+              <small>
+                Leave blank to generate a code from the subject name.
+              </small>
             </label>
             <label>
-              Stable code
-              <input name="code" required placeholder="MATHEMATICS" />
+              Subject name
+              <input name="name" required placeholder="Quantitative Aptitude" />
             </label>
             <label>
               Description
@@ -2748,7 +2786,7 @@ const TopicsPanel = ({
                 examsApi.topics.create({
                   organizationId,
                   subjectId,
-                  code: String(form.get("code")),
+                  code: String(form.get("code") || "").trim() || undefined,
                   name: String(form.get("name")),
                   description: String(form.get("description") || ""),
                 }),
@@ -2772,12 +2810,17 @@ const TopicsPanel = ({
             />
             <div className={styles.rowFields}>
               <label>
-                Topic name
-                <input name="name" placeholder="Percentages" required />
+                Topic code
+                <input
+                  autoComplete="off"
+                  maxLength={60}
+                  name="code"
+                  placeholder="e.g., PERCENTAGES"
+                />
               </label>
               <label>
-                Stable code
-                <input name="code" placeholder="PERCENTAGES" required />
+                Topic name
+                <input name="name" placeholder="Percentages" required />
               </label>
             </div>
             <label>
@@ -3207,7 +3250,6 @@ const QuestionsPanel = ({
         organizationId,
         subjectId: newQuestionSubjectId,
         topicId: newQuestionTopicId || undefined,
-        code: String(form.get("code")),
         questionTypeId,
         difficulty: newQuestionDifficulty,
         content: String(form.get("content")),
@@ -3317,10 +3359,6 @@ const QuestionsPanel = ({
           <form action={create} className={styles.form}>
             {organizationSelector}
             <div className={styles.rowFields}>
-              <label>
-                Code
-                <input name="code" required placeholder="MAT-SC-002" />
-              </label>
               <CrudSelectField
                 label="Subject"
                 onChange={(value) => {
@@ -3736,9 +3774,7 @@ const ImportsPanel = ({
   templates: ExamTemplateListItem[];
   report: Report;
 }) => {
-  type ImportMode = "CODELESS_WORD" | "PAIRED_WORD_EXCEL";
   const [templateId, setTemplateId] = useState(initialTemplateId ?? 0);
-  const [importMode, setImportMode] = useState<ImportMode>("PAIRED_WORD_EXCEL");
   const [scope, setScope] = useState<"SINGLE_SECTION" | "FULL_EXAM">(
     "SINGLE_SECTION",
   );
@@ -3791,19 +3827,15 @@ const ImportsPanel = ({
     try {
       const blob =
         kind === "word"
-          ? importMode === "CODELESS_WORD"
-            ? await examsApi.imports.downloadCodelessWordTemplate()
-            : await examsApi.imports.downloadWordTemplate()
-          : await examsApi.imports.downloadTemplate();
+          ? await examsApi.imports.downloadCodelessWordTemplate()
+          : await examsApi.imports.downloadCodelessExcelTemplate();
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
       anchor.download =
         kind === "word"
-          ? importMode === "CODELESS_WORD"
-            ? "exam-question-code-free-template.docx"
-            : "exam-question-content-template.docx"
-          : "exam-question-mapping-template.xlsx";
+          ? "exam-question-code-free-template.docx"
+          : "exam-question-code-free-mapping-template.xlsx";
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -3813,15 +3845,12 @@ const ImportsPanel = ({
   const stage = async (form: FormData) => {
     const wordFile = form.get("wordFile");
     const excelFile = form.get("excelFile");
-    if (!(wordFile instanceof File) || !version) return;
-    if (importMode === "PAIRED_WORD_EXCEL" && !(excelFile instanceof File))
+    if (!(wordFile instanceof File) || !(excelFile instanceof File) || !version)
       return;
     const payload = new FormData();
-    payload.set("importMode", importMode);
+    payload.set("importMode", "CODELESS_WORD");
     payload.set("wordFile", wordFile);
-    if (importMode === "PAIRED_WORD_EXCEL" && excelFile instanceof File) {
-      payload.set("excelFile", excelFile);
-    }
+    payload.set("excelFile", excelFile);
     payload.set("examTemplateVersionId", String(version.id));
     payload.set("scope", scope);
     if (scope === "SINGLE_SECTION") {
@@ -3887,8 +3916,8 @@ const ImportsPanel = ({
               <p>Assessment Management</p>
               <h1>Question Import Center</h1>
               <span>
-                Stage Word or Excel question files, validate every row, and
-                commit only when ready.
+                Stage the code-free Word content and Excel mapping files,
+                validate every row, and commit only when ready.
               </span>
             </div>
             <img
@@ -3942,52 +3971,33 @@ const ImportsPanel = ({
             <FileSpreadsheet />
           </div>
           <div className={styles.guide}>
-            {importMode === "CODELESS_WORD" ? (
-              <>
-                <strong>Code-free Word import</strong>
-                <code>
-                  Section name | Slot: Slot 1 | Section: Section name | Subject:
-                  Subject name
-                </code>
-                <code>Heading 1: Comprehension - 1 to 5</code>
-                <code>Passage text and/or embedded images</code>
-                <code>Heading 2: Question - 1</code>
-                <code>Question text and/or diagram images</code>
-                <code>
-                  Heading 3: Options - two-column Label / Content table
-                </code>
-                <code>Heading 3: Answer Rules - Field / Value table</code>
-                <code>Heading 3: Explanation - text and/or images</code>
-                <p>
-                  Word can use visible section names and question numbers.
-                  Internal question and comprehension codes are generated during
-                  staging.
-                </p>
-              </>
-            ) : (
-              <>
-                <strong>Two files form one controlled import</strong>
-                <code>Heading 1: Comprehension - RC-001</code>
-                <code>Passage text and/or embedded images</code>
-                <code>Heading 2: Question - ENG-RC-001</code>
-                <code>Question text and/or diagram images</code>
-                <code>
-                  Heading 3: Options → two-column Code / Content table
-                </code>
-                <code>Heading 3: Answer Rules → Field / Value table</code>
-                <code>Heading 3: Explanation → text and/or images</code>
-                <code>Heading 1: Standalone Questions</code>
-                <p>
-                  Word owns content, options, answer rules, and explanations.
-                  The next Heading 2 starts the next question, so no END markers
-                  are needed. A comprehension applies to consecutive questions
-                  until another Comprehension heading or Standalone Questions.
-                  Excel maps matching question codes to slot, section, its
-                  single subject, question type ID, marks, order, and mandatory
-                  status.
-                </p>
-              </>
-            )}
+            <strong>Code-free Word + Excel import</strong>
+            <code>
+              Slot: Slot 1 | Section: English Language | Subject: English
+            </code>
+            <code>Heading 1: Comprehension - 1 to 5</code>
+            <code>Passage text and/or embedded images (add once)</code>
+            <code>Heading 2: Q1.</code>
+            <code>Question text and/or embedded images</code>
+            <code>Heading 3: Options</code>
+            <code>A. Option text and/or image</code>
+            <code>B. Each option starts on its own line</code>
+            <code>Heading 3: Answer Rules</code>
+            <code>Correct Option: A</code>
+            <code>Case Sensitive: No</code>
+            <code>
+              Supporting images are allowed; scoring values must stay as text
+            </code>
+            <code>Heading 3: Explanation</code>
+            <code>Explanation text and/or embedded images</code>
+            <p>
+              Use Directions - 1 to 5 when the shared block contains
+              instructions. Word owns content, images, options, answers, and
+              explanations. Excel owns slot, section, subject, topic, question
+              type, difficulty, marks, order, and mandatory status. Q1. joins
+              Excel question_number 1 within the same slot_code and
+              section_code. Internal codes are generated during staging.
+            </p>
           </div>
           <div className={styles.templateActions}>
             <button
@@ -3996,9 +4006,7 @@ const ImportsPanel = ({
               onClick={() => downloadTemplate("word")}
             >
               <FileText size={16} />
-              {importMode === "CODELESS_WORD"
-                ? "Download code-free Word"
-                : "Download Word template"}
+              Download code-free Word
             </button>
             <button
               type="button"
@@ -4006,24 +4014,37 @@ const ImportsPanel = ({
               onClick={() => downloadTemplate("excel")}
             >
               <FileSpreadsheet size={16} />
-              {importMode === "CODELESS_WORD"
-                ? "Download sample Excel"
-                : "Download Excel mapping"}
+              Download Excel mapping
             </button>
           </div>
+          <div className={styles.sampleFiles}>
+            <div>
+              <strong>Completed RRB NTPC sample</strong>
+              <span>
+                Download a matching Word and Excel pair to see a validated
+                100-question import before preparing your own files.
+              </span>
+            </div>
+            <div className={styles.templateActions}>
+              <a
+                className={styles.secondaryButton}
+                download="RRB_NTPC_Graduate_Mock_Test_01_Code_Free.docx"
+                href="/exam-import-assets/samples/rrb-ntpc-graduate-mock-test-01/RRB_NTPC_Graduate_Mock_Test_01_Code_Free.docx"
+              >
+                <FileText size={16} />
+                Download sample Word
+              </a>
+              <a
+                className={styles.secondaryButton}
+                download="RRB_NTPC_Graduate_Mock_Test_01_Mapping.xlsx"
+                href="/exam-import-assets/samples/rrb-ntpc-graduate-mock-test-01/RRB_NTPC_Graduate_Mock_Test_01_Mapping.xlsx"
+              >
+                <FileSpreadsheet size={16} />
+                Download sample Excel
+              </a>
+            </div>
+          </div>
           <form action={stage} className={styles.form}>
-            <CrudSelectField
-              label="Import format"
-              onChange={(value) => setImportMode(value as ImportMode)}
-              options={[
-                { label: "Code-free Word", value: "CODELESS_WORD" },
-                {
-                  label: "Word + Excel mapping",
-                  value: "PAIRED_WORD_EXCEL",
-                },
-              ]}
-              value={importMode}
-            />
             {embedded ? (
               <div className={styles.embeddedImportDestination}>
                 <span>Current draft destination</span>
@@ -4059,10 +4080,7 @@ const ImportsPanel = ({
               options={[
                 { label: "One section", value: "SINGLE_SECTION" },
                 {
-                  label:
-                    importMode === "CODELESS_WORD"
-                      ? "Full exam (sections from Word)"
-                      : "Full exam (destinations from Excel)",
+                  label: "Full exam (destinations from Excel)",
                   value: "FULL_EXAM",
                 },
               ]}
@@ -4096,12 +4114,10 @@ const ImportsPanel = ({
               Word content file
               <input type="file" name="wordFile" accept=".docx" required />
             </label>
-            {importMode === "PAIRED_WORD_EXCEL" ? (
-              <label>
-                Excel mapping file
-                <input type="file" name="excelFile" accept=".xlsx" required />
-              </label>
-            ) : null}
+            <label>
+              Excel mapping file
+              <input type="file" name="excelFile" accept=".xlsx" required />
+            </label>
             <button
               className={styles.primaryButton}
               disabled={!version || (scope === "SINGLE_SECTION" && !sectionId)}
@@ -4123,11 +4139,7 @@ const ImportsPanel = ({
             <Empty
               icon={FileUp}
               title="No staged import"
-              text={
-                importMode === "CODELESS_WORD"
-                  ? "Upload one .docx file to validate generated question codes before import."
-                  : "Upload one .docx content file and one .xlsx mapping file to validate their matching question codes."
-              }
+              text="Upload one code-free .docx content file and one .xlsx mapping file. Q numbers are joined within each slot and section."
             />
           ) : (
             <>
@@ -4297,7 +4309,6 @@ const SchedulePanel = ({
         organizationId,
         sessionId,
         examTemplateVersionId: version.id,
-        code: String(form.get("code")),
         title: String(form.get("title")),
         instructions: String(form.get("instructions") || ""),
         availableFrom: new Date(
@@ -4394,10 +4405,6 @@ const SchedulePanel = ({
               <label>
                 Exam title
                 <input name="title" required placeholder="CUET Mock Test 02" />
-              </label>
-              <label>
-                Code
-                <input name="code" required placeholder="CUET-MOCK-02" />
               </label>
             </div>
             <CrudSelectField

@@ -33,7 +33,7 @@ export interface DashboardHeaderProps {
   profile: DashboardHeaderProfile;
   profileActions?: DashboardHeaderProfileAction[];
   profileOnPress?: () => void;
-  searchPlaceholder: string;
+  searchPlaceholder?: string;
   onSearchSubmit?: (value: string) => void;
   shortcutLabel?: string;
 }

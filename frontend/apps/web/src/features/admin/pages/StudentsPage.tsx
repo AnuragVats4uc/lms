@@ -65,7 +65,6 @@ const initialForm: StudentForm = {
   rollNumber: "",
   sessionCourseIds: [],
   sessionId: "",
-  studentCode: "",
 };
 
 function toCreate(form: StudentForm): CreateStudentRequest {
@@ -88,7 +87,6 @@ function toCreate(form: StudentForm): CreateStudentRequest {
   if (form.lastName.trim()) payload.lastName = form.lastName.trim();
   if (form.organizationId) payload.organizationId = Number(form.organizationId);
   if (form.rollNumber.trim()) payload.rollNumber = form.rollNumber.trim();
-  if (form.studentCode.trim()) payload.studentCode = form.studentCode.trim();
 
   return payload;
 }
@@ -109,7 +107,6 @@ function toUpdate(form: StudentForm): UpdateStudentRequest {
   if (form.organizationId) payload.organizationId = Number(form.organizationId);
   if (form.password) payload.password = form.password;
   if (form.rollNumber.trim()) payload.rollNumber = form.rollNumber.trim();
-  if (form.studentCode.trim()) payload.studentCode = form.studentCode.trim();
 
   return payload;
 }
@@ -302,11 +299,6 @@ function StudentFormFields({
           onChange={(value) => onChange("email", value)}
           type="email"
           value={form.email}
-        />
-        <TextField
-          label="Student code"
-          onChange={(value) => onChange("studentCode", value)}
-          value={form.studentCode}
         />
         <TextField
           label="Admission number"
@@ -580,7 +572,6 @@ export function StudentsPage() {
         sessionId: student.enrollments?.[0]?.session.id
           ? String(student.enrollments[0].session.id)
           : "",
-        studentCode: student.studentCode ?? "",
       })}
       toUpdatePayload={toUpdate}
       update={(id, payload) => studentsApi.update(id, payload)}

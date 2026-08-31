@@ -32,7 +32,6 @@ import { FormCheckbox, FormInput, FormTextArea, Text, YStack } from "@repo/ui";
 
 type RoleForm = RoleFormValues;
 const initialForm: RoleForm = {
-  code: "",
   description: "",
   isActive: true,
   name: "",
@@ -42,7 +41,6 @@ const initialForm: RoleForm = {
 function toCreate(form: RoleForm): CreateRoleRequest {
   const permissionIds = form.permissionIds.map(Number);
   return {
-    code: form.code.trim().toUpperCase(),
     description: form.description.trim() || undefined,
     isActive: form.isActive,
     name: form.name.trim(),
@@ -82,13 +80,6 @@ function Form({
       ) : null}
       <div className="lms-form-field">
         <FormInput autoFocus label="Name" name="name" />
-      </div>
-      <div className="lms-form-field">
-        <FormInput
-          label="Code"
-          name="code"
-          transform={(value) => value.toUpperCase()}
-        />
       </div>
       <div className="lms-form-field">
         <FormTextArea label="Description" name="description" rows={4} />
@@ -307,7 +298,6 @@ export function RolesPage() {
       setActive={(id, active) => rolesApi.update(id, { isActive: active })}
       toCreatePayload={toCreate}
       toForm={(role) => ({
-        code: role.code,
         description: role.description ?? "",
         isActive: role.isActive,
         name: role.name,

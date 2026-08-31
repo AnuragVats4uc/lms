@@ -121,11 +121,12 @@ export class TemplateListQueryDto extends OrganizationScopedQueryDto {
 }
 
 export class CreateSubjectDto extends OrganizationScopedQueryDto {
+  @IsOptional()
   @Transform(trimmed)
   @IsString()
   @IsNotEmpty()
   @MaxLength(40)
-  code!: string;
+  code?: string;
 
   @Transform(trimmed)
   @IsString()
@@ -176,11 +177,12 @@ export class CreateTopicDto extends OrganizationScopedQueryDto {
   @Min(1)
   subjectId!: number;
 
+  @IsOptional()
   @Transform(trimmed)
   @IsString()
   @IsNotEmpty()
   @MaxLength(60)
-  code!: string;
+  code?: string;
 
   @Transform(trimmed)
   @IsString()
@@ -249,12 +251,6 @@ export class CreateQuestionDto extends OrganizationScopedQueryDto {
   @IsInt()
   @Min(1)
   topicId?: number;
-
-  @Transform(trimmed)
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(80)
-  code!: string;
 
   @Type(() => Number)
   @IsInt()
@@ -333,13 +329,6 @@ export class CreateQuestionDto extends OrganizationScopedQueryDto {
 }
 
 export class CreateExamTemplateDto extends OrganizationScopedQueryDto {
-  @IsOptional()
-  @Transform(trimmed)
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(60)
-  code?: string;
-
   @Transform(trimmed)
   @IsString()
   @IsNotEmpty()
@@ -377,13 +366,6 @@ export class CreateExamTemplateDto extends OrganizationScopedQueryDto {
 }
 
 export class UpdateExamTemplateDto {
-  @IsOptional()
-  @Transform(trimmed)
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(60)
-  code?: string;
-
   @IsOptional()
   @Transform(trimmed)
   @IsString()
@@ -579,12 +561,6 @@ export class CreateExamDto extends OrganizationScopedQueryDto {
   @IsInt()
   @Min(1)
   examTemplateVersionId!: number;
-
-  @Transform(trimmed)
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(80)
-  code!: string;
 
   @Transform(trimmed)
   @IsString()

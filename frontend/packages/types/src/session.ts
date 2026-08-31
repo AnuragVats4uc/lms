@@ -3,11 +3,7 @@ import { PaginatedData } from "./api";
 export type SessionStatus = "UPCOMING" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
 
 export type SessionSortField =
-  | "name"
-  | "startDate"
-  | "endDate"
-  | "createdAt"
-  | "updatedAt";
+  "name" | "startDate" | "endDate" | "createdAt" | "updatedAt";
 
 export type SessionSortDirection = "asc" | "desc";
 
@@ -28,7 +24,6 @@ export interface Session {
 
 export interface CreateSessionRequest {
   name: string;
-  code?: string;
   description?: string;
   startDate: string;
   endDate: string;

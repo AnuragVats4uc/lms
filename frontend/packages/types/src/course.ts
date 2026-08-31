@@ -20,7 +20,6 @@ export interface Course {
 
 export interface CreateCourseRequest {
   name: string;
-  code: string;
   description?: string;
   thumbnail?: string;
   durationInDays?: number;

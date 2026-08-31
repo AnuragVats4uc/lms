@@ -233,6 +233,7 @@ const searchInputStyle = {
 const actionsStyle = {
   alignItems: "center",
   flexShrink: 0,
+  marginLeft: "auto",
   minWidth: 0,
 } satisfies CSSProperties;
 
@@ -313,8 +314,8 @@ export const DashboardHeader = memo(function DashboardHeader({
       viewportPadding,
       Math.min(
         window.innerWidth - menuWidth - viewportPadding,
-        rect.right - menuWidth
-      )
+        rect.right - menuWidth,
+      ),
     );
     const hasBottomSpace =
       rect.bottom + menuHeight + viewportPadding <= window.innerHeight;
@@ -368,36 +369,40 @@ export const DashboardHeader = memo(function DashboardHeader({
           {leadingAction}
         </XStack>
       ) : null}
-      <SearchFrame
-        className="lms-dashboard-header-search"
-        style={{
-          ...searchStyle,
-          ...(isSearchFocused ? searchFocusedStyle : null),
-        }}
-      >
-        <Search
-          aria-hidden="true"
-          color="#52627A"
-          size={20}
-          strokeWidth={2}
-        />
-        <SearchInput
-          aria-label={searchPlaceholder}
-          placeholder={searchPlaceholder}
-          placeholderTextColor={"#8C9AAF" as never}
-          onBlur={() => setIsSearchFocused(false)}
-          onFocus={() => setIsSearchFocused(true)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              onSearchSubmit?.((event.currentTarget as HTMLInputElement).value);
-            }
+      {searchPlaceholder ? (
+        <SearchFrame
+          className="lms-dashboard-header-search"
+          style={{
+            ...searchStyle,
+            ...(isSearchFocused ? searchFocusedStyle : null),
           }}
-          style={searchInputStyle}
-        />
-        <ShortcutBadge className="lms-dashboard-header-shortcut">
-          {shortcutLabel}
-        </ShortcutBadge>
-      </SearchFrame>
+        >
+          <Search
+            aria-hidden="true"
+            color="#52627A"
+            size={20}
+            strokeWidth={2}
+          />
+          <SearchInput
+            aria-label={searchPlaceholder}
+            placeholder={searchPlaceholder}
+            placeholderTextColor={"#8C9AAF" as never}
+            onBlur={() => setIsSearchFocused(false)}
+            onFocus={() => setIsSearchFocused(true)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                onSearchSubmit?.(
+                  (event.currentTarget as HTMLInputElement).value,
+                );
+              }
+            }}
+            style={searchInputStyle}
+          />
+          <ShortcutBadge className="lms-dashboard-header-shortcut">
+            {shortcutLabel}
+          </ShortcutBadge>
+        </SearchFrame>
+      ) : null}
 
       <HeaderActionsFrame
         className="lms-dashboard-header-actions"
@@ -478,49 +483,49 @@ export const DashboardHeader = memo(function DashboardHeader({
               width: "100%",
             }}
           >
-          <AvatarFrame style={centerStyle}>
-            {profile.imageSrc ? (
-              <img
-                alt=""
-                src={profile.imageSrc}
-                style={{
-                  height: "100%",
-                  objectFit: "cover",
-                  width: "100%",
-                }}
-              />
-            ) : (
-              <Text color="#047857" fontSize="$label" fontWeight="$button">
-                {profile.name.slice(0, 1)}
+            <AvatarFrame style={centerStyle}>
+              {profile.imageSrc ? (
+                <img
+                  alt=""
+                  src={profile.imageSrc}
+                  style={{
+                    height: "100%",
+                    objectFit: "cover",
+                    width: "100%",
+                  }}
+                />
+              ) : (
+                <Text color="#047857" fontSize="$label" fontWeight="$button">
+                  {profile.name.slice(0, 1)}
+                </Text>
+              )}
+            </AvatarFrame>
+            <YStack flex={1} style={{ minWidth: 0 }}>
+              <Text
+                color="#172033"
+                fontSize="$label"
+                fontWeight="$button"
+                lineHeight="$label"
+                numberOfLines={1}
+              >
+                {profile.name}
               </Text>
-            )}
-          </AvatarFrame>
-          <YStack flex={1} style={{ minWidth: 0 }}>
-            <Text
-              color="#172033"
-              fontSize="$label"
-              fontWeight="$button"
-              lineHeight="$label"
-              numberOfLines={1}
-            >
-              {profile.name}
-            </Text>
-            <Text
+              <Text
+                color="#64748B"
+                fontSize="$caption"
+                fontWeight="$caption"
+                lineHeight="$caption"
+                numberOfLines={1}
+              >
+                {profile.role}
+              </Text>
+            </YStack>
+            <ChevronDown
+              aria-hidden="true"
               color="#64748B"
-              fontSize="$caption"
-              fontWeight="$caption"
-              lineHeight="$caption"
-              numberOfLines={1}
-            >
-              {profile.role}
-            </Text>
-          </YStack>
-          <ChevronDown
-            aria-hidden="true"
-            color="#64748B"
-            size={16}
-            strokeWidth={2.2}
-          />
+              size={16}
+              strokeWidth={2.2}
+            />
           </ProfileFrame>
         </div>
 
@@ -583,7 +588,7 @@ export const DashboardHeader = memo(function DashboardHeader({
                   </button>
                 ))}
               </div>,
-              document.body
+              document.body,
             )
           : null}
       </HeaderActionsFrame>

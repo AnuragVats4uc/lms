@@ -30,18 +30,6 @@ export class UpdateCourseDto {
   name?: string;
 
   @ApiPropertyOptional({
-    example: 'JEE-FDN',
-    maxLength: 30,
-  })
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
-  @IsOptional()
-  @IsString()
-  @MaxLength(30)
-  code?: string;
-
-  @ApiPropertyOptional({
     example: 'Foundation course for JEE aspirants.',
   })
   @IsOptional()

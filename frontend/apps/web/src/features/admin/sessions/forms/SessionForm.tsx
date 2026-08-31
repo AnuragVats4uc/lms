@@ -54,14 +54,6 @@ export function SessionForm({
             />
           </div>
           <div className="lms-form-field">
-            <FormInput
-              label="Code"
-              name="code"
-              placeholder="AY2526"
-              transform={(value) => value.toUpperCase()}
-            />
-          </div>
-          <div className="lms-form-field">
             <CrudFormDateTimePicker
               label="Start date"
               name="startDate"

@@ -997,7 +997,7 @@ function QuestionReview({
       <div className={styles.questionBody}>
         {question.comprehension ? (
           <section className={styles.passage}>
-            <strong>Passage</strong>
+            <strong>Passage / Directions</strong>
             <div
               className={styles.rich}
               dangerouslySetInnerHTML={{

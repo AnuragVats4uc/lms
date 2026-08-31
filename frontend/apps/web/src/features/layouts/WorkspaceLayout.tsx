@@ -44,17 +44,6 @@ const WorkspaceLayout = ({
   const isTeacherWorkspace = workspaceKind === "teacher";
   const isSuperAdmin = Boolean(currentUser?.roles.includes("SUPER_ADMIN"));
   const isStudentStandaloneRoute = pathname === "/student";
-  const routePrefix = isStudentWorkspace
-    ? "/student"
-    : isTeacherWorkspace
-      ? "/teacher"
-      : "/admin";
-  const adminSearchTarget = isSuperAdmin ? "organizations" : "users";
-  const searchTarget = isStudentWorkspace
-    ? "resources"
-    : isTeacherWorkspace
-      ? "resources"
-      : adminSearchTarget;
   const visibleNavigation = navigation.filter(
     (item) =>
       (!item.superAdminOnly || isSuperAdmin) &&
@@ -92,21 +81,24 @@ const WorkspaceLayout = ({
     currentUser?.role ??
     currentUser?.roles?.[0] ??
     (isStudentWorkspace ? "Student" : "Admin");
-  const headerActions = [
-    {
-      icon: <CalendarDays color="#059669" size={20} strokeWidth={2.1} />,
-      label: "Open calendar",
-    },
-    {
-      icon: <Bell color="#0F1D3A" size={20} strokeWidth={2.1} />,
-      label: "View notifications",
-      notificationCount: isStudentWorkspace ? unreadStudentNotifications : 0,
-    },
-    {
-      icon: <CircleHelp color="#0F1D3A" size={20} strokeWidth={2.1} />,
-      label: "Open help",
-    },
-  ].filter((action) => !isStudentWorkspace || action.label !== "Open help");
+  const headerActions = isStudentWorkspace
+    ? [
+        {
+          icon: <CalendarDays color="#059669" size={20} strokeWidth={2.1} />,
+          label: "Open calendar",
+        },
+        {
+          icon: <Bell color="#0F1D3A" size={20} strokeWidth={2.1} />,
+          label: "View notifications",
+          notificationCount: unreadStudentNotifications,
+        },
+      ]
+    : [
+        {
+          icon: <CircleHelp color="#0F1D3A" size={20} strokeWidth={2.1} />,
+          label: "Open help",
+        },
+      ];
   const handleLogout = () => {
     if (logoutMutation.isPending) {
       return;
@@ -124,7 +116,12 @@ const WorkspaceLayout = ({
 
   return (
     <XStack
-      className="lms-workspace-shell"
+      className={[
+        "lms-workspace-shell",
+        isAdminWorkspace ? "lms-admin-workspace" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       style={{
         backgroundColor: "#FCFDFD",
         height: "100vh",
@@ -197,14 +194,18 @@ const WorkspaceLayout = ({
               <Menu aria-hidden="true" color="#0F1D3A" size={20} />
             </Button>
           }
-          onSearchSubmit={(value) => {
-            const search = value.trim();
-            router.push(
-              search
-                ? `${routePrefix}/${searchTarget}?search=${encodeURIComponent(search)}`
-                : `${routePrefix}/${searchTarget}`,
-            );
-          }}
+          onSearchSubmit={
+            isTeacherWorkspace
+              ? (value) => {
+                  const search = value.trim();
+                  router.push(
+                    search
+                      ? `/teacher/resources?search=${encodeURIComponent(search)}`
+                      : "/teacher/resources",
+                  );
+                }
+              : undefined
+          }
           organizationIcon={
             <Building2 color="#52627A" size={20} strokeWidth={2} />
           }
@@ -273,13 +274,9 @@ const WorkspaceLayout = ({
             )
           }
           searchPlaceholder={
-            isStudentWorkspace
-              ? "Search for courses, resources, or anything..."
-              : isTeacherWorkspace
-                ? "Search your courses, resources, or students..."
-                : isSuperAdmin
-                  ? "Search organizations, courses, resources, users..."
-                  : "Search users, courses, resources..."
+            isTeacherWorkspace
+              ? "Search your courses, resources, or students..."
+              : undefined
           }
           shortcutLabel="⌘ K"
         />

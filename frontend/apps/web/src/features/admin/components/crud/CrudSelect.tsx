@@ -79,6 +79,9 @@ export const CrudSelect = ({
         ? (selectedOptions[0]?.label ?? placeholder)
         : selectedLabel(selectedOptions.length)
     : (selectedOption?.label ?? placeholder);
+  const isPlaceholderValue = multiple
+    ? selectedOptions.length === 0
+    : selectedOption === undefined;
 
   const updateMenuPosition = useCallback(() => {
     const root = rootRef.current;
@@ -193,7 +196,15 @@ export const CrudSelect = ({
             {label}
           </span>
         ) : null}
-        <span className="lms-crud-select-value lms-organization-select-value">
+        <span
+          className={[
+            "lms-crud-select-value",
+            "lms-organization-select-value",
+            isPlaceholderValue ? "is-placeholder" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
           {loading ? "Loading..." : displayValue}
         </span>
         {loading ? (

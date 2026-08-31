@@ -20,11 +20,13 @@ export const AppTextArea: ForwardRefExoticComponent<
       background="#FCFCFD"
       borderWidth={1}
       borderColor="#D8E1EC"
+      color="#172033"
       rounded="$3"
-      fontSize="$caption"
-      fontWeight="$body"
+      fontSize={13}
+      fontWeight={600}
       letterSpacing="$body"
       height={96}
+      placeholderTextColor={"#94A3B8" as never}
       p="$3"
       focusStyle={{
         background: "#FFFFFF",

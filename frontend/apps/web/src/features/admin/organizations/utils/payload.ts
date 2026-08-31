@@ -9,13 +9,12 @@ export const toCreatePayload = (
   form: AddOrganizationFormState,
 ): CreateOrganizationRequest => {
   const payload: CreateOrganizationRequest = {
-    code: form.code.trim().toUpperCase(),
     name: form.name.trim(),
     status: form.status,
   };
 
   const optionalFields: Array<
-    keyof Omit<AddOrganizationFormState, "code" | "name" | "status">
+    keyof Omit<AddOrganizationFormState, "name" | "status">
   > = ["address", "description", "email", "phone", "website"];
 
   optionalFields.forEach((field) => {
@@ -40,7 +39,6 @@ export const toOrganizationForm = (
 ): AddOrganizationFormState => {
   return {
     address: organization.address ?? "",
-    code: organization.code,
     description: organization.description ?? "",
     email: organization.email ?? "",
     name: organization.name,

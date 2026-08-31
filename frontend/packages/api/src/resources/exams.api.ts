@@ -33,7 +33,7 @@ export const examsApi = {
         .then(unwrapApiData),
     create: (payload: {
       organizationId?: number;
-      code: string;
+      code?: string;
       name: string;
       description?: string;
     }) =>
@@ -55,7 +55,7 @@ export const examsApi = {
     create: (payload: {
       organizationId?: number;
       subjectId: number;
-      code: string;
+      code?: string;
       name: string;
       description?: string;
       sortOrder?: number;
@@ -87,7 +87,6 @@ export const examsApi = {
       organizationId?: number;
       subjectId: number;
       topicId?: number;
-      code: string;
       questionTypeId: number;
       difficulty?: QuestionDifficulty;
       content: string;
@@ -122,7 +121,6 @@ export const examsApi = {
         .then(unwrapApiData),
     create: (payload: {
       organizationId?: number;
-      code?: string;
       name: string;
       description?: string;
       instructions?: string;
@@ -137,7 +135,6 @@ export const examsApi = {
     update: (
       id: number,
       payload: {
-        code?: string;
         name?: string;
         description?: string;
       },
@@ -207,6 +204,12 @@ export const examsApi = {
     downloadCodelessWordTemplate: () =>
       api
         .get<Blob>("/exam-imports/template-codeless.docx", {
+          responseType: "blob",
+        })
+        .then((response) => response.data),
+    downloadCodelessExcelTemplate: () =>
+      api
+        .get<Blob>("/exam-imports/template-codeless.xlsx", {
           responseType: "blob",
         })
         .then((response) => response.data),

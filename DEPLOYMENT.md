@@ -44,7 +44,7 @@ TLS URL parameters in `DATABASE_URL`.
 The Render start command runs:
 
 ```bash
-prisma migrate deploy && node dist/src/main
+prisma migrate deploy && node dist/main.js
 ```
 
 ### Utho object storage rollout

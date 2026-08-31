@@ -57,6 +57,15 @@ export class SessionRepository {
     });
   }
 
+  findByCode(organizationId: number, code: string) {
+    return this.prisma.session.findFirst({
+      where: {
+        organizationId,
+        code,
+      },
+    });
+  }
+
   findByNameExcludingId(organizationId: number, name: string, id: number) {
     return this.prisma.session.findFirst({
       where: {

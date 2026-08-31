@@ -1,4 +1,4 @@
-import { AppInput, FormInput, FormTextArea } from "@repo/ui";
+import { FormInput, FormTextArea } from "@repo/ui";
 import type { OrganizationFormValues } from "@repo/validation";
 import { CrudFormSelect } from "../../components/crud";
 
@@ -27,33 +27,6 @@ export const OrganizationFormFields = () => {
           placeholder="Acme Learning Institute"
           {...inputStyleProps}
         />
-      </div>
-
-      <div className="lms-form-field">
-        <FormInput<OrganizationFormValues, "code">
-          label="Code"
-          maxLength={20}
-          name="code"
-          pattern="[A-Z0-9_-]+"
-          placeholder="ACME"
-          {...inputStyleProps}
-        >
-          {({ field, fieldState, errorId, inputId }) => (
-            <AppInput
-              {...inputStyleProps}
-              ref={field.ref}
-              id={inputId}
-              aria-describedby={fieldState.error ? errorId : undefined}
-              aria-invalid={fieldState.invalid}
-              maxLength={20}
-              name={inputId}
-              placeholder="ACME"
-              value={field.value == null ? "" : String(field.value)}
-              onBlur={field.onBlur}
-              onChangeText={(value) => field.onChange(value.toUpperCase())}
-            />
-          )}
-        </FormInput>
       </div>
 
       <div className="lms-form-field">

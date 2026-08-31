@@ -111,7 +111,6 @@ export interface CreateStudentRequest {
   email: string;
   password: string;
   phone?: string;
-  studentCode?: string;
   admissionNumber?: string;
   rollNumber?: string;
   dateOfBirth?: string;

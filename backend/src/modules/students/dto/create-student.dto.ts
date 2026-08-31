@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform, Type } from 'class-transformer';
+import { Transform, type TransformFnParams, Type } from 'class-transformer';
 import {
   IsEmail,
   ArrayMinSize,
@@ -14,6 +14,18 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+
+const trimString = ({ value }: TransformFnParams): unknown => {
+  const candidate: unknown = value;
+  return typeof candidate === 'string' ? candidate.trim() : candidate;
+};
+
+const normalizeEmail = ({ value }: TransformFnParams): unknown => {
+  const candidate: unknown = value;
+  return typeof candidate === 'string'
+    ? candidate.trim().toLowerCase()
+    : candidate;
+};
 
 export class CreateStudentDto {
   @ApiPropertyOptional({ example: 1 })
@@ -50,9 +62,7 @@ export class CreateStudentDto {
   digitalLibraryLocationUuid?: string;
 
   @ApiProperty({ example: 'Rahul' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsString()
   @IsNotEmpty()
   @MinLength(2)
@@ -60,18 +70,14 @@ export class CreateStudentDto {
   firstName: string;
 
   @ApiPropertyOptional({ example: 'Sharma' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsOptional()
   @IsString()
   @MaxLength(100)
   lastName?: string;
 
   @ApiProperty({ example: 'student@example.com' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim().toLowerCase() : value,
-  )
+  @Transform(normalizeEmail)
   @IsEmail()
   email: string;
 
@@ -83,36 +89,21 @@ export class CreateStudentDto {
   password: string;
 
   @ApiPropertyOptional({ example: '+919999999999' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsOptional()
   @IsString()
   @MaxLength(30)
   phone?: string;
 
-  @ApiPropertyOptional({ example: 'STU-1001' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
-  @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  studentCode?: string;
-
   @ApiPropertyOptional({ example: 'ADM-2026-001' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsOptional()
   @IsString()
   @MaxLength(50)
   admissionNumber?: string;
 
   @ApiPropertyOptional({ example: 'IPMAT-001' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsOptional()
   @IsString()
   @MaxLength(50)
@@ -124,97 +115,75 @@ export class CreateStudentDto {
   dateOfBirth?: string;
 
   @ApiPropertyOptional({ example: 'Female' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsOptional()
   @IsString()
   @MaxLength(30)
   gender?: string;
 
   @ApiPropertyOptional({ example: '+918888888888' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsOptional()
   @IsString()
   @MaxLength(30)
   alternatePhone?: string;
 
   @ApiPropertyOptional({ example: '123 Main Road' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsOptional()
   @IsString()
   address?: string;
 
   @ApiPropertyOptional({ example: 'Indore' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsOptional()
   @IsString()
   @MaxLength(100)
   city?: string;
 
   @ApiPropertyOptional({ example: 'Madhya Pradesh' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsOptional()
   @IsString()
   @MaxLength(100)
   state?: string;
 
   @ApiPropertyOptional({ example: '452001' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsOptional()
   @IsString()
   @MaxLength(20)
   postalCode?: string;
 
   @ApiPropertyOptional({ example: 'https://cdn.example.com/avatar.png' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsOptional()
   @IsString()
   avatar?: string;
 
   @ApiPropertyOptional({ example: 'Raj Sharma' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsOptional()
   @IsString()
   @MaxLength(150)
   guardianName?: string;
 
   @ApiPropertyOptional({ example: '+917777777777' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsOptional()
   @IsString()
   @MaxLength(30)
   guardianPhone?: string;
 
   @ApiPropertyOptional({ example: 'Priya Sharma' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsOptional()
   @IsString()
   @MaxLength(150)
   emergencyContactName?: string;
 
   @ApiPropertyOptional({ example: '+916666666666' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimString)
   @IsOptional()
   @IsString()
   @MaxLength(30)

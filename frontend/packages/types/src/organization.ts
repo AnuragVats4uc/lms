@@ -21,7 +21,6 @@ export interface Organization {
 
 export interface CreateOrganizationRequest {
   name: string;
-  code: string;
   description?: string;
   logo?: string;
   website?: string;
@@ -31,8 +30,7 @@ export interface CreateOrganizationRequest {
   status?: OrganizationStatus;
 }
 
-export interface UpdateOrganizationRequest
-  extends Partial<CreateOrganizationRequest> {
+export interface UpdateOrganizationRequest extends Partial<CreateOrganizationRequest> {
   isActive?: boolean;
 }
 

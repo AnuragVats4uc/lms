@@ -13,16 +13,21 @@ import {
   CourseUpdateData,
   NormalizedCourseQuery,
 } from '../repositories/course.repository';
+import { generateInternalCode } from '../../../common/utils/internal-code';
 
 @Injectable()
 export class CourseService {
   constructor(private readonly courseRepository: CourseRepository) {}
 
   async create(dto: CreateCourseDto) {
-    const code = this.normalizeCode(dto.code);
-
     await this.ensureNameIsUnique(dto.name);
-    await this.ensureCodeIsUnique(code);
+    const code = await generateInternalCode({
+      fallback: 'COURSE',
+      isTaken: async (candidate) =>
+        Boolean(await this.courseRepository.findByCode(candidate)),
+      maxLength: 30,
+      source: dto.name,
+    });
 
     const course = await this.courseRepository.create({
       ...dto,
@@ -62,10 +67,6 @@ export class CourseService {
       await this.ensureNameIsUnique(dto.name, id);
     }
 
-    if (dto.code) {
-      await this.ensureCodeIsUnique(this.normalizeCode(dto.code), id);
-    }
-
     const course = await this.courseRepository.update(
       id,
       this.toUpdateInput(dto),
@@ -102,16 +103,6 @@ export class CourseService {
     }
   }
 
-  private async ensureCodeIsUnique(code: string, excludeId?: number) {
-    const course = excludeId
-      ? await this.courseRepository.findByCodeExcludingId(code, excludeId)
-      : await this.courseRepository.findByCode(code);
-
-    if (course) {
-      throw new ConflictException('Course code already exists');
-    }
-  }
-
   private normalizeQuery(query: CourseQueryDto): NormalizedCourseQuery {
     return {
       page: query.page ?? 1,
@@ -126,10 +117,6 @@ export class CourseService {
 
     if (dto.name !== undefined) {
       data.name = dto.name;
-    }
-
-    if (dto.code !== undefined) {
-      data.code = this.normalizeCode(dto.code);
     }
 
     if (dto.description !== undefined) {
@@ -163,14 +150,12 @@ export class CourseService {
     return data;
   }
 
-  private normalizeCode(code: string) {
-    return code.trim().toUpperCase();
-  }
-
   private toResponse(course: Course) {
-    const response: Partial<Course & {
-      type?: string | null;
-    }> = { ...course };
+    const response: Partial<
+      Course & {
+        type?: string | null;
+      }
+    > = { ...course };
 
     delete response.type;
 

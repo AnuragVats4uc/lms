@@ -55,7 +55,7 @@ describe('OrganizationService organization scope', () => {
 
   it('allows only a SuperAdmin to create an organization', async () => {
     await expect(
-      service.create({ name: 'Other', code: 'OTHER' }, admin),
+      service.create({ name: 'Other' }, admin),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(repository.create).not.toHaveBeenCalled();
   });

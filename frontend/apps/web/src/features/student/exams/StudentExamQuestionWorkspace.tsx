@@ -213,7 +213,7 @@ export function StudentExamQuestionWorkspace({
         <div className={styles.questionBody}>
           {question.comprehension ? (
             <section className={styles.comprehension}>
-              <strong>Comprehension</strong>
+              <strong>Passage / Directions</strong>
               <RichContent value={question.comprehension.content} />
             </section>
           ) : null}

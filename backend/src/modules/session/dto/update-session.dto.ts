@@ -27,18 +27,6 @@ export class UpdateSessionDto {
   name?: string;
 
   @ApiPropertyOptional({
-    example: 'AY2526',
-    maxLength: 20,
-  })
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
-  @IsOptional()
-  @IsString()
-  @MaxLength(20)
-  code?: string;
-
-  @ApiPropertyOptional({
     example: 'Academic year for 2025-2026 admissions.',
   })
   @IsOptional()

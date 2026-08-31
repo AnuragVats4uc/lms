@@ -40,7 +40,6 @@ import { FormInput, FormTextArea, Text, XStack, YStack } from "@repo/ui";
 type CourseForm = CourseFormValues;
 
 const initialForm: CourseForm = {
-  code: "",
   description: "",
   discount: "",
   durationInDays: "",
@@ -59,7 +58,6 @@ const statusOptions = [
 
 function toPayload(form: CourseForm): CreateCourseRequest {
   const payload: CreateCourseRequest = {
-    code: form.code.trim().toUpperCase(),
     name: form.name.trim(),
     status: form.status,
   };
@@ -91,14 +89,6 @@ function Form({ error }: ResourceFormContext<CourseForm>) {
             label="Name"
             name="name"
             placeholder="JEE Foundation"
-          />
-        </div>
-        <div className="lms-form-field">
-          <FormInput
-            label="Code"
-            name="code"
-            placeholder="JEE-FDN"
-            transform={(value) => value.toUpperCase()}
           />
         </div>
       </XStack>
@@ -216,7 +206,9 @@ const columns: DataTableColumn<Course>[] = [
       <DataTableTextCell
         primary={formatAmount(row.price)}
         secondary={
-          row.discount ? `Discount ${formatAmount(row.discount)}` : "No discount"
+          row.discount
+            ? `Discount ${formatAmount(row.discount)}`
+            : "No discount"
         }
       />
     ),
@@ -406,7 +398,6 @@ export function CoursesPage() {
       title="Courses"
       toCreatePayload={toPayload}
       toForm={(course) => ({
-        code: course.code,
         description: course.description ?? "",
         discount: course.discount ?? "",
         durationInDays: course.durationInDays?.toString() ?? "",

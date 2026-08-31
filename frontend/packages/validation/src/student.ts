@@ -31,7 +31,6 @@ export const studentSchema = z.object({
   rollNumber: z.string().trim().max(50).or(z.literal("")),
   sessionCourseIds: z.array(z.string()).min(1, "Select at least one course"),
   sessionId: z.string().trim().regex(/^\d+$/, "Select a session"),
-  studentCode: z.string().trim().max(50).or(z.literal("")),
 });
 
 export type StudentFormValues = z.infer<typeof studentSchema>;

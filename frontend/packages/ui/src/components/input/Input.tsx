@@ -20,14 +20,16 @@ export const AppInput: ForwardRefExoticComponent<
       background="#FCFCFD"
       borderWidth={1}
       borderColor="#D8E1EC"
-        rounded="$3"
-      fontSize="$caption"
-      fontWeight="$body"
+      color="#172033"
+      rounded="$3"
+      fontSize={13}
+      fontWeight={600}
       letterSpacing="$body"
       height={42}
-        px="$3"
+      placeholderTextColor={"#94A3B8" as never}
+      px="$3"
       focusStyle={{
-          background: "#FFFFFF",
+        background: "#FFFFFF",
         borderColor: "#059669",
         boxShadow: "0 0 0 3px rgba(5, 150, 105, 0.12)",
       }}

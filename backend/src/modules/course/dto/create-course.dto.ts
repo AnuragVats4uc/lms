@@ -29,18 +29,6 @@ export class CreateCourseDto {
   @MaxLength(150)
   name: string;
 
-  @ApiProperty({
-    example: 'JEE-FDN',
-    maxLength: 30,
-  })
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(30)
-  code: string;
-
   @ApiPropertyOptional({
     example: 'Foundation course for JEE aspirants.',
   })

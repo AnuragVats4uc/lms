@@ -53,7 +53,6 @@ export interface PermissionQuery extends PaginationQuery {
 export interface CreateRoleRequest {
   organizationId?: number;
   name: string;
-  code: string;
   description?: string;
   isActive?: boolean;
   permissionIds?: number[];

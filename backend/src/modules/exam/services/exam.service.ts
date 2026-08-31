@@ -62,6 +62,7 @@ import {
   buildExamResultNotification,
   buildScheduledExamNotification,
 } from '../../students/student-notification.rules';
+import { generateInternalCode } from '../../../common/utils/internal-code';
 
 export interface ExamImportFile {
   buffer: Buffer;
@@ -140,6 +141,16 @@ type ExcelQuestionMapping = Pick<
   | 'rawData'
 > & { difficultyInvalid?: boolean };
 
+type CodelessExcelQuestionMapping = Omit<
+  ExcelQuestionMapping,
+  'questionCode' | 'comprehensionCode'
+> & {
+  questionNumber?: number;
+  questionNumberInvalid?: boolean;
+};
+
+type CodelessSharedContentKind = 'COMPREHENSION' | 'DIRECTIONS';
+
 type CodelessWordQuestionContent = Omit<
   WordQuestionContent,
   'questionCode' | 'comprehensionCode'
@@ -153,12 +164,10 @@ type CodelessWordQuestionContent = Omit<
   questionNumber: number;
   questionLabel: string;
   comprehensionLabel?: string;
-  questionTypeLabel?: string;
-  difficulty?: QuestionDifficulty;
-  marks?: number;
-  negativeMarks?: number;
-  sortOrder?: number;
-  isMandatory?: boolean;
+  comprehensionKind?: CodelessSharedContentKind;
+  comprehensionRangeStart?: number;
+  comprehensionRangeEnd?: number;
+  answerRulesContent?: string;
 };
 
 type ImportJobWithRows = Prisma.ExamImportJobGetPayload<{
@@ -236,11 +245,23 @@ export class ExamService {
 
   async createSubject(user: CurrentUser, dto: CreateSubjectDto) {
     const organizationId = this.organizationId(user, dto.organizationId);
+    const code = await generateInternalCode({
+      fallback: 'SUBJECT',
+      isTaken: async (candidate) =>
+        Boolean(
+          await this.prisma.subject.findFirst({
+            where: { organizationId, code: candidate },
+            select: { id: true },
+          }),
+        ),
+      maxLength: 40,
+      source: dto.code ?? dto.name,
+    });
     try {
       return await this.prisma.subject.create({
         data: {
           organizationId,
-          code: dto.code.toUpperCase(),
+          code,
           name: dto.name,
           description: dto.description,
         },
@@ -288,13 +309,25 @@ export class ExamService {
         'Subject does not belong to this organization',
       );
     }
+    const code = await generateInternalCode({
+      fallback: 'TOPIC',
+      isTaken: async (candidate) =>
+        Boolean(
+          await this.prisma.topic.findFirst({
+            where: { subjectId: subject.id, code: candidate },
+            select: { id: true },
+          }),
+        ),
+      maxLength: 60,
+      source: dto.code ?? dto.name,
+    });
 
     try {
       return await this.prisma.topic.create({
         data: {
           organizationId,
           subjectId: subject.id,
-          code: dto.code.toUpperCase(),
+          code,
           name: dto.name,
           description: dto.description,
           sortOrder: dto.sortOrder ?? 0,
@@ -411,13 +444,25 @@ export class ExamService {
       dto.options,
       dto.acceptedAnswers,
     );
+    const code = await generateInternalCode({
+      fallback: 'QUESTION',
+      isTaken: async (candidate) =>
+        Boolean(
+          await this.prisma.question.findFirst({
+            where: { organizationId, code: candidate },
+            select: { id: true },
+          }),
+        ),
+      maxLength: 80,
+      source: `${subject.code}-QUESTION`,
+    });
 
     try {
       return await this.prisma.question.create({
         data: {
           organizationId,
           subjectId: dto.subjectId,
-          code: dto.code.toUpperCase(),
+          code,
           status: dto.status ?? QuestionStatus.DRAFT,
           versions: {
             create: {
@@ -585,9 +630,7 @@ export class ExamService {
 
   async createTemplate(user: CurrentUser, dto: CreateExamTemplateDto) {
     const organizationId = this.organizationId(user, dto.organizationId);
-    const code = dto.code
-      ? this.normalizeGeneratedCode(dto.code, 'TEMPLATE')
-      : await this.generateTemplateCode(organizationId, dto.name);
+    const code = await this.generateTemplateCode(organizationId, dto.name);
     try {
       return await this.prisma.examTemplate.create({
         data: {
@@ -626,7 +669,6 @@ export class ExamService {
       return await this.prisma.examTemplate.update({
         where: { id: template.id },
         data: {
-          code: dto.code ? dto.code.toUpperCase() : undefined,
           name: dto.name,
           description: dto.description,
         },
@@ -1264,6 +1306,18 @@ export class ExamService {
           'Resource folder must belong to one of the selected session courses',
         );
     }
+    const code = await generateInternalCode({
+      fallback: 'EXAM',
+      isTaken: async (candidate) =>
+        Boolean(
+          await this.prisma.exam.findFirst({
+            where: { organizationId, code: candidate },
+            select: { id: true },
+          }),
+        ),
+      maxLength: 80,
+      source: dto.title,
+    });
 
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -1272,7 +1326,7 @@ export class ExamService {
             organizationId,
             sessionId: dto.sessionId,
             examTemplateVersionId: dto.examTemplateVersionId,
-            code: dto.code.toUpperCase(),
+            code,
             title: dto.title,
             instructions: dto.instructions,
             availableFrom,
@@ -1486,7 +1540,7 @@ export class ExamService {
         : ExamImportMode.CODELESS_WORD);
     if (!wordFile)
       throw new BadRequestException('A Word content file is required');
-    if (importMode === ExamImportMode.PAIRED_WORD_EXCEL && !excelFile)
+    if (!excelFile)
       throw new BadRequestException(
         'Both a Word content file and an Excel mapping file are required',
       );
@@ -1575,13 +1629,14 @@ export class ExamService {
       importMode === ExamImportMode.CODELESS_WORD
         ? await this.buildCodelessWordRows(
             wordFile.buffer,
+            this.parseCodelessWorkbookMappings(excelFile.buffer),
             version.id,
             effectiveDto,
             questionTypes,
           )
         : this.mergeImportFiles(
             await this.parseWordContent(wordFile.buffer),
-            this.parseWorkbookMappings(excelFile!.buffer),
+            this.parseWorkbookMappings(excelFile.buffer),
             questionTypes,
           );
     await this.validateImportDestinations(
@@ -2033,76 +2088,338 @@ export class ExamService {
     return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
   }
 
+  createCodelessExcelImportTemplate() {
+    const rows = [
+      {
+        question_number: 1,
+        slot_code: 'CUET_SLOT_1',
+        section_code: 'LANGUAGE',
+        subject_code: 'ENGLISH',
+        topic_code: 'READING_COMPREHENSION',
+        question_type_id: 1,
+        difficulty: QuestionDifficulty.MEDIUM,
+        marks: 5,
+        negative_marks: 1,
+        sort_order: 1,
+        is_mandatory: true,
+      },
+      {
+        question_number: 2,
+        slot_code: 'CUET_SLOT_1',
+        section_code: 'LANGUAGE',
+        subject_code: 'ENGLISH',
+        topic_code: 'READING_COMPREHENSION',
+        question_type_id: 1,
+        difficulty: QuestionDifficulty.MEDIUM,
+        marks: 5,
+        negative_marks: 1,
+        sort_order: 2,
+        is_mandatory: true,
+      },
+      {
+        question_number: 3,
+        slot_code: 'CUET_SLOT_1',
+        section_code: 'LANGUAGE',
+        subject_code: 'ENGLISH',
+        topic_code: 'READING_COMPREHENSION',
+        question_type_id: 1,
+        difficulty: QuestionDifficulty.HARD,
+        marks: 5,
+        negative_marks: 1,
+        sort_order: 3,
+        is_mandatory: true,
+      },
+      {
+        question_number: 4,
+        slot_code: 'CUET_SLOT_1',
+        section_code: 'LANGUAGE',
+        subject_code: 'ENGLISH',
+        topic_code: 'READING_COMPREHENSION',
+        question_type_id: 1,
+        difficulty: QuestionDifficulty.HARD,
+        marks: 5,
+        negative_marks: 1,
+        sort_order: 4,
+        is_mandatory: true,
+      },
+      {
+        question_number: 5,
+        slot_code: 'CUET_SLOT_1',
+        section_code: 'LANGUAGE',
+        subject_code: 'ENGLISH',
+        topic_code: 'READING_COMPREHENSION',
+        question_type_id: 1,
+        difficulty: QuestionDifficulty.MEDIUM,
+        marks: 5,
+        negative_marks: 1,
+        sort_order: 5,
+        is_mandatory: true,
+      },
+      {
+        question_number: 6,
+        slot_code: 'CUET_SLOT_1',
+        section_code: 'LANGUAGE',
+        subject_code: 'ENGLISH',
+        topic_code: 'GRAMMAR',
+        question_type_id: 1,
+        difficulty: QuestionDifficulty.MEDIUM,
+        marks: 5,
+        negative_marks: 1,
+        sort_order: 6,
+        is_mandatory: true,
+      },
+      {
+        question_number: 7,
+        slot_code: 'CUET_SLOT_1',
+        section_code: 'LANGUAGE',
+        subject_code: 'ENGLISH',
+        topic_code: 'GRAMMAR',
+        question_type_id: 1,
+        difficulty: QuestionDifficulty.EASY,
+        marks: 5,
+        negative_marks: 1,
+        sort_order: 7,
+        is_mandatory: true,
+      },
+      {
+        question_number: 8,
+        slot_code: 'CUET_SLOT_1',
+        section_code: 'QUANT',
+        subject_code: 'MATHEMATICS',
+        topic_code: 'PERCENTAGES',
+        question_type_id: 2,
+        difficulty: QuestionDifficulty.EASY,
+        marks: 5,
+        negative_marks: 0,
+        sort_order: 1,
+        is_mandatory: true,
+      },
+      {
+        question_number: 9,
+        slot_code: 'CUET_SLOT_1',
+        section_code: 'LANGUAGE',
+        subject_code: 'ENGLISH',
+        topic_code: 'VOCABULARY',
+        question_type_id: 3,
+        difficulty: QuestionDifficulty.EASY,
+        marks: 5,
+        negative_marks: 0,
+        sort_order: 8,
+        is_mandatory: true,
+      },
+    ];
+    const workbook = XLSX.utils.book_new();
+    const mappingSheet = XLSX.utils.json_to_sheet(rows);
+    mappingSheet['!cols'] = [
+      { wch: 17 },
+      { wch: 20 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 30 },
+      { wch: 19 },
+      { wch: 14 },
+      { wch: 10 },
+      { wch: 18 },
+      { wch: 13 },
+      { wch: 16 },
+    ];
+    mappingSheet['!autofilter'] = { ref: `A1:K${rows.length + 1}` };
+    XLSX.utils.book_append_sheet(workbook, mappingSheet, 'Question Mapping');
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet([
+        {
+          id: 1,
+          code: QUESTION_TYPE_CODES.SINGLE_CHOICE,
+          name: 'Single Answer',
+        },
+        { id: 2, code: QUESTION_TYPE_CODES.NUMERIC, name: 'Numeric Answer' },
+        { id: 3, code: QUESTION_TYPE_CODES.ONE_WORD, name: 'One Word Answer' },
+      ]),
+      'Question Types',
+    );
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.aoa_to_sheet([
+        ['Code-free Word + Excel import'],
+        ['Upload this workbook together with the code-free Word file.'],
+        [
+          'Word Q1. matches question_number 1. The join key is slot_code + section_code + question_number.',
+        ],
+        [
+          'Word owns comprehension/directions, question content, images, options, answer rules, and explanations.',
+        ],
+        [
+          'Excel owns destination mapping, optional topic_code, question_type_id, difficulty, marking, order, and mandatory status.',
+        ],
+        [
+          'Do not add question_code or comprehension_code. Internal codes are generated during staging.',
+        ],
+        ['difficulty must be EASY, MEDIUM, or HARD.'],
+        ['is_mandatory must be TRUE or FALSE.'],
+      ]),
+      'Instructions',
+    );
+    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+  }
+
   createCodelessWordImportTemplate() {
-    const p = (text: string, style?: 'Heading1' | 'Heading2' | 'Heading3') =>
-      `<w:p>${style ? `<w:pPr><w:pStyle w:val="${style}"/></w:pPr>` : ''}<w:r><w:t xml:space="preserve">${this.escapeXml(text)}</w:t></w:r></w:p>`;
-    const table = (rows: Array<[string, string]>) =>
-      `<w:tbl><w:tblPr><w:tblBorders><w:top w:val="single" w:sz="4" w:color="D8E2E9"/><w:left w:val="single" w:sz="4" w:color="D8E2E9"/><w:bottom w:val="single" w:sz="4" w:color="D8E2E9"/><w:right w:val="single" w:sz="4" w:color="D8E2E9"/><w:insideH w:val="single" w:sz="4" w:color="D8E2E9"/><w:insideV w:val="single" w:sz="4" w:color="D8E2E9"/></w:tblBorders></w:tblPr>${rows
-        .map(
-          ([label, value]) =>
-            `<w:tr><w:tc>${p(label)}</w:tc><w:tc>${p(value)}</w:tc></w:tr>`,
-        )
-        .join('')}</w:tbl>`;
-    const answerRules = (
-      type: string,
-      difficulty: string,
-      marks: string,
-      negativeMarks: string,
-      correctOption: string,
-      acceptedAnswers: string,
-      tolerance: string,
+    const p = (
+      text: string,
+      style?:
+        | 'TemplateTitle'
+        | 'TemplateSubtitle'
+        | 'TemplateNote'
+        | 'Metadata'
+        | 'Heading1'
+        | 'Heading2'
+        | 'Heading3',
     ) =>
-      table([
-        ['Question Type', type],
-        ['Difficulty', difficulty],
-        ['Marks', marks],
-        ['Negative Marks', negativeMarks],
-        ['Correct Option', correctOption],
-        ['Accepted Answers', acceptedAnswers],
-        ['Numeric Tolerance', tolerance],
-        ['Case Sensitive', 'No'],
-        ['Mandatory', 'Yes'],
-      ]);
+      `<w:p>${style ? `<w:pPr><w:pStyle w:val="${style}"/></w:pPr>` : ''}<w:r><w:t xml:space="preserve">${this.escapeXml(text)}</w:t></w:r></w:p>`;
+    const image = (relationshipId: string, id: number, name: string) =>
+      `<w:p><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="3200400" cy="1463040"/><wp:docPr id="${id}" name="${this.escapeXml(name)}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${id}" name="${this.escapeXml(name)}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${relationshipId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="3200400" cy="1463040"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
     const body = [
-      p('Code-free Exam Import - Word Template'),
+      p('Code-free Exam Import', 'TemplateTitle'),
       p(
-        'Use the same Heading styles. The system generates internal codes automatically.',
+        'Word content template — upload with the matching Excel mapping workbook',
+        'TemplateSubtitle',
+      ),
+      p('FORMAT RULES', 'TemplateNote'),
+      p(
+        'Use the Heading styles shown below. Do not add question or comprehension codes. Options and answer rules are separate paragraphs; do not use tables. Answer Rules may include a supporting image, but grading values such as Correct Option or Accepted Answers must remain as text.',
+        'TemplateNote',
       ),
       p(
-        'English Language | Slot: Slot 1 | Section: English Language | Subject: English',
+        'Slot: Slot 1 | Section: English Language | Subject: English',
+        'Metadata',
       ),
       p('Comprehension - 1 to 5', 'Heading1'),
       p(
-        'Paste the passage text here. Images can be inserted directly in the passage.',
+        'Paste the passage once here. It applies to Q1 through Q5. Text and images can be combined.',
       ),
-      p('Question - 1', 'Heading2'),
+      image('rId2', 2, 'Comprehension image example'),
+      p('Q1.', 'Heading2'),
       p('Choose the word closest in meaning to concise.'),
+      image('rId3', 3, 'Question image example'),
       p('Options', 'Heading3'),
-      table([
-        ['A', 'Brief'],
-        ['B', 'Unclear'],
-        ['C', 'Lengthy'],
-        ['D', 'Complex'],
-      ]),
+      p('A. Brief'),
+      p('B. Unclear'),
+      p('C. Lengthy'),
+      p('D.'),
+      image('rId4', 4, 'Option D image example'),
       p('Answer Rules', 'Heading3'),
-      answerRules('Single Choice', 'Medium', '5', '1', 'A', '', ''),
+      p('Correct Option: A'),
+      p('Case Sensitive: No'),
+      image('rId3', 8, 'Answer Rules supplemental image example'),
       p('Explanation', 'Heading3'),
       p('Concise means brief and clear.'),
+      image('rId5', 5, 'Explanation image example'),
+      p('Q2.', 'Heading2'),
+      p('Which sentence best summarizes the passage?'),
+      p('Options', 'Heading3'),
+      p('A. A concise message is always informal.'),
+      p('B. A concise message expresses the central idea clearly.'),
+      p('C. A concise message avoids every detail.'),
+      p('D. A concise message must contain an image.'),
+      p('Answer Rules', 'Heading3'),
+      p('Correct Option: B'),
+      p('Case Sensitive: No'),
+      p('Explanation', 'Heading3'),
+      p('The passage connects concise writing with clarity.'),
+      p('Q3.', 'Heading2'),
+      p('What should concise writing avoid?'),
+      p('Options', 'Heading3'),
+      p('A. A central idea'),
+      p('B. Clear language'),
+      p('C. Unnecessary words'),
+      p('D. Useful facts'),
+      p('Answer Rules', 'Heading3'),
+      p('Correct Option: C'),
+      p('Case Sensitive: No'),
+      p('Explanation', 'Heading3'),
+      p('Concise writing removes unnecessary words.'),
+      p('Q4.', 'Heading2'),
+      p('Select the statement supported by the passage.'),
+      p('Options', 'Heading3'),
+      p('A. Longer writing is always clearer.'),
+      p('B. Concise writing can communicate clearly.'),
+      p('C. Images make all writing concise.'),
+      p('D. Details are never useful.'),
+      p('Answer Rules', 'Heading3'),
+      p('Correct Option: B'),
+      p('Case Sensitive: No'),
+      p('Explanation', 'Heading3'),
+      p('The passage supports clarity through concise expression.'),
+      p('Q5.', 'Heading2'),
+      p('Choose the opposite of concise.'),
+      p('Options', 'Heading3'),
+      p('A. Brief'),
+      p('B. Clear'),
+      p('C. Verbose'),
+      p('D. Direct'),
+      p('Answer Rules', 'Heading3'),
+      p('Correct Option: C'),
+      p('Case Sensitive: No'),
+      p('Explanation', 'Heading3'),
+      p('Verbose is the opposite of concise.'),
+      p('Directions - 6 to 7', 'Heading1'),
+      p('Study the diagram and select the best answer for each question.'),
+      image('rId6', 6, 'Directions image example'),
+      p('Q6.', 'Heading2'),
+      image('rId7', 7, 'Image-only question example'),
+      p('Options', 'Heading3'),
+      p('A. First'),
+      p('B. Second'),
+      p('C. Third'),
+      p('D. Fourth'),
+      p('Answer Rules', 'Heading3'),
+      p('Correct Option: A'),
+      p('Case Sensitive: No'),
+      p('Explanation', 'Heading3'),
+      p('The first item matches the direction shown in the diagram.'),
+      p('Q7.', 'Heading2'),
+      p('Choose the option that follows the same direction.'),
+      p('Options', 'Heading3'),
+      p('A. Left'),
+      p('B. Right'),
+      p('C. Up'),
+      p('D. Down'),
+      p('Answer Rules', 'Heading3'),
+      p('Correct Option: B'),
+      p('Case Sensitive: No'),
+      p('Explanation', 'Heading3'),
+      p('The diagram points to the right.'),
       p('Standalone Questions', 'Heading1'),
-      p('Question - 2', 'Heading2'),
+      p(
+        'Slot: Slot 1 | Section: Quantitative Aptitude | Subject: Mathematics',
+        'Metadata',
+      ),
+      p('Q8.', 'Heading2'),
       p('What is 15% of 240?'),
       p('Answer Rules', 'Heading3'),
-      answerRules('Numeric', 'Easy', '5', '0', '', '36', '0'),
+      p('Accepted Answers: 36|36.0'),
+      p('Numeric Tolerance: 0'),
       p('Explanation', 'Heading3'),
       p('0.15 multiplied by 240 equals 36.'),
+      p(
+        'Slot: Slot 1 | Section: English Language | Subject: English',
+        'Metadata',
+      ),
+      p('Q9.', 'Heading2'),
+      p('Write one word meaning brief and clear.'),
+      p('Answer Rules', 'Heading3'),
+      p('Accepted Answers: concise|Concise'),
+      p('Case Sensitive: No'),
+      p('Explanation', 'Heading3'),
+      p('Concise means brief and clear.'),
     ].join('');
-    const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr/></w:body></w:document>`;
+    const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><w:body>${body}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>`;
     const stylesXml =
-      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:qFormat/></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:qFormat/></w:style><w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:qFormat/></w:style></w:styles>';
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="22"/><w:szCs w:val="22"/><w:color w:val="26374D"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="300" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/><w:pPr><w:spacing w:after="120" w:line="300" w:lineRule="auto"/></w:pPr><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="22"/><w:color w:val="26374D"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="TemplateTitle"><w:name w:val="Template Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="0" w:after="80"/></w:pPr><w:rPr><w:b/><w:sz w:val="44"/><w:color w:val="0B2545"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="TemplateSubtitle"><w:name w:val="Template Subtitle"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="240"/></w:pPr><w:rPr><w:i/><w:sz w:val="24"/><w:color w:val="53647A"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="TemplateNote"><w:name w:val="Template Note"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="80"/></w:pPr><w:rPr><w:sz w:val="20"/><w:color w:val="53647A"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Metadata"><w:name w:val="Metadata"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="160" w:after="160"/><w:shd w:val="clear" w:color="auto" w:fill="E8EEF5"/><w:ind w:left="120" w:right="120"/></w:pPr><w:rPr><w:b/><w:color w:val="1F4D78"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="360" w:after="200"/></w:pPr><w:rPr><w:b/><w:sz w:val="32"/><w:color w:val="2E74B5"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="280" w:after="140"/></w:pPr><w:rPr><w:b/><w:sz w:val="26"/><w:color w:val="2E74B5"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="200" w:after="100"/></w:pPr><w:rPr><w:b/><w:sz w:val="24"/><w:color w:val="1F4D78"/></w:rPr></w:style></w:styles>';
     return this.createStoredZip([
       {
         name: '[Content_Types].xml',
-        data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>',
+        data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>',
       },
       {
         name: '_rels/.rels',
@@ -2112,7 +2429,31 @@ export class ExamService {
       { name: 'word/styles.xml', data: stylesXml },
       {
         name: 'word/_rels/document.xml.rels',
-        data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+        data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/comprehension.png"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/question.png"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/option.png"/><Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/explanation.png"/><Relationship Id="rId6" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/directions.png"/><Relationship Id="rId7" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image-question.png"/></Relationships>',
+      },
+      {
+        name: 'word/media/comprehension.png',
+        data: this.createSampleDiagramPng(false),
+      },
+      {
+        name: 'word/media/question.png',
+        data: this.createSampleDiagramPng(true),
+      },
+      {
+        name: 'word/media/option.png',
+        data: this.createSampleDiagramPng(false),
+      },
+      {
+        name: 'word/media/explanation.png',
+        data: this.createSampleDiagramPng(true),
+      },
+      {
+        name: 'word/media/directions.png',
+        data: this.createSampleDiagramPng(false),
+      },
+      {
+        name: 'word/media/image-question.png',
+        data: this.createSampleDiagramPng(true),
       },
     ]);
   }
@@ -2450,6 +2791,76 @@ export class ExamService {
     });
   }
 
+  private parseCodelessWorkbookMappings(
+    buffer: Buffer,
+  ): CodelessExcelQuestionMapping[] {
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    if (!sheet) throw new BadRequestException('The workbook has no worksheet');
+    const records = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+      defval: '',
+    });
+    if (!records.length)
+      throw new BadRequestException('The Excel mapping contains no rows');
+    return records.map((rawRecord, index) => {
+      const record = this.normalizeRecord(rawRecord);
+      const text = (key: string) => {
+        const value = record[key];
+        return typeof value === 'string' ||
+          typeof value === 'number' ||
+          typeof value === 'boolean'
+          ? String(value).trim()
+          : '';
+      };
+      const numeric = (key: string, fallback?: number) => {
+        const value = text(key);
+        return value === '' ? fallback : Number(value);
+      };
+      const questionNumber = numeric('question_number');
+      const questionTypeId = numeric('question_type_id');
+      const marks = numeric('marks', 1) ?? 1;
+      const negativeMarks = numeric('negative_marks', 0) ?? 0;
+      const sortOrder = numeric('sort_order');
+      const difficultyText = text('difficulty').toUpperCase();
+      const difficultyValid = Object.values(QuestionDifficulty).includes(
+        difficultyText as QuestionDifficulty,
+      );
+      return {
+        sourceRowNumber: index + 2,
+        slotCode: text('slot_code').toUpperCase() || undefined,
+        sectionCode: text('section_code').toUpperCase() || undefined,
+        subjectCode: text('subject_code').toUpperCase() || undefined,
+        topicCode: text('topic_code').toUpperCase() || undefined,
+        questionNumber:
+          questionNumber !== undefined &&
+          Number.isInteger(questionNumber) &&
+          questionNumber > 0
+            ? questionNumber
+            : undefined,
+        questionNumberInvalid:
+          questionNumber === undefined ||
+          !Number.isInteger(questionNumber) ||
+          questionNumber <= 0,
+        rawQuestionTypeId:
+          questionTypeId !== undefined && Number.isInteger(questionTypeId)
+            ? questionTypeId
+            : undefined,
+        difficulty: difficultyValid
+          ? (difficultyText as QuestionDifficulty)
+          : QuestionDifficulty.MEDIUM,
+        difficultyInvalid: Boolean(difficultyText && !difficultyValid),
+        marks,
+        negativeMarks,
+        sortOrder:
+          sortOrder !== undefined && Number.isInteger(sortOrder)
+            ? sortOrder
+            : undefined,
+        isMandatory: this.booleanValue(record.is_mandatory, true),
+        rawData: record,
+      };
+    });
+  }
+
   private async parseWordContent(
     buffer: Buffer,
   ): Promise<WordQuestionContent[]> {
@@ -2491,33 +2902,80 @@ export class ExamService {
       slotCode?: string;
       subjectCode?: string;
     };
+    type SharedContext = {
+      kind: CodelessSharedContentKind;
+      label: string;
+      rangeStart: number;
+      rangeEnd: number;
+      content: string[];
+      acceptingContent: boolean;
+      rows: CodelessWordQuestionContent[];
+    };
     type PendingQuestion = {
       questionNumber: number;
       questionLabel: string;
+      section?: SectionContext;
+      shared?: SharedContext;
       content: string[];
       options: Array<{ code: string; content: string; isCorrect: boolean }>;
+      activeOptionCode?: string;
       correctOption?: string;
       acceptedAnswers: string[];
       tolerance?: number;
       caseSensitive: boolean;
+      answerRulesContent: string[];
       explanation: string[];
-      questionTypeLabel?: string;
-      difficulty?: QuestionDifficulty;
-      marks?: number;
-      negativeMarks?: number;
-      sortOrder?: number;
-      isMandatory?: boolean;
       mode: 'question' | 'options' | 'answer-rules' | 'explanation';
       answerRulesSeen: boolean;
       explanationSeen: boolean;
       parseErrors: string[];
     };
+
     const rows: CodelessWordQuestionContent[] = [];
+    const sharedContexts: SharedContext[] = [];
+    const sharedKeys = new Set<string>();
     let section: SectionContext | undefined;
-    let comprehension:
-      | { label: string; content: string[]; acceptingContent: boolean }
-      | undefined;
+    let shared: SharedContext | undefined;
     let question: PendingQuestion | undefined;
+
+    const appendOptionContent = (html: string) => {
+      if (!question?.activeOptionCode) return false;
+      const option = question.options.find(
+        (item) => item.code === question?.activeOptionCode,
+      );
+      if (!option) return false;
+      option.content = [option.content, html].filter(Boolean).join('\n');
+      return true;
+    };
+
+    const applyAnswerRule = (field: string, valueText: string) => {
+      if (!question) return;
+      const key = field.trim().toLowerCase().replace(/_/g, ' ');
+      const ruleValue = valueText.trim();
+      if (key === 'correct option' || key === 'correct answer') {
+        question.correctOption = ruleValue.toUpperCase() || undefined;
+      } else if (key === 'accepted answers' || key === 'accepted answer') {
+        question.acceptedAnswers = ruleValue
+          .split('|')
+          .map((answer) => answer.trim())
+          .filter(Boolean);
+      } else if (key === 'numeric tolerance' || key === 'tolerance') {
+        const tolerance = Number(ruleValue);
+        if (ruleValue && Number.isFinite(tolerance))
+          question.tolerance = tolerance;
+        else if (ruleValue)
+          question.parseErrors.push('Numeric Tolerance must be a valid number');
+      } else if (key === 'case sensitive') {
+        const caseSensitive = this.strictBooleanValue(ruleValue);
+        if (caseSensitive === undefined && ruleValue)
+          question.parseErrors.push('Case Sensitive must be Yes or No');
+        else question.caseSensitive = caseSensitive ?? false;
+      } else {
+        question.parseErrors.push(
+          `Unknown Answer Rules field "${field.trim()}". Use Correct Option, Accepted Answers, Numeric Tolerance, or Case Sensitive`,
+        );
+      }
+    };
 
     const finishQuestion = () => {
       if (!question) return;
@@ -2525,40 +2983,59 @@ export class ExamService {
         option.isCorrect = option.code === question?.correctOption;
       });
       if (!question.answerRulesSeen)
-        question.parseErrors.push('Answer Rules table is required');
+        question.parseErrors.push('Answer Rules heading is required');
       if (!question.explanationSeen)
         question.parseErrors.push('Explanation heading is required');
-      rows.push({
+      if (
+        question.shared &&
+        (question.questionNumber < question.shared.rangeStart ||
+          question.questionNumber > question.shared.rangeEnd)
+      ) {
+        question.parseErrors.push(
+          `Q${question.questionNumber} is outside the ${question.shared.kind.toLowerCase()} range ${question.shared.rangeStart} to ${question.shared.rangeEnd}`,
+        );
+      }
+      const row: CodelessWordQuestionContent = {
         sourceRowNumber: rows.length + 1,
-        ...section,
+        ...question.section,
         questionNumber: question.questionNumber,
         questionLabel: question.questionLabel,
-        comprehensionLabel: comprehension?.label,
+        comprehensionLabel: question.shared?.label,
+        comprehensionKind: question.shared?.kind,
+        comprehensionRangeStart: question.shared?.rangeStart,
+        comprehensionRangeEnd: question.shared?.rangeEnd,
         comprehensionContent:
-          comprehension?.content.join('\n').trim() || undefined,
+          question.shared?.content.join('\n').trim() || undefined,
         questionContent: question.content.join('\n').trim(),
         answer: question.correctOption,
         tolerance: question.tolerance,
         caseSensitive: question.caseSensitive,
+        answerRulesContent:
+          question.answerRulesContent.join('\n').trim() || undefined,
         explanation: question.explanation.join('\n').trim() || undefined,
         options: question.options,
         acceptedAnswers: question.acceptedAnswers,
-        questionTypeLabel: question.questionTypeLabel,
-        difficulty: question.difficulty,
-        marks: question.marks,
-        negativeMarks: question.negativeMarks,
-        sortOrder: question.sortOrder,
-        isMandatory: question.isMandatory,
         parseErrors: question.parseErrors,
         rawData: {
           source: 'word',
-          format: 'CODELESS_HEADING_TABLE_V1',
-          section,
+          format: 'CODELESS_HEADING_PARAGRAPH_V2',
+          section: question.section,
           questionLabel: question.questionLabel,
-          comprehensionLabel: comprehension?.label,
+          sharedContent: question.shared
+            ? {
+                kind: question.shared.kind,
+                label: question.shared.label,
+                rangeStart: question.shared.rangeStart,
+                rangeEnd: question.shared.rangeEnd,
+              }
+            : null,
+          answerRulesContent:
+            question.answerRulesContent.join('\n').trim() || null,
           parseErrors: question.parseErrors,
         },
-      });
+      };
+      rows.push(row);
+      question.shared?.rows.push(row);
       question = undefined;
     };
 
@@ -2567,67 +3044,108 @@ export class ExamService {
       if (metadata) {
         finishQuestion();
         section = metadata;
-        comprehension = undefined;
+        shared = undefined;
         continue;
       }
+
       if (block.tag === 'h1') {
         finishQuestion();
-        const comprehensionHeading = block.text.match(
-          /^comprehension\s*(?:[\u2013\u2014:|-])\s*(.+)$/i,
+        const rangeHeading = block.text.match(
+          /^(comprehension|directions)\s*(?:[\u2013\u2014:|-])\s*(?:q(?:uestion)?\s*)?(\d+)\s*(?:to|[\u2013\u2014-])\s*(?:q(?:uestion)?\s*)?(\d+)\s*\.?$/i,
         );
-        if (comprehensionHeading) {
-          comprehension = {
-            label: comprehensionHeading[1].trim(),
+        if (rangeHeading) {
+          const kind =
+            rangeHeading[1].toUpperCase() as CodelessSharedContentKind;
+          const rangeStart = Number(rangeHeading[2]);
+          const rangeEnd = Number(rangeHeading[3]);
+          if (
+            rangeStart < 1 ||
+            rangeEnd < rangeStart ||
+            rangeEnd - rangeStart > 499
+          )
+            throw new BadRequestException(
+              `Invalid shared-content range in Heading 1: ${block.text}`,
+            );
+          const label = `${kind === 'COMPREHENSION' ? 'Comprehension' : 'Directions'} - ${rangeStart} to ${rangeEnd}`;
+          const contextKey = [
+            section?.slotCode ?? section?.slotTitle ?? '',
+            section?.sectionCode ?? section?.sectionTitle ?? '',
+            kind,
+            rangeStart,
+            rangeEnd,
+          ]
+            .map((part) => this.normalizeLookupKey(String(part)))
+            .join(':');
+          if (sharedKeys.has(contextKey))
+            throw new BadRequestException(
+              `${label} must appear only once before its first question`,
+            );
+          sharedKeys.add(contextKey);
+          shared = {
+            kind,
+            label,
+            rangeStart,
+            rangeEnd,
             content: [],
             acceptingContent: true,
+            rows: [],
           };
+          sharedContexts.push(shared);
         } else if (/^standalone questions?$/i.test(block.text)) {
-          comprehension = undefined;
+          shared = undefined;
+        } else if (/^(comprehension|directions)\b/i.test(block.text)) {
+          throw new BadRequestException(
+            `Unrecognized Heading 1 "${block.text}". Use Comprehension - 1 to 5 or Directions - 1 to 5`,
+          );
         } else if (block.text.trim()) {
-          section = {
-            sectionTitle: block.text.trim(),
-            sectionCode: this.cleanImportCode(block.text),
-          };
-          comprehension = undefined;
+          throw new BadRequestException(
+            `Unrecognized Heading 1 "${block.text}". Use Comprehension/Directions ranges or Standalone Questions`,
+          );
         }
         continue;
       }
+
       if (block.tag === 'h2') {
         finishQuestion();
         const questionHeading = block.text.match(
-          /^question\s*(?:[\u2013\u2014:|-])\s*(.+)$/i,
+          /^(?:q(?:uestion)?\s*)?(\d+)\s*[.)-]?\s*$/i,
         );
         if (!questionHeading)
           throw new BadRequestException(
-            `Unrecognized Question heading: ${block.text}`,
+            `Unrecognized Heading 2 "${block.text}". Use Q1., Q2., and so on`,
           );
-        if (comprehension) comprehension.acceptingContent = false;
-        const questionLabel = questionHeading[1].trim();
-        const numberMatch = questionLabel.match(/\d+/);
+        if (shared) shared.acceptingContent = false;
+        const questionNumber = Number(questionHeading[1]);
         question = {
-          questionNumber: numberMatch
-            ? Number(numberMatch[0])
-            : rows.length + 1,
-          questionLabel,
+          questionNumber,
+          questionLabel: `Q${questionNumber}.`,
+          section: section ? { ...section } : undefined,
+          shared,
           content: [],
           options: [],
           acceptedAnswers: [],
           caseSensitive: false,
+          answerRulesContent: [],
           explanation: [],
           mode: 'question',
           answerRulesSeen: false,
           explanationSeen: false,
-          parseErrors: numberMatch
-            ? []
-            : ['Question heading must contain a visible question number'],
+          parseErrors:
+            questionNumber > 0
+              ? []
+              : ['Question number must be a positive integer'],
         };
         continue;
       }
+
       if (block.tag === 'h3' && question) {
         const heading = block.text.trim().toLowerCase();
+        question.activeOptionCode = undefined;
         if (heading === 'options') question.mode = 'options';
-        else if (heading === 'answer rules') question.mode = 'answer-rules';
-        else if (heading === 'explanation') {
+        else if (heading === 'answer rules') {
+          question.mode = 'answer-rules';
+          question.answerRulesSeen = true;
+        } else if (heading === 'explanation') {
           question.mode = 'explanation';
           question.explanationSeen = true;
         } else {
@@ -2637,108 +3155,113 @@ export class ExamService {
         }
         continue;
       }
+
       if (question) {
-        if (question.mode === 'options' && block.tag === 'table') {
-          for (const cells of this.tableRows(block.innerHtml)) {
-            if (cells.length < 2) continue;
-            const code = this.htmlText(cells[0])
-              .replace(/^option\s*/i, '')
-              .replace(/[:.)-]+$/g, '')
-              .trim()
-              .toUpperCase();
-            if (!code) continue;
-            question.options.push({
-              code,
-              content: cells[1].trim(),
-              isCorrect: false,
-            });
+        if (question.mode === 'options') {
+          if (block.tag === 'table') {
+            for (const cells of this.tableRows(block.innerHtml)) {
+              if (cells.length < 2) continue;
+              const code = this.htmlText(cells[0])
+                .replace(/^option\s*/i, '')
+                .replace(/[:.)-]+$/g, '')
+                .trim()
+                .toUpperCase();
+              if (!code) continue;
+              question.options.push({
+                code,
+                content: cells[1].trim(),
+                isCorrect: false,
+              });
+              question.activeOptionCode = code;
+            }
+            continue;
           }
-        } else if (question.mode === 'answer-rules' && block.tag === 'table') {
-          question.answerRulesSeen = true;
-          const rules = new Map(
-            this.tableRows(block.innerHtml)
-              .filter((cells) => cells.length >= 2)
-              .map((cells) => [
-                this.htmlText(cells[0]).trim().toLowerCase(),
-                this.htmlText(cells[1]).trim(),
-              ]),
+          const optionMatch = block.text.match(
+            /^(?:option\s+)?([A-Z0-9]+)\s*[.)\-:]\s*(.*)$/i,
           );
-          question.questionTypeLabel =
-            rules.get('question type') || rules.get('type') || undefined;
-          const difficultyText = (rules.get('difficulty') ?? '')
-            .trim()
-            .toUpperCase();
-          if (
-            difficultyText &&
-            !Object.values(QuestionDifficulty).includes(
-              difficultyText as QuestionDifficulty,
-            )
-          ) {
-            question.parseErrors.push(
-              'Difficulty must be Easy, Medium, or Hard',
+          if (optionMatch) {
+            const code = optionMatch[1].toUpperCase();
+            const plainContent = optionMatch[2].trim();
+            const marker = new RegExp(
+              `^(?:option\\s+)?${optionMatch[1]}\\s*[.)\\-:]\\s*`,
+              'i',
             );
-          } else if (difficultyText) {
-            question.difficulty = difficultyText as QuestionDifficulty;
+            const richInner = block.innerHtml.replace(marker, '').trim();
+            const content = /<img\b/i.test(richInner)
+              ? `<p>${richInner}</p>`
+              : plainContent;
+            question.options.push({ code, content, isCorrect: false });
+            question.activeOptionCode = code;
+          } else if (!appendOptionContent(block.html) && block.text.trim()) {
+            question.parseErrors.push(
+              'Each option must start on a new line with a label such as A.',
+            );
           }
-          question.correctOption =
-            rules.get('correct option')?.toUpperCase() || undefined;
-          question.acceptedAnswers = (rules.get('accepted answers') ?? '')
-            .split('|')
-            .map((answer) => answer.trim())
-            .filter(Boolean);
-          const toleranceText = rules.get('numeric tolerance') ?? '';
-          if (toleranceText) {
-            const tolerance = Number(toleranceText);
-            if (Number.isFinite(tolerance)) question.tolerance = tolerance;
-            else
-              question.parseErrors.push(
-                'Numeric Tolerance must be a valid number',
-              );
-          }
-          const marks = this.optionalNumberRule(rules.get('marks'));
-          const negativeMarks = this.optionalNumberRule(
-            rules.get('negative marks') ?? rules.get('negative_marks'),
-          );
-          const sortOrder = this.optionalIntegerRule(
-            rules.get('sort order') ?? rules.get('sort_order'),
-          );
-          if (marks.invalid)
-            question.parseErrors.push('Marks must be a number');
-          else question.marks = marks.value;
-          if (negativeMarks.invalid)
-            question.parseErrors.push('Negative Marks must be a number');
-          else question.negativeMarks = negativeMarks.value;
-          if (sortOrder.invalid)
-            question.parseErrors.push('Sort Order must be an integer');
-          else question.sortOrder = sortOrder.value;
-          const mandatoryText =
-            rules.get('mandatory') ?? rules.get('is mandatory') ?? '';
-          const mandatory = this.strictBooleanValue(mandatoryText);
-          if (mandatory === undefined && mandatoryText)
-            question.parseErrors.push('Mandatory must be Yes or No');
-          question.isMandatory = mandatory ?? true;
-          const caseSensitiveText = rules.get('case sensitive') ?? '';
-          const caseSensitive = this.strictBooleanValue(caseSensitiveText);
-          if (caseSensitive === undefined && caseSensitiveText)
-            question.parseErrors.push('Case Sensitive must be Yes or No');
-          question.caseSensitive = caseSensitive ?? false;
-        } else if (question.mode === 'explanation') {
-          question.explanation.push(block.html);
-        } else if (question.mode === 'question') {
-          question.content.push(block.html);
+          continue;
         }
-      } else if (comprehension?.acceptingContent) {
-        comprehension.content.push(block.html);
+
+        if (question.mode === 'answer-rules') {
+          if (block.tag === 'table') {
+            for (const cells of this.tableRows(block.innerHtml)) {
+              if (cells.length >= 2)
+                applyAnswerRule(
+                  this.htmlText(cells[0]),
+                  this.htmlText(cells[1]),
+                );
+            }
+            if (/<img\b/i.test(block.html))
+              question.answerRulesContent.push(block.html);
+            continue;
+          }
+          const rule = block.text.match(/^([^:]+):\s*(.*)$/);
+          if (rule) applyAnswerRule(rule[1], rule[2]);
+          else if (block.text.trim())
+            question.parseErrors.push(
+              `Unrecognized Answer Rules line "${block.text}"`,
+            );
+          if (/<img\b/i.test(block.html))
+            question.answerRulesContent.push(block.html);
+          continue;
+        }
+
+        if (question.mode === 'explanation') {
+          question.explanation.push(block.html);
+          continue;
+        }
+        if (question.mode === 'question') question.content.push(block.html);
+      } else if (shared?.acceptingContent) {
+        shared.content.push(block.html);
       }
     }
+
     finishQuestion();
+
+    for (const context of sharedContexts) {
+      const actual = new Set(context.rows.map((row) => row.questionNumber));
+      const missing: number[] = [];
+      for (
+        let questionNumber = context.rangeStart;
+        questionNumber <= context.rangeEnd;
+        questionNumber += 1
+      ) {
+        if (!actual.has(questionNumber)) missing.push(questionNumber);
+      }
+      if (missing.length) {
+        const message = `${context.label} is missing ${missing
+          .map((number) => `Q${number}`)
+          .join(', ')}`;
+        if (context.rows[0]?.parseErrors)
+          context.rows[0].parseErrors.push(message);
+        else throw new BadRequestException(message);
+      }
+    }
+
     if (!rows.length)
       throw new BadRequestException(
-        'No questions were found. Apply Heading 2 to headings such as Question - 1.',
+        'No questions were found. Apply Heading 2 to headings such as Q1.',
       );
     return rows;
   }
-
   private parseHeadingWordContent(blocks: HtmlBlock[]): WordQuestionContent[] {
     type PendingQuestion = {
       code: string;
@@ -3078,6 +3601,9 @@ export class ExamService {
     if (!text) return undefined;
     if (!text.includes('|') && !/^(slot|section|subject)\s*:/i.test(text))
       return undefined;
+    const parts = text.split('|').map((part) => part.trim());
+    if (!parts.some((part) => /^(slot|section|subject)\s*:/i.test(part)))
+      return undefined;
     const metadata: {
       sectionTitle?: string;
       slotTitle?: string;
@@ -3086,8 +3612,7 @@ export class ExamService {
       slotCode?: string;
       subjectCode?: string;
     } = {};
-    for (const [index, rawPart] of text.split('|').entries()) {
-      const part = rawPart.trim();
+    for (const [index, part] of parts.entries()) {
       if (!part) continue;
       const field = part.match(/^(slot|section|subject)\s*:\s*(.+)$/i);
       if (!field && index === 0) {
@@ -3197,49 +3722,31 @@ export class ExamService {
     );
   }
 
-  private resolveCodelessQuestionType(
-    word: CodelessWordQuestionContent,
-    typeByCode: Map<string, { id: number; code: string; name: string }>,
-  ) {
-    const label = this.normalizeLookupKey(word.questionTypeLabel ?? '');
-    const code = [
-      'singlechoice',
-      'singleanswer',
-      'singlecorrect',
-      'mcq',
-      'multiplechoice',
-    ].includes(label)
-      ? QUESTION_TYPE_CODES.SINGLE_CHOICE
-      : ['numeric', 'numericanswer', 'number'].includes(label)
-        ? QUESTION_TYPE_CODES.NUMERIC
-        : ['oneword', 'onewordanswer', 'shortanswer', 'text'].includes(label)
-          ? QUESTION_TYPE_CODES.ONE_WORD
-          : undefined;
-    if (code) return typeByCode.get(code);
-    if (word.options.length)
-      return typeByCode.get(QUESTION_TYPE_CODES.SINGLE_CHOICE);
-    if (
-      word.acceptedAnswers.length &&
-      word.acceptedAnswers.every((answer) => Number.isFinite(Number(answer)))
-    )
-      return typeByCode.get(QUESTION_TYPE_CODES.NUMERIC);
-    if (word.acceptedAnswers.length)
-      return typeByCode.get(QUESTION_TYPE_CODES.ONE_WORD);
-    return undefined;
-  }
-
   private codelessComprehensionCode(
     existing: Map<string, string>,
-    nextIndex: number,
-    sectionPrefix: string,
-    label: string,
+    destinationPrefix: string,
+    kind: CodelessSharedContentKind,
+    rangeStart: number,
+    rangeEnd: number,
   ) {
-    const key = `${sectionPrefix}:${this.normalizeLookupKey(label)}`;
+    const key = `${destinationPrefix}:${kind}:${rangeStart}:${rangeEnd}`;
     const current = existing.get(key);
     if (current) return current;
-    const code = `${sectionPrefix}-COMP-${String(nextIndex).padStart(3, '0')}`;
+    const suffix = `-${kind === 'DIRECTIONS' ? 'DIR' : 'COMP'}-${rangeStart}-${rangeEnd}`;
+    const code = `${destinationPrefix.slice(0, 80 - suffix.length)}${suffix}`;
     existing.set(key, code);
     return code;
+  }
+
+  private codelessQuestionCode(
+    slotCode: string,
+    sectionCode: string,
+    questionNumber: number,
+  ) {
+    const suffix = `-Q${String(questionNumber).padStart(3, '0')}`;
+    const prefix =
+      this.cleanImportCode(`${slotCode}_${sectionCode}`) || 'QUESTION';
+    return `${prefix.slice(0, 80 - suffix.length)}${suffix}`;
   }
 
   private cleanImportCode(value: string) {
@@ -3395,6 +3902,7 @@ export class ExamService {
 
   private async buildCodelessWordRows(
     buffer: Buffer,
+    excelRows: CodelessExcelQuestionMapping[],
     versionId: number,
     dto: CreateExamImportDto,
     questionTypes: Array<{ id: number; code: string; name: string }>,
@@ -3410,9 +3918,7 @@ export class ExamService {
         },
       },
     });
-    const typeByCode = new Map(
-      questionTypes.map((type) => [type.code.toUpperCase(), type]),
-    );
+    const typeById = new Map(questionTypes.map((type) => [type.id, type]));
     const selectedSlot =
       dto.scope === ExamImportScope.SINGLE_SECTION
         ? structure.find((slot) =>
@@ -3425,11 +3931,19 @@ export class ExamService {
       (section) => section.id === dto.examTemplateSectionId,
     );
     const selectedSubject = selectedSection?.subjects[0]?.subject;
-    const orderByDestination = new Map<string, number>();
-    const comprehensionCodes = new Map<string, string>();
-    let comprehensionIndex = 0;
+    const joinKey = (
+      slotCode: string | undefined,
+      sectionCode: string | undefined,
+      questionNumber: number | undefined,
+      fallback: string,
+    ) =>
+      slotCode && sectionCode && questionNumber
+        ? `${slotCode.trim().toUpperCase()}:${sectionCode
+            .trim()
+            .toUpperCase()}:${questionNumber}`
+        : fallback;
 
-    return wordRows.map((word) => {
+    const resolvedWords = wordRows.map((word) => {
       const destination =
         dto.scope === ExamImportScope.SINGLE_SECTION
           ? {
@@ -3438,129 +3952,230 @@ export class ExamService {
               subject: selectedSubject,
             }
           : this.resolveCodelessDestination(structure, word);
-      const fallbackPrefix = this.cleanImportCode(
-        word.sectionCode ?? word.sectionTitle ?? 'SECTION',
+      const slotCode = destination.slot?.code ?? word.slotCode;
+      const sectionCode = destination.section?.code ?? word.sectionCode;
+      return {
+        word,
+        destination,
+        key: joinKey(
+          slotCode,
+          sectionCode,
+          word.questionNumber,
+          `WORD:${word.sourceRowNumber}`,
+        ),
+      };
+    });
+    const resolvedExcel = excelRows.map((mapping) => ({
+      mapping,
+      key: joinKey(
+        mapping.slotCode,
+        mapping.sectionCode,
+        mapping.questionNumber,
+        `EXCEL:${mapping.sourceRowNumber}`,
+      ),
+    }));
+    const wordsByKey = new Map<string, (typeof resolvedWords)[number][]>();
+    const excelByKey = new Map<string, (typeof resolvedExcel)[number][]>();
+    for (const item of resolvedWords) {
+      const bucket = wordsByKey.get(item.key) ?? [];
+      bucket.push(item);
+      wordsByKey.set(item.key, bucket);
+    }
+    for (const item of resolvedExcel) {
+      const bucket = excelByKey.get(item.key) ?? [];
+      bucket.push(item);
+      excelByKey.set(item.key, bucket);
+    }
+    const keys = [
+      ...new Set([
+        ...resolvedExcel.map((item) => item.key),
+        ...resolvedWords.map((item) => item.key),
+      ]),
+    ];
+    const comprehensionCodes = new Map<string, string>();
+
+    return keys.map((key, index) => {
+      const wordMatches = wordsByKey.get(key) ?? [];
+      const excelMatches = excelByKey.get(key) ?? [];
+      const resolvedWord = wordMatches[0];
+      const word = resolvedWord?.word;
+      const mapping = excelMatches[0]?.mapping;
+      const questionNumber =
+        mapping?.questionNumber ?? word?.questionNumber ?? index + 1;
+      const slotCode =
+        mapping?.slotCode ??
+        resolvedWord?.destination.slot?.code ??
+        word?.slotCode ??
+        '';
+      const sectionCode =
+        mapping?.sectionCode ??
+        resolvedWord?.destination.section?.code ??
+        word?.sectionCode ??
+        '';
+      const subjectCode =
+        mapping?.subjectCode ??
+        resolvedWord?.destination.subject?.code ??
+        word?.subjectCode;
+      const questionCode = this.codelessQuestionCode(
+        slotCode || 'SLOT',
+        sectionCode || 'SECTION',
+        questionNumber,
       );
-      const sectionPrefix =
-        destination.section?.code.toUpperCase() || fallbackPrefix || 'SECTION';
-      const questionCode = `${sectionPrefix}-Q${String(
-        word.questionNumber,
-      ).padStart(3, '0')}`;
-      const destinationKey = [
-        destination.slot?.code ?? word.slotCode ?? '',
-        destination.section?.code ?? word.sectionCode ?? '',
-      ].join(':');
-      const sortOrder =
-        word.sortOrder ?? orderByDestination.get(destinationKey) ?? 1;
-      orderByDestination.set(destinationKey, sortOrder + 1);
-      const type = this.resolveCodelessQuestionType(word, typeByCode);
-      const errors: string[] = [...(word.parseErrors ?? [])];
-      if (
-        dto.scope === ExamImportScope.FULL_EXAM &&
-        !word.sectionTitle &&
-        !word.sectionCode
-      )
-        errors.push('Section heading or metadata is required');
-      if (!type)
+      const type = mapping?.rawQuestionTypeId
+        ? typeById.get(mapping.rawQuestionTypeId)
+        : undefined;
+      const errors: string[] = [...(word?.parseErrors ?? [])];
+
+      if (!word)
         errors.push(
-          'Question Type must be Single Choice, Numeric, or One Word',
+          'No matching Word question was found for slot_code + section_code + question_number',
         );
-      if (!this.hasRichContent(word.questionContent))
+      if (!mapping)
+        errors.push(
+          'No matching Excel row was found for slot_code + section_code + question_number',
+        );
+      if (wordMatches.length > 1)
+        errors.push(
+          'Duplicate Word question for slot_code + section_code + question_number',
+        );
+      if (excelMatches.length > 1)
+        errors.push(
+          'Duplicate Excel row for slot_code + section_code + question_number',
+        );
+      if (mapping?.questionNumberInvalid)
+        errors.push('question_number must be a positive integer');
+      if (!mapping?.slotCode) errors.push('slot_code is required in Excel');
+      if (!mapping?.sectionCode)
+        errors.push('section_code is required in Excel');
+      if (!mapping?.subjectCode)
+        errors.push('subject_code is required in Excel');
+      if (!mapping?.rawQuestionTypeId)
+        errors.push('question_type_id must be an integer');
+      else if (!type)
+        errors.push(
+          `unknown or inactive question_type_id ${mapping.rawQuestionTypeId}`,
+        );
+      if (mapping?.difficultyInvalid)
+        errors.push('difficulty must be EASY, MEDIUM, or HARD');
+      if (!word || !this.hasRichContent(word.questionContent))
         errors.push('Word question content is required');
       if (
-        word.comprehensionLabel &&
+        word?.comprehensionLabel &&
         !this.hasRichContent(word.comprehensionContent ?? '')
       )
-        errors.push('Comprehension content must contain text or an image');
-      if (!Number.isFinite(word.marks ?? 1) || (word.marks ?? 1) < 0)
-        errors.push('Marks must be a non-negative number');
+        errors.push(
+          'Comprehension or Directions content must contain text or an image',
+        );
+      if (!Number.isFinite(mapping?.marks) || (mapping?.marks ?? -1) < 0)
+        errors.push('marks must be a non-negative number');
       if (
-        !Number.isFinite(word.negativeMarks ?? 0) ||
-        (word.negativeMarks ?? 0) < 0
+        !Number.isFinite(mapping?.negativeMarks) ||
+        (mapping?.negativeMarks ?? -1) < 0
       )
-        errors.push('Negative Marks must be a non-negative number');
-      const optionCodes = word.options.map((option) => option.code);
+        errors.push('negative_marks must be a non-negative number');
+      if (
+        word &&
+        mapping?.subjectCode &&
+        resolvedWord?.destination.subject?.code &&
+        mapping.subjectCode !==
+          resolvedWord.destination.subject.code.toUpperCase()
+      )
+        errors.push('subject_code differs from the Word metadata destination');
+
+      const optionCodes = word?.options.map((option) => option.code) ?? [];
       if (new Set(optionCodes).size !== optionCodes.length)
         errors.push('Option labels must be unique');
-      if (word.options.some((option) => !this.hasRichContent(option.content)))
+      if (word?.options.some((option) => !this.hasRichContent(option.content)))
         errors.push('Every option must contain text or an image');
       if (type?.code === QUESTION_TYPE_CODES.SINGLE_CHOICE) {
         if (
-          word.options.length < 2 ||
-          word.options.filter((option) => option.isCorrect).length !== 1
+          (word?.options.length ?? 0) < 2 ||
+          word?.options.filter((option) => option.isCorrect).length !== 1
         )
           errors.push(
             'Single-choice questions require at least two options and one Correct Option value',
           );
         if (
-          word.answer &&
+          word?.answer &&
           !word.options.some((option) => option.code === word.answer)
         )
-          errors.push('Correct Option must reference an option-table label');
+          errors.push('Correct Option must reference an option label');
       } else if (type?.code === QUESTION_TYPE_CODES.NUMERIC) {
-        if (!word.acceptedAnswers.length)
+        if (!word?.acceptedAnswers.length)
           errors.push('Numeric questions require Accepted Answers');
         if (
-          word.acceptedAnswers.some(
+          word?.acceptedAnswers.some(
             (answer) => !Number.isFinite(Number(answer)),
           )
         )
           errors.push('Numeric accepted answers must be valid numbers');
-        if ((word.tolerance ?? 0) < 0)
+        if ((word?.tolerance ?? 0) < 0)
           errors.push('Numeric Tolerance cannot be negative');
       } else if (
         type?.code === QUESTION_TYPE_CODES.ONE_WORD &&
-        !word.acceptedAnswers.length
+        !word?.acceptedAnswers.length
       ) {
         errors.push('One-word questions require Accepted Answers');
       }
-      const comprehensionCode = word.comprehensionLabel
-        ? this.codelessComprehensionCode(
-            comprehensionCodes,
-            ++comprehensionIndex,
-            sectionPrefix,
-            word.comprehensionLabel,
-          )
-        : undefined;
+
+      const destinationPrefix =
+        this.cleanImportCode(
+          [slotCode, sectionCode, subjectCode].filter(Boolean).join('_'),
+        ) || 'SHARED_CONTENT';
+      const comprehensionCode =
+        word?.comprehensionKind &&
+        word.comprehensionRangeStart &&
+        word.comprehensionRangeEnd
+          ? this.codelessComprehensionCode(
+              comprehensionCodes,
+              destinationPrefix,
+              word.comprehensionKind,
+              word.comprehensionRangeStart,
+              word.comprehensionRangeEnd,
+            )
+          : undefined;
+
       return {
-        sourceRowNumber: word.sourceRowNumber,
-        slotCode: destination.slot?.code ?? word.slotCode,
-        sectionCode: destination.section?.code ?? word.sectionCode,
-        subjectCode: destination.subject?.code ?? word.subjectCode,
+        sourceRowNumber: index + 1,
+        slotCode: mapping?.slotCode,
+        sectionCode: mapping?.sectionCode,
+        subjectCode: mapping?.subjectCode,
+        topicCode: mapping?.topicCode,
         questionCode,
         questionTypeId: type?.id,
-        rawQuestionTypeId: type?.id,
-        difficulty: word.difficulty ?? QuestionDifficulty.MEDIUM,
+        rawQuestionTypeId: mapping?.rawQuestionTypeId,
+        difficulty: mapping?.difficulty ?? QuestionDifficulty.MEDIUM,
         comprehensionCode,
-        comprehensionContent: word.comprehensionContent,
-        questionContent: word.questionContent,
-        marks: word.marks ?? 1,
-        negativeMarks: word.negativeMarks ?? 0,
-        sortOrder,
-        isMandatory: word.isMandatory ?? true,
-        answer: word.answer,
-        tolerance: word.tolerance,
-        caseSensitive: word.caseSensitive,
-        explanation: word.explanation,
-        options: word.options,
-        acceptedAnswers: word.acceptedAnswers,
+        comprehensionContent: word?.comprehensionContent,
+        questionContent: word?.questionContent ?? '',
+        marks: mapping?.marks ?? 0,
+        negativeMarks: mapping?.negativeMarks ?? 0,
+        sortOrder: mapping?.sortOrder,
+        isMandatory: mapping?.isMandatory ?? true,
+        answer: word?.answer,
+        tolerance: word?.tolerance,
+        caseSensitive: word?.caseSensitive ?? false,
+        explanation: word?.explanation,
+        options: word?.options ?? [],
+        acceptedAnswers: word?.acceptedAnswers ?? [],
         status: errors.length
           ? ExamImportRowStatus.ERROR
           : ExamImportRowStatus.VALID,
         validationMessage: errors.join('; ') || undefined,
         rawData: {
-          word: word.rawData,
+          word: word?.rawData ?? null,
+          excel: mapping?.rawData ?? null,
           importMode: ExamImportMode.CODELESS_WORD,
+          answerRulesContent: word?.answerRulesContent ?? null,
           generated: {
+            joinKey: key,
             questionCode,
             comprehensionCode,
-            sectionPrefix,
           },
         },
       };
     });
   }
-
   private async validateImportDestinations(
     versionId: number,
     organizationId: number,

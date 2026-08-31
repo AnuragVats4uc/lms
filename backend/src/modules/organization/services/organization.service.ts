@@ -10,6 +10,7 @@ import { CreateOrganizationDto } from '../dto/create-organization.dto';
 import { OrganizationQueryDto } from '../dto/organization-query.dto';
 import { UpdateOrganizationDto } from '../dto/update-organization.dto';
 import { CurrentUser } from '../../auth/types/current-user.types';
+import { generateInternalCode } from '../../../common/utils/internal-code';
 import {
   NormalizedOrganizationQuery,
   OrganizationUpdateData,
@@ -25,10 +26,17 @@ export class OrganizationService {
   async create(dto: CreateOrganizationDto, actor: CurrentUser) {
     this.assertIsSuperAdmin(actor);
     await this.ensureNameIsUnique(dto.name);
-    await this.ensureCodeIsUnique(dto.code);
+    const code = await generateInternalCode({
+      fallback: 'ORG',
+      isTaken: async (candidate) =>
+        Boolean(await this.organizationRepository.findByCode(candidate)),
+      maxLength: 20,
+      source: dto.name,
+    });
 
     const organization = await this.organizationRepository.create({
       ...dto,
+      code,
       status: dto.status ?? OrganizationStatus.ACTIVE,
     });
 
@@ -66,10 +74,6 @@ export class OrganizationService {
       await this.ensureNameIsUnique(dto.name, id);
     }
 
-    if (dto.code) {
-      await this.ensureCodeIsUnique(dto.code, id);
-    }
-
     const organization = await this.organizationRepository.update(
       id,
       this.toUpdateInput(dto),
@@ -104,16 +108,6 @@ export class OrganizationService {
 
     if (organization) {
       throw new ConflictException('Organization name already exists');
-    }
-  }
-
-  private async ensureCodeIsUnique(code: string, excludeId?: number) {
-    const organization = excludeId
-      ? await this.organizationRepository.findByCodeExcludingId(code, excludeId)
-      : await this.organizationRepository.findByCode(code);
-
-    if (organization) {
-      throw new ConflictException('Organization code already exists');
     }
   }
 
