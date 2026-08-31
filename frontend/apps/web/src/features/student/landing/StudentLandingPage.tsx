@@ -2,14 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import {
-  ArrowRight,
-  ExternalLink,
-  GraduationCap,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, ExternalLink } from "lucide-react";
 
-import { Text, XStack, YStack } from "@repo/ui";
+import { YStack } from "@repo/ui";
 import { useAuthSession } from "@repo/auth";
 
 import { STUDENT_DASHBOARD_PATH } from "@/features/auth/routes";
@@ -25,8 +20,7 @@ const externalDestination = {
     process.env.NEXT_PUBLIC_STUDENT_EXTERNAL_PORTAL_NAME?.trim() ||
     "External Link",
 
-  url:
-    process.env.NEXT_PUBLIC_STUDENT_EXTERNAL_PORTAL_URL?.trim() || "",
+  url: process.env.NEXT_PUBLIC_STUDENT_EXTERNAL_PORTAL_URL?.trim() || "",
 };
 
 const destinations = [
@@ -58,51 +52,30 @@ export const StudentLandingPage = () => {
 
   return (
     <main className={styles.pageShell}>
-      <div
-        aria-hidden="true"
-        className={styles.backgroundPattern}
-      />
+      <div aria-hidden="true" className={styles.backgroundPattern} />
 
       <YStack className={styles.content}>
-        {/* LMS Brand */}
-        <XStack
-          aria-label="The LMS Student Portal"
-          className={styles.brand}
-        >
-          <span className={styles.brandMark}>
-            <GraduationCap
-              aria-hidden="true"
-              size={21}
-              strokeWidth={2.3}
-            />
-          </span>
+        {/* Organization Brand */}
+        <div className={styles.organizationLogo}>
+          <Image
+            alt="Keonjhar Digital Library"
+            className={styles.organizationLogoImage}
+            height={500}
+            priority
+            quality={100}
+            sizes="(max-width: 600px) and (max-height: 620px) 120px, (max-width: 600px) 190px, (max-height: 620px) 144px, (max-height: 760px) 200px, 270px"
+            src="/images/keonjhar-logo.png"
+            width={500}
+          />
+        </div>
 
-          <YStack className={styles.brandCopy}>
-            <Text className={styles.brandName}>
-              The LMS
-            </Text>
-
-            <Text className={styles.brandMeta}>
-              Student Portal
-            </Text>
-          </YStack>
-        </XStack>
+        {/* The LMS Student Portal badge is intentionally hidden. */}
 
         {/* Welcome */}
         <YStack className={styles.headingBlock}>
-          <span className={styles.kicker}>
-            <Sparkles
-              aria-hidden="true"
-              size={14}
-              strokeWidth={2.25}
-            />
+          {/* Student gateway label is intentionally hidden. */}
 
-            Student gateway
-          </span>
-
-          <h1 className={styles.title}>
-            Welcome to The LMS
-          </h1>
+          <h1 className={styles.title}>Welcome to The LMS</h1>
 
           <p className={styles.subtitle}>
             {studentName
@@ -117,24 +90,16 @@ export const StudentLandingPage = () => {
           className={styles.cardGrid}
         >
           {destinations.map((destination) => (
-            <DestinationCard
-              key={destination.title}
-              {...destination}
-            />
+            <DestinationCard key={destination.title} {...destination} />
           ))}
         </section>
 
         {/* Mobile indicator */}
-        <div
-          aria-hidden="true"
-          className={styles.mobileSwipeHint}
-        >
+        <div aria-hidden="true" className={styles.mobileSwipeHint}>
           <span className={styles.swipeDotActive} />
           <span className={styles.swipeDot} />
 
-          <span className={styles.swipeText}>
-            Swipe to explore
-          </span>
+          <span className={styles.swipeText}>Swipe to explore</span>
         </div>
       </YStack>
     </main>
@@ -162,34 +127,24 @@ const DestinationCard = ({
 }: DestinationCardProps) => {
   const cardClassName = [
     styles.card,
-    isExternal
-      ? styles.cardExternal
-      : styles.cardPrimary,
+    isExternal ? styles.cardExternal : styles.cardPrimary,
   ]
     .filter(Boolean)
     .join(" ");
 
   const imagePanelClassName = [
     styles.imagePanel,
-    isExternal
-      ? styles.imagePanelExternal
-      : styles.imagePanelPrimary,
+    isExternal ? styles.imagePanelExternal : styles.imagePanelPrimary,
   ]
     .filter(Boolean)
     .join(" ");
 
   return (
     <article className={cardClassName}>
-      <div
-        aria-hidden="true"
-        className={styles.cardGlow}
-      />
+      <div aria-hidden="true" className={styles.cardGlow} />
 
       <div className={imagePanelClassName}>
-        <div
-          aria-hidden="true"
-          className={styles.imageDecoration}
-        />
+        <div aria-hidden="true" className={styles.imageDecoration} />
 
         <Image
           alt={imageAlt}
@@ -203,13 +158,9 @@ const DestinationCard = ({
 
       <div className={styles.cardBody}>
         <div className={styles.cardCopy}>
-          <h2 className={styles.cardTitle}>
-            {title}
-          </h2>
+          <h2 className={styles.cardTitle}>{title}</h2>
 
-          <p className={styles.cardDescription}>
-            {description}
-          </p>
+          <p className={styles.cardDescription}>{description}</p>
         </div>
 
         {isExternal ? (
@@ -246,10 +197,7 @@ const DestinationCard = ({
             </button>
           )
         ) : (
-          <Link
-            className={`${styles.cta} ${styles.ctaPrimary}`}
-            href={href}
-          >
+          <Link className={`${styles.cta} ${styles.ctaPrimary}`} href={href}>
             <span>{cta}</span>
 
             <ArrowRight

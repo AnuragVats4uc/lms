@@ -10,16 +10,13 @@
   justify-content: center;
 
   width: 100%;
-  height: 100vh;
-  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
 
-  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 
-  overflow: hidden;
-
-  padding:
-    clamp(18px, 2.8vh, 30px)
-    clamp(20px, 3vw, 36px);
+  padding: clamp(18px, 2.8vh, 30px) clamp(20px, 3vw, 36px);
 
   color: #0f1d3a;
 
@@ -34,12 +31,7 @@
       rgba(14, 165, 233, 0.1),
       transparent 28%
     ),
-    linear-gradient(
-      135deg,
-      #f7fcfa 0%,
-      #eef8f4 48%,
-      #f8fafc 100%
-    );
+    linear-gradient(135deg, #f7fcfa 0%, #eef8f4 48%, #f8fafc 100%);
 }
 
 .pageShell::before,
@@ -60,16 +52,13 @@
 
   transform: rotate(-8deg);
 
-  border:
-    1px solid
-    rgba(5, 150, 105, 0.075);
+  border: 1px solid rgba(5, 150, 105, 0.075);
 
-  background:
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.7),
-      rgba(236, 253, 245, 0.25)
-    );
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.7),
+    rgba(236, 253, 245, 0.25)
+  );
 }
 
 .pageShell::after {
@@ -81,16 +70,13 @@
 
   transform: rotate(8deg);
 
-  border:
-    1px solid
-    rgba(15, 29, 58, 0.045);
+  border: 1px solid rgba(15, 29, 58, 0.045);
 
-  background:
-    linear-gradient(
-      135deg,
-      rgba(240, 253, 250, 0.5),
-      rgba(255, 255, 255, 0.7)
-    );
+  background: linear-gradient(
+    135deg,
+    rgba(240, 253, 250, 0.5),
+    rgba(255, 255, 255, 0.7)
+  );
 }
 
 .backgroundPattern {
@@ -102,24 +88,12 @@
   opacity: 0.5;
 
   background-image:
-    linear-gradient(
-      rgba(15, 29, 58, 0.032) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      90deg,
-      rgba(15, 29, 58, 0.032) 1px,
-      transparent 1px
-    );
+    linear-gradient(rgba(15, 29, 58, 0.032) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 29, 58, 0.032) 1px, transparent 1px);
 
   background-size: 42px 42px;
 
-  mask-image:
-    linear-gradient(
-      to bottom,
-      rgba(0, 0, 0, 0.75),
-      transparent 90%
-    );
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), transparent 90%);
 }
 
 /* =========================================================
@@ -137,20 +111,45 @@
   justify-content: center;
 
   width: 100%;
-  height: 100%;
-
   min-height: 0;
 
   max-width: 980px;
 
   margin: 0 auto;
 
-  gap:
-    clamp(
-      11px,
-      1.65vh,
-      16px
-    ) !important;
+  gap: clamp(11px, 1.65vh, 16px) !important;
+}
+
+/* =========================================================
+   ORGANIZATION BRAND
+========================================================= */
+
+.organizationLogo {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: clamp(180px, 28dvh, 270px);
+
+  aspect-ratio: 1;
+
+  flex: 0 0 auto;
+
+  margin-bottom: -4px;
+}
+
+.organizationLogoImage {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: contain;
+
+  filter: drop-shadow(0 6px 12px rgba(15, 54, 45, 0.05));
+  transform: scale(1.06);
 }
 
 /* =========================================================
@@ -169,26 +168,19 @@
 
   gap: 9px !important;
 
-  padding:
-    6px
-    13px
-    6px
-    7px !important;
+  padding: 6px 13px 6px 7px !important;
 
   overflow: hidden;
 
-  border:
-    1px solid
-    rgba(5, 150, 105, 0.17) !important;
+  border: 1px solid rgba(5, 150, 105, 0.17) !important;
 
   border-radius: 13px !important;
 
-  background:
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.92),
-      rgba(236, 253, 245, 0.88)
-    ) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.92),
+    rgba(236, 253, 245, 0.88)
+  ) !important;
 
   box-shadow:
     0 10px 28px rgba(15, 23, 42, 0.055),
@@ -214,8 +206,7 @@
 
   border-radius: 999px;
 
-  background:
-    rgba(16, 185, 129, 0.08);
+  background: rgba(16, 185, 129, 0.08);
 
   filter: blur(10px);
 }
@@ -235,22 +226,13 @@
 
   color: #047857;
 
-  border:
-    1px solid
-    rgba(5, 150, 105, 0.18);
+  border: 1px solid rgba(5, 150, 105, 0.18);
 
   border-radius: 9px;
 
-  background:
-    linear-gradient(
-      145deg,
-      #e6f9f0,
-      #d9f4e8
-    );
+  background: linear-gradient(145deg, #e6f9f0, #d9f4e8);
 
-  box-shadow:
-    inset 0 1px 0
-    rgba(255, 255, 255, 0.88);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88);
 }
 
 .brandCopy {
@@ -316,9 +298,7 @@
 
   gap: 6px;
 
-  padding:
-    5px
-    11px;
+  padding: 5px 11px;
 
   color: #047857;
 
@@ -327,18 +307,13 @@
 
   line-height: 15px;
 
-  border:
-    1px solid
-    rgba(5, 150, 105, 0.16);
+  border: 1px solid rgba(5, 150, 105, 0.16);
 
   border-radius: 999px;
 
-  background:
-    rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.82);
 
-  box-shadow:
-    0 5px 15px
-    rgba(15, 23, 42, 0.035);
+  box-shadow: 0 5px 15px rgba(15, 23, 42, 0.035);
 
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -349,12 +324,7 @@
 
   color: #0b1937;
 
-  font-size:
-    clamp(
-      34px,
-      3.1vw,
-      42px
-    );
+  font-size: clamp(34px, 3.1vw, 42px);
 
   font-weight: 800;
 
@@ -384,11 +354,7 @@
 .cardGrid {
   display: grid;
 
-  grid-template-columns:
-    repeat(
-      2,
-      minmax(0, 1fr)
-    );
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 
   width: 100%;
 
@@ -413,12 +379,7 @@
 
   width: 100%;
 
-  height:
-    clamp(
-      320px,
-      48dvh,
-      345px
-    );
+  height: clamp(320px, 48dvh, 345px);
 
   min-height: 0;
 
@@ -426,24 +387,19 @@
 
   padding: 10px;
 
-  border:
-    1px solid
-    rgba(205, 221, 214, 0.95);
+  border: 1px solid rgba(205, 221, 214, 0.95);
 
   border-radius: 15px;
 
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.98),
-      rgba(249, 253, 251, 0.95)
-    );
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(249, 253, 251, 0.95)
+  );
 
   box-shadow:
-    0 17px 42px
-      rgba(15, 23, 42, 0.075),
-    inset 0 1px 0
-      rgba(255, 255, 255, 0.96);
+    0 17px 42px rgba(15, 23, 42, 0.075),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96);
 
   transition:
     transform 180ms ease,
@@ -466,34 +422,27 @@
 
   opacity: 0;
 
-  background:
-    linear-gradient(
-      90deg,
-      transparent,
-      rgba(5, 150, 105, 0.68),
-      transparent
-    );
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(5, 150, 105, 0.68),
+    transparent
+  );
 
-  transition:
-    opacity 180ms ease;
+  transition: opacity 180ms ease;
 }
 
 .card:hover {
   z-index: 2;
 
-  transform:
-    translateY(-4px);
+  transform: translateY(-4px);
 
-  border-color:
-    rgba(5, 150, 105, 0.36);
+  border-color: rgba(5, 150, 105, 0.36);
 
   box-shadow:
-    0 24px 52px
-      rgba(15, 23, 42, 0.11),
-    0 0 0 3px
-      rgba(5, 150, 105, 0.045),
-    inset 0 1px 0
-      rgba(255, 255, 255, 0.98);
+    0 24px 52px rgba(15, 23, 42, 0.11),
+    0 0 0 3px rgba(5, 150, 105, 0.045),
+    inset 0 1px 0 rgba(255, 255, 255, 0.98);
 }
 
 .card:hover::before {
@@ -501,21 +450,19 @@
 }
 
 .cardPrimary {
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.99),
-      rgba(246, 253, 249, 0.96)
-    );
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.99),
+    rgba(246, 253, 249, 0.96)
+  );
 }
 
 .cardExternal {
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.99),
-      rgba(248, 252, 253, 0.96)
-    );
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.99),
+    rgba(248, 252, 253, 0.96)
+  );
 }
 
 .cardGlow {
@@ -531,8 +478,7 @@
 
   border-radius: 50%;
 
-  background:
-    rgba(16, 185, 129, 0.065);
+  background: rgba(16, 185, 129, 0.065);
 
   filter: blur(8px);
 }
@@ -550,13 +496,7 @@
 
   width: 100%;
 
-  flex:
-    0 0
-    clamp(
-      135px,
-      20dvh,
-      155px
-    );
+  flex: 0 0 clamp(135px, 20dvh, 155px);
 
   min-height: 0;
 
@@ -564,31 +504,27 @@
 
   padding: 6px;
 
-  border:
-    1px solid
-    rgba(202, 224, 214, 0.86);
+  border: 1px solid rgba(202, 224, 214, 0.86);
 
   border-radius: 11px;
 }
 
 .imagePanelPrimary {
-  background:
-    radial-gradient(
-      circle at 50% 48%,
-      rgba(209, 250, 229, 0.9),
-      rgba(239, 253, 247, 0.72) 53%,
-      rgba(255, 255, 255, 0.88) 100%
-    );
+  background: radial-gradient(
+    circle at 50% 48%,
+    rgba(209, 250, 229, 0.9),
+    rgba(239, 253, 247, 0.72) 53%,
+    rgba(255, 255, 255, 0.88) 100%
+  );
 }
 
 .imagePanelExternal {
-  background:
-    radial-gradient(
-      circle at 50% 46%,
-      rgba(204, 251, 241, 0.82),
-      rgba(239, 253, 250, 0.72) 53%,
-      rgba(255, 255, 255, 0.88) 100%
-    );
+  background: radial-gradient(
+    circle at 50% 46%,
+    rgba(204, 251, 241, 0.82),
+    rgba(239, 253, 250, 0.72) 53%,
+    rgba(255, 255, 255, 0.88) 100%
+  );
 }
 
 .imageDecoration {
@@ -600,15 +536,13 @@
   width: 160px;
   height: 72px;
 
-  transform:
-    translateX(-50%);
+  transform: translateX(-50%);
 
   pointer-events: none;
 
   border-radius: 50%;
 
-  background:
-    rgba(5, 150, 105, 0.08);
+  background: rgba(5, 150, 105, 0.08);
 
   filter: blur(23px);
 }
@@ -625,11 +559,7 @@
 
   object-fit: contain;
 
-  filter:
-    drop-shadow(
-      0 10px 13px
-      rgba(15, 118, 110, 0.09)
-    );
+  filter: drop-shadow(0 10px 13px rgba(15, 118, 110, 0.09));
 
   transition:
     transform 200ms ease,
@@ -637,15 +567,9 @@
 }
 
 .card:hover .cardImage {
-  transform:
-    translateY(-3px)
-    scale(1.035);
+  transform: translateY(-3px) scale(1.035);
 
-  filter:
-    drop-shadow(
-      0 14px 18px
-      rgba(15, 118, 110, 0.12)
-    );
+  filter: drop-shadow(0 14px 18px rgba(15, 118, 110, 0.12));
 }
 
 /* =========================================================
@@ -665,10 +589,7 @@
 
   min-height: 0;
 
-  padding:
-    13px
-    8px
-    8px;
+  padding: 13px 8px 8px;
 
   gap: 10px;
 
@@ -735,9 +656,7 @@
 
   margin-top: auto;
 
-  padding:
-    0
-    17px;
+  padding: 0 17px;
 
   border-radius: 8px;
 
@@ -763,20 +682,11 @@
 .ctaPrimary {
   color: #ffffff;
 
-  border:
-    1px solid
-    #059669;
+  border: 1px solid #059669;
 
-  background:
-    linear-gradient(
-      135deg,
-      #059669,
-      #079b71
-    );
+  background: linear-gradient(135deg, #059669, #079b71);
 
-  box-shadow:
-    0 7px 17px
-    rgba(5, 150, 105, 0.17);
+  box-shadow: 0 7px 17px rgba(5, 150, 105, 0.17);
 }
 
 .ctaPrimary:hover {
@@ -784,59 +694,40 @@
 
   border-color: #047857;
 
-  background:
-    linear-gradient(
-      135deg,
-      #047857,
-      #058866
-    );
+  background: linear-gradient(135deg, #047857, #058866);
 
-  box-shadow:
-    0 11px 22px
-    rgba(5, 150, 105, 0.22);
+  box-shadow: 0 11px 22px rgba(5, 150, 105, 0.22);
 
-  transform:
-    translateY(-1px);
+  transform: translateY(-1px);
 }
 
 .ctaSecondary {
   color: #047857;
 
-  border:
-    1px solid
-    rgba(5, 150, 105, 0.23);
+  border: 1px solid rgba(5, 150, 105, 0.23);
 
-  background:
-    rgba(236, 253, 245, 0.96);
+  background: rgba(236, 253, 245, 0.96);
 }
 
 .ctaSecondary:hover {
   color: #046c52;
 
-  border-color:
-    rgba(5, 150, 105, 0.34);
+  border-color: rgba(5, 150, 105, 0.34);
 
-  background:
-    #def8ea;
+  background: #def8ea;
 
-  box-shadow:
-    0 9px 20px
-    rgba(5, 150, 105, 0.11);
+  box-shadow: 0 9px 20px rgba(5, 150, 105, 0.11);
 
-  transform:
-    translateY(-1px);
+  transform: translateY(-1px);
 }
 
 .ctaDisabled,
 .ctaDisabled:hover {
   color: #64748b;
 
-  border:
-    1px solid
-    #d5e2dc;
+  border: 1px solid #d5e2dc;
 
-  background:
-    #e5eeea;
+  background: #e5eeea;
 
   box-shadow: none;
 
@@ -848,24 +739,19 @@
 .ctaIcon {
   flex: 0 0 auto;
 
-  transition:
-    transform 180ms ease;
+  transition: transform 180ms ease;
 }
 
 .ctaPrimary:hover .ctaIcon {
-  transform:
-    translateX(2px);
+  transform: translateX(2px);
 }
 
 .ctaSecondary:hover .ctaIcon {
-  transform:
-    translate(1px, -1px);
+  transform: translate(1px, -1px);
 }
 
 .cta:focus-visible {
-  outline:
-    3px solid
-    rgba(5, 150, 105, 0.2);
+  outline: 3px solid rgba(5, 150, 105, 0.2);
 
   outline-offset: 3px;
 }
@@ -884,16 +770,17 @@
 
 @media (max-width: 900px) {
   .pageShell {
-    padding:
-      16px
-      18px;
+    padding: 16px 18px;
   }
 
   .content {
     max-width: 760px;
 
-    gap:
-      11px !important;
+    gap: 11px !important;
+  }
+
+  .organizationLogo {
+    width: clamp(170px, 25dvh, 230px);
   }
 
   .cardGrid {
@@ -903,47 +790,69 @@
   }
 
   .card {
-    height:
-      clamp(
-        310px,
-        47dvh,
-        335px
-      );
+    height: clamp(310px, 47dvh, 335px);
   }
 
   .title {
-    font-size:
-      clamp(
-        32px,
-        4vw,
-        38px
-      );
+    font-size: clamp(32px, 4vw, 38px);
+  }
+}
+
+/* =========================================================
+   COMPACT VIEWPORT HEIGHT
+   Keeps common 680/720px laptop screens within one viewport.
+========================================================= */
+
+@media (min-width: 601px) and (max-height: 760px) {
+  .pageShell {
+    padding: 12px 18px;
+  }
+
+  .content {
+    gap: 9px !important;
+  }
+
+  .organizationLogo {
+    width: clamp(150px, 24dvh, 200px);
+
+    margin-bottom: -4px;
+  }
+
+  .title {
+    font-size: clamp(31px, 3.1vw, 36px);
+  }
+
+  .card {
+    height: clamp(286px, 45dvh, 324px);
+  }
+
+  .imagePanel {
+    flex-basis: clamp(112px, 20dvh, 138px);
   }
 }
 
 /* =========================================================
    SHORT LAPTOP
    Only compress when viewport is genuinely short.
-   Do NOT shrink normal 1366 x 680/720 laptop screens.
 ========================================================= */
 
 @media (min-width: 601px) and (max-height: 620px) {
   .pageShell {
-    padding:
-      8px
-      16px;
+    padding: 8px 16px;
   }
 
   .content {
     gap: 7px !important;
   }
 
+  .organizationLogo {
+    width: clamp(118px, 20dvh, 144px);
+
+    margin-bottom: -4px;
+  }
+
   .brand {
-    padding:
-      4px
-      10px
-      4px
-      5px !important;
+    padding: 4px 10px 4px 5px !important;
   }
 
   .brandMark {
@@ -970,9 +879,7 @@
   }
 
   .kicker {
-    padding:
-      4px
-      9px;
+    padding: 4px 9px;
 
     font-size: 10px;
   }
@@ -994,23 +901,13 @@
   }
 
   .card {
-    height:
-      clamp(
-        260px,
-        48dvh,
-        285px
-      );
+    height: clamp(260px, 48dvh, 285px);
 
     padding: 8px;
   }
 
   .imagePanel {
-    flex-basis:
-      clamp(
-        100px,
-        18dvh,
-        112px
-      );
+    flex-basis: clamp(100px, 18dvh, 112px);
   }
 
   .cardImage {
@@ -1018,10 +915,7 @@
   }
 
   .cardBody {
-    padding:
-      8px
-      6px
-      2px;
+    padding: 8px 6px 2px;
 
     gap: 5px;
   }
@@ -1057,9 +951,7 @@
 
 @media (max-width: 600px) {
   .pageShell {
-    padding:
-      12px
-      14px;
+    padding: 12px 14px;
   }
 
   .pageShell::before {
@@ -1077,9 +969,7 @@
   }
 
   .backgroundPattern {
-    background-size:
-      34px
-      34px;
+    background-size: 34px 34px;
 
     opacity: 0.42;
   }
@@ -1093,12 +983,14 @@
     gap: 9px !important;
   }
 
+  .organizationLogo {
+    width: clamp(150px, 23dvh, 190px);
+
+    margin-bottom: -4px;
+  }
+
   .brand {
-    padding:
-      5px
-      10px
-      5px
-      6px !important;
+    padding: 5px 10px 5px 6px !important;
 
     gap: 8px !important;
   }
@@ -1129,20 +1021,13 @@
   }
 
   .kicker {
-    padding:
-      4px
-      9px;
+    padding: 4px 9px;
 
     font-size: 10px;
   }
 
   .title {
-    font-size:
-      clamp(
-        28px,
-        8vw,
-        33px
-      );
+    font-size: clamp(28px, 8vw, 33px);
 
     line-height: 1.08;
   }
@@ -1160,10 +1045,7 @@
   .cardGrid {
     display: flex;
 
-    width:
-      calc(
-        100vw - 28px
-      );
+    width: calc(100vw - 28px);
 
     max-width: none;
 
@@ -1171,26 +1053,20 @@
 
     margin: 0;
 
-    padding:
-      2px
-      7vw
-      4px;
+    padding: 2px 7vw 4px;
 
     overflow-x: auto;
     overflow-y: hidden;
 
     scroll-behavior: smooth;
 
-    scroll-snap-type:
-      x mandatory;
+    scroll-snap-type: x mandatory;
 
-    overscroll-behavior-x:
-      contain;
+    overscroll-behavior-x: contain;
 
     scrollbar-width: none;
 
-    -webkit-overflow-scrolling:
-      touch;
+    -webkit-overflow-scrolling: touch;
   }
 
   .cardGrid::-webkit-scrollbar {
@@ -1198,25 +1074,11 @@
   }
 
   .card {
-    flex:
-      0 0
-      min(
-        84vw,
-        370px
-      );
+    flex: 0 0 min(84vw, 370px);
 
-    width:
-      min(
-        84vw,
-        370px
-      );
+    width: min(84vw, 370px);
 
-    height:
-      clamp(
-        300px,
-        47dvh,
-        340px
-      );
+    height: clamp(300px, 47dvh, 340px);
 
     padding: 9px;
 
@@ -1229,12 +1091,7 @@
   }
 
   .imagePanel {
-    flex-basis:
-      clamp(
-        120px,
-        18dvh,
-        140px
-      );
+    flex-basis: clamp(120px, 18dvh, 140px);
 
     border-radius: 9px;
   }
@@ -1251,10 +1108,7 @@
   .cardBody {
     gap: 7px;
 
-    padding:
-      10px
-      7px
-      3px;
+    padding: 10px 7px 3px;
   }
 
   .cardTitle {
@@ -1276,9 +1130,7 @@
 
     flex-basis: 36px;
 
-    padding:
-      0
-      14px;
+    padding: 0 14px;
 
     font-size: 11.5px;
   }
@@ -1314,25 +1166,13 @@
   }
 
   .swipeDot {
-    background:
-      rgba(
-        100,
-        116,
-        139,
-        0.25
-      );
+    background: rgba(100, 116, 139, 0.25);
   }
 
   .swipeDotActive {
     width: 13px;
 
-    background:
-      rgba(
-        5,
-        150,
-        105,
-        0.75
-      );
+    background: rgba(5, 150, 105, 0.75);
   }
 
   .swipeText {
@@ -1346,21 +1186,21 @@
 
 @media (max-width: 600px) and (max-height: 620px) {
   .pageShell {
-    padding:
-      7px
-      12px;
+    padding: 7px 12px;
   }
 
   .content {
     gap: 5px !important;
   }
 
+  .organizationLogo {
+    width: clamp(96px, 19dvh, 120px);
+
+    margin-bottom: -5px;
+  }
+
   .brand {
-    padding:
-      3px
-      8px
-      3px
-      4px !important;
+    padding: 3px 8px 3px 4px !important;
   }
 
   .brandMark {
@@ -1375,9 +1215,7 @@
   }
 
   .kicker {
-    padding:
-      3px
-      8px;
+    padding: 3px 8px;
   }
 
   .title {
@@ -1391,28 +1229,15 @@
   }
 
   .cardGrid {
-    width:
-      calc(
-        100vw - 24px
-      );
+    width: calc(100vw - 24px);
   }
 
   .card {
-    height:
-      clamp(
-        235px,
-        48dvh,
-        265px
-      );
+    height: clamp(235px, 48dvh, 265px);
   }
 
   .imagePanel {
-    flex-basis:
-      clamp(
-        82px,
-        17dvh,
-        100px
-      );
+    flex-basis: clamp(82px, 17dvh, 100px);
   }
 
   .cardImage {
