@@ -17,7 +17,7 @@ import {
   RefreshCw,
   ShieldAlert,
 } from "lucide-react";
-import { activityReportsApi } from "@repo/api";
+import { activityReportsApi, getApiErrorMessage } from "@repo/api";
 import type {
   StudentActivityReportData,
   StudentActivityReportQuery,
@@ -155,9 +155,7 @@ export function StudentActivityReportPage() {
       URL.revokeObjectURL(url);
     } catch (error) {
       setExportError(
-        error instanceof Error
-          ? error.message
-          : "The report could not be exported.",
+        getApiErrorMessage(error, "The report could not be exported."),
       );
     } finally {
       setExporting(null);
@@ -182,9 +180,10 @@ export function StudentActivityReportPage() {
           <ShieldAlert aria-hidden="true" size={28} />
           <h1>Unable to load activity report</h1>
           <p>
-            {reportQuery.error instanceof Error
-              ? reportQuery.error.message
-              : "The report is unavailable or you do not have access to this student."}
+            {getApiErrorMessage(
+              reportQuery.error,
+              "The report is unavailable or you do not have access to this student.",
+            )}
           </p>
           <div className={styles.errorActions}>
             <button onClick={() => router.back()} type="button">

@@ -21,6 +21,7 @@ import {
   type UseFormReturn,
 } from "react-hook-form";
 import { Button, XStack, YStack } from "@repo/ui";
+import { getApiErrorMessage } from "@repo/api";
 import type { PaginatedData } from "@repo/types";
 import { DEFAULT_CRUD_UI_PAGE_STATE, useCrudUiStore } from "@repo/hooks";
 
@@ -630,10 +631,10 @@ export function ResourceManagementPage<
       closeForm();
       await query.refetch();
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "The request could not be completed.";
+      const message = getApiErrorMessage(
+        error,
+        "The request could not be completed.",
+      );
       setFormError(message);
       showToast("Request failed", message, "error");
     }
@@ -653,10 +654,10 @@ export function ResourceManagementPage<
       );
       await query.refetch();
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "The delete request could not be completed.";
+      const message = getApiErrorMessage(
+        error,
+        "The delete request could not be completed.",
+      );
       setConfirmError(message);
       showToast("Delete failed", message, "error");
     }
@@ -681,10 +682,10 @@ export function ResourceManagementPage<
       );
       await query.refetch();
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "The status request could not be completed.";
+      const message = getApiErrorMessage(
+        error,
+        "The status request could not be completed.",
+      );
       setStatusError(message);
       showToast("Status update failed", message, "error");
     }
@@ -889,10 +890,10 @@ export function ResourceManagementPage<
             error={
               query.error
                 ? {
-                    description:
-                      query.error instanceof Error
-                        ? query.error.message
-                        : "The list could not be loaded.",
+                    description: getApiErrorMessage(
+                      query.error,
+                      "The list could not be loaded.",
+                    ),
                     onRetry: () => void query.refetch(),
                     retryLabel: "Retry",
                     title: "Unable to load " + entityLabel.toLowerCase(),

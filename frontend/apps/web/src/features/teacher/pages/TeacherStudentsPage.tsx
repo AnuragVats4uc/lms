@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BarChart3, UsersRound } from "lucide-react";
-import { teacherApi } from "@repo/api";
+import { getApiErrorMessage, teacherApi } from "@repo/api";
 import type { TeacherStudentListItem } from "@repo/types";
 import { PageContainer } from "@repo/ui/dashboard";
 import {
@@ -116,10 +116,10 @@ export function TeacherStudentsPage() {
         error={
           studentsQuery.isError
             ? {
-                description:
-                  studentsQuery.error instanceof Error
-                    ? studentsQuery.error.message
-                    : "The student list could not be loaded.",
+                description: getApiErrorMessage(
+                  studentsQuery.error,
+                  "The student list could not be loaded.",
+                ),
                 onRetry: () => void studentsQuery.refetch(),
                 title: "Unable to load students",
               }

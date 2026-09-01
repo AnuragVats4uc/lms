@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { getApiErrorMessage } from "@repo/api";
 import type { Session, UpdateSessionRequest } from "@repo/types";
 
 import { useSessionStore } from "../store";
@@ -27,7 +28,10 @@ export function useSessionActions({
   selectedSessions: Session[];
   setSelectedRowIds: (value: Session["id"][]) => void;
   showSelected: (session: Session) => void;
-  updateSession: (input: { sessionId: number; payload: UpdateSessionRequest }) => Promise<Session>;
+  updateSession: (input: {
+    sessionId: number;
+    payload: UpdateSessionRequest;
+  }) => Promise<Session>;
 }) {
   const { confirmAction, setConfirmAction } = useSessionStore();
   const [confirmError, setConfirmError] = useState<string | null>(null);
@@ -43,14 +47,20 @@ export function useSessionActions({
       setConfirmError(null);
     }
   }, [isDeleting, isUpdating, setConfirmAction]);
-  const openDelete = useCallback((session: Session) => {
-    setConfirmAction({ kind: "delete", session });
-    setConfirmError(null);
-  }, [setConfirmAction]);
-  const openToggle = useCallback((session: Session) => {
-    setConfirmAction({ kind: "toggle", session });
-    setConfirmError(null);
-  }, [setConfirmAction]);
+  const openDelete = useCallback(
+    (session: Session) => {
+      setConfirmAction({ kind: "delete", session });
+      setConfirmError(null);
+    },
+    [setConfirmAction],
+  );
+  const openToggle = useCallback(
+    (session: Session) => {
+      setConfirmAction({ kind: "toggle", session });
+      setConfirmError(null);
+    },
+    [setConfirmAction],
+  );
   const openBulkDelete = useCallback(() => {
     if (selectedSessions.length) {
       setConfirmAction({ kind: "bulk-delete", sessions: selectedSessions });
@@ -64,11 +74,21 @@ export function useSessionActions({
       if (confirmAction.kind === "delete") {
         await deleteSession(confirmAction.session.id);
         setSelectedRowIds([]);
-        showToast({ message: `${confirmAction.session.name} has been deleted.`, title: "Session deleted", tone: "success" });
+        showToast({
+          message: `${confirmAction.session.name} has been deleted.`,
+          title: "Session deleted",
+          tone: "success",
+        });
       } else if (confirmAction.kind === "bulk-delete") {
-        await Promise.all(confirmAction.sessions.map((session) => deleteSession(session.id)));
+        await Promise.all(
+          confirmAction.sessions.map((session) => deleteSession(session.id)),
+        );
         setSelectedRowIds([]);
-        showToast({ message: `${confirmAction.sessions.length} sessions have been deleted.`, title: "Sessions deleted", tone: "success" });
+        showToast({
+          message: `${confirmAction.sessions.length} sessions have been deleted.`,
+          title: "Sessions deleted",
+          tone: "success",
+        });
       } else {
         const active = !confirmAction.session.isActive;
         const session = await updateSession({
@@ -76,24 +96,43 @@ export function useSessionActions({
           payload: { isActive: active, status: active ? "ACTIVE" : "ARCHIVED" },
         });
         showSelected(session);
-        showToast({ message: `${session.name} is now ${active ? "active" : "archived"}.`, title: "Status updated", tone: "success" });
+        showToast({
+          message: `${session.name} is now ${active ? "active" : "archived"}.`,
+          title: "Status updated",
+          tone: "success",
+        });
       }
       setConfirmAction(null);
       setConfirmError(null);
       await refetch();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "The session action could not be completed.";
+      const message = getApiErrorMessage(
+        error,
+        "The session action could not be completed.",
+      );
       setConfirmError(message);
       showToast({ message, title: "Action failed", tone: "error" });
     }
-  }, [confirmAction, deleteSession, refetch, setConfirmAction, setSelectedRowIds, showSelected, showToast, updateSession]);
+  }, [
+    confirmAction,
+    deleteSession,
+    refetch,
+    setConfirmAction,
+    setSelectedRowIds,
+    showSelected,
+    showToast,
+    updateSession,
+  ]);
 
-  const rowActions = useMemo<SessionRowActionHandlers>(() => ({
-    onDelete: canDelete ? openDelete : undefined,
-    onEdit: canUpdate ? undefined : undefined,
-    onToggleActive: canUpdate ? openToggle : undefined,
-    onView: showSelected,
-  }), [canDelete, canUpdate, openDelete, openToggle, showSelected]);
+  const rowActions = useMemo<SessionRowActionHandlers>(
+    () => ({
+      onDelete: canDelete ? openDelete : undefined,
+      onEdit: canUpdate ? undefined : undefined,
+      onToggleActive: canUpdate ? openToggle : undefined,
+      onView: showSelected,
+    }),
+    [canDelete, canUpdate, openDelete, openToggle, showSelected],
+  );
 
   return {
     closeConfirmAction,

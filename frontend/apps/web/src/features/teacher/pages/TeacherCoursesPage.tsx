@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { BookOpen } from "lucide-react";
-import { teacherApi } from "@repo/api";
+import { getApiErrorMessage, teacherApi } from "@repo/api";
 import type { TeacherDashboardCourse } from "@repo/types";
 import { PageContainer } from "@repo/ui/dashboard";
 import {
@@ -13,10 +13,7 @@ import {
   DataTableTextCell,
   type DataTableColumn,
 } from "@/components/DataTable";
-import {
-  CrudPageHeader,
-  CrudToolbar,
-} from "@/features/admin/components/crud";
+import { CrudPageHeader, CrudToolbar } from "@/features/admin/components/crud";
 
 const statusOptions = [
   { label: "All statuses", value: "" },
@@ -92,19 +89,20 @@ export function TeacherCoursesPage() {
         columns={columns}
         data={data?.items ?? []}
         emptyState={{
-          description: search || status
-            ? "No assigned courses match the current filters."
-            : "No courses are assigned to this teacher account.",
+          description:
+            search || status
+              ? "No assigned courses match the current filters."
+              : "No courses are assigned to this teacher account.",
           icon: <BookOpen aria-hidden="true" size={28} />,
           title: search || status ? "No matching courses" : "No courses found",
         }}
         error={
           coursesQuery.isError
             ? {
-                description:
-                  coursesQuery.error instanceof Error
-                    ? coursesQuery.error.message
-                    : "The course list could not be loaded.",
+                description: getApiErrorMessage(
+                  coursesQuery.error,
+                  "The course list could not be loaded.",
+                ),
                 onRetry: () => void coursesQuery.refetch(),
                 title: "Unable to load courses",
               }

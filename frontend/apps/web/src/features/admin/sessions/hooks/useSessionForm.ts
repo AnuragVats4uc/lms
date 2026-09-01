@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { getApiErrorMessage } from "@repo/api";
 import type {
   CreateSessionRequest,
   Session,
@@ -109,10 +110,10 @@ export function useSessionForm({
         });
         await refetch();
       } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "The session could not be created.";
+        const message = getApiErrorMessage(
+          error,
+          "The session could not be created.",
+        );
         setAddFormError(message);
         showToast({ message, title: "Create failed", tone: "error" });
       }
@@ -159,10 +160,10 @@ export function useSessionForm({
         });
         await refetch();
       } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "The session could not be updated.";
+        const message = getApiErrorMessage(
+          error,
+          "The session could not be updated.",
+        );
         setEditFormError(message);
         showToast({ message, title: "Update failed", tone: "error" });
       }

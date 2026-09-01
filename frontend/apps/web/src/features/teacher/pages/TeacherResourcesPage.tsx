@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { ExternalLink, FileText } from "lucide-react";
-import { teacherApi } from "@repo/api";
+import { getApiErrorMessage, teacherApi } from "@repo/api";
 import type { TeacherDashboardRecentResource } from "@repo/types";
 import { PageContainer } from "@repo/ui/dashboard";
 import {
@@ -157,10 +157,7 @@ export function TeacherResourcesPage() {
                 ...resource,
                 folderId: resource.folder.id,
               };
-              if (
-                resource.documentUrl &&
-                isManagedResourceDocument(document)
-              ) {
+              if (resource.documentUrl && isManagedResourceDocument(document)) {
                 void openManagedResourceDocument(document);
                 return;
               }
@@ -185,10 +182,10 @@ export function TeacherResourcesPage() {
         error={
           resourcesQuery.isError
             ? {
-                description:
-                  resourcesQuery.error instanceof Error
-                    ? resourcesQuery.error.message
-                    : "The resource list could not be loaded.",
+                description: getApiErrorMessage(
+                  resourcesQuery.error,
+                  "The resource list could not be loaded.",
+                ),
                 onRetry: () => void resourcesQuery.refetch(),
                 title: "Unable to load resources",
               }

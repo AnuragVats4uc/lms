@@ -22,7 +22,11 @@ import {
   Settings2,
   UserRound,
 } from "lucide-react";
-import { registrationApi, sessionCoursesApi } from "@repo/api";
+import {
+  getApiErrorMessage,
+  registrationApi,
+  sessionCoursesApi,
+} from "@repo/api";
 import type {
   AdminRegistrationPage,
   CreateRegistrationPageRequest,
@@ -214,7 +218,7 @@ export default function StudentRegistrationSettingsPage() {
     },
     onError: (error) =>
       setMessage(
-        errorMessage(error, "Registration settings could not be saved."),
+        getApiErrorMessage(error, "Registration settings could not be saved."),
       ),
   });
 
@@ -856,21 +860,4 @@ function ConfiguredField({
       </div>
     </div>
   );
-}
-
-function errorMessage(error: unknown, fallback: string) {
-  if (
-    typeof error === "object" &&
-    error &&
-    "response" in error &&
-    typeof error.response === "object" &&
-    error.response &&
-    "data" in error.response
-  ) {
-    const data = error.response.data as { message?: string | string[] };
-    if (Array.isArray(data.message)) return data.message[0] ?? fallback;
-    if (data.message) return data.message;
-  }
-  if (error instanceof Error) return error.message;
-  return fallback;
 }
