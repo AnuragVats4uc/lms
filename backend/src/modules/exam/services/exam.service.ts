@@ -1804,10 +1804,7 @@ export class ExamService {
       await this.prisma.examImportJob
         .delete({ where: { id: importJob.id } })
         .catch(() => undefined);
-      this.rethrowUnique(
-        error,
-        'This Word and Excel file pair has already been uploaded for this destination',
-      );
+      this.rethrowImportStagingError(error);
     }
   }
 
@@ -4122,6 +4119,11 @@ export class ExamService {
       ]),
     ];
     const comprehensionCodes = new Map<string, string>();
+    let nextSyntheticSourceRowNumber =
+      excelRows.reduce(
+        (maximum, mapping) => Math.max(maximum, mapping.sourceRowNumber),
+        0,
+      ) + 1;
 
     return keys.map((key, index) => {
       const wordMatches = wordsByKey.get(key) ?? [];
@@ -4287,7 +4289,7 @@ export class ExamService {
           : undefined;
 
       const sourceRowNumber =
-        mapping?.sourceRowNumber ?? word?.sourceRowNumber ?? index + 1;
+        mapping?.sourceRowNumber ?? nextSyntheticSourceRowNumber++;
 
       return {
         sourceRowNumber,
@@ -4905,6 +4907,17 @@ export class ExamService {
       error.code === 'P2002'
     )
       throw new ConflictException(message);
+    throw error;
+  }
+
+  private rethrowImportStagingError(error: unknown): never {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    )
+      throw new BadRequestException(
+        'We could not prepare the import preview because duplicate row or file references were detected. Check that each Excel question_number is unique within its slot and section, then try again.',
+      );
     throw error;
   }
 }

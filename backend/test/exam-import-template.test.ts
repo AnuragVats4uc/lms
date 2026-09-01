@@ -300,6 +300,70 @@ void test('code-free Word and Excel templates merge into valid staged rows', asy
   assert.notEqual(rows[0].comprehensionCode, rows[5].comprehensionCode);
 });
 
+void test('code-free import gives unmatched Word rows unique staging indexes', async () => {
+  const service = new ExamService(codelessImportRepository());
+  const internal = service as unknown as {
+    parseCodelessWorkbookMappings: (buffer: Buffer) => unknown[];
+    buildCodelessWordRows: (
+      word: Buffer,
+      mappings: unknown[],
+      versionId: number,
+      dto: {
+        scope: ExamImportScope;
+        importMode: ExamImportMode;
+        examTemplateVersionId: number;
+        examTemplateSlotId: number;
+        examTemplateSectionId: number;
+        subjectId: number;
+      },
+      questionTypes: Array<{ id: number; code: string; isActive: boolean }>,
+    ) => Promise<
+      Array<{
+        sourceRowNumber: number;
+        status: ExamImportRowStatus;
+        validationMessage?: string;
+      }>
+    >;
+  };
+  const mappings = internal.parseCodelessWorkbookMappings(
+    service.createCodelessExcelImportTemplate(),
+  );
+  const rows = await internal.buildCodelessWordRows(
+    service.createCodelessWordImportTemplate(),
+    mappings,
+    77,
+    {
+      scope: ExamImportScope.SINGLE_SECTION,
+      importMode: ExamImportMode.CODELESS_WORD,
+      examTemplateVersionId: 77,
+      examTemplateSlotId: 1,
+      examTemplateSectionId: 12,
+      subjectId: 102,
+    },
+    [
+      { id: 1, code: 'SINGLE_CHOICE', isActive: true },
+      { id: 2, code: 'NUMERIC', isActive: true },
+      { id: 3, code: 'ONE_WORD', isActive: true },
+    ],
+  );
+
+  assert.ok(rows.length > mappings.length);
+  assert.equal(
+    new Set(rows.map((row) => row.sourceRowNumber)).size,
+    rows.length,
+  );
+  assert.ok(
+    rows.some((row) =>
+      /No Excel row matches/i.test(row.validationMessage ?? ''),
+    ),
+  );
+  assert.ok(
+    rows.some((row) =>
+      /No Word question matches/i.test(row.validationMessage ?? ''),
+    ),
+  );
+});
+
 void test('code-free import explains invalid, unavailable, and legacy question types', async () => {
   const service = new ExamService(codelessImportRepository());
   const internal = service as unknown as {

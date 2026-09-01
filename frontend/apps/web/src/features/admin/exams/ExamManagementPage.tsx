@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   examsApi,
@@ -3793,6 +3793,8 @@ const ImportsPanel = ({
   const [expandedImportRowId, setExpandedImportRowId] = useState<number | null>(
     null,
   );
+  const [isStaging, setIsStaging] = useState(false);
+  const isStagingRef = useRef(false);
   const [isCommitting, setIsCommitting] = useState(false);
   const templateDetails = useQuery({
     queryKey: ["exam-template-detail", templateId],
@@ -3853,10 +3855,13 @@ const ImportsPanel = ({
     }
   };
   const stage = async (form: FormData) => {
+    if (isStagingRef.current) return;
     const wordFile = form.get("wordFile");
     const excelFile = form.get("excelFile");
     if (!(wordFile instanceof File) || !(excelFile instanceof File) || !version)
       return;
+    isStagingRef.current = true;
+    setIsStaging(true);
     const payload = new FormData();
     payload.set("importMode", "CODELESS_WORD");
     payload.set("wordFile", wordFile);
@@ -3873,6 +3878,9 @@ const ImportsPanel = ({
       setExpandedImportRowId(null);
     } catch (error) {
       report(Promise.reject(error), "");
+    } finally {
+      isStagingRef.current = false;
+      setIsStaging(false);
     }
   };
   const commit = async () => {
@@ -4004,9 +4012,9 @@ const ImportsPanel = ({
               Use Directions - 1 to 5 when the shared block contains
               instructions. Word owns content, images, options, answers, and
               explanations. Excel owns slot, section, subject, topic, question
-              type, difficulty, marks, order, and mandatory status. Q1. joins
-              Excel question_number 1 within the same slot_code and
-              section_code. Internal codes are generated during staging.
+              type, difficulty, marks, and order. Q1. joins Excel
+              question_number 1 within the same slot_code and section_code.
+              Internal codes are generated during staging.
             </p>
           </div>
           <div className={styles.templateActions}>
@@ -4130,10 +4138,14 @@ const ImportsPanel = ({
             </label>
             <button
               className={styles.primaryButton}
-              disabled={!version || (scope === "SINGLE_SECTION" && !sectionId)}
+              disabled={
+                isStaging ||
+                !version ||
+                (scope === "SINGLE_SECTION" && !sectionId)
+              }
             >
               <FileUp size={16} />
-              Stage and validate
+              {isStaging ? "Staging and validating..." : "Stage and validate"}
             </button>
           </form>
         </section>

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { ExamImportRowStatus, ExamImportScope } from '@prisma/client';
+import { ExamImportRowStatus, ExamImportScope, Prisma } from '@prisma/client';
 
 import { CreateExamImportDto } from '../src/modules/exam/dto/exam.dto';
 import { ExamRepository } from '../src/modules/exam/repositories/exam.repository';
@@ -50,6 +50,7 @@ type TestableExamService = {
     wordFileHash: string;
     excelFileHash: string;
   }): string;
+  rethrowImportStagingError(error: unknown): never;
 };
 
 const organizationId = 7;
@@ -178,5 +179,27 @@ void test('fingerprint changes when the import destination changes', () => {
   assert.notEqual(
     first,
     service.importFingerprint({ ...input, examTemplateSectionId: 32 }),
+  );
+});
+
+void test('staging row uniqueness errors are not reported as duplicate uploads', () => {
+  const error = new Prisma.PrismaClientKnownRequestError(
+    'Unique constraint failed on exam import rows',
+    {
+      code: 'P2002',
+      clientVersion: '6.19.3',
+      meta: { target: 'exam_import_rows_job_source_unique' },
+    },
+  );
+
+  assert.throws(
+    () => serviceWith().rethrowImportStagingError(error),
+    (thrown: unknown) => {
+      const message = thrown instanceof Error ? thrown.message : '';
+      assert.match(message, /could not prepare the import preview/i);
+      assert.doesNotMatch(message, /already been uploaded/i);
+      assert.doesNotMatch(message, /status code|\b409\b/i);
+      return true;
+    },
   );
 });
