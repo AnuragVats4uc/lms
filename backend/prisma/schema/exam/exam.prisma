@@ -13,6 +13,18 @@ model QuestionType {
   @@map("question_types")
 }
 
+model QuestionDifficultyLevel {
+  id          Int      @id
+  code        String   @unique(map: "question_difficulties_code_key") @db.VarChar(40)
+  name        String   @unique(map: "question_difficulties_name_key") @db.VarChar(100)
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("question_difficulties")
+}
+
 model Subject {
   id   Int    @id @default(autoincrement())
   uuid String @unique @default(uuid())
