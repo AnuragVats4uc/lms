@@ -145,11 +145,8 @@ void test('rejects a Quant mapping uploaded into the English section', async () 
     rows,
   );
   assert.equal(rows[0].status, ExamImportRowStatus.ERROR);
-  assert.match(
-    rows[0].validationMessage ?? '',
-    /section_code must be LANGUAGE/,
-  );
-  assert.match(rows[0].validationMessage ?? '', /subject_code must be ENGLISH/);
+  assert.match(rows[0].validationMessage ?? '', /Use section_code "LANGUAGE"/);
+  assert.match(rows[0].validationMessage ?? '', /Use subject_code "ENGLISH"/);
 });
 
 void test('rejects a question code that already exists in the question bank', async () => {

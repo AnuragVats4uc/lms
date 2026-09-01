@@ -50,6 +50,7 @@ import {
 import { ExamRepository } from '../repositories/exam.repository';
 import {
   QUESTION_TYPE_CODES,
+  QUESTION_TYPE_IDS,
   type QuestionTypeCode,
 } from '../constants/question-type.constants';
 import {
@@ -81,6 +82,7 @@ type StagedRow = {
   questionCode: string;
   questionTypeId?: number;
   rawQuestionTypeId?: number;
+  rawQuestionTypeCode?: string;
   difficulty: QuestionDifficulty;
   comprehensionCode?: string;
   comprehensionContent?: string;
@@ -131,15 +133,23 @@ type ExcelQuestionMapping = Pick<
   | 'subjectCode'
   | 'topicCode'
   | 'questionCode'
-  | 'rawQuestionTypeId'
+  | 'rawQuestionTypeCode'
   | 'difficulty'
   | 'comprehensionCode'
   | 'marks'
   | 'negativeMarks'
   | 'sortOrder'
-  | 'isMandatory'
   | 'rawData'
-> & { difficultyInvalid?: boolean };
+> & {
+  difficultyInvalid?: boolean;
+  legacyQuestionTypeIdPresent?: boolean;
+};
+
+type ImportQuestionType = {
+  id: number;
+  code: string;
+  isActive?: boolean;
+};
 
 type CodelessExcelQuestionMapping = Omit<
   ExcelQuestionMapping,
@@ -1539,22 +1549,28 @@ export class ExamService {
         ? ExamImportMode.PAIRED_WORD_EXCEL
         : ExamImportMode.CODELESS_WORD);
     if (!wordFile)
-      throw new BadRequestException('A Word content file is required');
+      throw new BadRequestException(
+        'Choose the Word question-content file (.docx) before starting the import.',
+      );
     if (!excelFile)
       throw new BadRequestException(
-        'Both a Word content file and an Excel mapping file are required',
+        'Choose the Excel question-mapping file (.xlsx) before starting the import.',
       );
     if (
       wordFile.size > 15 * 1024 * 1024 ||
       (excelFile?.size ?? 0) > 15 * 1024 * 1024
     )
       throw new BadRequestException(
-        'Each import file must be 15 MB or smaller',
+        'One of the selected files is larger than 15 MB. Choose files that are 15 MB or smaller.',
       );
     if (extname(wordFile.originalname).toLowerCase() !== '.docx')
-      throw new BadRequestException('The content file must be a .docx file');
+      throw new BadRequestException(
+        'The question-content file must be a Word .docx file.',
+      );
     if (excelFile && extname(excelFile.originalname).toLowerCase() !== '.xlsx')
-      throw new BadRequestException('The mapping file must be a .xlsx file');
+      throw new BadRequestException(
+        'The question-mapping file must be an Excel .xlsx file.',
+      );
     const version = await this.prisma.examTemplateVersion.findUnique({
       where: { id: dto.examTemplateVersionId },
       include: {
@@ -1564,18 +1580,20 @@ export class ExamService {
       },
     });
     if (!version)
-      throw new NotFoundException('Exam template version not found');
+      throw new NotFoundException(
+        'The selected exam template version could not be found. Refresh the page and select it again.',
+      );
     this.assertOrganization(user, version.examTemplate.organizationId);
     if (version.status !== ExamTemplateVersionStatus.DRAFT)
       throw new ConflictException(
-        'Questions can only be imported into a draft template version',
+        'Questions can only be imported into a draft template version. Create or select a draft version and try again.',
       );
     if (
       dto.scope === ExamImportScope.SINGLE_SECTION &&
       !dto.examTemplateSectionId
     ) {
       throw new BadRequestException(
-        'Single-section import requires a target section',
+        'Select the section where these questions should be imported.',
       );
     }
 
@@ -1590,11 +1608,11 @@ export class ExamService {
       });
       if (!section)
         throw new BadRequestException(
-          'Target section does not belong to this template version',
+          'The selected section is not part of this template version. Refresh the page and select the destination again.',
         );
       if (section.subjects.length !== 1)
         throw new BadRequestException(
-          'The target section must contain exactly one subject',
+          'The selected section must contain exactly one subject before questions can be imported.',
         );
       effectiveDto.examTemplateSlotId = section.examTemplateSlotId;
       effectiveDto.subjectId = section.subjects[0].subjectId;
@@ -1619,11 +1637,11 @@ export class ExamService {
     });
     if (duplicateImport)
       throw new ConflictException(
-        `This import has already been uploaded for this destination (import #${duplicateImport.id}, status: ${duplicateImport.status})`,
+        `These Word and Excel files were already uploaded for this destination. Open import #${duplicateImport.id} or choose different files.`,
       );
 
     const questionTypes = await this.prisma.questionType.findMany({
-      where: { isActive: true },
+      orderBy: { id: 'asc' },
     });
     const rows =
       importMode === ExamImportMode.CODELESS_WORD
@@ -1814,7 +1832,7 @@ export class ExamService {
     const job = await this.getImport(user, id);
     if (job.status !== ExamImportStatus.READY_FOR_REVIEW)
       throw new ConflictException(
-        'Only a fully valid reviewed import can be committed',
+        'This import cannot be completed because it is not ready for review. Correct any listed row errors, then upload the files again.',
       );
     const claimed = await this.prisma.examImportJob.updateMany({
       where: { id, status: ExamImportStatus.READY_FOR_REVIEW },
@@ -1822,7 +1840,7 @@ export class ExamService {
     });
     if (claimed.count !== 1)
       throw new ConflictException(
-        'This import is already being committed or is no longer ready for review',
+        'These questions are already being imported, or the import changed after you opened it. Refresh the page before trying again.',
       );
     try {
       await this.prisma.$transaction(
@@ -1993,6 +2011,82 @@ export class ExamService {
     return this.getImport(user, id);
   }
 
+  private addImportTemplateReferences(
+    sheet: XLSX.WorkSheet,
+    instructions: Array<[string, string]>,
+  ) {
+    XLSX.utils.sheet_add_aoa(
+      sheet,
+      [
+        ['Reference ID', 'Production code', 'Question type'],
+        [
+          QUESTION_TYPE_IDS.SINGLE_CHOICE,
+          QUESTION_TYPE_CODES.SINGLE_CHOICE,
+          'Single Answer',
+        ],
+        [
+          QUESTION_TYPE_IDS.NUMERIC,
+          QUESTION_TYPE_CODES.NUMERIC,
+          'Numeric Answer',
+        ],
+        [
+          QUESTION_TYPE_IDS.ONE_WORD,
+          QUESTION_TYPE_CODES.ONE_WORD,
+          'One Word Answer',
+        ],
+        [
+          QUESTION_TYPE_IDS.MULTIPLE_CHOICE,
+          QUESTION_TYPE_CODES.MULTIPLE_CHOICE,
+          'Multiple Answer',
+        ],
+        [
+          QUESTION_TYPE_IDS.SUBJECTIVE,
+          QUESTION_TYPE_CODES.SUBJECTIVE,
+          'Subjective Answer',
+        ],
+      ],
+      { origin: 'M1' },
+    );
+    XLSX.utils.sheet_add_aoa(
+      sheet,
+      [
+        ['Difficulty code', 'Display name'],
+        [QuestionDifficulty.EASY, 'Easy'],
+        [QuestionDifficulty.MEDIUM, 'Medium'],
+        [QuestionDifficulty.HARD, 'Hard'],
+      ],
+      { origin: 'Q1' },
+    );
+    XLSX.utils.sheet_add_aoa(
+      sheet,
+      [['Import instruction', 'What to do'], ...instructions],
+      { origin: 'T1' },
+    );
+    sheet['!cols'] = [
+      { wch: 18 },
+      { wch: 22 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 28 },
+      { wch: 28 },
+      { wch: 24 },
+      { wch: 14 },
+      { wch: 10 },
+      { wch: 18 },
+      { wch: 13 },
+      { wch: 3 },
+      { wch: 13 },
+      { wch: 24 },
+      { wch: 22 },
+      { wch: 3 },
+      { wch: 18 },
+      { wch: 16 },
+      { wch: 3 },
+      { wch: 22 },
+      { wch: 58 },
+    ];
+  }
+
   createExcelImportTemplate() {
     const rows = [
       {
@@ -2002,12 +2096,11 @@ export class ExamService {
         section_code: 'LANGUAGE',
         subject_code: 'ENGLISH',
         topic_code: 'READING_COMPREHENSION',
-        question_type_id: 1,
+        question_type_code: QUESTION_TYPE_CODES.SINGLE_CHOICE,
         difficulty: QuestionDifficulty.MEDIUM,
         marks: 5,
         negative_marks: 1,
         sort_order: 1,
-        is_mandatory: true,
       },
       {
         question_code: 'MAT-NUM-001',
@@ -2016,12 +2109,11 @@ export class ExamService {
         section_code: 'QUANT',
         subject_code: 'MATHEMATICS',
         topic_code: 'PERCENTAGES',
-        question_type_id: 2,
+        question_type_code: QUESTION_TYPE_CODES.NUMERIC,
         difficulty: QuestionDifficulty.EASY,
         marks: 5,
         negative_marks: 0,
         sort_order: 2,
-        is_mandatory: true,
       },
       {
         question_code: 'ENG-RC-002',
@@ -2030,12 +2122,11 @@ export class ExamService {
         section_code: 'LANGUAGE',
         subject_code: 'ENGLISH',
         topic_code: 'READING_COMPREHENSION',
-        question_type_id: 1,
+        question_type_code: QUESTION_TYPE_CODES.SINGLE_CHOICE,
         difficulty: QuestionDifficulty.HARD,
         marks: 5,
         negative_marks: 1,
         sort_order: 3,
-        is_mandatory: true,
       },
       {
         question_code: 'ENG-WORD-001',
@@ -2044,47 +2135,49 @@ export class ExamService {
         section_code: 'LANGUAGE',
         subject_code: 'ENGLISH',
         topic_code: 'VOCABULARY',
-        question_type_id: 3,
+        question_type_code: QUESTION_TYPE_CODES.ONE_WORD,
         difficulty: QuestionDifficulty.MEDIUM,
         marks: 5,
         negative_marks: 0,
         sort_order: 4,
-        is_mandatory: true,
+      },
+      {
+        question_code: 'ENG-GRM-001',
+        comprehension_code: '',
+        slot_code: 'CUET_SLOT_1',
+        section_code: 'LANGUAGE',
+        subject_code: 'ENGLISH',
+        topic_code: 'GRAMMAR',
+        question_type_code: QUESTION_TYPE_CODES.SINGLE_CHOICE,
+        difficulty: QuestionDifficulty.EASY,
+        marks: 5,
+        negative_marks: 1,
+        sort_order: 5,
       },
     ];
     const workbook = XLSX.utils.book_new();
     const sheet = XLSX.utils.json_to_sheet(rows);
+    this.addImportTemplateReferences(sheet, [
+      ['Mode', 'Upload this workbook with the paired Word content file.'],
+      [
+        'Join key',
+        'question_code must appear exactly once in both Word and Excel.',
+      ],
+      [
+        'Excel columns',
+        'Edit only columns A:K. Use question_type_code and EASY, MEDIUM, or HARD.',
+      ],
+      [
+        'Word content',
+        'Word contains question text, images, options, answers, tolerance, case sensitivity, and explanations.',
+      ],
+      [
+        'One worksheet',
+        'Question types, difficulty levels, and instructions are reference blocks on this same sheet.',
+      ],
+    ]);
+    sheet['!autofilter'] = { ref: `A1:K${rows.length + 1}` };
     XLSX.utils.book_append_sheet(workbook, sheet, 'Question Mapping');
-    XLSX.utils.book_append_sheet(
-      workbook,
-      XLSX.utils.json_to_sheet([
-        {
-          id: 1,
-          code: QUESTION_TYPE_CODES.SINGLE_CHOICE,
-          name: 'Single Answer',
-        },
-        { id: 2, code: QUESTION_TYPE_CODES.NUMERIC, name: 'Numeric Answer' },
-        { id: 3, code: QUESTION_TYPE_CODES.ONE_WORD, name: 'One Word Answer' },
-      ]),
-      'Question Types',
-    );
-    XLSX.utils.book_append_sheet(
-      workbook,
-      XLSX.utils.aoa_to_sheet([
-        ['Paired exam import'],
-        ['Upload this Excel file together with one Word content file.'],
-        [
-          'question_code is the exact join key and must occur once in each file.',
-        ],
-        [
-          'Excel owns placement, optional topic_code, question_type_id, difficulty (EASY, MEDIUM, or HARD), marking, order, and mandatory status.',
-        ],
-        [
-          'Word owns comprehension, question text, images, options, answers, tolerance, case sensitivity, and explanation.',
-        ],
-      ]),
-      'Instructions',
-    );
     return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
   }
 
@@ -2096,12 +2189,11 @@ export class ExamService {
         section_code: 'LANGUAGE',
         subject_code: 'ENGLISH',
         topic_code: 'READING_COMPREHENSION',
-        question_type_id: 1,
+        question_type_code: QUESTION_TYPE_CODES.SINGLE_CHOICE,
         difficulty: QuestionDifficulty.MEDIUM,
         marks: 5,
         negative_marks: 1,
         sort_order: 1,
-        is_mandatory: true,
       },
       {
         question_number: 2,
@@ -2109,12 +2201,11 @@ export class ExamService {
         section_code: 'LANGUAGE',
         subject_code: 'ENGLISH',
         topic_code: 'READING_COMPREHENSION',
-        question_type_id: 1,
+        question_type_code: QUESTION_TYPE_CODES.SINGLE_CHOICE,
         difficulty: QuestionDifficulty.MEDIUM,
         marks: 5,
         negative_marks: 1,
         sort_order: 2,
-        is_mandatory: true,
       },
       {
         question_number: 3,
@@ -2122,12 +2213,11 @@ export class ExamService {
         section_code: 'LANGUAGE',
         subject_code: 'ENGLISH',
         topic_code: 'READING_COMPREHENSION',
-        question_type_id: 1,
+        question_type_code: QUESTION_TYPE_CODES.SINGLE_CHOICE,
         difficulty: QuestionDifficulty.HARD,
         marks: 5,
         negative_marks: 1,
         sort_order: 3,
-        is_mandatory: true,
       },
       {
         question_number: 4,
@@ -2135,12 +2225,11 @@ export class ExamService {
         section_code: 'LANGUAGE',
         subject_code: 'ENGLISH',
         topic_code: 'READING_COMPREHENSION',
-        question_type_id: 1,
+        question_type_code: QUESTION_TYPE_CODES.SINGLE_CHOICE,
         difficulty: QuestionDifficulty.HARD,
         marks: 5,
         negative_marks: 1,
         sort_order: 4,
-        is_mandatory: true,
       },
       {
         question_number: 5,
@@ -2148,12 +2237,11 @@ export class ExamService {
         section_code: 'LANGUAGE',
         subject_code: 'ENGLISH',
         topic_code: 'READING_COMPREHENSION',
-        question_type_id: 1,
+        question_type_code: QUESTION_TYPE_CODES.SINGLE_CHOICE,
         difficulty: QuestionDifficulty.MEDIUM,
         marks: 5,
         negative_marks: 1,
         sort_order: 5,
-        is_mandatory: true,
       },
       {
         question_number: 6,
@@ -2161,12 +2249,11 @@ export class ExamService {
         section_code: 'LANGUAGE',
         subject_code: 'ENGLISH',
         topic_code: 'GRAMMAR',
-        question_type_id: 1,
+        question_type_code: QUESTION_TYPE_CODES.SINGLE_CHOICE,
         difficulty: QuestionDifficulty.MEDIUM,
         marks: 5,
         negative_marks: 1,
         sort_order: 6,
-        is_mandatory: true,
       },
       {
         question_number: 7,
@@ -2174,12 +2261,11 @@ export class ExamService {
         section_code: 'LANGUAGE',
         subject_code: 'ENGLISH',
         topic_code: 'GRAMMAR',
-        question_type_id: 1,
+        question_type_code: QUESTION_TYPE_CODES.SINGLE_CHOICE,
         difficulty: QuestionDifficulty.EASY,
         marks: 5,
         negative_marks: 1,
         sort_order: 7,
-        is_mandatory: true,
       },
       {
         question_number: 8,
@@ -2187,12 +2273,11 @@ export class ExamService {
         section_code: 'QUANT',
         subject_code: 'MATHEMATICS',
         topic_code: 'PERCENTAGES',
-        question_type_id: 2,
+        question_type_code: QUESTION_TYPE_CODES.NUMERIC,
         difficulty: QuestionDifficulty.EASY,
         marks: 5,
         negative_marks: 0,
         sort_order: 1,
-        is_mandatory: true,
       },
       {
         question_number: 9,
@@ -2200,66 +2285,36 @@ export class ExamService {
         section_code: 'LANGUAGE',
         subject_code: 'ENGLISH',
         topic_code: 'VOCABULARY',
-        question_type_id: 3,
+        question_type_code: QUESTION_TYPE_CODES.ONE_WORD,
         difficulty: QuestionDifficulty.EASY,
         marks: 5,
         negative_marks: 0,
         sort_order: 8,
-        is_mandatory: true,
       },
     ];
     const workbook = XLSX.utils.book_new();
     const mappingSheet = XLSX.utils.json_to_sheet(rows);
-    mappingSheet['!cols'] = [
-      { wch: 17 },
-      { wch: 20 },
-      { wch: 18 },
-      { wch: 18 },
-      { wch: 30 },
-      { wch: 19 },
-      { wch: 14 },
-      { wch: 10 },
-      { wch: 18 },
-      { wch: 13 },
-      { wch: 16 },
-    ];
-    mappingSheet['!autofilter'] = { ref: `A1:K${rows.length + 1}` };
+    this.addImportTemplateReferences(mappingSheet, [
+      ['Mode', 'Upload this workbook with the code-free Word file.'],
+      [
+        'Join key',
+        'Word Q1 matches question_number 1 using slot_code + section_code + question_number.',
+      ],
+      [
+        'Excel columns',
+        'Edit only columns A:J. Use question_type_code and EASY, MEDIUM, or HARD.',
+      ],
+      [
+        'Generated codes',
+        'Do not add question_code or comprehension_code; internal codes are generated during staging.',
+      ],
+      [
+        'One worksheet',
+        'Question types, difficulty levels, and instructions are reference blocks on this same sheet.',
+      ],
+    ]);
+    mappingSheet['!autofilter'] = { ref: `A1:J${rows.length + 1}` };
     XLSX.utils.book_append_sheet(workbook, mappingSheet, 'Question Mapping');
-    XLSX.utils.book_append_sheet(
-      workbook,
-      XLSX.utils.json_to_sheet([
-        {
-          id: 1,
-          code: QUESTION_TYPE_CODES.SINGLE_CHOICE,
-          name: 'Single Answer',
-        },
-        { id: 2, code: QUESTION_TYPE_CODES.NUMERIC, name: 'Numeric Answer' },
-        { id: 3, code: QUESTION_TYPE_CODES.ONE_WORD, name: 'One Word Answer' },
-      ]),
-      'Question Types',
-    );
-    XLSX.utils.book_append_sheet(
-      workbook,
-      XLSX.utils.aoa_to_sheet([
-        ['Code-free Word + Excel import'],
-        ['Upload this workbook together with the code-free Word file.'],
-        [
-          'Word Q1. matches question_number 1. The join key is slot_code + section_code + question_number.',
-        ],
-        [
-          'Word owns comprehension/directions, question content, images, options, answer rules, and explanations.',
-        ],
-        [
-          'Excel owns destination mapping, optional topic_code, question_type_id, difficulty, marking, order, and mandatory status.',
-        ],
-        [
-          'Do not add question_code or comprehension_code. Internal codes are generated during staging.',
-        ],
-        ['difficulty must be EASY, MEDIUM, or HARD.'],
-        ['is_mandatory must be TRUE or FALSE.'],
-      ]),
-      'Instructions',
-    );
     return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
   }
 
@@ -2533,6 +2588,21 @@ export class ExamService {
       answerRules('', 'concise|Concise', '', 'No'),
       p('Explanation', 'Heading3'),
       image('rId2', 5, 'Image-only explanation'),
+      p('Question — ENG-GRM-001', 'Heading2'),
+      p('Choose the grammatically correct sentence.'),
+      p('Options', 'Heading3'),
+      table([
+        ['A', { text: 'She writes clearly.' }],
+        ['B', { text: 'She write clearly.' }],
+        ['C', { text: 'She writing clearly.' }],
+        ['D', { text: 'She written clearly.' }],
+      ]),
+      p('Answer Rules', 'Heading3'),
+      answerRules('A', '', '', 'No'),
+      p('Explanation', 'Heading3'),
+      p(
+        'A singular subject takes the verb writes in the simple present tense.',
+      ),
     ].join('');
     const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><w:body>${body}<w:sectPr/></w:body></w:document>`;
     const stylesXml =
@@ -2734,12 +2804,17 @@ export class ExamService {
   private parseWorkbookMappings(buffer: Buffer): ExcelQuestionMapping[] {
     const workbook = XLSX.read(buffer, { type: 'buffer' });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    if (!sheet) throw new BadRequestException('The workbook has no worksheet');
+    if (!sheet)
+      throw new BadRequestException(
+        'The Excel file does not contain a worksheet. Download a new mapping template and try again.',
+      );
     const records = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
       defval: '',
     });
     if (!records.length)
-      throw new BadRequestException('The Excel mapping contains no rows');
+      throw new BadRequestException(
+        'The Excel file does not contain any question rows. Add at least one question mapping and try again.',
+      );
     return records.map((rawRecord, index) => {
       const record = this.normalizeRecord(rawRecord);
       const text = (key: string) => {
@@ -2754,7 +2829,7 @@ export class ExamService {
         const value = text(key);
         return value === '' ? fallback : Number(value);
       };
-      const questionTypeId = numeric('question_type_id');
+      const questionTypeCode = text('question_type_code').toUpperCase();
       const marks = numeric('marks', 1) ?? 1;
       const negativeMarks = numeric('negative_marks', 0) ?? 0;
       const sortOrder = numeric('sort_order');
@@ -2769,10 +2844,8 @@ export class ExamService {
         subjectCode: text('subject_code').toUpperCase() || undefined,
         topicCode: text('topic_code').toUpperCase() || undefined,
         questionCode: text('question_code').toUpperCase(),
-        rawQuestionTypeId:
-          questionTypeId !== undefined && Number.isInteger(questionTypeId)
-            ? questionTypeId
-            : undefined,
+        rawQuestionTypeCode: questionTypeCode || undefined,
+        legacyQuestionTypeIdPresent: Boolean(text('question_type_id')),
         difficulty: difficultyValid
           ? (difficultyText as QuestionDifficulty)
           : QuestionDifficulty.MEDIUM,
@@ -2785,7 +2858,6 @@ export class ExamService {
           sortOrder !== undefined && Number.isInteger(sortOrder)
             ? sortOrder
             : undefined,
-        isMandatory: this.booleanValue(record.is_mandatory, true),
         rawData: record,
       };
     });
@@ -2796,12 +2868,17 @@ export class ExamService {
   ): CodelessExcelQuestionMapping[] {
     const workbook = XLSX.read(buffer, { type: 'buffer' });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    if (!sheet) throw new BadRequestException('The workbook has no worksheet');
+    if (!sheet)
+      throw new BadRequestException(
+        'The Excel file does not contain a worksheet. Download a new mapping template and try again.',
+      );
     const records = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
       defval: '',
     });
     if (!records.length)
-      throw new BadRequestException('The Excel mapping contains no rows');
+      throw new BadRequestException(
+        'The Excel file does not contain any question rows. Add at least one question mapping and try again.',
+      );
     return records.map((rawRecord, index) => {
       const record = this.normalizeRecord(rawRecord);
       const text = (key: string) => {
@@ -2817,7 +2894,7 @@ export class ExamService {
         return value === '' ? fallback : Number(value);
       };
       const questionNumber = numeric('question_number');
-      const questionTypeId = numeric('question_type_id');
+      const questionTypeCode = text('question_type_code').toUpperCase();
       const marks = numeric('marks', 1) ?? 1;
       const negativeMarks = numeric('negative_marks', 0) ?? 0;
       const sortOrder = numeric('sort_order');
@@ -2841,10 +2918,8 @@ export class ExamService {
           questionNumber === undefined ||
           !Number.isInteger(questionNumber) ||
           questionNumber <= 0,
-        rawQuestionTypeId:
-          questionTypeId !== undefined && Number.isInteger(questionTypeId)
-            ? questionTypeId
-            : undefined,
+        rawQuestionTypeCode: questionTypeCode || undefined,
+        legacyQuestionTypeIdPresent: Boolean(text('question_type_id')),
         difficulty: difficultyValid
           ? (difficultyText as QuestionDifficulty)
           : QuestionDifficulty.MEDIUM,
@@ -2855,7 +2930,6 @@ export class ExamService {
           sortOrder !== undefined && Number.isInteger(sortOrder)
             ? sortOrder
             : undefined,
-        isMandatory: this.booleanValue(record.is_mandatory, true),
         rawData: record,
       };
     });
@@ -3765,10 +3839,22 @@ export class ExamService {
       .replace(/[^a-z0-9]+/g, '');
   }
 
+  private importValidationMessage(sourceRowNumber: number, errors: string[]) {
+    const messages = [...new Set(errors.map((error) => error.trim()))]
+      .filter(Boolean)
+      .map((message) => {
+        const sentence = message.replace(/[.;\s]+$/g, '');
+        return `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}.`;
+      });
+    return messages.length
+      ? `Import row ${sourceRowNumber}: ${messages.join(' ')}`
+      : undefined;
+  }
+
   private mergeImportFiles(
     wordRows: WordQuestionContent[],
     excelRows: ExcelQuestionMapping[],
-    questionTypes: Array<{ id: number; code: string }>,
+    questionTypes: ImportQuestionType[],
   ): StagedRow[] {
     const wordByCode = new Map<string, WordQuestionContent[]>();
     const excelByCode = new Map<string, ExcelQuestionMapping[]>();
@@ -3783,55 +3869,84 @@ export class ExamService {
       excelByCode.set(row.questionCode, bucket);
     }
     const codes = [...new Set([...wordByCode.keys(), ...excelByCode.keys()])];
-    const typeById = new Map(questionTypes.map((type) => [type.id, type]));
+    const typeByCode = new Map(
+      questionTypes.map((type) => [type.code.trim().toUpperCase(), type]),
+    );
     return codes.map((code, index) => {
       const words = wordByCode.get(code) ?? [];
       const mappings = excelByCode.get(code) ?? [];
       const word = words[0];
       const mapping = mappings[0];
-      const type = mapping?.rawQuestionTypeId
-        ? typeById.get(mapping.rawQuestionTypeId)
+      const requestedType = mapping?.rawQuestionTypeCode
+        ? typeByCode.get(mapping.rawQuestionTypeCode)
         : undefined;
+      const type =
+        requestedType?.isActive === false ? undefined : requestedType;
       const errors: string[] = [...(word?.parseErrors ?? [])];
-      if (!code) errors.push('question_code is required in both files');
-      if (!word) errors.push('question_code is missing from the Word file');
-      if (!mapping) errors.push('question_code is missing from the Excel file');
-      if (words.length > 1) errors.push('duplicate question_code in Word');
-      if (mappings.length > 1) errors.push('duplicate question_code in Excel');
-      if (!mapping?.rawQuestionTypeId)
-        errors.push('question_type_id must be an integer');
-      else if (!type)
+      if (!code)
+        errors.push('Enter question_code in both the Word and Excel files');
+      if (!word)
         errors.push(
-          `unknown or inactive question_type_id ${mapping.rawQuestionTypeId}`,
+          `No Word question matches question_code "${code || '(blank)'}"`,
+        );
+      if (!mapping)
+        errors.push(
+          `No Excel row matches question_code "${code || '(blank)'}"`,
+        );
+      if (words.length > 1)
+        errors.push(
+          `question_code "${code}" appears more than once in the Word file`,
+        );
+      if (mappings.length > 1)
+        errors.push(
+          `question_code "${code}" appears more than once in the Excel file`,
+        );
+      if (mapping?.legacyQuestionTypeIdPresent && !mapping.rawQuestionTypeCode)
+        errors.push(
+          'The old question_type_id column is no longer accepted. Rename it to question_type_code and enter a production code such as SINGLE_CHOICE',
+        );
+      else if (mapping && !mapping.rawQuestionTypeCode)
+        errors.push(
+          'Enter question_type_code in Excel, for example SINGLE_CHOICE, NUMERIC, or ONE_WORD',
+        );
+      else if (mapping?.rawQuestionTypeCode && !requestedType)
+        errors.push(
+          `Question type code "${mapping.rawQuestionTypeCode}" is not recognized. Copy a code from the Question Types reference block in the workbook`,
+        );
+      else if (requestedType?.isActive === false)
+        errors.push(
+          `Question type "${requestedType.code}" is not available for import yet. Choose an available type`,
         );
       if (mapping?.difficultyInvalid)
-        errors.push('difficulty must be EASY, MEDIUM, or HARD');
+        errors.push('Choose EASY, MEDIUM, or HARD in the difficulty column');
       if (!word || !this.hasRichContent(word.questionContent))
-        errors.push('Word question content is required');
+        errors.push('Add the question text or image in the Word file');
       if (
         word?.comprehensionCode &&
         !this.hasRichContent(word.comprehensionContent ?? '')
       )
-        errors.push('Comprehension content must contain text or an image');
+        errors.push('Add text or an image to the Word comprehension content');
       if (!Number.isFinite(mapping?.marks) || (mapping?.marks ?? -1) < 0)
-        errors.push('marks must be a non-negative number');
+        errors.push('Enter marks as 0 or a positive number in Excel');
       if (
         !Number.isFinite(mapping?.negativeMarks) ||
         (mapping?.negativeMarks ?? -1) < 0
       )
-        errors.push('negative_marks must be a non-negative number');
+        errors.push('Enter negative_marks as 0 or a positive number in Excel');
       if (
         word &&
         mapping &&
         (word.comprehensionCode ?? '') !== (mapping.comprehensionCode ?? '')
       )
-        errors.push('comprehension_code differs between Word and Excel');
+        errors.push(
+          'Use the same comprehension_code in the Word and Excel files',
+        );
       if (word) {
         const optionCodes = word.options.map((option) => option.code);
         if (new Set(optionCodes).size !== optionCodes.length)
-          errors.push('option codes must be unique');
+          errors.push('Use each option code only once in the Word question');
         if (word.options.some((option) => !this.hasRichContent(option.content)))
-          errors.push('every option must contain text or an image');
+          errors.push('Add text or an image to every Word option');
       }
       if (type?.code === QUESTION_TYPE_CODES.SINGLE_CHOICE) {
         if (
@@ -3840,39 +3955,48 @@ export class ExamService {
           word.options.filter((option) => option.isCorrect).length !== 1
         )
           errors.push(
-            'single-answer requires at least two options and one Correct Option value in Word',
+            'Single-answer questions need at least two options and exactly one Correct Option in Word',
           );
         if (
           word?.answer &&
           !word.options.some((option) => option.code === word.answer)
         )
-          errors.push('Correct Option must reference an option-table code');
+          errors.push('Correct Option must match one of the Word option codes');
       } else if (type?.code === QUESTION_TYPE_CODES.NUMERIC) {
         if (!word?.acceptedAnswers.length)
-          errors.push('numeric questions require Accepted Answers in Word');
+          errors.push(
+            'Add at least one Accepted Answer for the numeric question in Word',
+          );
         if (
           word?.acceptedAnswers.some(
             (answer) => !Number.isFinite(Number(answer)),
           )
         )
-          errors.push('numeric accepted answers must be valid numbers');
+          errors.push(
+            'Every Accepted Answer for a numeric question must be a number',
+          );
         if ((word?.tolerance ?? 0) < 0)
-          errors.push('Numeric Tolerance cannot be negative');
+          errors.push('Numeric Tolerance must be 0 or a positive number');
       } else if (
         type?.code === QUESTION_TYPE_CODES.ONE_WORD &&
         !word?.acceptedAnswers.length
       ) {
-        errors.push('one-word questions require Accepted Answers in Word');
+        errors.push(
+          'Add at least one Accepted Answer for the one-word question in Word',
+        );
       }
+      const sourceRowNumber =
+        mapping?.sourceRowNumber ?? word?.sourceRowNumber ?? index + 1;
       return {
-        sourceRowNumber: index + 1,
+        sourceRowNumber,
         slotCode: mapping?.slotCode,
         sectionCode: mapping?.sectionCode,
         subjectCode: mapping?.subjectCode,
         topicCode: mapping?.topicCode,
         questionCode: code,
         questionTypeId: type?.id,
-        rawQuestionTypeId: mapping?.rawQuestionTypeId,
+        rawQuestionTypeId: requestedType?.id,
+        rawQuestionTypeCode: mapping?.rawQuestionTypeCode,
         difficulty: mapping?.difficulty ?? QuestionDifficulty.MEDIUM,
         comprehensionCode:
           word?.comprehensionCode ?? mapping?.comprehensionCode,
@@ -3881,7 +4005,7 @@ export class ExamService {
         marks: mapping?.marks ?? 0,
         negativeMarks: mapping?.negativeMarks ?? 0,
         sortOrder: mapping?.sortOrder,
-        isMandatory: mapping?.isMandatory ?? true,
+        isMandatory: true,
         answer: word?.answer,
         tolerance: word?.tolerance,
         caseSensitive: word?.caseSensitive ?? false,
@@ -3891,7 +4015,10 @@ export class ExamService {
         status: errors.length
           ? ExamImportRowStatus.ERROR
           : ExamImportRowStatus.VALID,
-        validationMessage: errors.join('; ') || undefined,
+        validationMessage: this.importValidationMessage(
+          sourceRowNumber,
+          errors,
+        ),
         rawData: {
           word: word?.rawData ?? null,
           excel: mapping?.rawData ?? null,
@@ -3905,7 +4032,7 @@ export class ExamService {
     excelRows: CodelessExcelQuestionMapping[],
     versionId: number,
     dto: CreateExamImportDto,
-    questionTypes: Array<{ id: number; code: string; name: string }>,
+    questionTypes: ImportQuestionType[],
   ): Promise<StagedRow[]> {
     const wordRows = await this.parseCodelessWordContent(buffer);
     const structure = await this.prisma.examTemplateSlot.findMany({
@@ -3918,7 +4045,9 @@ export class ExamService {
         },
       },
     });
-    const typeById = new Map(questionTypes.map((type) => [type.id, type]));
+    const typeByCode = new Map(
+      questionTypes.map((type) => [type.code.trim().toUpperCase(), type]),
+    );
     const selectedSlot =
       dto.scope === ExamImportScope.SINGLE_SECTION
         ? structure.find((slot) =>
@@ -4021,58 +4150,70 @@ export class ExamService {
         sectionCode || 'SECTION',
         questionNumber,
       );
-      const type = mapping?.rawQuestionTypeId
-        ? typeById.get(mapping.rawQuestionTypeId)
+      const requestedType = mapping?.rawQuestionTypeCode
+        ? typeByCode.get(mapping.rawQuestionTypeCode)
         : undefined;
+      const type =
+        requestedType?.isActive === false ? undefined : requestedType;
       const errors: string[] = [...(word?.parseErrors ?? [])];
 
       if (!word)
         errors.push(
-          'No matching Word question was found for slot_code + section_code + question_number',
+          `No Word question matches slot_code "${slotCode || '(blank)'}", section_code "${sectionCode || '(blank)'}", and question_number "${questionNumber}"`,
         );
       if (!mapping)
         errors.push(
-          'No matching Excel row was found for slot_code + section_code + question_number',
+          `No Excel row matches slot_code "${slotCode || '(blank)'}", section_code "${sectionCode || '(blank)'}", and question_number "${questionNumber}"`,
         );
       if (wordMatches.length > 1)
         errors.push(
-          'Duplicate Word question for slot_code + section_code + question_number',
+          `The Word file contains more than one Q${questionNumber} for this slot and section`,
         );
       if (excelMatches.length > 1)
         errors.push(
-          'Duplicate Excel row for slot_code + section_code + question_number',
+          `The Excel file contains more than one row for question_number ${questionNumber} in this slot and section`,
         );
       if (mapping?.questionNumberInvalid)
-        errors.push('question_number must be a positive integer');
-      if (!mapping?.slotCode) errors.push('slot_code is required in Excel');
-      if (!mapping?.sectionCode)
-        errors.push('section_code is required in Excel');
-      if (!mapping?.subjectCode)
-        errors.push('subject_code is required in Excel');
-      if (!mapping?.rawQuestionTypeId)
-        errors.push('question_type_id must be an integer');
-      else if (!type)
         errors.push(
-          `unknown or inactive question_type_id ${mapping.rawQuestionTypeId}`,
+          'Enter question_number as a positive whole number in Excel',
+        );
+      if (!mapping?.slotCode) errors.push('Enter slot_code in Excel');
+      if (!mapping?.sectionCode) errors.push('Enter section_code in Excel');
+      if (!mapping?.subjectCode) errors.push('Enter subject_code in Excel');
+      if (mapping?.legacyQuestionTypeIdPresent && !mapping.rawQuestionTypeCode)
+        errors.push(
+          'The old question_type_id column is no longer accepted. Rename it to question_type_code and enter a production code such as SINGLE_CHOICE',
+        );
+      else if (mapping && !mapping.rawQuestionTypeCode)
+        errors.push(
+          'Enter question_type_code in Excel, for example SINGLE_CHOICE, NUMERIC, or ONE_WORD',
+        );
+      else if (mapping?.rawQuestionTypeCode && !requestedType)
+        errors.push(
+          `Question type code "${mapping.rawQuestionTypeCode}" is not recognized. Copy a code from the Question Types reference block in the workbook`,
+        );
+      else if (requestedType?.isActive === false)
+        errors.push(
+          `Question type "${requestedType.code}" is not available for import yet. Choose an available type`,
         );
       if (mapping?.difficultyInvalid)
-        errors.push('difficulty must be EASY, MEDIUM, or HARD');
+        errors.push('Choose EASY, MEDIUM, or HARD in the difficulty column');
       if (!word || !this.hasRichContent(word.questionContent))
-        errors.push('Word question content is required');
+        errors.push('Add the question text or image in the Word file');
       if (
         word?.comprehensionLabel &&
         !this.hasRichContent(word.comprehensionContent ?? '')
       )
         errors.push(
-          'Comprehension or Directions content must contain text or an image',
+          'Add text or an image to the Word comprehension or directions block',
         );
       if (!Number.isFinite(mapping?.marks) || (mapping?.marks ?? -1) < 0)
-        errors.push('marks must be a non-negative number');
+        errors.push('Enter marks as 0 or a positive number in Excel');
       if (
         !Number.isFinite(mapping?.negativeMarks) ||
         (mapping?.negativeMarks ?? -1) < 0
       )
-        errors.push('negative_marks must be a non-negative number');
+        errors.push('Enter negative_marks as 0 or a positive number in Excel');
       if (
         word &&
         mapping?.subjectCode &&
@@ -4080,42 +4221,52 @@ export class ExamService {
         mapping.subjectCode !==
           resolvedWord.destination.subject.code.toUpperCase()
       )
-        errors.push('subject_code differs from the Word metadata destination');
+        errors.push(
+          'subject_code in Excel does not match the destination written in Word',
+        );
 
       const optionCodes = word?.options.map((option) => option.code) ?? [];
       if (new Set(optionCodes).size !== optionCodes.length)
-        errors.push('Option labels must be unique');
+        errors.push('Use each option label only once in the Word question');
       if (word?.options.some((option) => !this.hasRichContent(option.content)))
-        errors.push('Every option must contain text or an image');
+        errors.push('Add text or an image to every Word option');
       if (type?.code === QUESTION_TYPE_CODES.SINGLE_CHOICE) {
         if (
           (word?.options.length ?? 0) < 2 ||
           word?.options.filter((option) => option.isCorrect).length !== 1
         )
           errors.push(
-            'Single-choice questions require at least two options and one Correct Option value',
+            'Single-answer questions need at least two options and exactly one Correct Option in Word',
           );
         if (
           word?.answer &&
           !word.options.some((option) => option.code === word.answer)
         )
-          errors.push('Correct Option must reference an option label');
+          errors.push(
+            'Correct Option must match one of the Word option labels',
+          );
       } else if (type?.code === QUESTION_TYPE_CODES.NUMERIC) {
         if (!word?.acceptedAnswers.length)
-          errors.push('Numeric questions require Accepted Answers');
+          errors.push(
+            'Add at least one Accepted Answer for the numeric question in Word',
+          );
         if (
           word?.acceptedAnswers.some(
             (answer) => !Number.isFinite(Number(answer)),
           )
         )
-          errors.push('Numeric accepted answers must be valid numbers');
+          errors.push(
+            'Every Accepted Answer for a numeric question must be a number',
+          );
         if ((word?.tolerance ?? 0) < 0)
-          errors.push('Numeric Tolerance cannot be negative');
+          errors.push('Numeric Tolerance must be 0 or a positive number');
       } else if (
         type?.code === QUESTION_TYPE_CODES.ONE_WORD &&
         !word?.acceptedAnswers.length
       ) {
-        errors.push('One-word questions require Accepted Answers');
+        errors.push(
+          'Add at least one Accepted Answer for the one-word question in Word',
+        );
       }
 
       const destinationPrefix =
@@ -4135,15 +4286,19 @@ export class ExamService {
             )
           : undefined;
 
+      const sourceRowNumber =
+        mapping?.sourceRowNumber ?? word?.sourceRowNumber ?? index + 1;
+
       return {
-        sourceRowNumber: index + 1,
+        sourceRowNumber,
         slotCode: mapping?.slotCode,
         sectionCode: mapping?.sectionCode,
         subjectCode: mapping?.subjectCode,
         topicCode: mapping?.topicCode,
         questionCode,
         questionTypeId: type?.id,
-        rawQuestionTypeId: mapping?.rawQuestionTypeId,
+        rawQuestionTypeId: requestedType?.id,
+        rawQuestionTypeCode: mapping?.rawQuestionTypeCode,
         difficulty: mapping?.difficulty ?? QuestionDifficulty.MEDIUM,
         comprehensionCode,
         comprehensionContent: word?.comprehensionContent,
@@ -4151,7 +4306,7 @@ export class ExamService {
         marks: mapping?.marks ?? 0,
         negativeMarks: mapping?.negativeMarks ?? 0,
         sortOrder: mapping?.sortOrder,
-        isMandatory: mapping?.isMandatory ?? true,
+        isMandatory: true,
         answer: word?.answer,
         tolerance: word?.tolerance,
         caseSensitive: word?.caseSensitive ?? false,
@@ -4161,7 +4316,10 @@ export class ExamService {
         status: errors.length
           ? ExamImportRowStatus.ERROR
           : ExamImportRowStatus.VALID,
-        validationMessage: errors.join('; ') || undefined,
+        validationMessage: this.importValidationMessage(
+          sourceRowNumber,
+          errors,
+        ),
         rawData: {
           word: word?.rawData ?? null,
           excel: mapping?.rawData ?? null,
@@ -4233,10 +4391,13 @@ export class ExamService {
     const selectedSubject = selectedSection?.subjects[0]?.subject;
     const seen = new Set<string>();
     for (const row of rows) {
-      const errors = row.validationMessage ? [row.validationMessage] : [];
+      const existingValidationMessage = row.validationMessage;
+      const errors: string[] = [];
       const questionCode = row.questionCode.toUpperCase();
       if (seen.has(questionCode))
-        errors.push('duplicate question_code in this file');
+        errors.push(
+          `Question code "${row.questionCode}" appears more than once in this import. Use a unique question code for every row`,
+        );
       seen.add(questionCode);
       const existingSubjectId = existingQuestionCodes.get(questionCode);
       const intendedSubjectId =
@@ -4251,15 +4412,15 @@ export class ExamService {
           : undefined;
         if (!row.topicId) {
           errors.push(
-            `unknown topic_code ${row.topicCode} for subject ${row.subjectCode ?? ''}`,
+            `Topic code "${row.topicCode}" was not found for subject "${row.subjectCode ?? ''}". Correct the topic_code or leave it blank`,
           );
         }
       }
       if (existingSubjectId !== undefined)
         errors.push(
           existingSubjectId === intendedSubjectId
-            ? `question_code ${row.questionCode} already exists in the question bank; imports only create new questions`
-            : `question_code ${row.questionCode} already belongs to another subject`,
+            ? `Question code "${row.questionCode}" already exists in the question bank. Imports can only create new questions`
+            : `Question code "${row.questionCode}" already belongs to another subject. Use a new question code`,
         );
       if (dto.scope === ExamImportScope.FULL_EXAM) {
         const slot = structure.find(
@@ -4270,17 +4431,24 @@ export class ExamService {
           (item) =>
             item.code.toUpperCase() === row.sectionCode?.trim().toUpperCase(),
         );
-        if (!slot) errors.push(`unknown slot_code ${row.slotCode ?? ''}`);
+        if (!slot)
+          errors.push(
+            `Slot code "${row.slotCode ?? ''}" was not found in this template version`,
+          );
         if (!section)
-          errors.push(`unknown section_code ${row.sectionCode ?? ''}`);
+          errors.push(
+            `Section code "${row.sectionCode ?? ''}" was not found under slot "${row.slotCode ?? ''}"`,
+          );
         if (
           !row.subjectCode ||
           !subjectCodes.has(row.subjectCode.trim().toUpperCase())
         )
-          errors.push(`unknown subject_code ${row.subjectCode ?? ''}`);
+          errors.push(
+            `Subject code "${row.subjectCode ?? ''}" was not found in this organization`,
+          );
         if (section && section.subjects.length !== 1)
           errors.push(
-            `section ${section.code} must contain exactly one subject`,
+            `Section "${section.code}" must contain exactly one subject before questions can be imported`,
           );
         else if (
           section &&
@@ -4288,7 +4456,7 @@ export class ExamService {
             row.subjectCode?.trim().toUpperCase()
         )
           errors.push(
-            `subject_code must be ${section.subjects[0].subject.code.toUpperCase()} for section ${section.code}`,
+            `Use subject_code "${section.subjects[0].subject.code.toUpperCase()}" for section "${section.code}"`,
           );
       } else {
         if (
@@ -4297,22 +4465,26 @@ export class ExamService {
           (dto.examTemplateSlotId && selectedSlot.id !== dto.examTemplateSlotId)
         )
           errors.push(
-            'target section does not belong to this template version/slot',
+            'The selected destination section is no longer part of this template version. Refresh the page and select it again',
           );
         if (!selectedSection || selectedSection.subjects.length !== 1)
-          errors.push('target section must contain exactly one subject');
+          errors.push(
+            'The selected destination section must contain exactly one subject',
+          );
         if (
           !selectedSubject ||
           selectedSubject.organizationId !== organizationId ||
           selectedSubject.id !== dto.subjectId
         )
-          errors.push('target subject does not belong to this organization');
+          errors.push(
+            'The selected destination subject is not available for this organization. Refresh the page and select it again',
+          );
         if (
           selectedSlot &&
           row.slotCode?.trim().toUpperCase() !== selectedSlot.code.toUpperCase()
         )
           errors.push(
-            `slot_code must be ${selectedSlot.code.toUpperCase()} for the selected section`,
+            `Use slot_code "${selectedSlot.code.toUpperCase()}" for the selected section`,
           );
         if (
           selectedSection &&
@@ -4320,7 +4492,7 @@ export class ExamService {
             selectedSection.code.toUpperCase()
         )
           errors.push(
-            `section_code must be ${selectedSection.code.toUpperCase()} for the selected destination`,
+            `Use section_code "${selectedSection.code.toUpperCase()}" for the selected destination`,
           );
         if (
           selectedSubject &&
@@ -4328,12 +4500,17 @@ export class ExamService {
             selectedSubject.code.toUpperCase()
         )
           errors.push(
-            `subject_code must be ${selectedSubject.code.toUpperCase()} for section ${selectedSection?.code.toUpperCase() ?? ''}`,
+            `Use subject_code "${selectedSubject.code.toUpperCase()}" for section "${selectedSection?.code.toUpperCase() ?? ''}"`,
           );
       }
       if (errors.length) {
         row.status = ExamImportRowStatus.ERROR;
-        row.validationMessage = errors.join('; ');
+        row.validationMessage = [
+          existingValidationMessage,
+          this.importValidationMessage(row.sourceRowNumber, errors),
+        ]
+          .filter(Boolean)
+          .join(' ');
       }
     }
   }

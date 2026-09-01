@@ -139,6 +139,17 @@ const emptySlot = (): BuilderSlot => ({
 });
 
 const messageOf = (error: unknown) => {
+  const fallback =
+    "We couldn't complete this action. Review the information you entered and try again.";
+  const friendly = (value: string) => {
+    const message = value.trim();
+    return !message ||
+      /status code\s*\d+/i.test(message) ||
+      /^internal server error$/i.test(message) ||
+      /^request failed$/i.test(message)
+      ? fallback
+      : message;
+  };
   if (typeof error === "object" && error && "response" in error) {
     const response = (
       error as {
@@ -148,11 +159,11 @@ const messageOf = (error: unknown) => {
       }
     ).response;
     const message = response?.data?.message ?? response?.data?.error?.message;
-    return Array.isArray(message)
-      ? message.join(", ")
-      : (message ?? "Request failed");
+    if (Array.isArray(message)) return friendly(message.join(" "));
+    if (message) return friendly(message);
+    return fallback;
   }
-  return error instanceof Error ? error.message : "Request failed";
+  return error instanceof Error ? friendly(error.message) : fallback;
 };
 
 const RichContent = ({ value }: { value?: string | null }) => {
@@ -347,7 +358,6 @@ const ImportQuestionDetails = ({ row }: { row: ExamImportRow }) => {
       correctAnswer={row.correctAnswer}
       explanation={row.explanation}
       id={`import-question-detail-${row.id}`}
-      isMandatory={row.isMandatory}
       numericTolerance={row.numericTolerance}
       options={row.optionsJson}
       placement={[

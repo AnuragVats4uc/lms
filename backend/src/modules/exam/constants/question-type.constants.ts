@@ -2,12 +2,16 @@ export const QUESTION_TYPE_IDS = {
   SINGLE_CHOICE: 1,
   NUMERIC: 2,
   ONE_WORD: 3,
+  MULTIPLE_CHOICE: 4,
+  SUBJECTIVE: 5,
 } as const;
 
 export const QUESTION_TYPE_CODES = {
   SINGLE_CHOICE: 'SINGLE_CHOICE',
   NUMERIC: 'NUMERIC',
   ONE_WORD: 'ONE_WORD',
+  MULTIPLE_CHOICE: 'MULTIPLE_CHOICE',
+  SUBJECTIVE: 'SUBJECTIVE',
 } as const;
 
 export type QuestionTypeCode =
