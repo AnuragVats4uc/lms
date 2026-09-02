@@ -144,6 +144,7 @@ export interface ExamTemplateSection {
   navigationMode: ExamNavigationMode;
   allowReview: boolean;
   autoSubmitOnTimeout: boolean;
+  sortOrder: number;
   isActive: boolean;
   subjects: ExamTemplateSectionSubject[];
 }
@@ -157,6 +158,7 @@ export interface ExamTemplateSlot {
   instructions: string | null;
   navigationMode: ExamNavigationMode;
   autoSubmitOnTimeout: boolean;
+  sortOrder: number;
   isActive: boolean;
   sections: ExamTemplateSection[];
 }
@@ -293,6 +295,35 @@ export interface ExamImportJob {
   rows: ExamImportRow[];
 }
 
+export interface ExamWiseQuestions {
+  canViewAnswers: boolean;
+  exam: {
+    id: number;
+    code: string;
+    title: string;
+    status: ExamStatus;
+    availableFrom: string;
+    availableUntil: string;
+    durationMinutes: number;
+    session: { id: number; name: string };
+    template: {
+      id: number;
+      name: string;
+      versionId: number;
+      versionNumber: number;
+    };
+  };
+  slots: Array<{
+    id: number;
+    sortOrder: number;
+    templateSlotId: number;
+    code: string;
+    name: string;
+    durationMinutes: number;
+    sections: ExamTemplateSection[];
+  }>;
+}
+
 export interface SaveExamTemplateStructureRequest {
   instructions?: string;
   defaultDurationMinutes?: number;
@@ -300,7 +331,6 @@ export interface SaveExamTemplateStructureRequest {
   enforceSlotTimers?: boolean;
   enforceSectionTimers?: boolean;
   slots: Array<{
-    code?: string;
     name: string;
     description?: string;
     instructions?: string;
@@ -308,7 +338,6 @@ export interface SaveExamTemplateStructureRequest {
     navigationMode?: ExamNavigationMode;
     autoSubmitOnTimeout?: boolean;
     sections: Array<{
-      code?: string;
       name: string;
       instructions?: string;
       durationMinutes: number;

@@ -2,6 +2,7 @@ import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
+  ArrayUnique,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -18,6 +19,7 @@ import {
 } from 'class-validator';
 import {
   ExamImportScope,
+  ExamImportStatus,
   ExamNavigationMode,
   ExamResultReleaseMode,
   ExamStatus,
@@ -551,6 +553,21 @@ export class SaveTemplateStructureDto {
   slots!: TemplateSlotDto[];
 }
 
+export class CreateTemplateVersionDto {
+  @IsOptional()
+  @IsBoolean()
+  copyQuestions = true;
+}
+
+export class ReorderTemplateItemsDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayUnique()
+  @IsInt({ each: true })
+  @Type(() => Number)
+  orderedIds!: number[];
+}
+
 export class CreateExamDto extends OrganizationScopedQueryDto {
   @Type(() => Number)
   @IsInt()
@@ -679,4 +696,23 @@ export class CreateExamImportDto {
   @IsInt()
   @Min(1)
   subjectId?: number;
+}
+
+export class ExamImportListQueryDto extends OrganizationScopedQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  examTemplateVersionId?: number;
+
+  @IsOptional()
+  @IsEnum(ExamImportStatus)
+  status?: ExamImportStatus;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 20;
 }

@@ -22,11 +22,14 @@ import {
   CreateExamDto,
   CreateExamImportDto,
   CreateExamTemplateDto,
+  CreateTemplateVersionDto,
   CreateQuestionDto,
   CreateSubjectDto,
   CreateTopicDto,
+  ExamImportListQueryDto,
   OrganizationScopedQueryDto,
   QuestionListQueryDto,
+  ReorderTemplateItemsDto,
   SaveTemplateStructureDto,
   TemplateListQueryDto,
   TopicListQueryDto,
@@ -204,8 +207,38 @@ export class ExamTemplateController {
   createVersion(
     @Req() request: AuthenticatedRequest,
     @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateTemplateVersionDto,
   ) {
-    return this.service.createTemplateVersion(request.user, id);
+    return this.service.createTemplateVersion(request.user, id, dto);
+  }
+
+  @Patch(':id/versions/:versionId/slots/order')
+  @Permissions('exam-template.update')
+  reorderSlots(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('versionId', ParseIntPipe) versionId: number,
+    @Body() dto: ReorderTemplateItemsDto,
+  ) {
+    return this.service.reorderTemplateSlots(request.user, id, versionId, dto);
+  }
+
+  @Patch(':id/versions/:versionId/slots/:slotId/sections/order')
+  @Permissions('exam-template.update')
+  reorderSections(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('versionId', ParseIntPipe) versionId: number,
+    @Param('slotId', ParseIntPipe) slotId: number,
+    @Body() dto: ReorderTemplateItemsDto,
+  ) {
+    return this.service.reorderTemplateSections(
+      request.user,
+      id,
+      versionId,
+      slotId,
+      dto,
+    );
   }
 }
 
@@ -222,6 +255,15 @@ export class ExamController {
     @Query() query: OrganizationScopedQueryDto,
   ) {
     return this.service.listExams(request.user, query);
+  }
+
+  @Get(':id/questions')
+  @Permissions('exam.read')
+  questions(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.service.getExamQuestions(request.user, id);
   }
 
   @Get(':id/report')
@@ -294,6 +336,34 @@ export class ExamImportController {
           'attachment; filename="exam-question-code-free-mapping-template.xlsx"',
       },
     );
+  }
+
+  @Get('template-codeless/:versionId')
+  @Permissions('exam-import.read')
+  async contextualCodelessExcelTemplate(
+    @Req() request: AuthenticatedRequest,
+    @Param('versionId', ParseIntPipe) versionId: number,
+  ) {
+    return new StreamableFile(
+      await this.service.createContextualCodelessExcelImportTemplate(
+        request.user,
+        versionId,
+      ),
+      {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        disposition:
+          'attachment; filename="exam-question-code-free-mapping-template.xlsx"',
+      },
+    );
+  }
+
+  @Get()
+  @Permissions('exam-import.read')
+  list(
+    @Req() request: AuthenticatedRequest,
+    @Query() query: ExamImportListQueryDto,
+  ) {
+    return this.service.listImports(request.user, query);
   }
 
   @Post()

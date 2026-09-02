@@ -26,7 +26,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "test:exam-reporting": "tsx --test test/student-exam-report-metrics.test.ts test/exam-import-template.test.ts",
-    "test:exam-module": "tsx --test test/exam-template-versioning.test.ts test/exam-question-query.test.ts test/exam-import-validation.test.ts test/exam-import-template.test.ts test/student-exam-answer-rules.test.ts test/student-exam-concurrency.test.ts test/student-exam-navigation-rules.test.ts test/student-exam-report-metrics.test.ts test/student-exam-timeout-rules.test.ts",
+    "test:exam-module": "tsx --test test/exam-template-versioning.test.ts test/exam-wise-questions.test.ts test/exam-question-query.test.ts test/exam-import-validation.test.ts test/exam-import-template.test.ts test/exam-import-recovery.test.ts test/exam-scheduling-side-effects.test.ts test/student-exam-answer-rules.test.ts test/student-exam-concurrency.test.ts test/student-exam-navigation-rules.test.ts test/student-exam-report-metrics.test.ts test/student-exam-timeout-rules.test.ts",
     "test:student-data-integrity": "tsx --test test/registration-answer-rules.test.ts test/student-profile-rules.test.ts test/student-calendar-rules.test.ts test/student-notification-rules.test.ts",
     "test:storage": "tsx --test test/storage-object-key.test.ts test/managed-storage-lifecycle.test.ts",
     "seed": "tsx prisma/seed/seed.ts",
@@ -48,6 +48,8 @@
     "backfill:exam-passing-thresholds": "tsx scripts/backfill-exam-passing-thresholds.ts",
     "backfill:utho-storage": "tsx scripts/backfill-utho-storage.ts",
     "backfill:demo-exam-report-details": "tsx scripts/backfill-demo-exam-report-details.ts",
+    "backfill:published-template-questions": "tsx scripts/backfill-published-template-questions.ts",
+    "sync:exam-answer-permission": "tsx scripts/sync-exam-answer-review-permission.ts",
     "verify:exam-advanced-reporting": "tsx scripts/verify-exam-advanced-reporting.ts",
     "verify:demo-exam-variants": "tsx scripts/verify-demo-exam-variants.ts",
     "verify:exam-lifecycle": "tsx scripts/verify-exam-lifecycle.ts"

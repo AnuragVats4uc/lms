@@ -76,9 +76,12 @@ const permissionModules = [
   'exam-import',
 ] as const;
 const crudActions = ['create', 'read', 'update', 'delete'] as const;
-const allPermissionKeys = permissionModules.flatMap((module) =>
-  crudActions.map((action) => `${module}.${action}`),
-);
+const allPermissionKeys = [
+  ...permissionModules.flatMap((module) =>
+    crudActions.map((action) => `${module}.${action}`),
+  ),
+  'exam-answer.read',
+];
 
 const passwordService = new PasswordService({
   get: (key: string) =>

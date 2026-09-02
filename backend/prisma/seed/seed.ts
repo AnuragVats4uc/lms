@@ -71,7 +71,12 @@ const permissionModules = [
 
 const crudActions = ['create', 'read', 'update', 'delete'] as const;
 
-const defaultPermissions = permissionModules.flatMap((module) =>
+const defaultPermissions: Array<{
+  module: string;
+  action: string;
+  key: string;
+  description: string;
+}> = permissionModules.flatMap((module) =>
   crudActions.map((action) => ({
     module,
     action,
@@ -79,6 +84,12 @@ const defaultPermissions = permissionModules.flatMap((module) =>
     description: `Allows ${action} access for ${module}`,
   })),
 );
+defaultPermissions.push({
+  module: 'exam-answer',
+  action: 'read',
+  key: 'exam-answer.read',
+  description: 'Allows staff to review correct exam answers and explanations',
+});
 
 const organizationCatalog = [
   ['Northstar Learning Institute', 'NORTHSTAR'],

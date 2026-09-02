@@ -33,13 +33,16 @@ import {
   CreateExamDto,
   CreateExamImportDto,
   ExamImportMode,
+  ExamImportListQueryDto,
   CreateExamTemplateDto,
+  CreateTemplateVersionDto,
   CreateQuestionDto,
   CreateSubjectDto,
   CreateTopicDto,
   OrganizationScopedQueryDto,
   QuestionListQueryDto,
   QuestionListSort,
+  ReorderTemplateItemsDto,
   SaveTemplateStructureDto,
   TemplateListQueryDto,
   TopicListQueryDto,
@@ -63,7 +66,13 @@ import {
   buildExamResultNotification,
   buildScheduledExamNotification,
 } from '../../students/student-notification.rules';
-import { generateInternalCode } from '../../../common/utils/internal-code';
+import {
+  generateInternalCode,
+  normalizeInternalCode,
+  normalizeInternalLookupKey,
+} from '../../../common/utils/internal-code';
+
+const EXAM_ANSWER_REVIEW_PERMISSION = 'exam-answer.read';
 
 export interface ExamImportFile {
   buffer: Buffer;
@@ -180,6 +189,25 @@ type CodelessWordQuestionContent = Omit<
   answerRulesContent?: string;
 };
 
+type ImportTemplateStructure = Array<{
+  id: number;
+  code: string;
+  name: string;
+  sections: Array<{
+    id: number;
+    code: string;
+    name: string;
+    subjects: Array<{
+      subject: {
+        id: number;
+        organizationId: number;
+        code: string;
+        name: string;
+      };
+    }>;
+  }>;
+}>;
+
 type ImportJobWithRows = Prisma.ExamImportJobGetPayload<{
   include: {
     rows: { include: { questionType: true; topic: true } };
@@ -265,7 +293,7 @@ export class ExamService {
           }),
         ),
       maxLength: 40,
-      source: dto.code ?? dto.name,
+      source: dto.name,
     });
     try {
       return await this.prisma.subject.create({
@@ -329,7 +357,7 @@ export class ExamService {
           }),
         ),
       maxLength: 60,
-      source: dto.code ?? dto.name,
+      source: dto.name,
     });
 
     try {
@@ -882,6 +910,30 @@ export class ExamService {
           );
       }
     }
+    const questionVersionIds = [
+      ...new Set(
+        version.slots.flatMap((slot) =>
+          slot.sections.flatMap((section) =>
+            section.subjects.flatMap((subject) =>
+              subject.questions.map((question) => question.questionVersionId),
+            ),
+          ),
+        ),
+      ),
+    ];
+    const questionIds = [
+      ...new Set(
+        version.slots.flatMap((slot) =>
+          slot.sections.flatMap((section) =>
+            section.subjects.flatMap((subject) =>
+              subject.questions.map(
+                (question) => question.questionVersion.question.id,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ];
     await this.prisma.$transaction([
       this.prisma.examTemplateVersion.update({
         where: { id: version.id },
@@ -894,11 +946,23 @@ export class ExamService {
         where: { id: template.id },
         data: { status: ExamTemplateStatus.PUBLISHED },
       }),
+      this.prisma.questionVersion.updateMany({
+        where: { id: { in: questionVersionIds } },
+        data: { isPublished: true },
+      }),
+      this.prisma.question.updateMany({
+        where: { id: { in: questionIds } },
+        data: { status: QuestionStatus.PUBLISHED },
+      }),
     ]);
     return this.getTemplate(user, templateId);
   }
 
-  async createTemplateVersion(user: CurrentUser, templateId: number) {
+  async createTemplateVersion(
+    user: CurrentUser,
+    templateId: number,
+    dto?: CreateTemplateVersionDto,
+  ) {
     const template = await this.getTemplate(user, templateId);
     if (
       template.versions.some(
@@ -949,15 +1013,18 @@ export class ExamService {
                     subjectId: subject.subjectId,
                     isMandatory: subject.isMandatory,
                     sortOrder: subject.sortOrder,
-                    questions: {
-                      create: subject.questions.map((question) => ({
-                        questionVersionId: question.questionVersionId,
-                        marks: question.marks,
-                        negativeMarks: question.negativeMarks,
-                        isMandatory: question.isMandatory,
-                        sortOrder: question.sortOrder,
-                      })),
-                    },
+                    questions:
+                      dto?.copyQuestions === false
+                        ? undefined
+                        : {
+                            create: subject.questions.map((question) => ({
+                              questionVersionId: question.questionVersionId,
+                              marks: question.marks,
+                              negativeMarks: question.negativeMarks,
+                              isMandatory: question.isMandatory,
+                              sortOrder: question.sortOrder,
+                            })),
+                          },
                   })),
                 },
               })),
@@ -966,6 +1033,61 @@ export class ExamService {
         },
       },
     });
+    return this.getTemplate(user, templateId);
+  }
+
+  async reorderTemplateSlots(
+    user: CurrentUser,
+    templateId: number,
+    versionId: number,
+    dto: ReorderTemplateItemsDto,
+  ) {
+    const template = await this.getTemplate(user, templateId);
+    const version = template.versions.find((item) => item.id === versionId);
+    if (!version) throw new NotFoundException('Template version not found');
+    if (version.status !== ExamTemplateVersionStatus.DRAFT)
+      throw new ConflictException(
+        'Published template versions are immutable; create a new version first',
+      );
+    const existingIds = version.slots.map((slot) => slot.id);
+    this.assertCompleteOrder(existingIds, dto.orderedIds, 'slots');
+    await this.prisma.$transaction(
+      dto.orderedIds.map((id, sortOrder) =>
+        this.prisma.examTemplateSlot.update({
+          where: { id },
+          data: { sortOrder },
+        }),
+      ),
+    );
+    return this.getTemplate(user, templateId);
+  }
+
+  async reorderTemplateSections(
+    user: CurrentUser,
+    templateId: number,
+    versionId: number,
+    slotId: number,
+    dto: ReorderTemplateItemsDto,
+  ) {
+    const template = await this.getTemplate(user, templateId);
+    const version = template.versions.find((item) => item.id === versionId);
+    if (!version) throw new NotFoundException('Template version not found');
+    if (version.status !== ExamTemplateVersionStatus.DRAFT)
+      throw new ConflictException(
+        'Published template versions are immutable; create a new version first',
+      );
+    const slot = version.slots.find((item) => item.id === slotId);
+    if (!slot) throw new NotFoundException('Template slot not found');
+    const existingIds = slot.sections.map((section) => section.id);
+    this.assertCompleteOrder(existingIds, dto.orderedIds, 'sections');
+    await this.prisma.$transaction(
+      dto.orderedIds.map((id, sortOrder) =>
+        this.prisma.examTemplateSection.update({
+          where: { id },
+          data: { sortOrder },
+        }),
+      ),
+    );
     return this.getTemplate(user, templateId);
   }
 
@@ -984,6 +1106,117 @@ export class ExamService {
       },
       orderBy: { availableFrom: 'desc' },
     });
+  }
+
+  async getExamQuestions(user: CurrentUser, examId: number) {
+    const canViewAnswers =
+      user.roles?.includes('SUPER_ADMIN') === true ||
+      user.permissions?.includes(EXAM_ANSWER_REVIEW_PERMISSION) === true;
+    const exam = await this.prisma.exam.findFirst({
+      where: {
+        id: examId,
+        organizationId: user.organizationId ?? undefined,
+        isActive: true,
+      },
+      include: {
+        session: true,
+        templateVersion: { include: { examTemplate: true } },
+        selectedSlots: {
+          orderBy: { sortOrder: 'asc' },
+          include: {
+            templateSlot: {
+              include: {
+                sections: {
+                  orderBy: { sortOrder: 'asc' },
+                  include: {
+                    subjects: {
+                      orderBy: { sortOrder: 'asc' },
+                      include: {
+                        subject: true,
+                        questions: {
+                          orderBy: { sortOrder: 'asc' },
+                          include: {
+                            questionVersion: {
+                              include: {
+                                question: true,
+                                questionType: true,
+                                topic: true,
+                                comprehension: true,
+                                options: { orderBy: { sortOrder: 'asc' } },
+                                acceptedAnswers: {
+                                  orderBy: { sortOrder: 'asc' },
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!exam) throw new NotFoundException('Scheduled exam not found');
+    this.assertOrganization(user, exam.organizationId);
+    return {
+      exam: {
+        id: exam.id,
+        code: exam.code,
+        title: exam.title,
+        status: exam.status,
+        availableFrom: exam.availableFrom,
+        availableUntil: exam.availableUntil,
+        durationMinutes: exam.durationMinutes,
+        session: exam.session,
+        template: {
+          id: exam.templateVersion.examTemplate.id,
+          name: exam.templateVersion.examTemplate.name,
+          versionId: exam.templateVersion.id,
+          versionNumber: exam.templateVersion.versionNumber,
+        },
+      },
+      canViewAnswers,
+      slots: exam.selectedSlots.map(({ id, sortOrder, templateSlot }) => ({
+        id,
+        sortOrder,
+        templateSlotId: templateSlot.id,
+        code: templateSlot.code,
+        name: templateSlot.name,
+        durationMinutes: templateSlot.durationMinutes,
+        sections: templateSlot.sections.map((section) => ({
+          ...section,
+          subjects: section.subjects.map((subject) => ({
+            ...subject,
+            questions: subject.questions.map((question) => ({
+              ...question,
+              marks: Number(question.marks),
+              negativeMarks: Number(question.negativeMarks),
+              questionVersion: {
+                ...question.questionVersion,
+                explanation: canViewAnswers
+                  ? question.questionVersion.explanation
+                  : null,
+                options: question.questionVersion.options.map((option) => ({
+                  ...option,
+                  isCorrect: canViewAnswers ? option.isCorrect : false,
+                })),
+                acceptedAnswers: canViewAnswers
+                  ? question.questionVersion.acceptedAnswers
+                  : [],
+                defaultMarks: Number(question.questionVersion.defaultMarks),
+                defaultNegativeMarks: Number(
+                  question.questionVersion.defaultNegativeMarks,
+                ),
+              },
+            })),
+          })),
+        })),
+      })),
+    };
   }
 
   async getExamReport(user: CurrentUser, examId: number) {
@@ -1825,6 +2058,27 @@ export class ExamService {
     return job;
   }
 
+  async listImports(user: CurrentUser, query: ExamImportListQueryDto) {
+    const organizationId = this.organizationId(user, query.organizationId);
+    return this.prisma.examImportJob.findMany({
+      where: {
+        organizationId,
+        examTemplateVersionId: query.examTemplateVersionId,
+        status: query.status,
+      },
+      include: {
+        files: true,
+        rows: {
+          orderBy: { sourceIndex: 'asc' },
+          include: { questionType: true, topic: true },
+        },
+        errors: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: query.limit,
+    });
+  }
+
   async commitImport(user: CurrentUser, id: number) {
     const job = await this.getImport(user, id);
     if (job.status !== ExamImportStatus.READY_FOR_REVIEW)
@@ -2289,13 +2543,27 @@ export class ExamService {
         sort_order: 8,
       },
     ];
+    const nameRows = rows.map(
+      ({ slot_code, section_code, subject_code, topic_code, ...row }) => ({
+        question_number: row.question_number,
+        slot_name: slot_code.replaceAll('_', ' '),
+        section_name: section_code.replaceAll('_', ' '),
+        subject_name: subject_code.replaceAll('_', ' '),
+        topic_name: topic_code.replaceAll('_', ' '),
+        question_type_code: row.question_type_code,
+        difficulty: row.difficulty,
+        marks: row.marks,
+        negative_marks: row.negative_marks,
+        sort_order: row.sort_order,
+      }),
+    );
     const workbook = XLSX.utils.book_new();
-    const mappingSheet = XLSX.utils.json_to_sheet(rows);
+    const mappingSheet = XLSX.utils.json_to_sheet(nameRows);
     this.addImportTemplateReferences(mappingSheet, [
       ['Mode', 'Upload this workbook with the code-free Word file.'],
       [
         'Join key',
-        'Word Q1 matches question_number 1 using slot_code + section_code + question_number.',
+        'Word Q1 matches question_number 1 using slot_name + section_name + question_number.',
       ],
       [
         'Excel columns',
@@ -2310,9 +2578,120 @@ export class ExamService {
         'Question types, difficulty levels, and instructions are reference blocks on this same sheet.',
       ],
     ]);
-    mappingSheet['!autofilter'] = { ref: `A1:J${rows.length + 1}` };
+    mappingSheet['!autofilter'] = { ref: `A1:J${nameRows.length + 1}` };
     XLSX.utils.book_append_sheet(workbook, mappingSheet, 'Question Mapping');
     return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+  }
+
+  async createContextualCodelessExcelImportTemplate(
+    user: CurrentUser,
+    versionId: number,
+  ) {
+    const version = await this.prisma.examTemplateVersion.findUnique({
+      where: { id: versionId },
+      include: {
+        examTemplate: true,
+        slots: {
+          orderBy: { sortOrder: 'asc' },
+          include: {
+            sections: {
+              orderBy: { sortOrder: 'asc' },
+              include: {
+                subjects: {
+                  orderBy: { sortOrder: 'asc' },
+                  include: { subject: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!version) throw new NotFoundException('Template version not found');
+    this.assertOrganization(user, version.examTemplate.organizationId);
+    if (version.status !== ExamTemplateVersionStatus.DRAFT)
+      throw new ConflictException(
+        'Import workbooks can only be generated for a draft template version',
+      );
+    if (!version.slots.length)
+      throw new BadRequestException(
+        'Add at least one slot and section before downloading an import workbook',
+      );
+
+    let questionNumber = 0;
+    const rows = version.slots.flatMap((slot) =>
+      slot.sections.flatMap((section) => {
+        const subject = section.subjects[0]?.subject;
+        if (!subject) return [];
+        questionNumber += 1;
+        return [
+          {
+            question_number: questionNumber,
+            slot_name: slot.name,
+            section_name: section.name,
+            subject_name: subject.name,
+            topic_name: '',
+            question_type_code: QUESTION_TYPE_CODES.SINGLE_CHOICE,
+            difficulty: QuestionDifficulty.MEDIUM,
+            marks: 1,
+            negative_marks: 0,
+            sort_order: 1,
+          },
+        ];
+      }),
+    );
+    if (!rows.length)
+      throw new BadRequestException(
+        'Every importable section must have a subject before downloading the workbook',
+      );
+
+    const workbook = XLSX.utils.book_new();
+    const mappingSheet = XLSX.utils.json_to_sheet(rows);
+    this.addImportTemplateReferences(mappingSheet, [
+      [
+        'Template version',
+        `${version.examTemplate.name} - v${version.versionNumber}`,
+      ],
+      [
+        'Mapping names',
+        'The slot, section, and subject names below come from this exact draft version. Duplicate a starter row for each additional question.',
+      ],
+      [
+        'Join key',
+        'Word Q1 matches question_number 1 using slot_name + section_name + question_number.',
+      ],
+      [
+        'Generated codes',
+        'Do not add question_code or comprehension_code; internal codes are generated during staging.',
+      ],
+    ]);
+    mappingSheet['!autofilter'] = { ref: `A1:J${rows.length + 1}` };
+    XLSX.utils.book_append_sheet(workbook, mappingSheet, 'Question Mapping');
+
+    const structureRows = version.slots.flatMap((slot, slotIndex) =>
+      slot.sections.flatMap((section, sectionIndex) =>
+        section.subjects.map((subject, subjectIndex) => ({
+          slot_order: slotIndex + 1,
+          slot_name: slot.name,
+          section_order: sectionIndex + 1,
+          section_name: section.name,
+          subject_order: subjectIndex + 1,
+          subject_name: subject.subject.name,
+          generated_slot_code: slot.code,
+          generated_section_code: section.code,
+          generated_subject_code: subject.subject.code,
+        })),
+      ),
+    );
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet(structureRows),
+      'Structure Reference',
+    );
+    return XLSX.write(workbook, {
+      type: 'buffer',
+      bookType: 'xlsx',
+    }) as Buffer;
   }
 
   createCodelessWordImportTemplate() {
@@ -2678,6 +3057,22 @@ export class ExamService {
       throw new ForbiddenException('Cross-organization access is not allowed');
   }
 
+  private assertCompleteOrder(
+    existingIds: number[],
+    orderedIds: number[],
+    label: string,
+  ) {
+    const existing = new Set(existingIds);
+    if (
+      existingIds.length !== orderedIds.length ||
+      orderedIds.some((id) => !existing.has(id))
+    ) {
+      throw new BadRequestException(
+        `The ${label} order must include every current item exactly once`,
+      );
+    }
+  }
+
   private validateQuestion(
     type: QuestionTypeCode,
     options?: Array<{ isCorrect: boolean }>,
@@ -2720,7 +3115,7 @@ export class ExamService {
     const slotCodes = new Set<string>();
     dto.slots.forEach((slot, slotIndex) => {
       slot.code = this.uniqueGeneratedCode(
-        slot.code || slot.name || `Slot ${slotIndex + 1}`,
+        slot.name || `Slot ${slotIndex + 1}`,
         `SLOT_${slotIndex + 1}`,
         slotCodes,
       );
@@ -2728,7 +3123,7 @@ export class ExamService {
       const sectionCodes = new Set<string>();
       slot.sections.forEach((section, sectionIndex) => {
         section.code = this.uniqueGeneratedCode(
-          section.code || section.name || `Section ${sectionIndex + 1}`,
+          section.name || `Section ${sectionIndex + 1}`,
           `SECTION_${sectionIndex + 1}`,
           sectionCodes,
         );
@@ -2753,19 +3148,28 @@ export class ExamService {
   }
 
   private normalizeGeneratedCode(source: string | undefined, fallback: string) {
-    const code = (source || fallback)
-      .trim()
-      .toUpperCase()
-      .replace(/[^A-Z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-    return code || fallback;
+    return normalizeInternalCode(source ?? '', fallback, 60);
   }
 
   private validateStructure(dto: SaveTemplateStructureDto) {
+    const slotNames = dto.slots.map((item) =>
+      normalizeInternalLookupKey(item.name),
+    );
+    if (new Set(slotNames).size !== slotNames.length)
+      throw new BadRequestException(
+        'Slot names must be unique. Differences in case, spaces, hyphens, or underscores do not create a different slot name',
+      );
     const slotCodes = dto.slots.map((item) => item.code!.toUpperCase());
     if (new Set(slotCodes).size !== slotCodes.length)
       throw new BadRequestException('Slot codes must be unique');
     for (const slot of dto.slots) {
+      const sectionNames = slot.sections.map((item) =>
+        normalizeInternalLookupKey(item.name),
+      );
+      if (new Set(sectionNames).size !== sectionNames.length)
+        throw new BadRequestException(
+          `Section names must be unique inside slot ${slot.name}. Differences in case, spaces, hyphens, or underscores do not create a different section name`,
+        );
       const sectionCodes = slot.sections.map((item) =>
         item.code!.toUpperCase(),
       );
@@ -2826,6 +3230,8 @@ export class ExamService {
         const value = text(key);
         return value === '' ? fallback : Number(value);
       };
+      const destinationText = (nameKey: string, legacyCodeKey: string) =>
+        text(nameKey) || text(legacyCodeKey);
       const questionTypeCode = text('question_type_code').toUpperCase();
       const marks = numeric('marks', 1) ?? 1;
       const negativeMarks = numeric('negative_marks', 0) ?? 0;
@@ -2836,10 +3242,12 @@ export class ExamService {
       );
       return {
         sourceRowNumber: index + 2,
-        slotCode: text('slot_code').toUpperCase() || undefined,
-        sectionCode: text('section_code').toUpperCase() || undefined,
-        subjectCode: text('subject_code').toUpperCase() || undefined,
-        topicCode: text('topic_code').toUpperCase() || undefined,
+        slotCode: destinationText('slot_name', 'slot_code') || undefined,
+        sectionCode:
+          destinationText('section_name', 'section_code') || undefined,
+        subjectCode:
+          destinationText('subject_name', 'subject_code') || undefined,
+        topicCode: destinationText('topic_name', 'topic_code') || undefined,
         questionCode: text('question_code').toUpperCase(),
         rawQuestionTypeCode: questionTypeCode || undefined,
         legacyQuestionTypeIdPresent: Boolean(text('question_type_id')),
@@ -2890,6 +3298,8 @@ export class ExamService {
         const value = text(key);
         return value === '' ? fallback : Number(value);
       };
+      const destinationText = (nameKey: string, legacyCodeKey: string) =>
+        text(nameKey) || text(legacyCodeKey);
       const questionNumber = numeric('question_number');
       const questionTypeCode = text('question_type_code').toUpperCase();
       const marks = numeric('marks', 1) ?? 1;
@@ -2901,10 +3311,12 @@ export class ExamService {
       );
       return {
         sourceRowNumber: index + 2,
-        slotCode: text('slot_code').toUpperCase() || undefined,
-        sectionCode: text('section_code').toUpperCase() || undefined,
-        subjectCode: text('subject_code').toUpperCase() || undefined,
-        topicCode: text('topic_code').toUpperCase() || undefined,
+        slotCode: destinationText('slot_name', 'slot_code') || undefined,
+        sectionCode:
+          destinationText('section_name', 'section_code') || undefined,
+        subjectCode:
+          destinationText('subject_name', 'subject_code') || undefined,
+        topicCode: destinationText('topic_name', 'topic_code') || undefined,
         questionNumber:
           questionNumber !== undefined &&
           Number.isInteger(questionNumber) &&
@@ -3729,54 +4141,79 @@ export class ExamService {
   }
 
   private resolveCodelessDestination(
-    structure: Array<{
-      code: string;
-      name: string;
-      sections: Array<{
-        code: string;
-        name: string;
-        subjects: Array<{
-          subject: {
-            id: number;
-            organizationId: number;
-            code: string;
-            name: string;
-          };
-        }>;
-      }>;
-    }>,
+    structure: ImportTemplateStructure,
     word: CodelessWordQuestionContent,
   ) {
+    return this.resolveNamedDestination(
+      structure,
+      word.slotCode,
+      word.sectionCode,
+      word.subjectCode,
+      word.slotTitle,
+      word.sectionTitle,
+      word.subjectTitle,
+    );
+  }
+
+  private resolveNamedDestination(
+    structure: ImportTemplateStructure,
+    slotValue?: string,
+    sectionValue?: string,
+    subjectValue?: string,
+    slotTitle?: string,
+    sectionTitle?: string,
+    subjectTitle?: string,
+  ) {
     const slot =
-      structure.find((item) =>
-        this.matchesTemplateText(item, word.slotCode, word.slotTitle),
-      ) ?? (structure.length === 1 ? structure[0] : undefined);
+      this.findTemplateItem(structure, slotValue, slotTitle) ??
+      (structure.length === 1 ? structure[0] : undefined);
     const sectionPool = slot
       ? slot.sections
       : structure.flatMap((item) => item.sections);
-    const section = sectionPool.find((item) =>
-      this.matchesTemplateText(item, word.sectionCode, word.sectionTitle),
+    const section = this.findTemplateItem(
+      sectionPool,
+      sectionValue,
+      sectionTitle,
     );
     const resolvedSlot =
       slot ??
       (section
         ? structure.find((item) =>
-            item.sections.some(
-              (sectionItem) => sectionItem.code === section.code,
-            ),
+            item.sections.some((sectionItem) => sectionItem === section),
           )
         : undefined);
     const subjectPool = section?.subjects ?? [];
     const subject =
-      subjectPool.find((item) =>
-        this.matchesTemplateText(
-          item.subject,
-          word.subjectCode,
-          word.subjectTitle,
-        ),
-      )?.subject ??
-      (subjectPool.length === 1 ? subjectPool[0].subject : undefined);
+      this.findTemplateItem(
+        subjectPool.map((item) => item.subject),
+        subjectValue,
+        subjectTitle,
+      ) ?? (subjectPool.length === 1 ? subjectPool[0].subject : undefined);
     return { slot: resolvedSlot, section, subject };
+  }
+
+  private findTemplateItem<T extends { code: string; name: string }>(
+    items: T[],
+    ...values: Array<string | undefined>
+  ) {
+    const candidates = values
+      .map((value) => value?.trim())
+      .filter(Boolean) as string[];
+    for (const candidate of candidates) {
+      const exactCodeMatches = items.filter(
+        (item) => item.code.trim().toUpperCase() === candidate.toUpperCase(),
+      );
+      if (exactCodeMatches.length === 1) return exactCodeMatches[0];
+    }
+    const lookupKeys = new Set(
+      candidates.map((candidate) => normalizeInternalLookupKey(candidate)),
+    );
+    const matches = items.filter(
+      (item) =>
+        lookupKeys.has(normalizeInternalLookupKey(item.code)) ||
+        lookupKeys.has(normalizeInternalLookupKey(item.name)),
+    );
+    return matches.length === 1 ? matches[0] : undefined;
   }
 
   private matchesTemplateText(
@@ -3784,13 +4221,7 @@ export class ExamService {
     code?: string,
     title?: string,
   ) {
-    const itemCode = item.code.trim().toUpperCase();
-    const itemName = this.normalizeLookupKey(item.name);
-    return (
-      Boolean(code && itemCode === code.trim().toUpperCase()) ||
-      Boolean(title && itemName === this.normalizeLookupKey(title)) ||
-      Boolean(title && itemCode === this.cleanImportCode(title))
-    );
+    return Boolean(this.findTemplateItem([item], code, title));
   }
 
   private codelessComprehensionCode(
@@ -3810,14 +4241,19 @@ export class ExamService {
   }
 
   private codelessQuestionCode(
+    versionId: number,
     slotCode: string,
     sectionCode: string,
     questionNumber: number,
   ) {
+    const versionPrefix = `V${versionId}-`;
     const suffix = `-Q${String(questionNumber).padStart(3, '0')}`;
     const prefix =
       this.cleanImportCode(`${slotCode}_${sectionCode}`) || 'QUESTION';
-    return `${prefix.slice(0, 80 - suffix.length)}${suffix}`;
+    return `${versionPrefix}${prefix.slice(
+      0,
+      80 - versionPrefix.length - suffix.length,
+    )}${suffix}`;
   }
 
   private cleanImportCode(value: string) {
@@ -3830,10 +4266,7 @@ export class ExamService {
   }
 
   private normalizeLookupKey(value: string) {
-    return value
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '');
+    return normalizeInternalLookupKey(value);
   }
 
   private importValidationMessage(sourceRowNumber: number, errors: string[]) {
@@ -4091,15 +4524,60 @@ export class ExamService {
         ),
       };
     });
-    const resolvedExcel = excelRows.map((mapping) => ({
-      mapping,
-      key: joinKey(
-        mapping.slotCode,
-        mapping.sectionCode,
-        mapping.questionNumber,
-        `EXCEL:${mapping.sourceRowNumber}`,
-      ),
-    }));
+    const resolvedExcel = excelRows.map((mapping) => {
+      const destination =
+        dto.scope === ExamImportScope.SINGLE_SECTION
+          ? {
+              slot:
+                selectedSlot &&
+                this.matchesTemplateText(
+                  selectedSlot,
+                  mapping.slotCode,
+                  mapping.slotCode,
+                )
+                  ? selectedSlot
+                  : undefined,
+              section:
+                selectedSection &&
+                this.matchesTemplateText(
+                  selectedSection,
+                  mapping.sectionCode,
+                  mapping.sectionCode,
+                )
+                  ? selectedSection
+                  : undefined,
+              subject:
+                selectedSubject &&
+                this.matchesTemplateText(
+                  selectedSubject,
+                  mapping.subjectCode,
+                  mapping.subjectCode,
+                )
+                  ? selectedSubject
+                  : undefined,
+            }
+          : this.resolveNamedDestination(
+              structure,
+              mapping.slotCode,
+              mapping.sectionCode,
+              mapping.subjectCode,
+            );
+      const canonicalMapping = {
+        ...mapping,
+        slotCode: destination.slot?.code ?? mapping.slotCode,
+        sectionCode: destination.section?.code ?? mapping.sectionCode,
+        subjectCode: destination.subject?.code ?? mapping.subjectCode,
+      };
+      return {
+        mapping: canonicalMapping,
+        key: joinKey(
+          canonicalMapping.slotCode,
+          canonicalMapping.sectionCode,
+          canonicalMapping.questionNumber,
+          `EXCEL:${mapping.sourceRowNumber}`,
+        ),
+      };
+    });
     const wordsByKey = new Map<string, (typeof resolvedWords)[number][]>();
     const excelByKey = new Map<string, (typeof resolvedExcel)[number][]>();
     for (const item of resolvedWords) {
@@ -4148,6 +4626,7 @@ export class ExamService {
         resolvedWord?.destination.subject?.code ??
         word?.subjectCode;
       const questionCode = this.codelessQuestionCode(
+        versionId,
         slotCode || 'SLOT',
         sectionCode || 'SECTION',
         questionNumber,
@@ -4161,11 +4640,11 @@ export class ExamService {
 
       if (!word)
         errors.push(
-          `No Word question matches slot_code "${slotCode || '(blank)'}", section_code "${sectionCode || '(blank)'}", and question_number "${questionNumber}"`,
+          `No Word question matches slot "${slotCode || '(blank)'}", section "${sectionCode || '(blank)'}", and question_number "${questionNumber}"`,
         );
       if (!mapping)
         errors.push(
-          `No Excel row matches slot_code "${slotCode || '(blank)'}", section_code "${sectionCode || '(blank)'}", and question_number "${questionNumber}"`,
+          `No Excel row matches slot "${slotCode || '(blank)'}", section "${sectionCode || '(blank)'}", and question_number "${questionNumber}"`,
         );
       if (wordMatches.length > 1)
         errors.push(
@@ -4179,9 +4658,9 @@ export class ExamService {
         errors.push(
           'Enter question_number as a positive whole number in Excel',
         );
-      if (!mapping?.slotCode) errors.push('Enter slot_code in Excel');
-      if (!mapping?.sectionCode) errors.push('Enter section_code in Excel');
-      if (!mapping?.subjectCode) errors.push('Enter subject_code in Excel');
+      if (!mapping?.slotCode) errors.push('Enter slot_name in Excel');
+      if (!mapping?.sectionCode) errors.push('Enter section_name in Excel');
+      if (!mapping?.subjectCode) errors.push('Enter subject_name in Excel');
       if (mapping?.legacyQuestionTypeIdPresent && !mapping.rawQuestionTypeCode)
         errors.push(
           'The old question_type_id column is no longer accepted. Rename it to question_type_code and enter a production code such as SINGLE_CHOICE',
@@ -4224,7 +4703,7 @@ export class ExamService {
           resolvedWord.destination.subject.code.toUpperCase()
       )
         errors.push(
-          'subject_code in Excel does not match the destination written in Word',
+          'subject_name in Excel does not match the destination written in Word',
         );
 
       const optionCodes = word?.options.map((option) => option.code) ?? [];
@@ -4273,7 +4752,9 @@ export class ExamService {
 
       const destinationPrefix =
         this.cleanImportCode(
-          [slotCode, sectionCode, subjectCode].filter(Boolean).join('_'),
+          [`V${versionId}`, slotCode, sectionCode, subjectCode]
+            .filter(Boolean)
+            .join('_'),
         ) || 'SHARED_CONTENT';
       const comprehensionCode =
         word?.comprehensionKind &&
@@ -4355,7 +4836,7 @@ export class ExamService {
     });
     const topics = await this.prisma.topic.findMany({
       where: { organizationId, isActive: true },
-      select: { id: true, subjectId: true, code: true },
+      select: { id: true, subjectId: true, code: true, name: true },
     });
     const existingQuestions = await this.prisma.question.findMany({
       where: {
@@ -4364,15 +4845,6 @@ export class ExamService {
       },
       select: { code: true, subjectId: true },
     });
-    const subjectCodes = new Map(
-      subjects.map((subject) => [subject.code.toUpperCase(), subject.id]),
-    );
-    const topicCodes = new Map(
-      topics.map((topic) => [
-        `${topic.subjectId}:${topic.code.toUpperCase()}`,
-        topic.id,
-      ]),
-    );
     const existingQuestionCodes = new Map(
       existingQuestions.map((question) => [
         question.code.toUpperCase(),
@@ -4401,20 +4873,54 @@ export class ExamService {
           `Question code "${row.questionCode}" appears more than once in this import. Use a unique question code for every row`,
         );
       seen.add(questionCode);
+      const matchedSlot =
+        dto.scope === ExamImportScope.FULL_EXAM
+          ? this.findTemplateItem(structure, row.slotCode)
+          : selectedSlot &&
+              this.matchesTemplateText(selectedSlot, row.slotCode, row.slotCode)
+            ? selectedSlot
+            : undefined;
+      const matchedSection =
+        dto.scope === ExamImportScope.FULL_EXAM
+          ? matchedSlot
+            ? this.findTemplateItem(matchedSlot.sections, row.sectionCode)
+            : undefined
+          : selectedSection &&
+              this.matchesTemplateText(
+                selectedSection,
+                row.sectionCode,
+                row.sectionCode,
+              )
+            ? selectedSection
+            : undefined;
+      const matchedSubject =
+        dto.scope === ExamImportScope.FULL_EXAM
+          ? this.findTemplateItem(subjects, row.subjectCode)
+          : selectedSubject &&
+              this.matchesTemplateText(
+                selectedSubject,
+                row.subjectCode,
+                row.subjectCode,
+              )
+            ? selectedSubject
+            : undefined;
       const existingSubjectId = existingQuestionCodes.get(questionCode);
       const intendedSubjectId =
         dto.scope === ExamImportScope.SINGLE_SECTION
           ? dto.subjectId
-          : subjectCodes.get(row.subjectCode?.trim().toUpperCase() ?? '');
+          : matchedSubject?.id;
       if (row.topicCode) {
-        row.topicId = intendedSubjectId
-          ? topicCodes.get(
-              `${intendedSubjectId}:${row.topicCode.trim().toUpperCase()}`,
+        const matchedTopic = intendedSubjectId
+          ? this.findTemplateItem(
+              topics.filter((topic) => topic.subjectId === intendedSubjectId),
+              row.topicCode,
             )
           : undefined;
-        if (!row.topicId) {
+        row.topicId = matchedTopic?.id;
+        if (matchedTopic) row.topicCode = matchedTopic.code;
+        else {
           errors.push(
-            `Topic code "${row.topicCode}" was not found for subject "${row.subjectCode ?? ''}". Correct the topic_code or leave it blank`,
+            `Topic "${row.topicCode}" was not found for subject "${row.subjectCode ?? ''}". Correct the topic name or leave it blank`,
           );
         }
       }
@@ -4425,40 +4931,29 @@ export class ExamService {
             : `Question code "${row.questionCode}" already belongs to another subject. Use a new question code`,
         );
       if (dto.scope === ExamImportScope.FULL_EXAM) {
-        const slot = structure.find(
-          (item) =>
-            item.code.toUpperCase() === row.slotCode?.trim().toUpperCase(),
-        );
-        const section = slot?.sections.find(
-          (item) =>
-            item.code.toUpperCase() === row.sectionCode?.trim().toUpperCase(),
-        );
-        if (!slot)
+        if (!matchedSlot)
           errors.push(
-            `Slot code "${row.slotCode ?? ''}" was not found in this template version`,
+            `Slot "${row.slotCode ?? ''}" was not found in this template version`,
           );
-        if (!section)
+        if (!matchedSection)
           errors.push(
-            `Section code "${row.sectionCode ?? ''}" was not found under slot "${row.slotCode ?? ''}"`,
+            `Section "${row.sectionCode ?? ''}" was not found under slot "${row.slotCode ?? ''}"`,
           );
-        if (
-          !row.subjectCode ||
-          !subjectCodes.has(row.subjectCode.trim().toUpperCase())
-        )
+        if (!matchedSubject)
           errors.push(
-            `Subject code "${row.subjectCode ?? ''}" was not found in this organization`,
+            `Subject "${row.subjectCode ?? ''}" was not found in this organization`,
           );
-        if (section && section.subjects.length !== 1)
+        if (matchedSection && matchedSection.subjects.length !== 1)
           errors.push(
-            `Section "${section.code}" must contain exactly one subject before questions can be imported`,
+            `Section "${matchedSection.name}" must contain exactly one subject before questions can be imported`,
           );
         else if (
-          section &&
-          section.subjects[0].subject.code.toUpperCase() !==
-            row.subjectCode?.trim().toUpperCase()
+          matchedSection &&
+          matchedSubject &&
+          matchedSection.subjects[0].subject.id !== matchedSubject.id
         )
           errors.push(
-            `Use subject_code "${section.subjects[0].subject.code.toUpperCase()}" for section "${section.code}"`,
+            `Use subject "${matchedSection.subjects[0].subject.name}" for section "${matchedSection.name}"`,
           );
       } else {
         if (
@@ -4481,30 +4976,22 @@ export class ExamService {
           errors.push(
             'The selected destination subject is not available for this organization. Refresh the page and select it again',
           );
-        if (
-          selectedSlot &&
-          row.slotCode?.trim().toUpperCase() !== selectedSlot.code.toUpperCase()
-        )
+        if (selectedSlot && !matchedSlot)
           errors.push(
-            `Use slot_code "${selectedSlot.code.toUpperCase()}" for the selected section`,
+            `Use slot "${selectedSlot.name}" for the selected section`,
           );
-        if (
-          selectedSection &&
-          row.sectionCode?.trim().toUpperCase() !==
-            selectedSection.code.toUpperCase()
-        )
+        if (selectedSection && !matchedSection)
           errors.push(
-            `Use section_code "${selectedSection.code.toUpperCase()}" for the selected destination`,
+            `Use section "${selectedSection.name}" for the selected destination`,
           );
-        if (
-          selectedSubject &&
-          row.subjectCode?.trim().toUpperCase() !==
-            selectedSubject.code.toUpperCase()
-        )
+        if (selectedSubject && !matchedSubject)
           errors.push(
-            `Use subject_code "${selectedSubject.code.toUpperCase()}" for section "${selectedSection?.code.toUpperCase() ?? ''}"`,
+            `Use subject "${selectedSubject.name}" for section "${selectedSection?.name ?? ''}"`,
           );
       }
+      if (matchedSlot) row.slotCode = matchedSlot.code;
+      if (matchedSection) row.sectionCode = matchedSection.code;
+      if (matchedSubject) row.subjectCode = matchedSubject.code;
       if (errors.length) {
         row.status = ExamImportRowStatus.ERROR;
         row.validationMessage = [
@@ -4887,6 +5374,7 @@ export class ExamService {
     return createHash('sha256')
       .update(
         JSON.stringify([
+          'destination-names-v2',
           input.importMode ?? ExamImportMode.PAIRED_WORD_EXCEL,
           input.organizationId,
           input.examTemplateVersionId,

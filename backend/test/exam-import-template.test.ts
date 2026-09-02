@@ -64,6 +64,24 @@ function codelessImportRepository() {
   } as unknown as ExamRepository;
 }
 
+void test('code-free question identities are isolated by template version', () => {
+  const service = new ExamService({} as ExamRepository) as unknown as {
+    codelessQuestionCode: (
+      versionId: number,
+      slotCode: string,
+      sectionCode: string,
+      questionNumber: number,
+    ) => string;
+  };
+
+  const first = service.codelessQuestionCode(10, 'SLOT_1', 'MATHEMATICS', 22);
+  const second = service.codelessQuestionCode(11, 'SLOT_1', 'MATHEMATICS', 22);
+
+  assert.notEqual(first, second);
+  assert.match(first, /^V10-/);
+  assert.match(second, /^V11-/);
+});
+
 void test('Excel import template uses one sheet and question type codes', () => {
   const service = new ExamService({} as ExamRepository);
   const workbook = XLSX.read(service.createExcelImportTemplate(), {
@@ -137,10 +155,10 @@ void test('code-free Excel template uses question numbers and contains no intern
   assert.equal(rows.length, 9);
   assert.deepEqual(Object.keys(rows[0]), [
     'question_number',
-    'slot_code',
-    'section_code',
-    'subject_code',
-    'topic_code',
+    'slot_name',
+    'section_name',
+    'subject_name',
+    'topic_name',
     'question_type_code',
     'difficulty',
     'marks',
@@ -157,9 +175,81 @@ void test('code-free Excel template uses question numbers and contains no intern
     })
     .flat()
     .join(' ');
-  assert.match(instructions, /slot_code \+ section_code \+ question_number/i);
+  assert.ok(
+    instructions
+      .toLowerCase()
+      .includes('slot_name + section_name + question_number'),
+  );
   assert.match(instructions, /internal codes are generated/i);
   assert.match(instructions, /one worksheet/i);
+});
+
+void test('contextual workbook uses readable names and keeps codes in its reference sheet', async () => {
+  const service = new ExamService({
+    client: {
+      examTemplateVersion: {
+        findUnique: () =>
+          Promise.resolve({
+            id: 77,
+            versionNumber: 2,
+            status: 'DRAFT',
+            examTemplate: {
+              id: 9,
+              name: 'Aptitude Test',
+              organizationId: 1,
+            },
+            slots: [
+              {
+                id: 1,
+                code: 'GENERAL-STUDIES',
+                name: 'General Studies',
+                sections: [
+                  {
+                    id: 11,
+                    code: 'QUANTITATIVE-APTITUDE',
+                    name: 'Quantitative Aptitude',
+                    subjects: [
+                      {
+                        subject: {
+                          id: 101,
+                          code: 'MATHEMATICS',
+                          name: 'Mathematics',
+                        },
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          }),
+      },
+    },
+  } as unknown as ExamRepository);
+
+  const workbook = XLSX.read(
+    await service.createContextualCodelessExcelImportTemplate(
+      {
+        userId: 1,
+        email: 'admin@example.com',
+        organizationId: 1,
+      },
+      77,
+    ),
+    { type: 'buffer' },
+  );
+  const mapping = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+    workbook.Sheets['Question Mapping'],
+  );
+  assert.equal(mapping[0].slot_name, 'General Studies');
+  assert.equal(mapping[0].section_name, 'Quantitative Aptitude');
+  assert.equal(mapping[0].subject_name, 'Mathematics');
+  assert.equal(Object.hasOwn(mapping[0], 'slot_code'), false);
+
+  const reference = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+    workbook.Sheets['Structure Reference'],
+  );
+  assert.equal(reference[0].generated_slot_code, 'GENERAL-STUDIES');
+  assert.equal(reference[0].generated_section_code, 'QUANTITATIVE-APTITUDE');
 });
 
 void test('code-free Word template parses paragraph options and one-time shared ranges', async () => {

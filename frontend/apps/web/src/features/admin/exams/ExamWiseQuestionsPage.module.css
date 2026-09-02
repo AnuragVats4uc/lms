@@ -1,0 +1,71 @@
+.page { display: grid; gap: 14px; padding: 20px; color: #10213d; }
+.backLink { display: inline-flex; align-items: center; gap: 6px; width: fit-content; color: #087b58; font-size: 12px; font-weight: 750; text-decoration: none; }
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) 150px 150px; gap: 12px; padding: 22px; border: 1px solid #cde6dc; border-radius: 15px; background: linear-gradient(120deg, #f2fcf7, #fff); }
+.hero > div:first-child > span { color: #08845f; font-size: 10px; font-weight: 850; letter-spacing: .09em; text-transform: uppercase; }
+.hero h1 { margin: 6px 0; font-size: clamp(23px, 3vw, 34px); }
+.hero p { margin: 0; color: #607087; font-size: 12px; }
+.heroBadges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.heroBadges b { padding: 5px 8px; border-radius: 999px; background: #e2f7ee; color: #087b58; font-size: 9px; }
+.heroMetric { display: grid; place-items: center; align-content: center; gap: 5px; border: 1px solid #d9ebe4; border-radius: 12px; background: rgba(255,255,255,.82); color: #09946a; }
+.heroMetric strong { color: #10213d; font-size: 27px; }
+.heroMetric span { color: #617188; font-size: 10px; font-weight: 700; }
+.summaryGrid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; }
+.summaryGrid article { display: flex; align-items: center; gap: 10px; padding: 13px; border: 1px solid #dce6ed; border-radius: 11px; background: #fff; color: #0a9a6e; }
+.summaryGrid article div { display: grid; gap: 2px; }
+.summaryGrid strong { color: #10213d; font-size: 14px; }
+.summaryGrid span { color: #6b7b91; font-size: 9px; }
+.toolbar { display: grid; grid-template-columns: minmax(220px,1fr) repeat(3, minmax(145px, 180px)); gap: 10px; }
+.toolbar label { display: flex; align-items: center; gap: 7px; padding: 0 11px; border: 1px solid #d8e3ea; border-radius: 10px; background: #fff; color: #738197; }
+.toolbar input, .toolbar select { min-height: 42px; border: 1px solid #d8e3ea; border-radius: 10px; background: #fff; color: #26364f; font: inherit; font-size: 12px; }
+.toolbar input { width: 100%; border: 0; outline: 0; }
+.toolbar select { padding: 0 10px; }
+.answerNotice { margin: 0; padding: 9px 12px; border: 1px solid #f0d7a6; border-radius: 9px; background: #fff9ec; color: #76551b; font-size: 11px; font-weight: 650; }
+.slotTabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 3px; }
+.slotTabs button { display: grid; grid-template-columns: auto minmax(110px,1fr) auto; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid #d8e4e0; border-radius: 10px; background: #fff; color: #53637a; text-align: left; cursor: pointer; }
+.slotTabs button[data-active="true"] { border-color: #0aa174; background: #eaf8f2; color: #087b58; }
+.slotTabs button b { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; background: #e6f3ee; }
+.slotTabs small { font-size: 9px; white-space: nowrap; }
+.slotContent { display: grid; gap: 12px; }
+.section { overflow: hidden; border: 1px solid #dbe5eb; border-radius: 13px; background: #fff; }
+.section > summary { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 11px; padding: 14px 16px; background: #f8fbfa; cursor: pointer; }
+.section > summary > span { display: grid; place-items: center; width: 29px; height: 29px; border-radius: 8px; background: #dff5eb; color: #087b58; font-weight: 800; }
+.section > summary div { display: grid; gap: 3px; }
+.section > summary small { color: #718097; font-size: 9px; }
+.section > summary > b { color: #087b58; font-size: 10px; }
+.subjects { display: grid; gap: 16px; padding: 15px; }
+.subjects > section > header { display: flex; justify-content: space-between; align-items: center; padding: 0 2px 9px; }
+.subjects header div { display: flex; align-items: center; gap: 7px; }
+.subjects header span, .subjects header small { color: #718097; font-size: 9px; }
+.questions { display: grid; gap: 9px; }
+.questions article { display: grid; gap: 10px; padding: 14px; border: 1px solid #e1e8ed; border-radius: 10px; }
+.questionMeta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.questionMeta > b { display: grid; place-items: center; width: 27px; height: 27px; border-radius: 7px; background: #e4f6ef; color: #087b58; }
+.questionMeta span { padding: 4px 7px; border-radius: 999px; background: #f0f4f7; color: #53637a; font-size: 9px; font-style: normal; }
+.questionMeta span[data-difficulty="EASY"] { background: #e6f7ee; color: #087b58; }
+.questionMeta span[data-difficulty="MEDIUM"] { background: #fff4d8; color: #8a6212; }
+.questionMeta span[data-difficulty="HARD"] { background: #ffebea; color: #b42318; }
+.questionMeta strong { margin-left: auto; color: #10213d; font-size: 11px; }
+.questionContent { color: #26364f; font-size: 13px; line-height: 1.6; }
+.questionContent p { margin: 0; }
+.options { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 7px; }
+.options span { display: flex; align-items: flex-start; gap: 8px; padding: 9px; border: 1px solid #e0e7ec; border-radius: 8px; color: #415169; font-size: 11px; }
+.options span[data-correct="true"] { border-color: #99d9bf; background: #effaf5; color: #087b58; }
+.options i { font-style: normal; }
+.comprehension, .explanation { padding: 9px 11px; border-radius: 8px; background: #f7f9fb; color: #506079; font-size: 11px; }
+.comprehension summary, .explanation summary { color: #253650; font-weight: 750; cursor: pointer; }
+.state { display: grid; place-items: center; gap: 8px; min-height: 180px; padding: 20px; color: #66758a; text-align: center; }
+.state a { color: #087b58; font-weight: 750; }
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr 120px 120px; }
+  .summaryGrid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .toolbar { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 640px) {
+  .page { padding: 12px; }
+  .hero { grid-template-columns: 1fr 1fr; }
+  .hero > div:first-child { grid-column: 1 / -1; }
+  .toolbar { grid-template-columns: 1fr; }
+  .options { grid-template-columns: 1fr; }
+  .section > summary { grid-template-columns: auto minmax(0,1fr); }
+  .section > summary > b { grid-column: 2; }
+}

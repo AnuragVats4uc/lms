@@ -59,7 +59,12 @@ const permissionModules = [
 
 const permissionActions = ['create', 'read', 'update', 'delete'] as const;
 
-const foundationPermissions = permissionModules.flatMap((module) =>
+const foundationPermissions: Array<{
+  module: string;
+  action: string;
+  key: string;
+  description: string;
+}> = permissionModules.flatMap((module) =>
   permissionActions.map((action) => ({
     module,
     action,
@@ -67,6 +72,12 @@ const foundationPermissions = permissionModules.flatMap((module) =>
     description: `Allows ${action} access for ${module}`,
   })),
 );
+foundationPermissions.push({
+  module: 'exam-answer',
+  action: 'read',
+  key: 'exam-answer.read',
+  description: 'Allows staff to review correct exam answers and explanations',
+});
 async function readSuperAdminPassword() {
   const passwordFile = process.env.SUPER_ADMIN_PASSWORD_FILE;
   if (!passwordFile) {

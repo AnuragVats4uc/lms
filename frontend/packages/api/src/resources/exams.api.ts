@@ -1,6 +1,7 @@
 import type {
   ApiResponse,
   ExamImportJob,
+  ExamImportStatus,
   ExamQuestion,
   ExamQuestionListParams,
   ExamQuestionType,
@@ -9,6 +10,7 @@ import type {
   ExamTemplate,
   ExamTemplateListParams,
   ExamTemplateListItem,
+  ExamWiseQuestions,
   AdminExamReport,
   SaveExamTemplateStructureRequest,
   ScheduledExam,
@@ -33,7 +35,6 @@ export const examsApi = {
         .then(unwrapApiData),
     create: (payload: {
       organizationId?: number;
-      code?: string;
       name: string;
       description?: string;
     }) =>
@@ -55,7 +56,6 @@ export const examsApi = {
     create: (payload: {
       organizationId?: number;
       subjectId: number;
-      code?: string;
       name: string;
       description?: string;
       sortOrder?: number;
@@ -153,9 +153,31 @@ export const examsApi = {
       api
         .post<ApiResponse<ExamTemplate>>(`/exam-templates/${id}/publish`)
         .then(unwrapApiData),
-    createVersion: (id: number) =>
+    createVersion: (id: number, payload?: { copyQuestions?: boolean }) =>
       api
-        .post<ApiResponse<ExamTemplate>>(`/exam-templates/${id}/versions`)
+        .post<ApiResponse<ExamTemplate>>(
+          `/exam-templates/${id}/versions`,
+          payload ?? {},
+        )
+        .then(unwrapApiData),
+    reorderSlots: (id: number, versionId: number, orderedIds: number[]) =>
+      api
+        .patch<ApiResponse<ExamTemplate>>(
+          `/exam-templates/${id}/versions/${versionId}/slots/order`,
+          { orderedIds },
+        )
+        .then(unwrapApiData),
+    reorderSections: (
+      id: number,
+      versionId: number,
+      slotId: number,
+      orderedIds: number[],
+    ) =>
+      api
+        .patch<ApiResponse<ExamTemplate>>(
+          `/exam-templates/${id}/versions/${versionId}/slots/${slotId}/sections/order`,
+          { orderedIds },
+        )
         .then(unwrapApiData),
   },
   scheduled: {
@@ -169,6 +191,10 @@ export const examsApi = {
       api
         .get<ApiResponse<AdminExamReport>>(`/exams/${id}/report`)
         .then(unwrapApiData),
+    questions: (id: number) =>
+      api
+        .get<ApiResponse<ExamWiseQuestions>>(`/exams/${id}/questions`)
+        .then(unwrapApiData),
     create: (payload: Record<string, unknown>) =>
       api
         .post<ApiResponse<ScheduledExam>>("/exams", payload)
@@ -179,6 +205,17 @@ export const examsApi = {
         .then(unwrapApiData),
   },
   imports: {
+    list: (
+      params: {
+        organizationId?: number;
+        examTemplateVersionId?: number;
+        status?: ExamImportStatus;
+        limit?: number;
+      } = {},
+    ) =>
+      api
+        .get<ApiResponse<ExamImportJob[]>>("/exam-imports", { params })
+        .then(unwrapApiData),
     stage: (payload: FormData) =>
       api
         .post<ApiResponse<ExamImportJob>>("/exam-imports", payload, {
@@ -210,6 +247,12 @@ export const examsApi = {
     downloadCodelessExcelTemplate: () =>
       api
         .get<Blob>("/exam-imports/template-codeless.xlsx", {
+          responseType: "blob",
+        })
+        .then((response) => response.data),
+    downloadContextualCodelessExcelTemplate: (versionId: number) =>
+      api
+        .get<Blob>(`/exam-imports/template-codeless/${versionId}`, {
           responseType: "blob",
         })
         .then((response) => response.data),

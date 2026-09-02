@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   examsApi,
@@ -32,6 +33,7 @@ import {
   CalendarClock,
   CheckCircle2,
   ChevronDown,
+  ChevronUp,
   CirclePlus,
   Clock3,
   ClipboardList,
@@ -39,6 +41,7 @@ import {
   FileSpreadsheet,
   FileText,
   FileUp,
+  GripVertical,
   Layers3,
   Library,
   ListChecks,
@@ -87,6 +90,8 @@ const difficultyOptions: Array<{
 const difficultyLabel = (difficulty: QuestionDifficulty) =>
   difficulty.charAt(0) + difficulty.slice(1).toLowerCase();
 type BuilderSection = {
+  id?: number;
+  sortOrder?: number;
   code?: string;
   name: string;
   durationMinutes: number;
@@ -101,6 +106,8 @@ type BuilderSection = {
   questions: BuilderQuestion[];
 };
 type BuilderSlot = {
+  id?: number;
+  sortOrder?: number;
   code?: string;
   name: string;
   durationMinutes: number;
@@ -137,6 +144,14 @@ const emptySlot = (): BuilderSlot => ({
   autoSubmitOnTimeout: true,
   sections: [emptySection()],
 });
+
+const moveItem = <T,>(items: T[], from: number, to: number) => {
+  if (from === to || to < 0 || to >= items.length) return items;
+  const next = [...items];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+};
 
 const messageOf = (error: unknown) => {
   const fallback =
@@ -684,7 +699,16 @@ const TemplatesPanel = ({
   const [validationIssues, setValidationIssues] = useState<
     BuilderValidationIssue[]
   >([]);
+  const [validationAction, setValidationAction] = useState<
+    "save" | "publish" | null
+  >(null);
   const [wizardOverride, setWizardOverride] = useState<number | null>(null);
+  const [showVersionOptions, setShowVersionOptions] = useState(false);
+  const [draggedSlotIndex, setDraggedSlotIndex] = useState<number | null>(null);
+  const [draggedSection, setDraggedSection] = useState<{
+    slotIndex: number;
+    sectionIndex: number;
+  } | null>(null);
   const selectedListItem = templates.find((item) => item.id === selectedId);
   const selected = selectedTemplate ?? selectedListItem ?? null;
   const hasDraft =
@@ -704,6 +728,7 @@ const TemplatesPanel = ({
 
   const showVersion = (version: ExamTemplateVersion) => {
     setValidationIssues([]);
+    setValidationAction(null);
     setSelectedVersionId(version.id);
     setVersionInstructions(version.instructions ?? "");
     setDefaultDurationMinutes(version.defaultDurationMinutes ?? 90);
@@ -714,6 +739,8 @@ const TemplatesPanel = ({
     setSlots(
       versionSlots.length
         ? versionSlots.map((slot) => ({
+            id: slot.id,
+            sortOrder: slot.sortOrder,
             code: slot.code,
             name: slot.name,
             durationMinutes: slot.durationMinutes,
@@ -722,6 +749,8 @@ const TemplatesPanel = ({
             navigationMode: slot.navigationMode,
             autoSubmitOnTimeout: slot.autoSubmitOnTimeout,
             sections: slot.sections.map((section) => ({
+              id: section.id,
+              sortOrder: section.sortOrder,
               code: section.code,
               name: section.name,
               durationMinutes: section.durationMinutes,
@@ -833,6 +862,22 @@ const TemplatesPanel = ({
       ),
     );
   };
+  const arrangeSlots = (from: number, to: number) => {
+    if (!isSelectedDraft) return;
+    setValidationIssues([]);
+    setSlots((current) => moveItem(current, from, to));
+  };
+  const arrangeSections = (slotIndex: number, from: number, to: number) => {
+    if (!isSelectedDraft) return;
+    setValidationIssues([]);
+    setSlots((current) =>
+      current.map((slot, index) =>
+        index === slotIndex
+          ? { ...slot, sections: moveItem(slot.sections, from, to) }
+          : slot,
+      ),
+    );
+  };
 
   const buildPayload = (): SaveExamTemplateStructureRequest => ({
     instructions: versionInstructions || undefined,
@@ -841,7 +886,6 @@ const TemplatesPanel = ({
     enforceSlotTimers,
     enforceSectionTimers,
     slots: slots.map((slot) => ({
-      code: slot.code?.trim() || undefined,
       name: slot.name,
       description: slot.description || undefined,
       instructions: slot.instructions || undefined,
@@ -849,7 +893,6 @@ const TemplatesPanel = ({
       navigationMode: slot.navigationMode,
       autoSubmitOnTimeout: slot.autoSubmitOnTimeout,
       sections: slot.sections.map((section) => ({
-        code: section.code?.trim() || undefined,
         name: section.name,
         durationMinutes: section.durationMinutes,
         questionsToAttempt: section.questionsToAttempt,
@@ -960,7 +1003,7 @@ const TemplatesPanel = ({
         if (requireQuestions && !section.questions.length) {
           issues.push({
             target: sectionTarget,
-            message: `${section.name || `Section ${sectionIndex + 1}`} has no imported questions.`,
+            message: `${section.name || `Section ${sectionIndex + 1}`} has no assigned questions.`,
           });
         }
         if (
@@ -977,7 +1020,7 @@ const TemplatesPanel = ({
         ) {
           issues.push({
             target: sectionTarget,
-            message: `${section.name || `Section ${sectionIndex + 1}`} allows ${section.questionsToAttempt} attempts but only ${section.questions.length} questions are imported.`,
+            message: `${section.name || `Section ${sectionIndex + 1}`} requires ${section.questionsToAttempt} attempted questions but only ${section.questions.length} are assigned.`,
           });
         }
         if (
@@ -1002,18 +1045,23 @@ const TemplatesPanel = ({
   const save = () => {
     if (!selected) return;
     const issues = validateBuilder({ requireQuestions: false });
+    setValidationAction("save");
     setValidationIssues(issues);
     if (issues.length) return;
     report(
       examsApi.templates.saveStructure(selected.id, buildPayload()),
       "Template structure saved",
-      () => loadBuilder(selected, selectedVersionId ?? "draft"),
+      async () => {
+        setValidationAction(null);
+        await loadBuilder(selected, selectedVersionId ?? "draft");
+      },
     );
   };
 
   const publish = () => {
     if (!selected) return;
     const issues = validateBuilder();
+    setValidationAction("publish");
     setValidationIssues(issues);
     if (issues.length) return;
     report(
@@ -1021,7 +1069,10 @@ const TemplatesPanel = ({
         .saveStructure(selected.id, buildPayload())
         .then(() => examsApi.templates.publish(selected.id)),
       `Version ${selectedVersion?.versionNumber} published and locked`,
-      () => loadBuilder(selected, selectedVersionId ?? "draft"),
+      async () => {
+        setValidationAction(null);
+        await loadBuilder(selected, selectedVersionId ?? "draft");
+      },
     );
   };
 
@@ -1037,6 +1088,11 @@ const TemplatesPanel = ({
         0,
       ),
     0,
+  );
+  const hasQuestionAssignmentIssues = validationIssues.some(
+    (issue) =>
+      issue.message.includes("no assigned questions") ||
+      issue.message.includes("are assigned"),
   );
   const totalQuestionsToAttempt = slots.reduce(
     (slotTotal, slot) =>
@@ -1084,6 +1140,7 @@ const TemplatesPanel = ({
   );
   const isPublishReady =
     selectedQuestionCount > 0 && liveValidationIssues.length === 0;
+  const canArrangeNewVersion = Boolean(isSelectedDraft);
   const publishedTemplateCount = templates.filter(
     (template) => template.status === "PUBLISHED",
   ).length;
@@ -1099,12 +1156,32 @@ const TemplatesPanel = ({
   const wizardStep = wizardOverride ?? inferredWizardStep;
 
   const preview = () => {
-    setWizardOverride(5);
+    setWizardOverride(4);
     window.setTimeout(() => {
       document
         .getElementById("template-review-publish")
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
+  };
+  const createNextVersion = (copyQuestions: boolean) => {
+    if (!selected || hasDraft) return;
+    setShowVersionOptions(false);
+    report(
+      examsApi.templates.createVersion(selected.id, { copyQuestions }),
+      copyQuestions
+        ? "New version created with its existing questions"
+        : "New structure-only version created",
+      async () => {
+        await loadBuilder(selected, "draft");
+        setWizardOverride(3);
+        window.setTimeout(() => {
+          document.getElementById("template-structure-order")?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }, 0);
+      },
+    );
   };
 
   useEffect(() => {
@@ -1120,19 +1197,6 @@ const TemplatesPanel = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTemplateId, selectedId, templates]);
 
-  useEffect(() => {
-    if (!selected || window.location.hash !== "#import-questions") return;
-    const timeoutId = window.setTimeout(() => {
-      setWizardOverride(4);
-      document.getElementById("import-questions")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [selected]);
-
   return (
     <div className={styles.templateBuilderShell}>
       <div
@@ -1143,7 +1207,6 @@ const TemplatesPanel = ({
           { label: "Template details", target: "template-editor-actions" },
           { label: "Timing & slots", target: "timing-configuration" },
           { label: "Build sections", target: "build-sections" },
-          { label: "Import questions", target: "import-questions" },
           {
             label: "Review & publish",
             target: "template-review-publish",
@@ -1563,13 +1626,7 @@ const TemplatesPanel = ({
                       <button
                         className={styles.secondaryButton}
                         disabled={hasDraft}
-                        onClick={() =>
-                          report(
-                            examsApi.templates.createVersion(selected.id),
-                            "New editable template version created",
-                            () => loadBuilder(selected, "draft"),
-                          )
-                        }
+                        onClick={() => setShowVersionOptions(true)}
                         title={
                           hasDraft
                             ? "Publish the current draft before creating another version"
@@ -1638,8 +1695,19 @@ const TemplatesPanel = ({
                   <div>
                     <AlertTriangle size={18} aria-hidden="true" />
                     <div>
-                      <strong>Cannot save or publish yet</strong>
-                      <span>Resolve these configuration issues first.</span>
+                      <strong>
+                        {validationAction === "publish"
+                          ? "Cannot publish this version yet"
+                          : "Cannot save this draft yet"}
+                      </strong>
+                      <span>
+                        {validationAction === "publish" &&
+                        hasQuestionAssignmentIssues
+                          ? "Assign questions in Step 3 or import them from Schedule Exams, then publish."
+                          : validationAction === "publish"
+                            ? "Resolve these configuration issues before publishing."
+                            : "Resolve these structure issues before saving."}
+                      </span>
                     </div>
                   </div>
                   <ul>
@@ -1649,6 +1717,16 @@ const TemplatesPanel = ({
                       </li>
                     ))}
                   </ul>
+                  {validationAction === "publish" &&
+                  hasQuestionAssignmentIssues &&
+                  selected ? (
+                    <Link
+                      className={styles.validationActionLink}
+                      href="#import-questions"
+                    >
+                      Open the Import Question Center below
+                    </Link>
+                  ) : null}
                 </section>
               ) : null}
               <div className={styles.builder}>
@@ -1931,6 +2009,12 @@ const TemplatesPanel = ({
                         Work from top to bottom: define each slot, configure its
                         sections, then save the draft.
                       </p>
+                      {canArrangeNewVersion ? (
+                        <small className={styles.arrangeHint}>
+                          This is a new version. Drag slots and sections or use
+                          the arrow controls to set their delivery order.
+                        </small>
+                      ) : null}
                     </div>
                     <button
                       className={styles.secondaryButton}
@@ -1973,20 +2057,142 @@ const TemplatesPanel = ({
                     <article>
                       <span>3</span>
                       <div>
-                        <strong>Continue to question import</strong>
+                        <strong>Review the finalized structure</strong>
                         <p>
-                          After saving, open Step 4 and upload the prepared
-                          files.
+                          Import questions in the center below using these exact
+                          names and this saved order.
                         </p>
                       </div>
                     </article>
                   </div>
+                  {canArrangeNewVersion ? (
+                    <div
+                      className={styles.structureOrderPanel}
+                      id="template-structure-order"
+                    >
+                      <div className={styles.structureOrderHeading}>
+                        <div>
+                          <strong>Slot &amp; section order</strong>
+                          <span>
+                            Set the delivery sequence, then save the draft to
+                            keep these changes.
+                          </span>
+                        </div>
+                        <span className={styles.structureOrderBadge}>
+                          {slots.length} {slots.length === 1 ? "slot" : "slots"}
+                          {" · "}
+                          {sectionCount}{" "}
+                          {sectionCount === 1 ? "section" : "sections"}
+                        </span>
+                      </div>
+                      <div className={styles.structureOrderList}>
+                        {slots.map((slot, slotIndex) => (
+                          <article key={slot.id ?? `order-slot-${slotIndex}`}>
+                            <div className={styles.structureOrderSlot}>
+                              <span>
+                                <b>{slotIndex + 1}</b>
+                                <strong>
+                                  {slot.name || `Slot ${slotIndex + 1}`}
+                                </strong>
+                              </span>
+                              <div>
+                                <button
+                                  disabled={slotIndex === 0}
+                                  onClick={() =>
+                                    arrangeSlots(slotIndex, slotIndex - 1)
+                                  }
+                                  type="button"
+                                >
+                                  <ChevronUp size={14} />
+                                  Move up
+                                </button>
+                                <button
+                                  disabled={slotIndex === slots.length - 1}
+                                  onClick={() =>
+                                    arrangeSlots(slotIndex, slotIndex + 1)
+                                  }
+                                  type="button"
+                                >
+                                  <ChevronDown size={14} />
+                                  Move down
+                                </button>
+                              </div>
+                            </div>
+                            <ol className={styles.structureOrderSections}>
+                              {slot.sections.map((section, sectionIndex) => (
+                                <li
+                                  key={
+                                    section.id ??
+                                    `order-section-${slotIndex}-${sectionIndex}`
+                                  }
+                                >
+                                  <span>
+                                    <b>{sectionIndex + 1}</b>
+                                    {section.name ||
+                                      `Section ${sectionIndex + 1}`}
+                                  </span>
+                                  <div>
+                                    <button
+                                      aria-label={`Move ${section.name || `section ${sectionIndex + 1}`} up`}
+                                      disabled={sectionIndex === 0}
+                                      onClick={() =>
+                                        arrangeSections(
+                                          slotIndex,
+                                          sectionIndex,
+                                          sectionIndex - 1,
+                                        )
+                                      }
+                                      type="button"
+                                    >
+                                      <ChevronUp size={14} />
+                                      Up
+                                    </button>
+                                    <button
+                                      aria-label={`Move ${section.name || `section ${sectionIndex + 1}`} down`}
+                                      disabled={
+                                        sectionIndex ===
+                                        slot.sections.length - 1
+                                      }
+                                      onClick={() =>
+                                        arrangeSections(
+                                          slotIndex,
+                                          sectionIndex,
+                                          sectionIndex + 1,
+                                        )
+                                      }
+                                      type="button"
+                                    >
+                                      <ChevronDown size={14} />
+                                      Down
+                                    </button>
+                                  </div>
+                                </li>
+                              ))}
+                            </ol>
+                          </article>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </section>
                 {slots.map((slot, slotIndex) => (
                   <article
                     className={styles.slotBlueprintCard}
+                    draggable={canArrangeNewVersion}
                     id={`exam-slot-${slotIndex + 1}`}
                     key={slotIndex}
+                    onDragEnd={() => setDraggedSlotIndex(null)}
+                    onDragOver={(event) => {
+                      if (canArrangeNewVersion) event.preventDefault();
+                    }}
+                    onDragStart={() => setDraggedSlotIndex(slotIndex)}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      if (draggedSlotIndex !== null) {
+                        arrangeSlots(draggedSlotIndex, slotIndex);
+                        setDraggedSlotIndex(null);
+                      }
+                    }}
                   >
                     <div className={styles.slotBlueprintHeader}>
                       <div>
@@ -2001,6 +2207,35 @@ const TemplatesPanel = ({
                         </div>
                       </div>
                       <div className={styles.slotBlueprintMeta}>
+                        {canArrangeNewVersion ? (
+                          <span className={styles.orderControls}>
+                            <GripVertical
+                              aria-hidden="true"
+                              className={styles.dragHandle}
+                              size={16}
+                            />
+                            <button
+                              aria-label={`Move ${slot.name} up`}
+                              disabled={slotIndex === 0}
+                              onClick={() =>
+                                arrangeSlots(slotIndex, slotIndex - 1)
+                              }
+                              type="button"
+                            >
+                              <ChevronUp size={14} />
+                            </button>
+                            <button
+                              aria-label={`Move ${slot.name} down`}
+                              disabled={slotIndex === slots.length - 1}
+                              onClick={() =>
+                                arrangeSlots(slotIndex, slotIndex + 1)
+                              }
+                              type="button"
+                            >
+                              <ChevronDown size={14} />
+                            </button>
+                          </span>
+                        ) : null}
                         <span>
                           <ListChecks size={13} aria-hidden="true" />
                           {slot.sections.length}{" "}
@@ -2020,20 +2255,6 @@ const TemplatesPanel = ({
                     </p>
                     <div className={styles.slotSetupPanel}>
                       <div className={styles.slotSetupGrid}>
-                        <label>
-                          Slot code
-                          <input
-                            disabled={!isSelectedDraft}
-                            maxLength={60}
-                            onChange={(event) =>
-                              updateSlot(slotIndex, {
-                                code: event.target.value,
-                              })
-                            }
-                            placeholder="e.g., CUET-SLOT-1"
-                            value={slot.code ?? ""}
-                          />
-                        </label>
                         <label>
                           Slot name
                           <input
@@ -2187,8 +2408,29 @@ const TemplatesPanel = ({
                     {slot.sections.map((section, sectionIndex) => (
                       <div
                         className={styles.sectionCard}
+                        draggable={canArrangeNewVersion}
                         id={`exam-slot-${slotIndex + 1}-section-${sectionIndex + 1}`}
                         key={sectionIndex}
+                        onDragEnd={() => setDraggedSection(null)}
+                        onDragOver={(event) => {
+                          if (canArrangeNewVersion) event.preventDefault();
+                        }}
+                        onDragStart={(event) => {
+                          event.stopPropagation();
+                          setDraggedSection({ slotIndex, sectionIndex });
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          if (draggedSection?.slotIndex === slotIndex) {
+                            arrangeSections(
+                              slotIndex,
+                              draggedSection.sectionIndex,
+                              sectionIndex,
+                            );
+                            setDraggedSection(null);
+                          }
+                        }}
                       >
                         <div className={styles.sectionHeader}>
                           <div>
@@ -2199,6 +2441,45 @@ const TemplatesPanel = ({
                             </h4>
                           </div>
                           <div className={styles.sectionHeaderActions}>
+                            {canArrangeNewVersion ? (
+                              <span className={styles.orderControls}>
+                                <GripVertical
+                                  aria-hidden="true"
+                                  className={styles.dragHandle}
+                                  size={15}
+                                />
+                                <button
+                                  aria-label={`Move ${section.name} up`}
+                                  disabled={sectionIndex === 0}
+                                  onClick={() =>
+                                    arrangeSections(
+                                      slotIndex,
+                                      sectionIndex,
+                                      sectionIndex - 1,
+                                    )
+                                  }
+                                  type="button"
+                                >
+                                  <ChevronUp size={13} />
+                                </button>
+                                <button
+                                  aria-label={`Move ${section.name} down`}
+                                  disabled={
+                                    sectionIndex === slot.sections.length - 1
+                                  }
+                                  onClick={() =>
+                                    arrangeSections(
+                                      slotIndex,
+                                      sectionIndex,
+                                      sectionIndex + 1,
+                                    )
+                                  }
+                                  type="button"
+                                >
+                                  <ChevronDown size={13} />
+                                </button>
+                              </span>
+                            ) : null}
                             <span
                               className={styles.sectionTimerBadge}
                               data-active={enforceSectionTimers}
@@ -2239,20 +2520,6 @@ const TemplatesPanel = ({
                           Complete the section settings and choose its subject.
                         </p>
                         <div className={styles.rowFields}>
-                          <label>
-                            Section code
-                            <input
-                              disabled={!isSelectedDraft}
-                              maxLength={60}
-                              onChange={(event) =>
-                                updateSection(slotIndex, sectionIndex, {
-                                  code: event.target.value,
-                                })
-                              }
-                              placeholder="e.g., QUANT"
-                              value={section.code ?? ""}
-                            />
-                          </label>
                           <label>
                             Section name
                             <input
@@ -2439,17 +2706,19 @@ const TemplatesPanel = ({
                   </article>
                 ))}
               </div>
-              <ImportsPanel
-                embedded
-                initialTemplateId={selected.id}
-                key={`template-import-${selected.id}-${selectedVersionId ?? "none"}`}
-                onImported={async () => {
-                  await loadBuilder(selected, selectedVersionId ?? "draft");
-                  setWizardOverride(4);
-                }}
-                report={report}
-                templates={templates}
-              />
+              {isSelectedDraft && selected ? (
+                <ImportsPanel
+                  embedded
+                  initialTemplateId={selected.id}
+                  key={`builder-import-${selected.id}-${selectedVersionId ?? "draft"}`}
+                  organizationId={effectiveOrganizationId}
+                  onImported={() =>
+                    loadBuilder(selected, selectedVersionId ?? "draft")
+                  }
+                  report={report}
+                  templates={templates}
+                />
+              ) : null}
               <section
                 aria-labelledby="template-review-publish-heading"
                 className={styles.reviewPublishPanel}
@@ -2458,7 +2727,7 @@ const TemplatesPanel = ({
                 <div className={styles.reviewPublishHeader}>
                   <div>
                     <span className={styles.stepLabel}>
-                      Step 5 · Review & publish
+                      Step 4 · Review & publish
                     </span>
                     <h3 id="template-review-publish-heading">
                       Check the final exam blueprint
@@ -2494,7 +2763,7 @@ const TemplatesPanel = ({
                   </span>
                   <span>
                     <b>{selectedQuestionCount}</b>
-                    imported questions
+                    linked questions
                   </span>
                 </div>
 
@@ -2547,6 +2816,66 @@ const TemplatesPanel = ({
           )}
         </section>
       </div>
+      {showVersionOptions && selected ? (
+        <div
+          aria-modal="true"
+          className={styles.versionDialogBackdrop}
+          onMouseDown={(event) => {
+            if (event.currentTarget === event.target)
+              setShowVersionOptions(false);
+          }}
+          role="dialog"
+        >
+          <section
+            aria-labelledby="new-template-version-title"
+            className={styles.versionDialog}
+          >
+            <div>
+              <span className={styles.stepLabel}>Create new version</span>
+              <h2 id="new-template-version-title">
+                Choose what to copy from {selected.name}
+              </h2>
+              <p>
+                The published version remains unchanged. You can rearrange the
+                cloned slots and sections in the new draft.
+              </p>
+            </div>
+            <div className={styles.versionChoiceGrid}>
+              <button
+                className={styles.versionChoice}
+                onClick={() => createNextVersion(false)}
+                type="button"
+              >
+                <Layers3 size={22} />
+                <strong>Copy structure only</strong>
+                <span>
+                  Copy timing, slots, sections, subjects, and their current
+                  order without question links.
+                </span>
+              </button>
+              <button
+                className={styles.versionChoice}
+                onClick={() => createNextVersion(true)}
+                type="button"
+              >
+                <ClipboardList size={22} />
+                <strong>Copy structure and questions</strong>
+                <span>
+                  Start with the complete published blueprint, including all
+                  linked questions.
+                </span>
+              </button>
+            </div>
+            <button
+              className={styles.secondaryButton}
+              onClick={() => setShowVersionOptions(false)}
+              type="button"
+            >
+              Cancel
+            </button>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 };
@@ -2658,7 +2987,6 @@ const SubjectsPanel = ({
               report(
                 examsApi.subjects.create({
                   organizationId,
-                  code: String(form.get("code") || "").trim() || undefined,
                   name: String(form.get("name")),
                   description: String(form.get("description") || ""),
                 }),
@@ -2668,18 +2996,6 @@ const SubjectsPanel = ({
             className={`${styles.form} ${styles.subjectForm}`}
           >
             {organizationSelector}
-            <label>
-              Subject code
-              <input
-                autoComplete="off"
-                maxLength={40}
-                name="code"
-                placeholder="e.g., QUANTITATIVE-APTITUDE"
-              />
-              <small>
-                Leave blank to generate a code from the subject name.
-              </small>
-            </label>
             <label>
               Subject name
               <input name="name" required placeholder="Quantitative Aptitude" />
@@ -2796,7 +3112,6 @@ const TopicsPanel = ({
                 examsApi.topics.create({
                   organizationId,
                   subjectId,
-                  code: String(form.get("code") || "").trim() || undefined,
                   name: String(form.get("name")),
                   description: String(form.get("description") || ""),
                 }),
@@ -2818,21 +3133,10 @@ const TopicsPanel = ({
               placeholder="Choose subject"
               value={subjectId ? String(subjectId) : ""}
             />
-            <div className={styles.rowFields}>
-              <label>
-                Topic code
-                <input
-                  autoComplete="off"
-                  maxLength={60}
-                  name="code"
-                  placeholder="e.g., PERCENTAGES"
-                />
-              </label>
-              <label>
-                Topic name
-                <input name="name" placeholder="Percentages" required />
-              </label>
-            </div>
+            <label>
+              Topic name
+              <input name="name" placeholder="Percentages" required />
+            </label>
             <label>
               Description
               <textarea
@@ -3774,16 +4078,23 @@ const QuestionsPanel = ({
 const ImportsPanel = ({
   embedded = false,
   initialTemplateId,
+  organizationId,
   onImported,
+  onPublished,
+  onTemplateChange,
   templates,
   report,
 }: {
   embedded?: boolean;
   initialTemplateId?: number;
+  organizationId?: number;
   onImported?: () => void | Promise<void>;
+  onPublished?: (templateId: number, versionId: number) => void | Promise<void>;
+  onTemplateChange?: (templateId: number) => void;
   templates: ExamTemplateListItem[];
   report: Report;
 }) => {
+  const queryClient = useQueryClient();
   const [templateId, setTemplateId] = useState(initialTemplateId ?? 0);
   const [scope, setScope] = useState<"SINGLE_SECTION" | "FULL_EXAM">(
     "SINGLE_SECTION",
@@ -3804,14 +4115,27 @@ const ImportsPanel = ({
   const version = templateDetails.data?.versions.find(
     (item) => item.status === "DRAFT",
   );
-  const draftTemplateOptions = templates
-    .filter((item) =>
-      item.versions.some((versionItem) => versionItem.status === "DRAFT"),
-    )
-    .map((item) => ({
-      label: `${item.name} - v${item.versions.find((versionItem) => versionItem.status === "DRAFT")?.versionNumber} Draft`,
+  const recentImports = useQuery({
+    queryKey: ["exam-import-jobs", organizationId, version?.id],
+    queryFn: () =>
+      examsApi.imports.list({
+        organizationId,
+        examTemplateVersionId: version!.id,
+        limit: 8,
+      }),
+    enabled: Boolean(organizationId && version?.id),
+  });
+  const draftTemplateOptions = templates.map((item) => {
+    const draft = item.versions.find(
+      (versionItem) => versionItem.status === "DRAFT",
+    );
+    return {
+      label: draft
+        ? `${item.name} - v${draft.versionNumber} Draft`
+        : `${item.name} - create a new draft`,
       value: String(item.id),
-    }));
+    };
+  });
   const selectedTemplateOption =
     templateDetails.data && version
       ? {
@@ -3834,13 +4158,22 @@ const ImportsPanel = ({
         slotName: slot.name,
       })),
     ) ?? [];
-  const selectedSection = sections.find((section) => section.id === sectionId);
+  const effectiveSectionId =
+    sectionId ||
+    (scope === "SINGLE_SECTION" && sections.length === 1 ? sections[0].id : 0);
+  const selectedSection = sections.find(
+    (section) => section.id === effectiveSectionId,
+  );
   const downloadTemplate = async (kind: "word" | "excel") => {
     try {
       const blob =
         kind === "word"
           ? await examsApi.imports.downloadCodelessWordTemplate()
-          : await examsApi.imports.downloadCodelessExcelTemplate();
+          : version
+            ? await examsApi.imports.downloadContextualCodelessExcelTemplate(
+                version.id,
+              )
+            : await examsApi.imports.downloadCodelessExcelTemplate();
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
@@ -3869,12 +4202,19 @@ const ImportsPanel = ({
     payload.set("examTemplateVersionId", String(version.id));
     payload.set("scope", scope);
     if (scope === "SINGLE_SECTION") {
-      payload.set("examTemplateSectionId", String(sectionId));
+      payload.set("examTemplateSectionId", String(effectiveSectionId));
       payload.set("examTemplateSlotId", String(selectedSection?.slotId ?? ""));
     }
     try {
       const stagedJob = await examsApi.imports.stage(payload);
       setJob(stagedJob);
+      const parameters = new URLSearchParams(window.location.search);
+      parameters.set("importJobId", String(stagedJob.id));
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}?${parameters.toString()}${window.location.hash}`,
+      );
       setExpandedImportRowId(null);
     } catch (error) {
       report(Promise.reject(error), "");
@@ -3896,6 +4236,47 @@ const ImportsPanel = ({
       setIsCommitting(false);
     }
   };
+  const createDraft = (copyQuestions: boolean) => {
+    if (!templateId || version) return;
+    report(
+      examsApi.templates.createVersion(templateId, { copyQuestions }),
+      copyQuestions
+        ? "Draft created with the published questions"
+        : "Structure-only draft created",
+      async () => {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["exam-templates"] }),
+          templateDetails.refetch(),
+        ]);
+      },
+    );
+  };
+  const publishAndContinue = () => {
+    if (!templateId || !version || job?.status !== "IMPORTED") return;
+    report(
+      examsApi.templates.publish(templateId),
+      `Version ${version.versionNumber} published and ready to schedule`,
+      async () => {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["exam-templates"] }),
+          queryClient.invalidateQueries({
+            queryKey: ["exam-template-detail", templateId],
+          }),
+        ]);
+        await onPublished?.(templateId, version.id);
+      },
+    );
+  };
+  useEffect(() => {
+    const importJobId = Number(
+      new URLSearchParams(window.location.search).get("importJobId"),
+    );
+    if (!Number.isInteger(importJobId) || importJobId < 1) return;
+    void examsApi.imports
+      .get(importJobId)
+      .then(setJob)
+      .catch(() => undefined);
+  }, []);
   return (
     <div
       className={`${styles.importManagement} ${embedded ? styles.embeddedImportStep : ""}`}
@@ -3907,8 +4288,8 @@ const ImportsPanel = ({
             <FileUp size={21} aria-hidden="true" />
           </span>
           <div>
-            <span className={styles.stepLabel}>Step 4 · Import questions</span>
-            <h3>Upload the prepared Word and Excel files</h3>
+            <span className={styles.stepLabel}>Question import center</span>
+            <h3>Import questions into this draft</h3>
             <p>
               Save the structure first. Then download the templates, upload the
               completed files, validate every row, and confirm the import
@@ -4013,8 +4394,9 @@ const ImportsPanel = ({
               instructions. Word owns content, images, options, answers, and
               explanations. Excel owns slot, section, subject, topic, question
               type, difficulty, marks, and order. Q1. joins Excel
-              question_number 1 within the same slot_code and section_code.
-              Internal codes are generated during staging.
+              question_number 1 within the same slot name and section name. Name
+              matching ignores case, spaces, hyphens, and underscores; internal
+              codes are generated by the backend.
             </p>
           </div>
           <div className={styles.templateActions}>
@@ -4084,14 +4466,61 @@ const ImportsPanel = ({
                 }
                 label="Draft template"
                 onChange={(value) => {
-                  setTemplateId(Number(value));
+                  const nextTemplateId = Number(value);
+                  setTemplateId(nextTemplateId);
                   setSectionId(0);
+                  setJob(null);
+                  onTemplateChange?.(nextTemplateId);
+                  const parameters = new URLSearchParams(
+                    window.location.search,
+                  );
+                  parameters.delete("importJobId");
+                  const query = parameters.toString();
+                  window.history.replaceState(
+                    null,
+                    "",
+                    `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
+                  );
                 }}
                 options={templateOptions}
                 placeholder="Choose template"
                 value={templateId ? String(templateId) : ""}
               />
             )}
+            {templateId && templateDetails.data && !version ? (
+              <section className={styles.prepareDraftCard}>
+                <div>
+                  <strong>Create an editable version first</strong>
+                  <span>
+                    Choose whether the new draft should keep the published
+                    questions. Its slots and sections can then be rearranged in
+                    Template Builder before import.
+                  </span>
+                </div>
+                <div className={styles.inlineActions}>
+                  <button
+                    className={styles.secondaryButton}
+                    onClick={() => createDraft(false)}
+                    type="button"
+                  >
+                    Copy structure only
+                  </button>
+                  <button
+                    className={styles.secondaryButton}
+                    onClick={() => createDraft(true)}
+                    type="button"
+                  >
+                    Copy structure & questions
+                  </button>
+                  <Link
+                    className={styles.textButton}
+                    href={`/admin/exams/templates/${templateId}/builder?returnTo=/admin/exams/schedule`}
+                  >
+                    Open Template Builder
+                  </Link>
+                </div>
+              </section>
+            ) : null}
             <CrudSelectField
               label="Import scope"
               onChange={(value) => setScope(value as typeof scope)}
@@ -4114,7 +4543,7 @@ const ImportsPanel = ({
                     value: String(section.id),
                   }))}
                   placeholder="Choose section"
-                  value={sectionId ? String(sectionId) : ""}
+                  value={effectiveSectionId ? String(effectiveSectionId) : ""}
                 />
                 <label>
                   Section subject
@@ -4141,13 +4570,42 @@ const ImportsPanel = ({
               disabled={
                 isStaging ||
                 !version ||
-                (scope === "SINGLE_SECTION" && !sectionId)
+                (scope === "SINGLE_SECTION" && !effectiveSectionId)
               }
             >
               <FileUp size={16} />
               {isStaging ? "Staging and validating..." : "Stage and validate"}
             </button>
           </form>
+          {version && (recentImports.data?.length ?? 0) > 0 ? (
+            <section className={styles.recentImportJobs}>
+              <strong>Recent imports for this draft</strong>
+              <div>
+                {recentImports.data?.map((recentJob) => (
+                  <button
+                    className={styles.textButton}
+                    key={recentJob.id}
+                    onClick={() => {
+                      setJob(recentJob);
+                      const parameters = new URLSearchParams(
+                        window.location.search,
+                      );
+                      parameters.set("importJobId", String(recentJob.id));
+                      window.history.replaceState(
+                        null,
+                        "",
+                        `${window.location.pathname}?${parameters.toString()}${window.location.hash}`,
+                      );
+                    }}
+                    type="button"
+                  >
+                    Import #{recentJob.id} ·{" "}
+                    {recentJob.status.replaceAll("_", " ")}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </section>
         <section className={`${styles.panel} ${styles.importPreviewPanel}`}>
           <div className={styles.panelTitle}>
@@ -4251,14 +4709,33 @@ const ImportsPanel = ({
                   </tbody>
                 </table>
               </div>
-              <button
-                className={styles.publishButton}
-                disabled={job.status !== "READY_FOR_REVIEW" || isCommitting}
-                onClick={commit}
-              >
-                <CheckCircle2 size={16} />
-                {isCommitting ? "Importing…" : "Confirm import"}
-              </button>
+              <div className={styles.inlineActions}>
+                <button
+                  className={styles.publishButton}
+                  disabled={job.status !== "READY_FOR_REVIEW" || isCommitting}
+                  onClick={commit}
+                  type="button"
+                >
+                  <CheckCircle2 size={16} />
+                  {isCommitting ? "Importing…" : "Confirm import"}
+                </button>
+                {job.status === "IMPORTED" && embedded ? (
+                  <span className={styles.inlineHelper}>
+                    <CheckCircle2 size={15} />
+                    Questions imported. Review the blueprint below, then publish
+                    this version.
+                  </span>
+                ) : job.status === "IMPORTED" ? (
+                  <button
+                    className={styles.primaryButton}
+                    onClick={publishAndContinue}
+                    type="button"
+                  >
+                    <Send size={16} />
+                    Publish and continue to scheduling
+                  </button>
+                ) : null}
+              </div>
             </>
           )}
         </section>
@@ -4292,6 +4769,14 @@ const SchedulePanel = ({
     "IMMEDIATE" | "SCHEDULED" | "MANUAL"
   >("IMMEDIATE");
   const [resultPublishAt, setResultPublishAt] = useState<Date | null>(null);
+  useEffect(() => {
+    const parameters = new URLSearchParams(window.location.search);
+    const requestedTemplateId = Number(parameters.get("templateId"));
+    queueMicrotask(() => {
+      if (Number.isInteger(requestedTemplateId) && requestedTemplateId > 0)
+        setTemplateId(requestedTemplateId);
+    });
+  }, []);
   const sessions = useQuery({
     queryKey: ["exam-sessions", organizationId],
     queryFn: () =>
@@ -4612,7 +5097,10 @@ const SchedulePanel = ({
                   )
                 }
                 options={[
-                  { label: "Immediately after submission", value: "IMMEDIATE" },
+                  {
+                    label: "Immediately after submission",
+                    value: "IMMEDIATE",
+                  },
                   { label: "At a scheduled time", value: "SCHEDULED" },
                   { label: "Release manually", value: "MANUAL" },
                 ]}
@@ -4697,6 +5185,13 @@ const SchedulePanel = ({
                   </span>
                 </div>
                 <Status value={exam.status} />
+                <Link
+                  className={styles.secondaryButton}
+                  href={`/admin/exams/${exam.id}/questions`}
+                >
+                  <Eye size={15} />
+                  View questions
+                </Link>
                 {exam.resultReleaseMode === "MANUAL" &&
                 !exam.resultsReleasedAt ? (
                   <button

@@ -46,3 +46,12 @@ export async function generateInternalCode({
 
   throw new Error(`Unable to generate a unique ${fallback.toLowerCase()} code`);
 }
+
+export function normalizeInternalLookupKey(value: string) {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+}

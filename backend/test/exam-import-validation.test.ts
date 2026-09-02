@@ -72,10 +72,12 @@ function serviceWith(
           {
             id: 21,
             code: 'CUET_SLOT_1',
+            name: 'CUET Slot 1',
             sections: [
               {
                 id: 31,
                 code: 'LANGUAGE',
+                name: 'English Language',
                 subjects: [{ subject: englishSubject }],
               },
             ],
@@ -135,6 +137,26 @@ void test('accepts rows whose mapping matches the selected section', async () =>
   assert.equal(rows[0].validationMessage, undefined);
 });
 
+void test('accepts readable destination names and stores canonical codes', async () => {
+  const rows = [
+    stagedRow({
+      slotCode: 'cuet slot 1',
+      sectionCode: 'english-language',
+      subjectCode: 'English Language',
+    }),
+  ];
+  await serviceWith().validateImportDestinations(
+    5,
+    organizationId,
+    singleSectionDto(),
+    rows,
+  );
+  assert.equal(rows[0].status, ExamImportRowStatus.VALID);
+  assert.equal(rows[0].slotCode, 'CUET_SLOT_1');
+  assert.equal(rows[0].sectionCode, 'LANGUAGE');
+  assert.equal(rows[0].subjectCode, 'ENGLISH');
+});
+
 void test('rejects a Quant mapping uploaded into the English section', async () => {
   const rows = [
     stagedRow({ sectionCode: 'QUANT', subjectCode: 'QUANTITATIVE' }),
@@ -146,8 +168,14 @@ void test('rejects a Quant mapping uploaded into the English section', async () 
     rows,
   );
   assert.equal(rows[0].status, ExamImportRowStatus.ERROR);
-  assert.match(rows[0].validationMessage ?? '', /Use section_code "LANGUAGE"/);
-  assert.match(rows[0].validationMessage ?? '', /Use subject_code "ENGLISH"/);
+  assert.match(
+    rows[0].validationMessage ?? '',
+    /Use section "English Language"/,
+  );
+  assert.match(
+    rows[0].validationMessage ?? '',
+    /Use subject "English Language"/,
+  );
 });
 
 void test('rejects a question code that already exists in the question bank', async () => {
