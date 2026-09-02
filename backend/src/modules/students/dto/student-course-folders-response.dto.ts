@@ -18,6 +18,9 @@ class StudentCourseFolderItemDto {
   @ApiProperty({ example: 12 })
   id: number;
 
+  @ApiPropertyOptional({ nullable: true, example: null })
+  parentFolderId: number | null;
+
   @ApiProperty({ example: 'Quantitative Aptitude' })
   name: string;
 
@@ -29,6 +32,9 @@ class StudentCourseFolderItemDto {
 
   @ApiPropertyOptional({ nullable: true })
   color: string | null;
+
+  @ApiProperty({ example: 2 })
+  childrenCount: number;
 
   @ApiProperty({ type: StudentCourseFolderCountsDto })
   resourceCounts: StudentCourseFolderCountsDto;

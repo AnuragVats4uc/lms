@@ -251,6 +251,11 @@ export interface StudentFolderContext {
   color: string | null;
 }
 
+export interface StudentFolderBreadcrumb {
+  id: number;
+  name: string;
+}
+
 export interface StudentFolderResourcesQuery extends PaginationQuery {
   resourceTypeId?: ResourceTypeId;
   uploadedOn?: string;
@@ -260,6 +265,8 @@ export interface StudentFolderResourcesQuery extends PaginationQuery {
 export interface StudentFolderResourceList extends PaginatedData<StudentFolderResourceItem> {
   course: StudentResourceCourse;
   folder: StudentFolderContext;
+  breadcrumbs: StudentFolderBreadcrumb[];
+  folders: import("./student-courses").StudentCourseFolder[];
   summary: StudentResourcesSummary;
   filters: { types: ResourceType[] };
 }

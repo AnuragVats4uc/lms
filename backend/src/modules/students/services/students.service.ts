@@ -77,6 +77,8 @@ type StudentFolderResourceResult = NonNullable<
   Awaited<ReturnType<StudentsRepository['findStudentFolderResources']>>
 >;
 type StudentFolderResourceRecord = StudentFolderResourceResult['items'][number];
+type StudentFolderTreeNode =
+  StudentFolderResourceResult['access']['sessionCourse']['folders'][number];
 type StudentExamGraph = NonNullable<StudentFolderResourceRecord['exam']>;
 type StudentCalendarCourse = {
   id: number;
@@ -1009,6 +1011,7 @@ export class StudentsService {
     }
 
     const sessionCourse = enrollment.sessionCourse;
+    const folders = sessionCourse.folders;
 
     return {
       course: {
@@ -1021,31 +1024,9 @@ export class StudentsService {
         sessionId: sessionCourse.session.id,
         sessionName: sessionCourse.session.name,
       },
-      folders: sessionCourse.folders.map((folder) => {
-        const resourceCounts = folder.resources.reduce(
-          (counts, resource) => {
-            counts.total += 1;
-            if (resource.resourceTypeId === RESOURCE_TYPE_IDS.VIDEO) {
-              counts.videos += 1;
-            } else if (resource.resourceTypeId === RESOURCE_TYPE_IDS.DOCUMENT) {
-              counts.documents += 1;
-            } else if (resource.resourceTypeId === RESOURCE_TYPE_IDS.EXAM) {
-              counts.exams += 1;
-            }
-            return counts;
-          },
-          { total: 0, videos: 0, documents: 0, exams: 0 },
-        );
-
-        return {
-          id: folder.id,
-          name: folder.name,
-          description: folder.description,
-          icon: folder.icon,
-          color: folder.color,
-          resourceCounts,
-        };
-      }),
+      folders: folders
+        .filter((folder) => folder.parentFolderId === null)
+        .map((folder) => this.toStudentFolderItem(folder, folders)),
     };
   }
 
@@ -1074,7 +1055,11 @@ export class StudentsService {
     }
 
     const sessionCourse = result.access.sessionCourse;
-    const folder = sessionCourse.folders[0];
+    const folders = sessionCourse.folders;
+    const folder = folders.find((item) => item.id === folderId)!;
+    const childFolders = folders.filter(
+      (item) => item.parentFolderId === folder.id,
+    );
 
     return {
       course: {
@@ -1094,6 +1079,10 @@ export class StudentsService {
         icon: folder.icon,
         color: folder.color,
       },
+      breadcrumbs: this.buildStudentFolderBreadcrumbs(folder, folders),
+      folders: childFolders.map((child) =>
+        this.toStudentFolderItem(child, folders),
+      ),
       items: result.items.map((resource) =>
         this.toStudentFolderResource(resource),
       ),
@@ -1523,11 +1512,10 @@ export class StudentsService {
           )
         : Promise.resolve(),
     ]);
-    const activity =
-      await this.studentsRepository.findStudentDocumentActivity(
-        student.id,
-        resource.id,
-      );
+    const activity = await this.studentsRepository.findStudentDocumentActivity(
+      student.id,
+      resource.id,
+    );
 
     return this.toDocumentProgress(
       dto.totalPages ?? resource.documentPageCount,
@@ -2688,6 +2676,79 @@ export class StudentsService {
     }, 0);
 
     return Math.round(total / resources.length);
+  }
+
+  private toStudentFolderItem(
+    folder: StudentFolderTreeNode,
+    folders: StudentFolderTreeNode[],
+  ) {
+    return {
+      id: folder.id,
+      parentFolderId: folder.parentFolderId,
+      name: folder.name,
+      description: folder.description,
+      icon: folder.icon,
+      color: folder.color,
+      childrenCount: folders.filter(
+        (candidate) => candidate.parentFolderId === folder.id,
+      ).length,
+      resourceCounts: this.countStudentFolderResources(folder.id, folders),
+    };
+  }
+
+  private countStudentFolderResources(
+    folderId: number,
+    folders: StudentFolderTreeNode[],
+  ) {
+    const counts = { total: 0, videos: 0, documents: 0, exams: 0 };
+    const pending = [folderId];
+    const visited = new Set<number>();
+
+    while (pending.length) {
+      const currentId = pending.pop()!;
+      if (visited.has(currentId)) continue;
+      visited.add(currentId);
+
+      const current = folders.find((folder) => folder.id === currentId);
+      if (!current) continue;
+
+      for (const resource of current.resources) {
+        counts.total += 1;
+        if (resource.resourceTypeId === RESOURCE_TYPE_IDS.VIDEO) {
+          counts.videos += 1;
+        } else if (resource.resourceTypeId === RESOURCE_TYPE_IDS.DOCUMENT) {
+          counts.documents += 1;
+        } else if (resource.resourceTypeId === RESOURCE_TYPE_IDS.EXAM) {
+          counts.exams += 1;
+        }
+      }
+
+      for (const child of folders) {
+        if (child.parentFolderId === currentId) pending.push(child.id);
+      }
+    }
+
+    return counts;
+  }
+
+  private buildStudentFolderBreadcrumbs(
+    folder: StudentFolderTreeNode,
+    folders: StudentFolderTreeNode[],
+  ) {
+    const byId = new Map(folders.map((item) => [item.id, item]));
+    const breadcrumbs: Array<{ id: number; name: string }> = [];
+    const visited = new Set<number>();
+    let current: StudentFolderTreeNode | undefined = folder;
+
+    while (current && !visited.has(current.id)) {
+      visited.add(current.id);
+      breadcrumbs.unshift({ id: current.id, name: current.name });
+      current = current.parentFolderId
+        ? byId.get(current.parentFolderId)
+        : undefined;
+    }
+
+    return breadcrumbs;
   }
 
   private documentPercentage(

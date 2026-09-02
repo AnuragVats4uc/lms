@@ -54,10 +54,12 @@ export interface StudentCourseFolderCounts {
 
 export interface StudentCourseFolder {
   id: number;
+  parentFolderId: number | null;
   name: string;
   description: string | null;
   icon: string | null;
   color: string | null;
+  childrenCount: number;
   resourceCounts: StudentCourseFolderCounts;
 }
 

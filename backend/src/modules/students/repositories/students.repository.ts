@@ -900,7 +900,6 @@ export class StudentsRepository {
               course: true,
               folders: {
                 where: {
-                  parentFolderId: null,
                   isActive: true,
                   status: 'ACTIVE',
                 },
@@ -1053,12 +1052,18 @@ export class StudentsRepository {
             session: { select: { id: true, code: true, name: true } },
             folders: {
               where: {
-                parentFolderId: null,
                 isActive: true,
                 status: 'ACTIVE',
               },
               orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-              include: {
+              select: {
+                id: true,
+                parentFolderId: true,
+                name: true,
+                description: true,
+                icon: true,
+                color: true,
+                sortOrder: true,
                 resources: {
                   where: visibleResourceWhere,
                   select: { id: true, resourceTypeId: true },
@@ -1078,6 +1083,10 @@ export class StudentsRepository {
     folderId: number,
     query: NormalizedStudentFolderResourcesQuery,
   ) {
+    const visibleResourceWhere = this.buildVisibleFolderResourceWhere(
+      organizationId,
+      sessionCourseId,
+    );
     const access = await this.prisma.studentCourseEnrollment.findFirst({
       where: {
         sessionCourseId,
@@ -1097,7 +1106,6 @@ export class StudentsRepository {
           folders: {
             some: {
               id: folderId,
-              parentFolderId: null,
               isActive: true,
               status: 'ACTIVE',
             },
@@ -1113,13 +1121,20 @@ export class StudentsRepository {
             course: true,
             session: { select: { id: true, code: true, name: true } },
             folders: {
-              where: { id: folderId, parentFolderId: null },
+              where: { isActive: true, status: 'ACTIVE' },
+              orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
               select: {
                 id: true,
+                parentFolderId: true,
                 name: true,
                 description: true,
                 icon: true,
                 color: true,
+                sortOrder: true,
+                resources: {
+                  where: visibleResourceWhere,
+                  select: { id: true, resourceTypeId: true },
+                },
               },
             },
           },
@@ -1127,7 +1142,9 @@ export class StudentsRepository {
       },
     });
 
-    if (!access?.sessionCourse.folders[0]) {
+    if (
+      !access?.sessionCourse.folders.some((folder) => folder.id === folderId)
+    ) {
       return null;
     }
 
@@ -1145,7 +1162,7 @@ export class StudentsRepository {
         ? { createdAt: { gte: uploadedAt, lt: uploadedBefore } }
         : {}),
       AND: [
-        this.buildVisibleFolderResourceWhere(organizationId, sessionCourseId),
+        visibleResourceWhere,
         ...(search
           ? [
               {
