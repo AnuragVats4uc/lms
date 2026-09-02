@@ -38,6 +38,7 @@
     "verify:demo-activity": "tsx scripts/verify-demo-activity-history.ts",
     "seed:student-flow": "tsx prisma/seed/student-learning-flow.ts",
     "seed:keonjhar-courses": "tsx prisma/seed/keonjhar-course-structure.ts",
+    "seed:keonjhar-resources": "tsx scripts/import-keonjhar-resources.ts",
     "verify:student-flow": "tsx scripts/audit-student-learning-flow.ts",
     "verify:student-notifications": "tsx scripts/verify-student-notifications.ts",
     "verify:utho-storage": "tsx scripts/verify-utho-storage.ts",
