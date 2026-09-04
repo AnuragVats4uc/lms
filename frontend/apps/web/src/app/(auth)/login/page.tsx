@@ -19,11 +19,7 @@ import {
   ShieldCheck,
   UsersRound,
 } from "lucide-react";
-import {
-  getAuthErrorMessage,
-  PublicRoute,
-  useLogin,
-} from "@repo/auth";
+import { getAuthErrorMessage, PublicRoute, useLogin } from "@repo/auth";
 import {
   LoginCard,
   LoginFormValues,
@@ -34,6 +30,11 @@ import {
   YStack,
 } from "@repo/ui";
 
+import {
+  clearStudentWelcome,
+  prepareStudentWelcome,
+} from "@/features/auth/student-welcome-session";
+
 const LOGIN_PREFILL_STORAGE_KEY = "lms.registrationLoginPrefill";
 
 export default function LoginPage() {
@@ -41,11 +42,16 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const queryEmail = searchParams.get("email")?.trim().toLowerCase() ?? "";
   const [prefillPassword, setPrefillPassword] = useState("");
-  const {
-    error,
-    isPending,
-    mutate,
-  } = useLogin();
+  const { error, isPending, mutate } = useLogin({
+    onLoginSuccess: (data) => {
+      if (data.user.roles.includes("STUDENT")) {
+        prepareStudentWelcome(data.user.uuid);
+        return;
+      }
+
+      clearStudentWelcome();
+    },
+  });
 
   const handleSubmit = useCallback(
     (values: LoginFormValues) => {
@@ -54,7 +60,7 @@ export default function LoginPage() {
         password: values.password,
       });
     },
-    [mutate]
+    [mutate],
   );
   const defaultValues = useMemo(
     () => ({
@@ -143,11 +149,12 @@ export default function LoginPage() {
             <PlatformVisual />
           </HeroPanel>
 
-          <LoginCardColumn className="lms-login-card-column" style={loginCardColumnStyle}>
+          <LoginCardColumn
+            className="lms-login-card-column"
+            style={loginCardColumnStyle}
+          >
             <LoginCard
-              apiError={
-                error ? getAuthErrorMessage(error) : undefined
-              }
+              apiError={error ? getAuthErrorMessage(error) : undefined}
               defaultValues={defaultValues}
               headerProps={{
                 subtitle: "Sign in to continue to your workspace.",
@@ -155,9 +162,7 @@ export default function LoginPage() {
               isLoading={isPending}
               key={`${defaultValues.email}:${defaultValues.password ? "prefilled" : "empty"}`}
               loginLabel="Login"
-              onForgotPasswordPress={() =>
-                router.push("/forgot-password")
-              }
+              onForgotPasswordPress={() => router.push("/forgot-password")}
               onSubmit={handleSubmit}
               showFooter={false}
             />
@@ -176,8 +181,7 @@ export default function LoginPage() {
 
 const LoginPageShellFrame = styled(YStack, {
   flex: 1,
-  background:
-    "linear-gradient(135deg, #F7FCFA 0%, #EEF8F4 48%, #E5F5EE 100%)",
+  background: "linear-gradient(135deg, #F7FCFA 0%, #EEF8F4 48%, #E5F5EE 100%)",
   p: "$4",
   width: "100%",
 

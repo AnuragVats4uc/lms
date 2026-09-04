@@ -2,12 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, ExternalLink } from "lucide-react";
 
 import { YStack } from "@repo/ui";
 import { useAuthSession } from "@repo/auth";
 
 import { STUDENT_DASHBOARD_PATH } from "@/features/auth/routes";
+import { consumeStudentWelcome } from "@/features/auth/student-welcome-session";
 
 import styles from "./StudentLandingPage.module.css";
 
@@ -47,8 +50,27 @@ const destinations = [
 
 export const StudentLandingPage = () => {
   const { currentUser } = useAuthSession();
+  const router = useRouter();
+  const accessResolved = useRef(false);
+  const [isWelcomeAvailable, setIsWelcomeAvailable] = useState(false);
 
   const studentName = currentUser?.firstName?.trim();
+
+  useEffect(() => {
+    if (!currentUser || accessResolved.current) return;
+
+    accessResolved.current = true;
+    if (!consumeStudentWelcome(currentUser.uuid)) {
+      router.replace(STUDENT_DASHBOARD_PATH);
+      return;
+    }
+
+    // This state is resolved from sessionStorage, an external browser system.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsWelcomeAvailable(true);
+  }, [currentUser, router]);
+
+  if (!isWelcomeAvailable) return null;
 
   return (
     <main className={styles.pageShell}>
