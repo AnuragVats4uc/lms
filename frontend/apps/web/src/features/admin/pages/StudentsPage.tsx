@@ -98,6 +98,10 @@ function toUpdate(form: StudentForm): UpdateStudentRequest {
     firstName: form.firstName.trim(),
     gender: form.gender || undefined,
     phone: form.phone.trim() || undefined,
+    sessionCourseIds: form.sessionId
+      ? form.sessionCourseIds.map(Number)
+      : undefined,
+    sessionId: form.sessionId ? Number(form.sessionId) : undefined,
   };
 
   if (form.admissionNumber.trim()) {
@@ -124,6 +128,9 @@ function validate(form: StudentForm, isEdit = false) {
     }
     if (form.password && form.password.length < 8) {
       return "Password must be at least 8 characters.";
+    }
+    if (form.sessionId && !form.sessionCourseIds.length) {
+      return "Select at least one course.";
     }
     return null;
   }
@@ -157,7 +164,7 @@ function StudentFormFields({
     staleTime: 60_000,
   });
   const sessionCoursesQuery = useQuery({
-    enabled: sessionId > 0 && !isEdit,
+    enabled: sessionId > 0,
     queryFn: () =>
       sessionCoursesApi.findAll(sessionId, {
         limit: 100,
@@ -315,17 +322,15 @@ function StudentFormFields({
           onChange={(value) => onChange("password", value)}
           value={form.password}
         />
-        {!isEdit ? (
-          <CoursePicker
-            courses={sessionCourses.map((sessionCourse) => ({
-              code: sessionCourse.course.code,
-              label: sessionCourse.displayName ?? sessionCourse.course.name,
-              value: String(sessionCourse.id),
-            }))}
-            selected={form.sessionCourseIds}
-            onChange={(value) => onChange("sessionCourseIds", value)}
-          />
-        ) : null}
+        <CoursePicker
+          courses={sessionCourses.map((sessionCourse) => ({
+            code: sessionCourse.course.code,
+            label: sessionCourse.displayName ?? sessionCourse.course.name,
+            value: String(sessionCourse.id),
+          }))}
+          selected={form.sessionCourseIds}
+          onChange={(value) => onChange("sessionCourseIds", value)}
+        />
       </div>
     </YStack>
   );
@@ -364,6 +369,19 @@ const columns: DataTableColumn<Student>[] = [
     header: "Enrollment",
     id: "enrollment",
     width: 260,
+  },
+  {
+    cell: ({ row }) => (
+      <DataTableTextCell
+        primary={
+          row.courseInterests?.map((course) => course.name).join(", ") ||
+          "Not specified"
+        }
+      />
+    ),
+    header: "Course Interest",
+    id: "courseInterest",
+    width: 240,
   },
   {
     cell: ({ row }) => (
@@ -516,6 +534,15 @@ export function StudentsPage() {
             icon={<BookOpen color="#059669" size={15} />}
             title="Enrollment"
           >
+            <CrudDetailField
+              icon={<BookOpen color="#059669" size={15} />}
+              label="Course Interest"
+              value={
+                student.courseInterests
+                  ?.map((course) => course.name)
+                  .join(", ") || "Not specified"
+              }
+            />
             <CrudDetailField
               icon={<CalendarDays color="#059669" size={15} />}
               label="Session"

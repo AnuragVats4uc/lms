@@ -22,6 +22,7 @@ model SessionCourse {
 
   folders                  Folder[]
   studentCourseEnrollments StudentCourseEnrollment[]
+  studentCourseInterests   StudentCourseInterest[]
   studentCourseProgress    StudentCourseProgress[]
   instructors              CourseInstructor[]
   examAssignments          ExamSessionCourse[]

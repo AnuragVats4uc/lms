@@ -813,6 +813,7 @@ export class StudentsService {
       actor,
       dto.organizationId ?? existing.organizationId ?? undefined,
     );
+    const enrollment = await this.prepareEnrollment(dto, organizationId);
 
     if (dto.email) {
       await this.ensureEmailIsUnique(dto.email, id);
@@ -824,9 +825,20 @@ export class StudentsService {
 
     const data = await this.toUpdateInput(dto);
     data.organizationId = organizationId ?? undefined;
-    const student = await this.studentsRepository.update(id, data);
+    await this.studentsRepository.update(id, data);
 
-    return this.toStudentResponse(student);
+    if (enrollment) {
+      await this.studentsRepository.upsertEnrollment({
+        answers: enrollment.answers,
+        organizationId: enrollment.organizationId,
+        registrationPageId: enrollment.registrationPageId,
+        sessionCourseIds: enrollment.sessionCourseIds,
+        sessionId: enrollment.sessionId,
+        studentId: id,
+      });
+    }
+
+    return this.findOne(id, actor);
   }
 
   async remove(id: number, actor?: CurrentUser) {
@@ -2320,7 +2332,15 @@ export class StudentsService {
   }
 
   private async prepareEnrollment(
-    dto: CreateStudentDto,
+    dto: Partial<
+      Pick<
+        CreateStudentDto,
+        | 'digitalLibraryLocationUuid'
+        | 'educationOptionUuid'
+        | 'sessionCourseIds'
+        | 'sessionId'
+      >
+    >,
     organizationId?: number | null,
   ) {
     const sessionCourseIds = [
@@ -2528,6 +2548,17 @@ export class StudentsService {
       createdAt: student.createdAt,
       updatedAt: student.updatedAt,
       organization: student.organization,
+      courseInterests:
+        student.courseInterests?.map((interest) => {
+          const sessionCourse = interest.sessionCourse;
+          return {
+            id: interest.id,
+            sessionCourseId: sessionCourse.id,
+            courseId: sessionCourse.course.id,
+            name: sessionCourse.displayName ?? sessionCourse.course.name,
+            code: sessionCourse.course.code,
+          };
+        }) ?? [],
       enrollments:
         student.enrollments?.map((enrollment) => ({
           id: enrollment.id,

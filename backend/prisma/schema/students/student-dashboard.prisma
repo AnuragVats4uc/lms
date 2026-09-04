@@ -21,6 +21,7 @@ model Student {
   profile                  StudentProfile?
   preferences              StudentPreference?
   enrollments              StudentEnrollment[]
+  courseInterests          StudentCourseInterest[]
   courseProgress           StudentCourseProgress[]
   videoProgress            StudentVideoProgress[]
   notifications            StudentNotification[]
@@ -145,6 +146,27 @@ model StudentCourseEnrollment {
   @@index([sessionCourseId], map: "student_course_enrollments_session_course_id_idx")
   @@index([status, isActive], map: "student_course_enrollments_status_is_active_idx")
   @@map("student_course_enrollments")
+}
+
+model StudentCourseInterest {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  studentId          Int  @map("student_id")
+  sessionCourseId    Int  @map("session_course_id")
+  registrationPageId Int? @map("registration_page_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  student          Student                       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  sessionCourse    SessionCourse                 @relation(fields: [sessionCourseId], references: [id], onDelete: Cascade)
+  registrationPage OrganizationRegistrationPage? @relation(fields: [registrationPageId], references: [id], onDelete: SetNull)
+
+  @@unique([studentId, sessionCourseId], map: "student_course_interests_student_course_unique")
+  @@index([sessionCourseId], map: "student_course_interests_session_course_id_idx")
+  @@index([registrationPageId], map: "student_course_interests_registration_page_id_idx")
+  @@map("student_course_interests")
 }
 
 model CourseInstructor {

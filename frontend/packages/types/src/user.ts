@@ -61,6 +61,7 @@ export interface Student {
   createdAt: string;
   updatedAt: string;
   organization?: Organization | null;
+  courseInterests?: StudentCourseInterest[];
   enrollments?: StudentEnrollment[];
   profile: StudentProfile | null;
   user: User | null;
@@ -69,6 +70,14 @@ export interface Student {
   email: string;
   phone: string | null;
   roles?: Role[];
+}
+
+export interface StudentCourseInterest {
+  id: number;
+  sessionCourseId: number;
+  courseId: number;
+  name: string;
+  code: string;
 }
 
 export interface StudentEnrollmentCourse {

@@ -341,9 +341,12 @@ export default function PublicRegistrationRoute() {
             ) : null}
 
             <div className="registration-section-heading">
-              <span>Course Selection</span>
+              <span>Course Interests</span>
               <strong>Which course/exam are you preparing for? *</strong>
-              <small>Select one or more.</small>
+              <small>
+                Select one or more interests. Your account will receive access
+                to every available course in this session.
+              </small>
             </div>
             {page.courses.length ? (
               <div className="registration-course-grid">

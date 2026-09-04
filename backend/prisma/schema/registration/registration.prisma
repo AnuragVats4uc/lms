@@ -37,6 +37,7 @@ model OrganizationRegistrationPage {
 
   fields                          OrganizationRegistrationField[]
   answers                         OrganizationRegistrationAnswer[]
+  studentCourseInterests          StudentCourseInterest[]
   selectedCourses                 OrganizationRegistrationPageCourse[]
   selectedEducationOptions        OrganizationRegistrationPageEducationOption[]
   selectedDigitalLibraryLocations OrganizationRegistrationPageDigitalLibraryLocation[]

@@ -136,15 +136,20 @@ export class RegistrationService {
       throw new BadRequestException('Select at least one course');
     }
 
-    const [selectedCourses, educationOption, digitalLibraryLocation] =
-      await Promise.all([
-        this.findSelectedSessionCourses(page, selectedUuids),
-        this.findConfiguredEducationOption(page, dto.educationOptionUuid),
-        this.findConfiguredDigitalLibraryLocation(
-          page,
-          dto.digitalLibraryLocationUuid,
-        ),
-      ]);
+    const [
+      selectedCourses,
+      enrollmentCourses,
+      educationOption,
+      digitalLibraryLocation,
+    ] = await Promise.all([
+      this.findSelectedSessionCourses(page, selectedUuids),
+      this.findEligibleSessionCourses(page),
+      this.findConfiguredEducationOption(page, dto.educationOptionUuid),
+      this.findConfiguredDigitalLibraryLocation(
+        page,
+        dto.digitalLibraryLocationUuid,
+      ),
+    ]);
 
     if (selectedCourses.length !== selectedUuids.length) {
       throw new BadRequestException('One or more selected courses are invalid');
@@ -198,8 +203,22 @@ export class RegistrationService {
         },
       });
 
+      const enrollmentCourseIds = enrollmentCourses.map((course) => course.id);
+      const selectedCourseIds = selectedCourses.map((course) => course.id);
+
+      await tx.studentCourseEnrollment.updateMany({
+        where: {
+          enrollmentId: enrollment.id,
+          sessionCourseId: { notIn: enrollmentCourseIds },
+        },
+        data: {
+          isActive: false,
+          status: 'CANCELLED',
+        },
+      });
+
       await Promise.all(
-        selectedCourses.map((sessionCourse) =>
+        enrollmentCourses.map((sessionCourse) =>
           tx.studentCourseEnrollment.upsert({
             where: {
               enrollmentId_sessionCourseId: {
@@ -214,6 +233,35 @@ export class RegistrationService {
             update: {
               isActive: true,
               status: 'ACTIVE',
+            },
+          }),
+        ),
+      );
+
+      await tx.studentCourseInterest.deleteMany({
+        where: {
+          studentId: student.id,
+          sessionCourse: { sessionId: page.sessionId },
+          sessionCourseId: { notIn: selectedCourseIds },
+        },
+      });
+
+      await Promise.all(
+        selectedCourses.map((sessionCourse) =>
+          tx.studentCourseInterest.upsert({
+            where: {
+              studentId_sessionCourseId: {
+                studentId: student.id,
+                sessionCourseId: sessionCourse.id,
+              },
+            },
+            create: {
+              studentId: student.id,
+              sessionCourseId: sessionCourse.id,
+              registrationPageId: page.id,
+            },
+            update: {
+              registrationPageId: page.id,
             },
           }),
         ),

@@ -371,7 +371,7 @@ export default function StudentRegistrationSettingsPage() {
                   }))
                 }
                 selectedUuids={form.selectedSessionCourseUuids}
-                title="Courses"
+                title="Course Interests"
               />
               <OptionPicker
                 emptyLabel="No active education options are configured."
@@ -549,11 +549,11 @@ export default function StudentRegistrationSettingsPage() {
           <section>
             <div className="registration-admin-section-title">
               <BookOpen size={17} />
-              <strong>Courses available on registration page</strong>
+              <strong>Course interests available on registration page</strong>
             </div>
             <p>
-              These options are selected from the session courses configured
-              above and are not custom field options.
+              Students can select these as interests. After registration, the
+              student receives every active published course in this session.
             </p>
             <div className="registration-course-preview">
               {availableCourses

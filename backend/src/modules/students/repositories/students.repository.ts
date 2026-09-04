@@ -1707,6 +1707,17 @@ export class StudentsRepository {
         },
       });
 
+      await tx.studentCourseEnrollment.updateMany({
+        where: {
+          enrollmentId: enrollment.id,
+          sessionCourseId: { notIn: data.sessionCourseIds },
+        },
+        data: {
+          isActive: false,
+          status: 'CANCELLED',
+        },
+      });
+
       await Promise.all(
         data.sessionCourseIds.map((sessionCourseId) =>
           tx.studentCourseEnrollment.upsert({
@@ -1886,6 +1897,20 @@ export class StudentsRepository {
 
   private includeRelations() {
     return {
+      courseInterests: {
+        orderBy: { createdAt: 'asc' as const },
+        include: {
+          sessionCourse: {
+            select: {
+              id: true,
+              displayName: true,
+              course: {
+                select: { id: true, code: true, name: true },
+              },
+            },
+          },
+        },
+      },
       enrollments: {
         where: { isActive: true },
         orderBy: { createdAt: 'desc' as const },
