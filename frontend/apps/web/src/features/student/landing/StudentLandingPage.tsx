@@ -3,7 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -13,7 +19,10 @@ import { studentLandingApi } from "@repo/api";
 import type { StudentLandingCard } from "@repo/types";
 
 import { STUDENT_DASHBOARD_PATH } from "@/features/auth/routes";
-import { consumeStudentWelcome } from "@/features/auth/student-welcome-session";
+import {
+  clearStudentWelcome,
+  hasStudentWelcome,
+} from "@/features/auth/student-welcome-session";
 
 import styles from "./StudentLandingPage.module.css";
 
@@ -44,6 +53,10 @@ export const StudentLandingPage = () => {
   const accessResolved = useRef(false);
   const [isWelcomeAvailable, setIsWelcomeAvailable] = useState(false);
   const [activeCard, setActiveCard] = useState(0);
+  const [carouselLayout, setCarouselLayout] = useState({
+    cardWidth: 320,
+    visibleCards: 1,
+  });
   const cardsRef = useRef<HTMLElement>(null);
   const viewRecorded = useRef(false);
   const cardsQuery = useQuery({
@@ -60,7 +73,7 @@ export const StudentLandingPage = () => {
     if (!currentUser || accessResolved.current) return;
 
     accessResolved.current = true;
-    if (!consumeStudentWelcome(currentUser.uuid)) {
+    if (!hasStudentWelcome(currentUser.uuid)) {
       router.replace(STUDENT_DASHBOARD_PATH);
       return;
     }
@@ -75,6 +88,58 @@ export const StudentLandingPage = () => {
     viewRecorded.current = true;
     void studentLandingApi.recordView(crypto.randomUUID()).catch(() => undefined);
   }, [isWelcomeAvailable]);
+
+  useEffect(() => {
+    if (!isWelcomeAvailable) return;
+
+    const container = cardsRef.current;
+    if (!container) return;
+
+    const updateLayout = () => {
+      const width = container.clientWidth;
+      if (!width) return;
+
+      const gap = 16;
+      const minimumCardWidth = width < 600 ? 250 : 280;
+      const visibleCards = Math.max(
+        1,
+        Math.min(
+          cards.length,
+          4,
+          Math.floor((width + gap) / (minimumCardWidth + gap)),
+        ),
+      );
+      const cardWidth = Math.min(
+        360,
+        (width - gap * Math.max(0, visibleCards - 1)) / visibleCards,
+      );
+
+      setCarouselLayout((current) =>
+        current.visibleCards === visibleCards &&
+        Math.abs(current.cardWidth - cardWidth) < 0.5
+          ? current
+          : { cardWidth, visibleCards },
+      );
+      setActiveCard((current) =>
+        Math.min(current, Math.max(0, cards.length - visibleCards)),
+      );
+    };
+
+    updateLayout();
+    const observer = new ResizeObserver(updateLayout);
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, [cards.length, isWelcomeAvailable]);
+
+  const handleVisit = useCallback((card: StudentLandingCard) => {
+    clearStudentWelcome();
+
+    if (card.id === 0) return;
+    void studentLandingApi
+      .recordClick(card.uuid, crypto.randomUUID())
+      .catch(() => undefined);
+  }, []);
 
   if (!isWelcomeAvailable) return null;
 
@@ -113,64 +178,82 @@ export const StudentLandingPage = () => {
         </YStack>
 
         {/* Destination Cards */}
-        <section
-          aria-label="Student destination choices"
-          className={styles.cardGrid}
-          ref={cardsRef}
-          onScroll={(event) => {
-            const row = event.currentTarget;
-            const children = Array.from(row.children) as HTMLElement[];
-            if (!children.length) return;
-            const viewportCenter = row.scrollLeft + row.clientWidth / 2;
-            const closest = children.reduce((best, child, index) =>
-              Math.abs(child.offsetLeft + child.offsetWidth / 2 - viewportCenter) <
-              Math.abs(
-                children[best]!.offsetLeft +
-                  children[best]!.offsetWidth / 2 -
-                  viewportCenter,
-              )
-                ? index
-                : best,
-            0);
-            setActiveCard(closest);
-          }}
-        >
-          {cards.map((card) => (
-            <DestinationCard
-              card={card}
-              key={card.uuid}
-              onVisit={() => {
-                if (card.id === 0) return;
-                void studentLandingApi
-                  .recordClick(card.uuid, crypto.randomUUID())
-                  .catch(() => undefined);
-              }}
-            />
-          ))}
-        </section>
+        <div className={styles.carouselFrame}>
+          <section
+            aria-label="Student destination choices"
+            className={`${styles.cardGrid} ${
+              cards.length <= carouselLayout.visibleCards
+                ? styles.cardGridCentered
+                : ""
+            }`}
+            id="student-destination-carousel"
+            ref={cardsRef}
+            style={
+              {
+                "--landing-card-width": `${carouselLayout.cardWidth}px`,
+              } as CSSProperties
+            }
+            onScroll={(event) => {
+              const row = event.currentTarget;
+              const children = Array.from(row.children) as HTMLElement[];
+              if (!children.length) return;
+              const closest = children.reduce(
+                (best, child, index) =>
+                  Math.abs(child.offsetLeft - row.offsetLeft - row.scrollLeft) <
+                  Math.abs(
+                    children[best]!.offsetLeft -
+                      row.offsetLeft -
+                      row.scrollLeft,
+                  )
+                    ? index
+                    : best,
+                0,
+              );
+              setActiveCard(
+                Math.min(
+                  closest,
+                  Math.max(0, cards.length - carouselLayout.visibleCards),
+                ),
+              );
+            }}
+          >
+            {cards.map((card) => (
+              <DestinationCard
+                card={card}
+                key={card.uuid}
+                onVisit={() => handleVisit(card)}
+              />
+            ))}
+          </section>
 
-        {cards.length > 2 ? (
-          <div className={styles.carouselControls}>
-            <button
-              aria-label="Previous destination"
-              disabled={activeCard === 0}
-              onClick={() => scrollCards(cardsRef.current, activeCard - 1)}
-              type="button"
-            >
-              <ArrowLeft aria-hidden="true" size={17} />
-            </button>
-            <button
-              aria-label="Next destination"
-              disabled={
-                activeCard >= Math.max(0, cards.length - 2)
-              }
-              onClick={() => scrollCards(cardsRef.current, activeCard + 1)}
-              type="button"
-            >
-              <ArrowRight aria-hidden="true" size={17} />
-            </button>
-          </div>
-        ) : null}
+          {cards.length > carouselLayout.visibleCards ? (
+            <div className={styles.carouselControls}>
+              <button
+                aria-controls="student-destination-carousel"
+                aria-label="Previous destination"
+                className={styles.previousButton}
+                disabled={activeCard === 0}
+                onClick={() => scrollCards(cardsRef.current, activeCard - 1)}
+                type="button"
+              >
+                <ArrowLeft aria-hidden="true" size={17} />
+              </button>
+              <button
+                aria-controls="student-destination-carousel"
+                aria-label="Next destination"
+                className={styles.nextButton}
+                disabled={
+                  activeCard >=
+                  Math.max(0, cards.length - carouselLayout.visibleCards)
+                }
+                onClick={() => scrollCards(cardsRef.current, activeCard + 1)}
+                type="button"
+              >
+                <ArrowRight aria-hidden="true" size={17} />
+              </button>
+            </div>
+          ) : null}
+        </div>
 
         {/* Mobile indicator */}
         <div aria-hidden="true" className={styles.mobileSwipeHint}>
@@ -294,7 +377,52 @@ const DestinationCard = ({
   );
 };
 
+const carouselAnimations = new WeakMap<
+  HTMLElement,
+  { frame: number; originalScrollBehavior: string }
+>();
+
 function scrollCards(container: HTMLElement | null, index: number) {
   const card = container?.children.item(index) as HTMLElement | null;
-  card?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+  if (!container || !card) return;
+
+  const targetLeft = card.offsetLeft - container.offsetLeft;
+  const startLeft = container.scrollLeft;
+  const distance = targetLeft - startLeft;
+  if (Math.abs(distance) < 1) return;
+
+  const previousAnimation = carouselAnimations.get(container);
+  if (previousAnimation) cancelAnimationFrame(previousAnimation.frame);
+
+  const originalScrollBehavior =
+    previousAnimation?.originalScrollBehavior ?? container.style.scrollBehavior;
+  const reduceMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
+  if (reduceMotion) {
+    container.scrollLeft = targetLeft;
+    return;
+  }
+
+  const startedAt = performance.now();
+  const duration = 380;
+  container.style.scrollBehavior = "auto";
+
+  const animate = (now: number) => {
+    const progress = Math.min(1, (now - startedAt) / duration);
+    const easedProgress = 1 - Math.pow(1 - progress, 4);
+    container.scrollLeft = startLeft + distance * easedProgress;
+
+    if (progress < 1) {
+      const frame = requestAnimationFrame(animate);
+      carouselAnimations.set(container, { frame, originalScrollBehavior });
+      return;
+    }
+
+    container.style.scrollBehavior = originalScrollBehavior;
+    carouselAnimations.delete(container);
+  };
+
+  const frame = requestAnimationFrame(animate);
+  carouselAnimations.set(container, { frame, originalScrollBehavior });
 }

@@ -1335,3 +1335,197 @@
     scroll-behavior: auto;
   }
 }
+
+/* =========================================================
+   RESPONSIVE DESTINATION CAROUSEL
+   The viewport determines how many complete cards fit. The
+   component supplies the exact card width through a CSS variable.
+========================================================= */
+
+.pageShell {
+  padding: clamp(10px, 1.8vh, 18px) clamp(12px, 2.4vw, 32px);
+}
+
+.content {
+  max-width: 1500px;
+  gap: clamp(7px, 1.15vh, 11px) !important;
+}
+
+.organizationLogo {
+  width: clamp(145px, 21dvh, 190px);
+  margin-bottom: -2px;
+}
+
+.title {
+  font-size: clamp(30px, 2.7vw, 38px);
+}
+
+.carouselFrame {
+  position: relative;
+  width: 100%;
+  max-width: 1500px;
+  padding-inline: 44px;
+  box-sizing: border-box;
+}
+
+.cardGrid {
+  width: 100%;
+  max-width: none;
+  gap: 16px;
+  margin-top: 2px;
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+  scroll-padding-inline: 0;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cardGridCentered {
+  justify-content: center;
+}
+
+.card {
+  width: var(--landing-card-width, 320px);
+  height: clamp(296px, 43dvh, 328px);
+  flex: 0 0 var(--landing-card-width, 320px);
+  scroll-snap-align: start;
+  scroll-snap-stop: normal;
+}
+
+.imagePanel {
+  flex-basis: clamp(118px, 18dvh, 142px);
+}
+
+.carouselControls {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.carouselControls button {
+  position: absolute;
+  top: 50%;
+  z-index: 4;
+  width: 36px;
+  height: 36px;
+  pointer-events: auto;
+  transform: translateY(-50%);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.1);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.carouselControls button:not(:disabled):hover {
+  border-color: rgba(5, 150, 105, 0.5);
+  background: #ffffff;
+  box-shadow: 0 11px 25px rgba(15, 23, 42, 0.14);
+  transform: translateY(-50%) scale(1.05);
+}
+
+.previousButton {
+  left: 0;
+}
+
+.nextButton {
+  right: 0;
+}
+
+@media (max-width: 900px) {
+  .content {
+    max-width: none;
+  }
+
+  .organizationLogo {
+    width: clamp(138px, 20dvh, 176px);
+  }
+
+  .carouselFrame {
+    padding-inline: 40px;
+  }
+
+  .cardGrid {
+    width: 100%;
+    max-width: none;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .pageShell {
+    padding: 9px 10px;
+  }
+
+  .content {
+    gap: 7px !important;
+  }
+
+  .organizationLogo {
+    width: clamp(125px, 20dvh, 158px);
+    margin-bottom: -3px;
+  }
+
+  .title {
+    font-size: clamp(25px, 7.6vw, 31px);
+  }
+
+  .carouselFrame {
+    padding-inline: 34px;
+  }
+
+  .cardGrid {
+    width: 100%;
+    gap: 16px;
+    margin: 0;
+    padding: 2px 0 4px;
+    scroll-snap-type: x mandatory;
+  }
+
+  .card {
+    width: var(--landing-card-width, 280px);
+    height: clamp(284px, 45dvh, 320px);
+    flex: 0 0 var(--landing-card-width, 280px);
+    scroll-snap-align: start;
+  }
+
+  .carouselControls {
+    display: block;
+  }
+
+  .carouselControls button {
+    width: 30px;
+    height: 30px;
+  }
+
+  .mobileSwipeHint {
+    margin-top: -2px;
+  }
+}
+
+@media (max-width: 600px) and (max-height: 620px) {
+  .organizationLogo {
+    width: clamp(90px, 17dvh, 108px);
+  }
+
+  .carouselFrame {
+    padding-inline: 31px;
+  }
+
+  .cardGrid {
+    width: 100%;
+  }
+
+  .card {
+    height: clamp(230px, 46dvh, 258px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .carouselControls button {
+    transition: none;
+  }
+}

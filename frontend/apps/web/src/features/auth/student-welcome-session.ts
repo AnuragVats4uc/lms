@@ -26,16 +26,12 @@ export const clearStudentWelcome = () => {
   }
 };
 
-export const consumeStudentWelcome = (studentUuid: string) => {
+export const hasStudentWelcome = (studentUuid: string) => {
   const storage = getSessionStorage();
   if (!storage) return false;
 
   try {
-    const isPending =
-      storage.getItem(STUDENT_WELCOME_PENDING_KEY) === studentUuid;
-    storage.removeItem(STUDENT_WELCOME_PENDING_KEY);
-
-    return isPending;
+    return storage.getItem(STUDENT_WELCOME_PENDING_KEY) === studentUuid;
   } catch {
     return false;
   }
