@@ -112,6 +112,7 @@ export default function LoginPage() {
           <BrandLockup />
           <a
             aria-label="Open help and support"
+            className="lms-login-support-link"
             href="mailto:support@thelms.local"
             style={supportLinkStyle}
           >

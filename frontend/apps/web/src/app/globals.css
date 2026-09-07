@@ -2627,43 +2627,54 @@ body {
   }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1100px) {
+  .lms-login-shell {
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
+    padding: 18px 24px !important;
+  }
+
   .lms-login-content {
+    align-items: center !important;
     flex-direction: column !important;
-    gap: 28px !important;
-    justify-content: flex-start !important;
-    padding-top: 30px !important;
+    gap: 14px !important;
+    justify-content: center !important;
+    padding: clamp(18px, 4vh, 36px) 0 24px !important;
   }
 
   .lms-login-hero {
-    align-items: center !important;
-    flex: 0 0 auto !important;
-    max-width: 720px !important;
-    text-align: center !important;
-    width: 100% !important;
-  }
-
-  .lms-login-hero > * {
-    max-width: 100% !important;
-  }
-
-  .lms-login-hero > :not(:first-child) {
     display: none !important;
   }
 
   .lms-login-card-column {
-    width: min(100%, 430px) !important;
+    align-items: center !important;
+    margin-inline: auto !important;
+    width: min(100%, 480px) !important;
+  }
+
+  .lms-login-card {
+    margin-inline: auto !important;
+    max-width: 480px !important;
+    width: 100% !important;
   }
 }
 
 @media (max-width: 767px) {
   .lms-login-shell {
-    height: auto !important;
-    max-height: none !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
     min-height: 100vh !important;
     min-height: 100dvh !important;
     overflow-x: hidden !important;
-    overflow-y: auto !important;
+    overflow-y: hidden !important;
     padding: 16px !important;
   }
 
@@ -2675,9 +2686,9 @@ body {
   .lms-login-content {
     align-items: center !important;
     flex-direction: column !important;
-    gap: 16px !important;
-    justify-content: flex-start !important;
-    padding-top: 18px !important;
+    gap: 12px !important;
+    justify-content: center !important;
+    padding: 16px 0 22px !important;
   }
 
   .lms-login-hero {
@@ -2685,7 +2696,56 @@ body {
   }
 
   .lms-login-card-column {
+    max-width: 480px !important;
     width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .lms-login-shell {
+    padding: 12px !important;
+  }
+
+  .lms-login-topbar {
+    flex-wrap: nowrap !important;
+  }
+
+  .lms-login-support-link {
+    flex: 0 0 38px !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    width: 38px !important;
+  }
+
+  .lms-login-support-link span {
+    display: none;
+  }
+
+  .lms-login-content {
+    padding-top: 12px !important;
+  }
+}
+
+@media (max-width: 1100px) and (max-height: 620px) {
+  .lms-login-shell {
+    padding-block: 10px !important;
+  }
+
+  .lms-login-content {
+    justify-content: center !important;
+    padding: 6px 0 10px !important;
+  }
+}
+
+@media (max-width: 1100px) and (max-height: 540px) {
+  .lms-login-card-column {
+    zoom: 0.88;
+  }
+}
+
+@media (max-width: 1100px) and (max-height: 460px) {
+  .lms-login-card-column {
+    zoom: 0.76;
   }
 }
 
