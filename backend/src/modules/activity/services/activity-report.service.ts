@@ -65,6 +65,7 @@ export class ActivityReportService {
       eventCount,
       activityEventCounts,
       userSessionDeviceBreakdown,
+      landingCardBreakdown,
     ] = await Promise.all([
       this.activityReportRepository.authenticationAttempts(
         context.filters,
@@ -85,6 +86,7 @@ export class ActivityReportService {
       this.activityReportRepository.countActivityEvents(context.filters),
       this.activityReportRepository.activityEventCounts(context.filters),
       this.activityReportRepository.userSessionDeviceBreakdown(context.filters),
+      this.activityReportRepository.landingCardBreakdown(context.filters),
     ]);
 
     const timeline = [
@@ -105,6 +107,14 @@ export class ActivityReportService {
       )?._count._all ?? 0;
     const total =
       successfulLogins + failedLogins + endedSessionCount + eventCount;
+    const landingPageViews =
+      activityEventCounts.find(
+        (row) => row.eventType === StudentActivityEventType.LANDING_PAGE_VIEW,
+      )?._count._all ?? 0;
+    const landingCardClicks =
+      activityEventCounts.find(
+        (row) => row.eventType === StudentActivityEventType.LANDING_CARD_CLICK,
+      )?._count._all ?? 0;
     const activityCategoryBreakdown = this.activityCategoryBreakdown(
       successfulLogins,
       failedLogins,
@@ -166,6 +176,8 @@ export class ActivityReportService {
           distinctResources: resourceBreakdown.length,
           documentPageVisits,
           activityLogEntries: total,
+          landingPageViews,
+          landingCardClicks,
         },
         resourceBreakdown: resourceBreakdown
           .map((row) => ({
@@ -182,6 +194,16 @@ export class ActivityReportService {
             (left, right) =>
               right.activeDurationSeconds - left.activeDurationSeconds,
           ),
+        landingCardBreakdown: landingCardBreakdown
+          .map((row) => ({
+            landingCardId: row.landingCardId,
+            title: row.landingCardTitleSnapshot ?? 'Landing card',
+            ctaLabel: row.landingCardCtaSnapshot,
+            destinationUrl: row.landingCardUrlSnapshot,
+            clickCount: row._count._all,
+            lastClickedAt: row._max.occurredAt,
+          }))
+          .sort((left, right) => right.clickCount - left.clickCount),
         analytics: {
           dailyTrend,
           activityCategoryBreakdown,
@@ -554,6 +576,9 @@ export class ActivityReportService {
       courseName: event.courseNameSnapshot,
       resourceTitle: event.resourceTitleSnapshot,
       resourceType: event.resourceTypeCodeSnapshot,
+      landingCardTitle: event.landingCardTitleSnapshot,
+      landingCardCta: event.landingCardCtaSnapshot,
+      landingCardUrl: event.landingCardUrlSnapshot,
       sessionUuid: authSession?.uuid ?? null,
       resourceSessionUuid: event.resourceActivitySession?.uuid ?? null,
       pageNumber: event.pageNumber,
@@ -571,6 +596,7 @@ export class ActivityReportService {
   }
 
   private eventCategory(eventType: StudentActivityEventType) {
+    if (eventType.startsWith('LANDING_')) return 'LANDING' as const;
     if (eventType.startsWith('DOCUMENT_')) return 'DOCUMENT' as const;
     if (eventType.startsWith('VIDEO_')) return 'VIDEO' as const;
     if (eventType.startsWith('EXAM_')) return 'EXAM' as const;
@@ -589,6 +615,7 @@ export class ActivityReportService {
   ) {
     const categoryOrder = [
       'AUTHENTICATION',
+      'LANDING',
       'RESOURCE',
       'DOCUMENT',
       'VIDEO',
@@ -700,6 +727,9 @@ export class ActivityReportService {
       'course',
       'resource',
       'resource_type',
+      'landing_card_title',
+      'landing_card_cta',
+      'landing_card_url',
       'page',
       'video_position_seconds',
       'active_duration_seconds',
@@ -722,6 +752,9 @@ export class ActivityReportService {
       item.courseName,
       item.resourceTitle,
       item.resourceType,
+      item.landingCardTitle,
+      item.landingCardCta,
+      item.landingCardUrl,
       item.pageNumber,
       item.videoPositionSeconds,
       item.activeDurationDeltaSeconds,
@@ -792,6 +825,9 @@ export class ActivityReportService {
           course: item.courseName,
           resource: item.resourceTitle,
           resource_type: item.resourceType,
+          landing_card_title: item.landingCardTitle,
+          landing_card_cta: item.landingCardCta,
+          landing_card_url: item.landingCardUrl,
           page: item.pageNumber,
           video_position_seconds: item.videoPositionSeconds,
           active_duration_seconds: item.activeDurationDeltaSeconds,

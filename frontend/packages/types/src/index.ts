@@ -16,6 +16,7 @@ export * from "./student-profile";
 export * from "./student-calendar";
 export * from "./student-notification";
 export * from "./student-activity-report";
+export * from "./student-landing";
 export * from "./student-resources";
 export * from "./teacher-dashboard";
 export * from "./user";

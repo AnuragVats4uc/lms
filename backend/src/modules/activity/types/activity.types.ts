@@ -72,6 +72,7 @@ export type RecordStudentEventInput = {
   sessionCourseId?: number | null;
   resourceId?: number | null;
   examAttemptId?: number | null;
+  landingCardId?: number | null;
   occurredAt?: Date;
   activeDurationDeltaSeconds?: number;
   pageNumber?: number | null;
@@ -80,6 +81,9 @@ export type RecordStudentEventInput = {
   resourceTitleSnapshot?: string | null;
   resourceTypeCodeSnapshot?: string | null;
   courseNameSnapshot?: string | null;
+  landingCardTitleSnapshot?: string | null;
+  landingCardCtaSnapshot?: string | null;
+  landingCardUrlSnapshot?: string | null;
   source?: ActivityRecordSource;
 };
 

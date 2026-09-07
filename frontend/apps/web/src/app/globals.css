@@ -5011,14 +5011,14 @@ body {
 }
 
 .lms-workspace-shell {
-  height: 100vh !important;
-  max-height: 100vh !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
   overflow: hidden !important;
 }
 
 .lms-workspace-main {
-  height: 100vh !important;
-  max-height: 100vh !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
   min-height: 0 !important;
   overflow: hidden !important;
 }
@@ -5070,8 +5070,8 @@ body {
 
 .lms-workspace-scroll {
   flex: 1 1 auto !important;
-  height: calc(100vh - var(--lms-dashboard-header-height)) !important;
-  max-height: calc(100vh - var(--lms-dashboard-header-height)) !important;
+  height: calc(100dvh - var(--lms-dashboard-header-height)) !important;
+  max-height: calc(100dvh - var(--lms-dashboard-header-height)) !important;
   min-height: 0 !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
@@ -5080,7 +5080,13 @@ body {
 
 .lms-workspace-content {
   min-height: 100%;
+  min-width: 0;
   padding: var(--lms-workspace-padding) !important;
+  padding-bottom: max(
+    var(--lms-workspace-padding),
+    calc(env(safe-area-inset-bottom) + 20px)
+  ) !important;
+  width: 100%;
 }
 
 .lms-sidebar-rail {
@@ -5599,7 +5605,7 @@ body {
   }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1024px) {
   .lms-workspace-shell {
     display: block !important;
   }
@@ -5659,7 +5665,7 @@ body {
     position: fixed;
     right: 0;
     top: 0;
-    z-index: 40;
+    z-index: 400;
   }
 
   .lms-mobile-nav-drawer {
@@ -5671,7 +5677,7 @@ body {
     top: 0;
     transform: translateX(-100%);
     transition: transform 180ms ease;
-    z-index: 50;
+    z-index: 410;
   }
 
   .lms-mobile-nav-drawer .lms-sidebar-panel {
@@ -5791,6 +5797,92 @@ body {
 @media (max-width: 420px) {
   .lms-dashboard-quick-actions-grid {
     grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* Student header: keep one stable row so workspace height and scroll math agree. */
+@media (max-width: 1024px) {
+  .lms-student-workspace .lms-dashboard-header {
+    flex-wrap: nowrap !important;
+    height: var(--lms-dashboard-header-height) !important;
+    min-height: var(--lms-dashboard-header-height) !important;
+    padding: 10px 12px !important;
+  }
+
+  .lms-student-workspace .lms-dashboard-header-leading {
+    flex: 0 0 40px !important;
+    order: 1;
+  }
+
+  .lms-student-workspace .lms-dashboard-header-leading > * {
+    height: 40px !important;
+    width: 40px !important;
+  }
+
+  .lms-student-workspace .lms-dashboard-header-actions {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    gap: 8px !important;
+    justify-content: flex-end !important;
+    margin-left: auto !important;
+    min-width: 0 !important;
+    order: 2;
+  }
+
+  .lms-student-workspace .lms-dashboard-header-icons {
+    flex: 0 0 auto !important;
+    gap: 6px !important;
+    order: initial;
+  }
+
+  .lms-student-workspace .lms-dashboard-header-profile-trigger {
+    flex: 0 1 180px !important;
+    min-width: 132px !important;
+    order: initial;
+    width: min(180px, 32vw) !important;
+  }
+
+  .lms-student-workspace .lms-dashboard-header-profile {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .lms-student-workspace .lms-dashboard-header {
+    gap: 6px !important;
+    padding-left: max(8px, env(safe-area-inset-left)) !important;
+    padding-right: max(8px, env(safe-area-inset-right)) !important;
+  }
+
+  .lms-student-workspace .lms-dashboard-header-actions {
+    gap: 6px !important;
+  }
+
+  .lms-student-workspace .lms-dashboard-header-profile-trigger {
+    flex: 0 0 40px !important;
+    min-width: 40px !important;
+    width: 40px !important;
+  }
+
+  .lms-student-workspace .lms-dashboard-header-profile {
+    gap: 0 !important;
+    justify-content: center !important;
+    padding-left: 3px !important;
+    padding-right: 3px !important;
+  }
+
+  .lms-student-workspace .lms-dashboard-header-profile > :nth-child(2),
+  .lms-student-workspace .lms-dashboard-header-profile > svg {
+    display: none !important;
+  }
+
+  .lms-student-workspace .lms-workspace-content {
+    padding: 10px !important;
+    padding-bottom: max(
+      20px,
+      calc(env(safe-area-inset-bottom) + 16px)
+    ) !important;
   }
 }
 

@@ -180,6 +180,7 @@ model StudentActivityEvent {
   sessionCourseId           Int? @map("session_course_id")
   resourceId                Int? @map("resource_id")
   examAttemptId             Int? @map("exam_attempt_id")
+  landingCardId             Int? @map("landing_card_id")
 
   eventType                  StudentActivityEventType @map("event_type")
   occurredAt                 DateTime                 @default(now()) @map("occurred_at")
@@ -191,6 +192,9 @@ model StudentActivityEvent {
   resourceTitleSnapshot    String?              @map("resource_title_snapshot") @db.VarChar(200)
   resourceTypeCodeSnapshot String?              @map("resource_type_code_snapshot") @db.VarChar(30)
   courseNameSnapshot       String?              @map("course_name_snapshot") @db.VarChar(200)
+  landingCardTitleSnapshot String?               @map("landing_card_title_snapshot") @db.VarChar(120)
+  landingCardCtaSnapshot   String?               @map("landing_card_cta_snapshot") @db.VarChar(80)
+  landingCardUrlSnapshot   String?               @map("landing_card_url_snapshot") @db.VarChar(1000)
   source                   ActivityRecordSource @default(LIVE)
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -202,6 +206,7 @@ model StudentActivityEvent {
   sessionCourse           SessionCourse?                  @relation(fields: [sessionCourseId], references: [id], onDelete: SetNull, map: "student_activity_events_course_id_fkey")
   resource                Resource?                       @relation(fields: [resourceId], references: [id], onDelete: SetNull, map: "student_activity_events_resource_id_fkey")
   examAttempt             StudentExamAttempt?             @relation(fields: [examAttemptId], references: [id], onDelete: SetNull, map: "student_activity_events_exam_attempt_id_fkey")
+  landingCard             StudentLandingCard?              @relation(fields: [landingCardId], references: [id], onDelete: SetNull, map: "student_activity_events_landing_card_id_fkey")
 
   @@index([organizationId, studentId, occurredAt], map: "student_activity_events_scope_student_occurred_idx")
   @@index([studentId, eventType, occurredAt], map: "student_activity_events_student_type_occurred_idx")
@@ -210,5 +215,6 @@ model StudentActivityEvent {
   @@index([userActivitySessionId, occurredAt], map: "student_activity_events_auth_session_occurred_idx")
   @@index([resourceActivitySessionId, occurredAt], map: "student_activity_events_resource_session_occurred_idx")
   @@index([examAttemptId, occurredAt], map: "student_activity_events_exam_attempt_occurred_idx")
+  @@index([landingCardId, studentId, occurredAt], map: "student_activity_events_landing_card_student_idx")
   @@map("student_activity_events")
 }

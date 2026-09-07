@@ -4,55 +4,55 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 import { YStack } from "@repo/ui";
 import { useAuthSession } from "@repo/auth";
+import { studentLandingApi } from "@repo/api";
+import type { StudentLandingCard } from "@repo/types";
 
 import { STUDENT_DASHBOARD_PATH } from "@/features/auth/routes";
 import { consumeStudentWelcome } from "@/features/auth/student-welcome-session";
 
 import styles from "./StudentLandingPage.module.css";
 
-const externalDestination = {
+const fallbackLmsCard: StudentLandingCard = {
+  id: 0,
+  uuid: "00000000-0000-4000-8000-000000000000",
+  organizationId: 0,
+  type: "SYSTEM_LMS",
+  systemKey: "LMS",
+  title: "LMS",
   description:
-    process.env.NEXT_PUBLIC_STUDENT_EXTERNAL_PORTAL_DESCRIPTION?.trim() ||
-    "Continue to connected learning resources and student services.",
-
-  name:
-    process.env.NEXT_PUBLIC_STUDENT_EXTERNAL_PORTAL_NAME?.trim() ||
-    "External Link",
-
-  url: process.env.NEXT_PUBLIC_STUDENT_EXTERNAL_PORTAL_URL?.trim() || "",
+    "Access courses, exams, learning resources and your academic progress.",
+  ctaLabel: "Go to LMS",
+  destinationUrl: STUDENT_DASHBOARD_PATH,
+  imageUrl: null,
+  imageAlt: "Illustration of academic dashboard resources and progress",
+  openInNewTab: false,
+  displayOrder: 0,
+  isActive: true,
+  createdAt: "",
+  updatedAt: "",
+  deletedAt: null,
 };
-
-const destinations = [
-  {
-    cta: "Go to LMS",
-    description:
-      "Access courses, exams, learning resources and your academic progress.",
-    href: STUDENT_DASHBOARD_PATH,
-    imageAlt: "Illustration of academic dashboard resources and progress",
-    imageSrc: "/images/dashboard.png",
-    isExternal: false,
-    title: "LMS",
-  },
-  {
-    cta: "Explore App",
-    description: externalDestination.description,
-    href: externalDestination.url,
-    imageAlt: "Illustration of an external learning portal",
-    imageSrc: "/images/external-links.png",
-    isExternal: true,
-    title: "Explore App",
-  },
-];
 
 export const StudentLandingPage = () => {
   const { currentUser } = useAuthSession();
   const router = useRouter();
   const accessResolved = useRef(false);
   const [isWelcomeAvailable, setIsWelcomeAvailable] = useState(false);
+  const [activeCard, setActiveCard] = useState(0);
+  const cardsRef = useRef<HTMLElement>(null);
+  const viewRecorded = useRef(false);
+  const cardsQuery = useQuery({
+    enabled: isWelcomeAvailable,
+    queryFn: () => studentLandingApi.listStudent(),
+    queryKey: ["student", "landing-cards"],
+    staleTime: 60_000,
+  });
+  const cards = cardsQuery.data ?? [fallbackLmsCard];
 
   const studentName = currentUser?.firstName?.trim();
 
@@ -69,6 +69,12 @@ export const StudentLandingPage = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsWelcomeAvailable(true);
   }, [currentUser, router]);
+
+  useEffect(() => {
+    if (!isWelcomeAvailable || viewRecorded.current) return;
+    viewRecorded.current = true;
+    void studentLandingApi.recordView(crypto.randomUUID()).catch(() => undefined);
+  }, [isWelcomeAvailable]);
 
   if (!isWelcomeAvailable) return null;
 
@@ -110,16 +116,70 @@ export const StudentLandingPage = () => {
         <section
           aria-label="Student destination choices"
           className={styles.cardGrid}
+          ref={cardsRef}
+          onScroll={(event) => {
+            const row = event.currentTarget;
+            const children = Array.from(row.children) as HTMLElement[];
+            if (!children.length) return;
+            const viewportCenter = row.scrollLeft + row.clientWidth / 2;
+            const closest = children.reduce((best, child, index) =>
+              Math.abs(child.offsetLeft + child.offsetWidth / 2 - viewportCenter) <
+              Math.abs(
+                children[best]!.offsetLeft +
+                  children[best]!.offsetWidth / 2 -
+                  viewportCenter,
+              )
+                ? index
+                : best,
+            0);
+            setActiveCard(closest);
+          }}
         >
-          {destinations.map((destination) => (
-            <DestinationCard key={destination.title} {...destination} />
+          {cards.map((card) => (
+            <DestinationCard
+              card={card}
+              key={card.uuid}
+              onVisit={() => {
+                if (card.id === 0) return;
+                void studentLandingApi
+                  .recordClick(card.uuid, crypto.randomUUID())
+                  .catch(() => undefined);
+              }}
+            />
           ))}
         </section>
 
+        {cards.length > 2 ? (
+          <div className={styles.carouselControls}>
+            <button
+              aria-label="Previous destination"
+              disabled={activeCard === 0}
+              onClick={() => scrollCards(cardsRef.current, activeCard - 1)}
+              type="button"
+            >
+              <ArrowLeft aria-hidden="true" size={17} />
+            </button>
+            <button
+              aria-label="Next destination"
+              disabled={
+                activeCard >= Math.max(0, cards.length - 2)
+              }
+              onClick={() => scrollCards(cardsRef.current, activeCard + 1)}
+              type="button"
+            >
+              <ArrowRight aria-hidden="true" size={17} />
+            </button>
+          </div>
+        ) : null}
+
         {/* Mobile indicator */}
         <div aria-hidden="true" className={styles.mobileSwipeHint}>
-          <span className={styles.swipeDotActive} />
-          <span className={styles.swipeDot} />
+          {cards.map((card, index) => (
+            <span
+              className={index === activeCard ? styles.swipeDotActive : styles.swipeDot}
+              key={card.uuid}
+            />
+          ))}
 
           <span className={styles.swipeText}>Swipe to explore</span>
         </div>
@@ -128,35 +188,23 @@ export const StudentLandingPage = () => {
   );
 };
 
-interface DestinationCardProps {
-  cta: string;
-  description: string;
-  href: string;
-  imageAlt: string;
-  imageSrc: string;
-  isExternal: boolean;
-  title: string;
-}
+interface DestinationCardProps { card: StudentLandingCard; onVisit: () => void }
 
 const DestinationCard = ({
-  cta,
-  description,
-  href,
-  imageAlt,
-  imageSrc,
-  isExternal,
-  title,
+  card,
+  onVisit,
 }: DestinationCardProps) => {
+  const isCustom = card.type === "CUSTOM";
   const cardClassName = [
     styles.card,
-    isExternal ? styles.cardExternal : styles.cardPrimary,
+    isCustom ? styles.cardExternal : styles.cardPrimary,
   ]
     .filter(Boolean)
     .join(" ");
 
   const imagePanelClassName = [
     styles.imagePanel,
-    isExternal ? styles.imagePanelExternal : styles.imagePanelPrimary,
+    isCustom ? styles.imagePanelExternal : styles.imagePanelPrimary,
   ]
     .filter(Boolean)
     .join(" ");
@@ -169,31 +217,38 @@ const DestinationCard = ({
         <div aria-hidden="true" className={styles.imageDecoration} />
 
         <Image
-          alt={imageAlt}
+          alt={card.imageAlt ?? `${card.title} destination`}
           className={styles.cardImage}
           height={280}
-          priority={!isExternal}
-          src={imageSrc}
+          priority={!isCustom}
+          src={
+            card.imageUrl ??
+            (card.type === "SYSTEM_LMS"
+              ? "/images/dashboard.png"
+              : "/images/external-links.png")
+          }
+          unoptimized={Boolean(card.imageUrl)}
           width={280}
         />
       </div>
 
       <div className={styles.cardBody}>
         <div className={styles.cardCopy}>
-          <h2 className={styles.cardTitle}>{title}</h2>
+          <h2 className={styles.cardTitle}>{card.title}</h2>
 
-          <p className={styles.cardDescription}>{description}</p>
+          <p className={styles.cardDescription}>{card.description}</p>
         </div>
 
-        {isExternal ? (
-          href ? (
+        {isCustom ? (
+          card.destinationUrl ? (
             <a
               className={`${styles.cta} ${styles.ctaSecondary}`}
-              href={href}
-              rel="noreferrer"
-              target="_blank"
+              href={card.destinationUrl}
+              onClick={onVisit}
+              rel={card.openInNewTab ? "noreferrer" : undefined}
+              target={card.openInNewTab ? "_blank" : undefined}
             >
-              <span>{cta}</span>
+              <span>{card.ctaLabel}</span>
 
               <ExternalLink
                 aria-hidden="true"
@@ -208,7 +263,7 @@ const DestinationCard = ({
               disabled
               type="button"
             >
-              <span>{cta}</span>
+              <span>{card.ctaLabel}</span>
 
               <ExternalLink
                 aria-hidden="true"
@@ -219,8 +274,12 @@ const DestinationCard = ({
             </button>
           )
         ) : (
-          <Link className={`${styles.cta} ${styles.ctaPrimary}`} href={href}>
-            <span>{cta}</span>
+          <Link
+            className={`${styles.cta} ${styles.ctaPrimary}`}
+            href={STUDENT_DASHBOARD_PATH}
+            onClick={onVisit}
+          >
+            <span>{card.ctaLabel}</span>
 
             <ArrowRight
               aria-hidden="true"
@@ -234,3 +293,8 @@ const DestinationCard = ({
     </article>
   );
 };
+
+function scrollCards(container: HTMLElement | null, index: number) {
+  const card = container?.children.item(index) as HTMLElement | null;
+  card?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+}

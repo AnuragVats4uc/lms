@@ -67,6 +67,7 @@ const permissionModules = [
   'exam-template',
   'exam',
   'exam-import',
+  'student-landing',
 ] as const;
 
 const crudActions = ['create', 'read', 'update', 'delete'] as const;

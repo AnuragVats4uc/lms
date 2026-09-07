@@ -352,9 +352,7 @@
 ========================================================= */
 
 .cardGrid {
-  display: grid;
-
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
 
   width: 100%;
 
@@ -365,6 +363,18 @@
   gap: 16px;
 
   margin-top: 2px;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+
+  scrollbar-width: none;
+}
+
+.cardGrid::-webkit-scrollbar {
+  display: none;
 }
 
 /* =========================================================
@@ -377,7 +387,9 @@
   display: flex;
   flex-direction: column;
 
-  width: 100%;
+  flex: 0 0 calc(50% - 8px);
+
+  width: calc(50% - 8px);
 
   height: clamp(320px, 48dvh, 345px);
 
@@ -405,6 +417,32 @@
     transform 180ms ease,
     box-shadow 180ms ease,
     border-color 180ms ease;
+
+  scroll-snap-align: start;
+}
+
+.carouselControls {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.carouselControls button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  place-items: center;
+  color: #065f46;
+  border: 1px solid rgba(5, 150, 105, 0.25);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+}
+
+.carouselControls button:disabled {
+  opacity: 0.38;
+  cursor: default;
 }
 
 .card::before {
@@ -1153,6 +1191,10 @@
     font-weight: 600;
 
     line-height: 12px;
+  }
+
+  .carouselControls {
+    display: none;
   }
 
   .swipeDot,

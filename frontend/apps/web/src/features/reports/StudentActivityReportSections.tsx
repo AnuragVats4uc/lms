@@ -12,6 +12,7 @@ import {
   Laptop,
   LogIn,
   MonitorSmartphone,
+  MousePointerClick,
   ShieldAlert,
   Smartphone,
   Tablet,
@@ -33,6 +34,7 @@ const categoryColors: Record<StudentReportActivityCategory, string> = {
   VIDEO: "#f97316",
   EXAM: "#e11d48",
   REPORT: "#d97706",
+  LANDING: "#0891b2",
   SESSION: "#94a3b8",
 };
 const deviceColors = ["#059669", "#2563eb", "#8b5cf6", "#f59e0b"];
@@ -87,6 +89,13 @@ export function StudentActivityOverview({
       label: "Login success",
       tone: "green",
       value: `${loginSuccess}%`,
+    },
+    {
+      caption: `${report.summary.landingPageViews ?? 0} views · ${report.summary.landingCardClicks ?? 0} card clicks`,
+      icon: MousePointerClick,
+      label: "Landing engagement",
+      tone: "blue",
+      value: (report.summary.landingCardClicks ?? 0).toLocaleString(),
     },
     {
       caption: "Total recorded events",
@@ -202,6 +211,33 @@ export function StudentActivityOverview({
                 </div>
               </article>
             ))}
+          </div>
+        </article>
+
+        <article className={`${styles.panel} ${styles.compactPanel}`}>
+          <PanelTitle
+            action={
+              <button onClick={() => onSelectTab("timeline")} type="button">
+                View landing events <ArrowRight aria-hidden="true" size={14} />
+              </button>
+            }
+            detail="Student clicks grouped by the destination card shown after login."
+            title="Landing card engagement"
+          />
+          <div className={styles.landingEngagementRows}>
+            {report.landingCardBreakdown?.length ? (
+              report.landingCardBreakdown.slice(0, 4).map((card) => (
+                <article key={`${card.landingCardId}:${card.title}`}>
+                  <div>
+                    <strong>{card.title}</strong>
+                    <small>{card.ctaLabel ?? "Card action"}</small>
+                  </div>
+                  <span>{card.clickCount.toLocaleString()} clicks</span>
+                </article>
+              ))
+            ) : (
+              <p>No landing card clicks in this range.</p>
+            )}
           </div>
         </article>
       </section>

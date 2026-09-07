@@ -75,6 +75,7 @@ describe('ActivityReportService', () => {
       activityEvents: jest.fn().mockResolvedValue([]),
       countActivityEvents: jest.fn().mockResolvedValue(0),
       activityEventCounts: jest.fn().mockResolvedValue([]),
+      landingCardBreakdown: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<ActivityReportRepository>;
     service = new ActivityReportService(repository);
   });
@@ -169,6 +170,8 @@ describe('ActivityReportService', () => {
       distinctResources: 1,
       documentPageVisits: 4,
       activityLogEntries: 12,
+      landingPageViews: 0,
+      landingCardClicks: 0,
     });
     expect(result.data.durationCalculation).toMatchObject({
       mode: 'ADDITIVE_SESSION_TIME',

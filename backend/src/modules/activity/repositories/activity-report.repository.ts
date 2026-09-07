@@ -257,6 +257,23 @@ export class ActivityReportRepository {
     });
   }
 
+  landingCardBreakdown(filters: ActivityReportFilters) {
+    return this.prisma.studentActivityEvent.groupBy({
+      by: [
+        'landingCardId',
+        'landingCardTitleSnapshot',
+        'landingCardCtaSnapshot',
+        'landingCardUrlSnapshot',
+      ],
+      where: {
+        ...this.activityEventWhere(filters),
+        eventType: StudentActivityEventType.LANDING_CARD_CLICK,
+      },
+      _count: { _all: true },
+      _max: { occurredAt: true },
+    });
+  }
+
   private authenticationWhere(
     filters: ActivityReportFilters,
   ): Prisma.AuthenticationAttemptWhereInput {

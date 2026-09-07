@@ -9,6 +9,7 @@ import {
   GraduationCap,
   KeyRound,
   LayoutDashboard,
+  PanelsTopLeft,
   MapPin,
   Settings,
   ShieldCheck,
@@ -75,6 +76,13 @@ export const adminNavigation: NavigationItem[] = [
     icon: KeyRound,
     label: "Permissions",
     permission: "permissions.read",
+  },
+  {
+    group: "Learning Management",
+    href: "/admin/student-landing-cards",
+    icon: PanelsTopLeft,
+    label: "Landing Cards",
+    permission: "student-landing.read",
   },
   {
     group: "Learning Management",

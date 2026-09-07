@@ -123,6 +123,13 @@ enum StudentActivityEventType {
   EXAM_CANCEL
   REPORT_VIEW
   REPORT_EXPORT
+  LANDING_PAGE_VIEW
+  LANDING_CARD_CLICK
+}
+
+enum StudentLandingCardType {
+  SYSTEM_LMS
+  CUSTOM
 }
 
 enum StudentStatus {

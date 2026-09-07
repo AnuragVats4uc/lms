@@ -29,11 +29,15 @@ export type ActivityTimelineItem = {
     | 'DOCUMENT'
     | 'VIDEO'
     | 'EXAM'
-    | 'REPORT';
+    | 'REPORT'
+    | 'LANDING';
   title: string;
   courseName: string | null;
   resourceTitle: string | null;
   resourceType: string | null;
+  landingCardTitle?: string | null;
+  landingCardCta?: string | null;
+  landingCardUrl?: string | null;
   sessionUuid: string | null;
   resourceSessionUuid: string | null;
   pageNumber: number | null;

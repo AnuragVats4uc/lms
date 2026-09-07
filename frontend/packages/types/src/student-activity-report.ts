@@ -22,7 +22,9 @@ export type StudentReportActivityType =
   | "EXAM_AUTO_SUBMIT"
   | "EXAM_CANCEL"
   | "REPORT_VIEW"
-  | "REPORT_EXPORT";
+  | "REPORT_EXPORT"
+  | "LANDING_PAGE_VIEW"
+  | "LANDING_CARD_CLICK";
 
 export type StudentReportActivityCategory =
   | "AUTHENTICATION"
@@ -31,7 +33,8 @@ export type StudentReportActivityCategory =
   | "DOCUMENT"
   | "VIDEO"
   | "EXAM"
-  | "REPORT";
+  | "REPORT"
+  | "LANDING";
 
 export interface StudentActivityReportQuery {
   from?: string;
@@ -63,6 +66,9 @@ export interface StudentActivityTimelineItem {
   courseName: string | null;
   resourceTitle: string | null;
   resourceType: string | null;
+  landingCardTitle?: string | null;
+  landingCardCta?: string | null;
+  landingCardUrl?: string | null;
   sessionUuid: string | null;
   resourceSessionUuid: string | null;
   pageNumber: number | null;
@@ -87,6 +93,15 @@ export interface StudentActivityResourceBreakdown {
   activeDurationSeconds: number;
   idleDurationSeconds: number;
   lastActivityAt: string | null;
+}
+
+export interface StudentLandingCardActivityBreakdown {
+  landingCardId: number | null;
+  title: string;
+  ctaLabel: string | null;
+  destinationUrl: string | null;
+  clickCount: number;
+  lastClickedAt: string | null;
 }
 
 export interface StudentActivityDailyTrendPoint {
@@ -151,8 +166,11 @@ export interface StudentActivityReportData {
     distinctResources: number;
     documentPageVisits: number;
     activityLogEntries: number;
+    landingPageViews?: number;
+    landingCardClicks?: number;
   };
   resourceBreakdown: StudentActivityResourceBreakdown[];
+  landingCardBreakdown?: StudentLandingCardActivityBreakdown[];
   analytics: {
     dailyTrend: StudentActivityDailyTrendPoint[];
     activityCategoryBreakdown: StudentActivityCategoryBreakdown[];

@@ -34,7 +34,11 @@ export interface ObjectStorageDriver {
 
 export interface ManagedObjectOwner {
   category:
-    'resources' | 'exam-imports' | 'student-avatars' | 'course-thumbnails';
+    | 'resources'
+    | 'exam-imports'
+    | 'student-avatars'
+    | 'course-thumbnails'
+    | 'student-landing-images';
   id: number;
   uuid: string;
 }

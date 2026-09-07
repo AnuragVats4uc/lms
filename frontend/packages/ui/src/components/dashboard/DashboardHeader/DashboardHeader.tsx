@@ -461,7 +461,11 @@ export const DashboardHeader = memo(function DashboardHeader({
           </SelectorFrame>
         ) : null}
 
-        <div ref={profileTriggerRef} style={profileStyle}>
+        <div
+          className="lms-dashboard-header-profile-trigger"
+          ref={profileTriggerRef}
+          style={profileStyle}
+        >
           <ProfileFrame
             aria-expanded={hasProfileActions ? isProfileMenuOpen : undefined}
             aria-haspopup={hasProfileActions ? "menu" : undefined}

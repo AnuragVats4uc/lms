@@ -43,6 +43,7 @@ model Organization {
   resourceActivitySessions StudentResourceActivitySession[]
   studentActivityEvents    StudentActivityEvent[]
   storedObjects            StoredObject[]
+  studentLandingCards      StudentLandingCard[]
 
   @@map("organizations")
 }

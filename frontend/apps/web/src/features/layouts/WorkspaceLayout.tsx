@@ -119,12 +119,14 @@ const WorkspaceLayout = ({
       className={[
         "lms-workspace-shell",
         isAdminWorkspace ? "lms-admin-workspace" : "",
+        isStudentWorkspace ? "lms-student-workspace" : "",
+        isTeacherWorkspace ? "lms-teacher-workspace" : "",
       ]
         .filter(Boolean)
         .join(" ")}
       style={{
         backgroundColor: "#FCFDFD",
-        height: "100vh",
+        height: "100dvh",
         overflow: "hidden",
       }}
     >
@@ -143,7 +145,7 @@ const WorkspaceLayout = ({
         flex={1}
         style={{
           backgroundColor: "#FCFDFD",
-          height: "100vh",
+          height: "100dvh",
           minHeight: 0,
           minWidth: 0,
           overflow: "hidden",
@@ -285,7 +287,12 @@ const WorkspaceLayout = ({
           <YStack
             className="lms-workspace-content"
             p="$5"
-            style={{ backgroundColor: "#FCFDFD", minHeight: "100%" }}
+            style={{
+              backgroundColor: "#FCFDFD",
+              minHeight: "100%",
+              minWidth: 0,
+              width: "100%",
+            }}
           >
             {children}
           </YStack>

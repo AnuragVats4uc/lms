@@ -29,6 +29,7 @@ import { RegistrationModule } from './modules/registration/registration.module';
 import { TeacherModule } from './modules/teacher/teacher.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { StorageModule } from './modules/storage/storage.module';
+import { StudentLandingModule } from './modules/student-landing/student-landing.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { StorageModule } from './modules/storage/storage.module';
     ExamModule,
     RegistrationModule,
     ActivityModule,
+    StudentLandingModule,
   ],
   controllers: [AppController],
   providers: [

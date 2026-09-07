@@ -490,6 +490,7 @@ export class ActivityService {
       sessionCourseId: input.sessionCourseId,
       resourceId: input.resourceId,
       examAttemptId: input.examAttemptId,
+      landingCardId: input.landingCardId,
       occurredAt: input.occurredAt,
       activeDurationDeltaSeconds: input.activeDurationDeltaSeconds,
       pageNumber: input.pageNumber,
@@ -501,6 +502,9 @@ export class ActivityService {
       resourceTitleSnapshot: input.resourceTitleSnapshot,
       resourceTypeCodeSnapshot: input.resourceTypeCodeSnapshot,
       courseNameSnapshot: input.courseNameSnapshot,
+      landingCardTitleSnapshot: input.landingCardTitleSnapshot,
+      landingCardCtaSnapshot: input.landingCardCtaSnapshot,
+      landingCardUrlSnapshot: input.landingCardUrlSnapshot,
       source: input.source,
     });
   }

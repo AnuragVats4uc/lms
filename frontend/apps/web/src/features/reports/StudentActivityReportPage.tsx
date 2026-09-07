@@ -8,12 +8,11 @@ import {
   BarChart3,
   BookOpen,
   CheckCircle2,
-  Clock3,
   Download,
   FileDown,
   FileText,
-  LogIn,
   MonitorSmartphone,
+  MousePointerClick,
   RefreshCw,
   ShieldAlert,
 } from "lucide-react";
@@ -27,7 +26,6 @@ import type {
 } from "@repo/types";
 import { Spinner, Text } from "@repo/ui";
 import { PageContainer } from "@repo/ui/dashboard";
-import { useAuthSession } from "@repo/auth";
 
 import {
   DataTable,
@@ -81,12 +79,6 @@ export function StudentActivityReportPage() {
   }>();
   const studentId = Number(rawStudentId);
   const router = useRouter();
-  const { currentUser } = useAuthSession();
-  const isTeacherWorkspace =
-    Boolean(currentUser?.roles.includes("TEACHER")) &&
-    !currentUser?.roles.some((role) =>
-      ["SUPER_ADMIN", "ADMIN", "COUNSELOR"].includes(role),
-    );
   const [draftFilters, setDraftFilters] = useState(initialFilters);
   const [filters, setFilters] = useState(initialFilters);
   const [activeTab, setActiveTab] = useState<ReportTab>("overview");
@@ -294,6 +286,7 @@ function ReportHero({
             {report.student.email} · {report.student.studentCode}
           </small>
         </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           alt=""
           aria-hidden="true"
@@ -527,6 +520,13 @@ function TimelineSection({
       value: categoryCounts.get("AUTHENTICATION") ?? 0,
     },
     {
+      category: "LANDING",
+      icon: MousePointerClick,
+      label: "Landing",
+      tone: "blue",
+      value: categoryCounts.get("LANDING") ?? 0,
+    },
+    {
       category: "RESOURCE",
       icon: BookOpen,
       label: "Resources",
@@ -650,8 +650,14 @@ function createActivityColumns(): DataTableColumn<StudentActivityTimelineItem>[]
     {
       cell: ({ row }) => (
         <DataTableTextCell
-          primary={row.resourceTitle ?? row.courseName ?? "Student session"}
+          primary={
+            row.landingCardTitle ??
+            row.resourceTitle ??
+            row.courseName ??
+            "Student session"
+          }
           secondary={[
+            row.landingCardCta ? `CTA: ${row.landingCardCta}` : null,
             row.courseName && row.resourceTitle ? row.courseName : null,
             row.pageNumber ? `Page ${row.pageNumber}` : null,
             row.videoPositionSeconds != null
