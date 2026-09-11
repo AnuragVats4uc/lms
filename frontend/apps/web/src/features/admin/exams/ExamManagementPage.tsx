@@ -3076,26 +3076,81 @@ const TopicsPanel = ({
     (topic) =>
       subjectFilter === "all" || topic.subjectId === Number(subjectFilter),
   );
+  const activeTopics = topics.filter((topic) => topic.isActive);
+  const coveredSubjects = new Set(topics.map((topic) => topic.subjectId)).size;
+  const activeCoverage = topics.length
+    ? `${activeTopics.length} / ${topics.length}`
+    : "0 / 0";
 
   return (
     <div className={styles.topicManagement}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.eyebrow}>Question taxonomy</p>
-          <h1>Topics</h1>
+      <section className={styles.subjectHeroGrid} aria-label="Topic summary">
+        <div className={styles.subjectHeroCard}>
+          <img
+            alt=""
+            aria-hidden="true"
+            className={styles.subjectDotGrid}
+            src="/exam-subject-assets/dot-grid.png"
+          />
+          <div>
+            <p>Question taxonomy</p>
+            <h1>Topic Management</h1>
+            <span>
+              Organize each subject into reportable learning areas for focused
+              question mapping and insights.
+            </span>
+          </div>
+          <img
+            alt=""
+            aria-hidden="true"
+            className={styles.subjectBookStack}
+            src="/exam-subject-assets/books-stack.png"
+          />
+        </div>
+
+        <div className={styles.subjectActiveCard}>
+          <span className={styles.subjectActiveDot} />
+          <img
+            alt=""
+            aria-hidden="true"
+            src="/exam-subject-assets/books-circle.png"
+          />
+          <strong>{activeTopics.length}</strong>
           <p>
-            Organize each subject into reportable learning areas. Existing
-            questions can remain uncategorized.
+            Active
+            <span>topics</span>
           </p>
         </div>
-        <div className={styles.headerBadge}>
-          <Layers3 size={22} aria-hidden="true" />
-          <div>
-            <strong>{topics.filter((topic) => topic.isActive).length}</strong>
-            <span>Active topics</span>
+
+        <div className={styles.subjectInsightCard}>
+          <img
+            alt=""
+            aria-hidden="true"
+            className={styles.subjectSparkles}
+            src="/exam-subject-assets/sparkles.png"
+          />
+          <img
+            alt=""
+            aria-hidden="true"
+            className={styles.subjectQuestionBook}
+            src="/exam-subject-assets/question-book.png"
+          />
+          <p>Topic insights</p>
+          <h2>Subject coverage</h2>
+          <div className={styles.subjectInsightStats}>
+            <span>
+              <Layers3 aria-hidden="true" size={24} />
+              <strong>{coveredSubjects}</strong>
+              <small>Subjects mapped</small>
+            </span>
+            <span>
+              <CheckCircle2 aria-hidden="true" size={24} />
+              <strong>{activeCoverage}</strong>
+              <small>Active</small>
+            </span>
           </div>
         </div>
-      </header>
+      </section>
 
       <div className={styles.topicWorkspace}>
         <section className={styles.panel}>
