@@ -6,6 +6,7 @@ import {
   ArrowDown,
   ArrowUp,
   ExternalLink,
+  Eye,
   LayoutGrid,
   Pencil,
   Plus,
@@ -200,68 +201,85 @@ export function StudentLandingCardsPage() {
     <PageContainer>
       <div className={styles.page}>
         <section
+          className={styles.headerGrid}
           aria-label="Landing card summary"
-          className={styles.bentoHeader}
         >
-          <div aria-hidden="true" className={styles.bentoHeaderIcon}>
-            <LayoutGrid size={24} strokeWidth={1.8} />
-          </div>
-          <div className={styles.bentoHeading}>
-            <p className={styles.eyebrow}>Student experience</p>
-            <h1>Landing Cards</h1>
-            <span>Manage the destinations shown immediately after login.</span>
-          </div>
-          <div className={styles.headerMetrics}>
-            <span>
-              <strong>{cards.length}</strong>
-              <small>Total</small>
-            </span>
-            <span>
-              <strong>{visibleCards}</strong>
-              <small>Visible</small>
-            </span>
-            <span>
-              <strong>{customCards.length}</strong>
-              <small>Custom</small>
+          <div className={styles.heroCard}>
+            <img
+              alt=""
+              aria-hidden="true"
+              className={styles.dotGrid}
+              src="/exam-subject-assets/dot-grid.png"
+            />
+            <div>
+              <span>Student experience</span>
+              <h1>Landing Cards</h1>
+              <p>Manage the destinations shown immediately after login.</p>
+            </div>
+            <span className={styles.heroIcon}>
+              <LayoutGrid aria-hidden="true" size={42} />
             </span>
           </div>
-          <div className={styles.headerActions}>
-            {academic.organizations.length > 1 ? (
-              <div className={styles.organizationSelect}>
-                <CrudSelect
-                  ariaLabel="Organization"
-                  label="Organization"
-                  loading={academic.isLoading}
-                  onChange={(value) => {
-                    academic.setSelectedOrganizationId(Number(value));
-                    setIsFormOpen(false);
-                    setEditing(null);
-                    setForm(emptyForm);
-                    setImageFile(null);
-                    setMessage(null);
-                  }}
-                  options={organizationOptions}
-                  value={organizationId ? String(organizationId) : ""}
-                  width="100%"
-                />
-              </div>
-            ) : null}
-            <button
-              className={styles.primaryButton}
-              disabled={!organizationId}
-              onClick={() => {
-                setEditing(null);
-                setForm(emptyForm);
-                setImageFile(null);
-                setMessage(null);
-                setIsFormOpen(true);
-              }}
-              type="button"
-            >
-              <Plus size={16} /> Add card
-            </button>
+
+          <div className={styles.insightCard}>
+            <span>Card insights</span>
+            <h2>Card coverage</h2>
+            <div className={styles.insightStats}>
+              <span>
+                <LayoutGrid aria-hidden="true" size={24} />
+                <strong>{cards.length}</strong>
+                <small>Total</small>
+              </span>
+              <span>
+                <Eye aria-hidden="true" size={24} />
+                <strong>{visibleCards}</strong>
+                <small>Visible</small>
+              </span>
+              <span>
+                <ExternalLink aria-hidden="true" size={24} />
+                <strong>{customCards.length}</strong>
+                <small>Custom</small>
+              </span>
+            </div>
           </div>
         </section>
+
+        <div className={styles.headerControls}>
+          {academic.organizations.length > 1 ? (
+            <div className={styles.organizationSelect}>
+              <CrudSelect
+                ariaLabel="Organization"
+                label="Organization"
+                loading={academic.isLoading}
+                onChange={(value) => {
+                  academic.setSelectedOrganizationId(Number(value));
+                  setIsFormOpen(false);
+                  setEditing(null);
+                  setForm(emptyForm);
+                  setImageFile(null);
+                  setMessage(null);
+                }}
+                options={organizationOptions}
+                value={organizationId ? String(organizationId) : ""}
+                width="100%"
+              />
+            </div>
+          ) : null}
+          <button
+            className={styles.primaryButton}
+            disabled={!organizationId}
+            onClick={() => {
+              setEditing(null);
+              setForm(emptyForm);
+              setImageFile(null);
+              setMessage(null);
+              setIsFormOpen(true);
+            }}
+            type="button"
+          >
+            <Plus size={16} /> Add card
+          </button>
+        </div>
 
         {message ? <div className={styles.message}>{message}</div> : null}
 

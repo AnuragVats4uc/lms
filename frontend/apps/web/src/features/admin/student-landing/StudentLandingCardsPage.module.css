@@ -4,109 +4,161 @@
   color: #10233f;
 }
 
-.bentoHeader {
+.headerGrid {
   display: grid;
-  grid-template-columns: 44px minmax(220px, 1fr) auto minmax(220px, 280px);
-  align-items: center;
+  grid-template-columns: minmax(440px, 1.35fr) minmax(430px, 1fr);
   gap: 14px;
-  min-height: 104px;
-  padding: 14px 16px;
-  overflow: visible;
-  border: 1px solid #cfe4dc;
+  min-width: 0;
+}
+.heroCard,
+.insightCard {
+  min-height: 112px;
+  border: 1px solid #cfe0ef;
   border-radius: 16px;
-  background:
-    radial-gradient(circle at 92% 0, rgba(16, 185, 129, 0.12), transparent 35%),
-    linear-gradient(135deg, #f1fbf7, #ffffff 68%);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.035);
+  box-shadow: 0 16px 42px rgba(6, 31, 82, 0.04);
 }
-
-.bentoHeaderIcon {
+.heroCard {
+  position: relative;
   display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  color: #047857;
-  border: 1px solid #bce4d2;
-  border-radius: 13px;
-  background: #e5f8f0;
-}
-
-.bentoHeading {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-
-.eyebrow {
-  margin: 0;
-  color: #047857;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.bentoHeading h1 {
-  margin: 0;
-  font-size: clamp(22px, 2vw, 28px);
-  line-height: 1.1;
-  letter-spacing: -0.035em;
-}
-
-.bentoHeading > span {
-  overflow: hidden;
-  color: #64748b;
-  font-size: 12px;
-  line-height: 17px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.headerMetrics {
-  display: flex;
-  align-items: stretch;
-  gap: 7px;
-}
-
-.headerMetrics > span {
-  display: grid;
-  min-width: 62px;
-  padding: 8px 10px;
-  text-align: center;
-  border: 1px solid #d9e8e2;
-  border-radius: 11px;
-  background: rgba(255, 255, 255, 0.82);
-}
-
-.headerMetrics strong {
-  color: #0f766e;
-  font-size: 18px;
-  line-height: 20px;
-}
-
-.headerMetrics small {
-  color: #718096;
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.headerActions {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 110px;
   align-items: center;
-  gap: 8px;
+  overflow: hidden;
+  padding: 14px 20px;
+  background:
+    radial-gradient(circle at 2% 10%, rgba(13, 153, 108, 0.1), transparent 34%),
+    linear-gradient(106deg, #fbfefd 0%, #fff 58%, #f5fbff 100%);
 }
-
+.heroCard > div {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 4px;
+}
+.heroCard > div > span,
+.insightCard > span {
+  color: #08785a;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.heroCard h1 {
+  margin: 0;
+  color: #10213e;
+  font-size: 24px;
+  line-height: 1.1;
+}
+.heroCard p {
+  margin: 0;
+  color: #607086;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.dotGrid {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 150px;
+  height: 64px;
+  object-fit: cover;
+  opacity: 0.9;
+}
+.heroIcon {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  justify-self: end;
+  width: 64px;
+  height: 64px;
+  border-radius: 19px;
+  background: linear-gradient(135deg, #dff7ed, #bcebd8);
+  color: #078f69;
+  box-shadow: 0 18px 28px rgba(7, 143, 105, 0.15);
+}
+.insightCard {
+  position: relative;
+  overflow: hidden;
+  padding: 12px 18px;
+  border-color: rgba(0, 132, 85, 0.38);
+  background:
+    linear-gradient(90deg, rgba(0, 146, 95, 0.98), rgba(0, 129, 89, 0.96)),
+    url("/exam-subject-assets/green-gradient-panel.png") center / cover;
+  color: #fff;
+}
+.insightCard > span {
+  display: inline-flex;
+  padding: 5px 9px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #e5fff6;
+}
+.insightCard h2 {
+  margin: 8px 0 7px;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.insightStats {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.insightStats > span {
+  display: grid;
+  grid-template-columns: 24px auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 10px;
+  min-width: 104px;
+  min-height: 42px;
+  padding: 6px 9px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #fff 0%, #e6f7f0 100%);
+  color: #071c4f;
+  box-shadow: 0 12px 24px rgba(0, 72, 51, 0.12);
+}
+.insightStats svg {
+  grid-row: span 2;
+  color: #009363;
+}
+.insightStats strong {
+  color: #071c4f;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
+.insightStats small {
+  color: #071c4f;
+  font-size: 9px;
+  font-weight: 600;
+}
+.headerControls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid #dce6ed;
+  border-radius: 12px;
+  background: #fff;
+}
 .organizationSelect {
+  width: 260px;
   min-width: 0;
 }
-
-.organizationSelect :global(.lms-crud-filter-control) {
-  min-height: 40px;
-  background: rgba(255, 255, 255, 0.9);
+.headerControls :global(.lms-crud-filter-control) {
+  min-height: 36px;
 }
-
+.headerControls :global(.lms-crud-select-chevron) {
+  top: 11px;
+}
+.headerControls .primaryButton {
+  min-height: 36px;
+  padding: 0 14px;
+}
 .primaryButton,
 .secondaryButton {
   display: inline-flex;
@@ -476,41 +528,25 @@
   gap: 8px;
 }
 
-@media (max-width: 1060px) {
-  .bentoHeader {
-    grid-template-columns: 44px minmax(180px, 1fr) auto;
-  }
-
-  .headerActions {
-    grid-column: 1 / -1;
-    grid-template-columns: minmax(220px, 1fr) auto;
+@media (max-width: 1100px) {
+  .headerGrid {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 700px) {
-  .bentoHeader {
-    grid-template-columns: 40px minmax(0, 1fr);
-    gap: 10px;
-    min-height: 0;
-    padding: 12px;
+  .heroCard {
+    grid-template-columns: minmax(0, 1fr) 80px;
   }
 
-  .bentoHeaderIcon {
-    width: 40px;
-    height: 40px;
+  .headerControls {
+    align-items: stretch;
   }
 
-  .headerMetrics,
-  .headerActions {
-    grid-column: 1 / -1;
-  }
-
-  .headerMetrics > span {
+  .organizationSelect {
     flex: 1;
-  }
-
-  .headerActions {
-    grid-template-columns: minmax(0, 1fr) auto;
+    width: auto;
+    min-width: 220px;
   }
 
   .cardRow {
@@ -548,15 +584,31 @@
 }
 
 @media (max-width: 480px) {
-  .bentoHeading > span {
-    white-space: normal;
-  }
-
-  .headerActions {
+  .heroCard {
     grid-template-columns: 1fr;
+    padding: 16px;
   }
 
-  .headerActions .primaryButton {
+  .heroIcon {
+    justify-self: start;
+    margin-top: 12px;
+  }
+
+  .insightStats {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .insightStats > span {
+    width: 100%;
+  }
+
+  .headerControls {
+    flex-direction: column;
+  }
+
+  .organizationSelect,
+  .headerControls .primaryButton {
     width: 100%;
   }
 
