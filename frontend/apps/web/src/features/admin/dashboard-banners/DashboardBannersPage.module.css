@@ -1,0 +1,366 @@
+.page {
+  display: grid;
+  gap: 12px;
+}
+.headerGrid {
+  display: grid;
+  grid-template-columns: minmax(440px, 1.35fr) minmax(430px, 1fr);
+  gap: 14px;
+  min-width: 0;
+}
+.heroCard,
+.insightCard {
+  min-height: 112px;
+  border: 1px solid #cfe0ef;
+  border-radius: 16px;
+  box-shadow: 0 16px 42px rgba(6, 31, 82, 0.04);
+}
+.heroCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px;
+  align-items: center;
+  overflow: hidden;
+  padding: 14px 20px;
+  background:
+    radial-gradient(circle at 2% 10%, rgba(13, 153, 108, 0.1), transparent 34%),
+    linear-gradient(106deg, #fbfefd 0%, #fff 58%, #f5fbff 100%);
+}
+.heroCard > div {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 4px;
+}
+.heroCard > div > span,
+.insightCard > span {
+  color: #08785a;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.heroCard h1 {
+  margin: 0;
+  color: #10213e;
+  font-size: 24px;
+}
+.heroCard p {
+  margin: 0;
+  color: #607086;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.dotGrid {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 150px;
+  height: 64px;
+  object-fit: cover;
+  opacity: 0.9;
+}
+.heroIcon {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  justify-self: end;
+  width: 64px;
+  height: 64px;
+  border-radius: 19px;
+  background: linear-gradient(135deg, #dff7ed, #bcebd8);
+  color: #078f69;
+  box-shadow: 0 18px 28px rgba(7, 143, 105, 0.15);
+}
+.insightCard {
+  position: relative;
+  overflow: hidden;
+  padding: 12px 18px;
+  border-color: rgba(0, 132, 85, 0.38);
+  background:
+    linear-gradient(90deg, rgba(0, 146, 95, 0.98), rgba(0, 129, 89, 0.96)),
+    url("/exam-subject-assets/green-gradient-panel.png") center / cover;
+  color: #fff;
+}
+.insightCard > span {
+  display: inline-flex;
+  padding: 5px 9px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #e5fff6;
+}
+.insightCard h2 {
+  margin: 8px 0 7px;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.insightStats {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.insightStats > span {
+  display: grid;
+  grid-template-columns: 24px auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 10px;
+  min-width: 104px;
+  min-height: 42px;
+  padding: 6px 9px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #fff 0%, #e6f7f0 100%);
+  color: #071c4f;
+  box-shadow: 0 12px 24px rgba(0, 72, 51, 0.12);
+}
+.insightStats svg {
+  grid-row: span 2;
+  color: #009363;
+}
+.insightStats strong {
+  color: #071c4f;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
+.insightStats small {
+  color: #071c4f;
+  font-size: 9px;
+  font-weight: 600;
+}
+.headerControls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid #dce6ed;
+  border-radius: 12px;
+  background: #fff;
+}
+.headerControls :global(.lms-crud-filter-control) {
+  min-height: 36px;
+}
+.headerControls :global(.lms-crud-select-chevron) {
+  top: 11px;
+}
+.primary {
+  align-items: center;
+  background: #078f69;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  display: inline-flex;
+  font-weight: 700;
+  gap: 7px;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 14px;
+}
+.primary:disabled {
+  opacity: 0.55;
+}
+.message,
+.state {
+  border: 1px solid #dce6ed;
+  border-radius: 12px;
+  color: #52627a;
+  padding: 14px;
+}
+.message {
+  background: #effbf6;
+  color: #08785a;
+}
+.list {
+  display: grid;
+  gap: 12px;
+}
+.row {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dce6ed;
+  border-radius: 14px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 180px 1fr auto;
+  padding: 12px;
+}
+.preview {
+  align-items: center;
+  background: #effaf6;
+  border-radius: 10px;
+  display: flex;
+  height: 96px;
+  justify-content: center;
+  overflow: hidden;
+}
+.preview img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+.copy h2 {
+  color: #10213e;
+  font-size: 17px;
+  margin: 0;
+}
+.copy > div {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+.copy span {
+  background: #e8f8f1;
+  border-radius: 999px;
+  color: #08785a;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 7px;
+}
+.copy p {
+  color: #52627a;
+  font-size: 13px;
+  margin: 7px 0;
+}
+.copy small {
+  color: #718096;
+}
+.actions {
+  display: flex;
+  gap: 6px;
+}
+.actions button,
+.modalActions > button {
+  background: #fff;
+  border: 1px solid #d4e0e8;
+  border-radius: 8px;
+  padding: 9px;
+}
+.actions .danger {
+  color: #c43d3d;
+}
+.formGrid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr 1fr;
+}
+.field,
+.full {
+  display: grid;
+  gap: 6px;
+}
+.full {
+  grid-column: 1/-1;
+}
+.field strong,
+.full > strong {
+  color: #34445c;
+  font-size: 12px;
+}
+.field input,
+.field select,
+.full input,
+.full textarea {
+  border: 1px solid #ccdae5;
+  border-radius: 9px;
+  font: inherit;
+  padding: 11px;
+  width: 100%;
+}
+.sessions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sessions label {
+  border: 1px solid #d6e2e9;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.upload {
+  align-items: center;
+  border: 1px dashed #9fcdbd;
+  border-radius: 10px;
+  color: #08785a;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  padding: 13px;
+}
+.check {
+  align-items: center;
+  color: #34445c;
+  display: flex;
+  gap: 8px;
+}
+.modalActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.modalActions .primary {
+  background: #078f69;
+  border: 0;
+  color: #fff;
+}
+@media (max-width: 1100px) {
+  .headerGrid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 800px) {
+  .heroCard {
+    grid-template-columns: minmax(0, 1fr) 90px;
+  }
+  .headerControls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .row {
+    grid-template-columns: 110px 1fr;
+  }
+  .actions {
+    grid-column: 1/-1;
+    justify-content: flex-end;
+  }
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+  .field,
+  .full {
+    grid-column: 1;
+  }
+  .preview {
+    height: 78px;
+  }
+}
+@media (max-width: 480px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+  .preview {
+    height: 150px;
+  }
+  .heroCard {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+  .heroIcon {
+    justify-self: start;
+    margin-top: 12px;
+  }
+  .insightStats {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .insightStats > span {
+    width: 100%;
+  }
+  .heroCard h1 {
+    font-size: 22px;
+  }
+}

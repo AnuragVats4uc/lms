@@ -3,6 +3,7 @@ import {
   AuthenticationAttemptOutcome,
   Prisma,
   StudentActivityEventType,
+  StudentDashboardBannerEventType,
 } from '@prisma/client';
 
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -268,6 +269,29 @@ export class ActivityReportRepository {
       where: {
         ...this.activityEventWhere(filters),
         eventType: StudentActivityEventType.LANDING_CARD_CLICK,
+      },
+      _count: { _all: true },
+      _max: { occurredAt: true },
+    });
+  }
+
+  dashboardBannerBreakdown(filters: ActivityReportFilters) {
+    return this.prisma.studentDashboardBannerEvent.groupBy({
+      by: ['bannerId', 'titleSnapshot', 'destinationUrlSnapshot', 'eventType'],
+      where: {
+        organizationId: filters.organizationId,
+        studentId: filters.studentId,
+        occurredAt: { gte: filters.from, lte: filters.to },
+        bannerId: { not: null },
+        eventType: {
+          in: [
+            StudentDashboardBannerEventType.IMPRESSION,
+            StudentDashboardBannerEventType.CTA_CLICK,
+            StudentDashboardBannerEventType.VIDEO_PLAY,
+            StudentDashboardBannerEventType.VIDEO_PAUSE,
+            StudentDashboardBannerEventType.VIDEO_COMPLETE,
+          ],
+        },
       },
       _count: { _all: true },
       _max: { occurredAt: true },

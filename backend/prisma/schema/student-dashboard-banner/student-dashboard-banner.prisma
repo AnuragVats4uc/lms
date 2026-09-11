@@ -1,0 +1,68 @@
+model StudentDashboardBanner {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  organizationId Int                                  @map("organization_id")
+  title          String                               @db.VarChar(120)
+  description    String?                              @db.VarChar(500)
+  ctaLabel       String?                              @map("cta_label") @db.VarChar(80)
+  destinationUrl String?                              @map("destination_url") @db.VarChar(1000)
+  mediaType      StudentDashboardBannerMediaType      @map("media_type")
+  mediaUrl       String                               @map("media_url") @db.VarChar(1000)
+  mediaAlt       String?                              @map("media_alt") @db.VarChar(200)
+  videoProvider  StudentDashboardBannerVideoProvider? @map("video_provider")
+  posterUrl      String?                              @map("poster_url") @db.VarChar(1000)
+  autoplay       Boolean                              @default(false)
+  openInNewTab   Boolean                              @default(false) @map("open_in_new_tab")
+  displayOrder   Int                                  @default(0) @map("display_order")
+  isActive       Boolean                              @default(true) @map("is_active")
+  startsAt       DateTime?                            @map("starts_at")
+  endsAt         DateTime?                            @map("ends_at")
+  createdById    Int?                                 @map("created_by_id")
+  updatedById    Int?                                 @map("updated_by_id")
+  createdAt      DateTime                             @default(now()) @map("created_at")
+  updatedAt      DateTime                             @updatedAt @map("updated_at")
+  deletedAt      DateTime?                            @map("deleted_at")
+
+  organization Organization                    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sessions     StudentDashboardBannerSession[]
+
+  @@index([organizationId, isActive, deletedAt, displayOrder], map: "student_dashboard_banners_org_active_order_idx")
+  @@index([startsAt, endsAt], map: "student_dashboard_banners_schedule_idx")
+  @@map("student_dashboard_banners")
+}
+
+model StudentDashboardBannerSession {
+  bannerId  Int      @map("banner_id")
+  sessionId Int      @map("session_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  banner  StudentDashboardBanner @relation(fields: [bannerId], references: [id], onDelete: Cascade)
+  session Session                @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@id([bannerId, sessionId])
+  @@index([sessionId, bannerId], map: "student_dashboard_banner_sessions_session_idx")
+  @@map("student_dashboard_banner_sessions")
+}
+
+model StudentDashboardBannerEvent {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+
+  clientEventId          String                          @unique(map: "student_dashboard_banner_events_client_unique") @map("client_event_id") @db.VarChar(100)
+  organizationId         Int                             @map("organization_id")
+  studentId              Int                             @map("student_id")
+  userActivitySessionId  Int?                            @map("user_activity_session_id")
+  bannerId               Int?                            @map("banner_id")
+  eventType              StudentDashboardBannerEventType @map("event_type")
+  occurredAt             DateTime                        @default(now()) @map("occurred_at")
+  videoPositionSeconds   Int?                            @map("video_position_seconds")
+  titleSnapshot          String                          @map("title_snapshot") @db.VarChar(120)
+  destinationUrlSnapshot String?                         @map("destination_url_snapshot") @db.VarChar(1000)
+  metadata               Json?
+  createdAt              DateTime                        @default(now()) @map("created_at")
+
+  @@index([organizationId, studentId, occurredAt], map: "student_dashboard_banner_events_org_student_idx")
+  @@index([bannerId, eventType, occurredAt], map: "student_dashboard_banner_events_banner_type_idx")
+  @@map("student_dashboard_banner_events")
+}

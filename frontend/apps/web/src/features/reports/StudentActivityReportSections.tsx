@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Clock3,
   FileText,
+  ImageIcon,
   Laptop,
   LogIn,
   MonitorSmartphone,
@@ -35,6 +36,7 @@ const categoryColors: Record<StudentReportActivityCategory, string> = {
   EXAM: "#e11d48",
   REPORT: "#d97706",
   LANDING: "#0891b2",
+  BANNER: "#0f9f73",
   SESSION: "#94a3b8",
 };
 const deviceColors = ["#059669", "#2563eb", "#8b5cf6", "#f59e0b"];
@@ -96,6 +98,13 @@ export function StudentActivityOverview({
       label: "Landing engagement",
       tone: "blue",
       value: (report.summary.landingCardClicks ?? 0).toLocaleString(),
+    },
+    {
+      caption: `${report.summary.dashboardBannerImpressions ?? 0} impressions · ${report.summary.dashboardBannerClicks ?? 0} CTA clicks`,
+      icon: ImageIcon,
+      label: "Banner engagement",
+      tone: "green",
+      value: (report.summary.dashboardBannerClicks ?? 0).toLocaleString(),
     },
     {
       caption: "Total recorded events",
@@ -239,6 +248,37 @@ export function StudentActivityOverview({
               <p>No landing card clicks in this range.</p>
             )}
           </div>
+          <article className={`${styles.panel} ${styles.compactPanel}`}>
+            <PanelTitle
+              action={
+                <button onClick={() => onSelectTab("timeline")} type="button">
+                  View banner events <ArrowRight aria-hidden="true" size={14} />
+                </button>
+              }
+              detail="Impressions, CTA clicks and video engagement for dashboard banners."
+              title="Dashboard banner engagement"
+            />
+            <div className={styles.landingEngagementRows}>
+              {report.dashboardBannerBreakdown?.length ? (
+                report.dashboardBannerBreakdown.slice(0, 4).map((banner) => (
+                  <article key={`${banner.dashboardBannerId}:${banner.title}`}>
+                    <div>
+                      <strong>{banner.title}</strong>
+                      <small>
+                        {banner.videoPlays} plays · {banner.videoCompletions}{" "}
+                        completions
+                      </small>
+                    </div>
+                    <span>
+                      {banner.impressions} views · {banner.clicks} clicks
+                    </span>
+                  </article>
+                ))
+              ) : (
+                <p>No dashboard banner activity in this range.</p>
+              )}
+            </div>
+          </article>
         </article>
       </section>
     </div>
@@ -371,9 +411,9 @@ export function StudentResourceActivity({
             <div>
               <strong>No tracked resource sessions</strong>
               <span>
-                This exact student account has not opened a document or
-                started video playback in the selected range. Course progress
-                alone does not create an activity session.
+                This exact student account has not opened a document or started
+                video playback in the selected range. Course progress alone does
+                not create an activity session.
               </span>
             </div>
           </div>

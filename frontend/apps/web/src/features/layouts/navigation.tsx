@@ -16,6 +16,7 @@ import {
   CalendarRange,
   Layers3,
   Library,
+  ImageIcon,
   UsersRound,
 } from "lucide-react";
 
@@ -83,6 +84,13 @@ export const adminNavigation: NavigationItem[] = [
     icon: PanelsTopLeft,
     label: "Landing Cards",
     permission: "student-landing.read",
+  },
+  {
+    group: "Learning Management",
+    href: "/admin/dashboard-banners",
+    icon: ImageIcon,
+    label: "Dashboard Banners",
+    permission: "dashboard-banners.read",
   },
   {
     group: "Learning Management",

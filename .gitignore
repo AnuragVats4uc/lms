@@ -17,6 +17,10 @@ coverage/
 # Local tooling, generated artifacts, and temporary work
 .docgen/
 outputs/
+output/
+artifact-work/
+backend/backups/
+.codex-write-test.txt
 tmp/
 tmp-*/
 .temp/

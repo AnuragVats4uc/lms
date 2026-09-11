@@ -19,7 +19,15 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
-import { AppEmptyState, Button, Card, Spinner, Text, XStack, YStack } from "@repo/ui";
+import {
+  AppEmptyState,
+  Button,
+  Card,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
+} from "@repo/ui";
 import { studentsApi } from "@repo/api";
 import type {
   ResourceTypeCode,
@@ -29,6 +37,8 @@ import type {
   StudentDashboardNotificationType,
 } from "@repo/types";
 
+import { StudentDashboardBannerCarousel } from "./StudentDashboardBannerCarousel";
+
 type StudentCourseVariant = "green" | "blue" | "purple" | "orange";
 type StudentNotificationTone = {
   background: string;
@@ -36,7 +46,12 @@ type StudentNotificationTone = {
   Icon: LucideIcon;
 };
 
-const courseVariants: StudentCourseVariant[] = ["green", "blue", "purple", "orange"];
+const courseVariants: StudentCourseVariant[] = [
+  "green",
+  "blue",
+  "purple",
+  "orange",
+];
 
 const notificationIconTones: Record<
   StudentDashboardNotificationType,
@@ -74,7 +89,10 @@ const notificationIconTones: Record<
   },
 };
 
-const contentUpdateIconTones: Record<ResourceTypeCode, StudentNotificationTone> = {
+const contentUpdateIconTones: Record<
+  ResourceTypeCode,
+  StudentNotificationTone
+> = {
   DOCUMENT: {
     background: "#FFE8E8",
     color: "#EF4444",
@@ -92,7 +110,7 @@ const contentUpdateIconTones: Record<ResourceTypeCode, StudentNotificationTone> 
   },
 };
 
-function SectionHeader({
+const SectionHeader = ({
   actionHref,
   actionLabel,
   title,
@@ -100,7 +118,7 @@ function SectionHeader({
   actionHref: string;
   actionLabel: string;
   title: string;
-}) {
+}) => {
   return (
     <div className="student-dashboard-section-header">
       <h2 className="student-dashboard-section-title">{title}</h2>
@@ -109,9 +127,9 @@ function SectionHeader({
       </Link>
     </div>
   );
-}
+};
 
-function HeroVisual() {
+const HeroVisual = () => {
   return (
     <YStack aria-hidden className="student-hero-visual">
       <YStack className="student-hero-book-stack">
@@ -134,9 +152,9 @@ function HeroVisual() {
       <YStack className="student-hero-pen" />
     </YStack>
   );
-}
+};
 
-function WelcomeCard({
+const WelcomeCard = ({
   batch,
   continuePath,
   studentName,
@@ -144,7 +162,7 @@ function WelcomeCard({
   batch: string;
   continuePath: string;
   studentName: string;
-}) {
+}) => {
   const router = useRouter();
 
   return (
@@ -161,7 +179,12 @@ function WelcomeCard({
           You&apos;re doing great! Keep learning and growing.
         </Text>
         <XStack className="student-batch-badge">
-          <UsersRound aria-hidden="true" color="#52627A" size={17} strokeWidth={2.1} />
+          <UsersRound
+            aria-hidden="true"
+            color="#52627A"
+            size={17}
+            strokeWidth={2.1}
+          />
           <Text className="student-batch-text">Batch: {batch}</Text>
         </XStack>
         <button
@@ -177,15 +200,15 @@ function WelcomeCard({
       <HeroVisual />
     </Card>
   );
-}
+};
 
-function CourseCard({
+const CourseCard = ({
   course,
   variant,
 }: {
   course: StudentDashboardCourse;
   variant: StudentCourseVariant;
-}) {
+}) => {
   const router = useRouter();
   const completion = clampPercentage(course.completionPercentage);
 
@@ -197,12 +220,21 @@ function CourseCard({
       <YStack className="student-course-copy">
         <Text className="student-course-title">{course.title}</Text>
         <XStack className="student-course-instructor">
-          <UserRound aria-hidden="true" color="#647084" size={14} strokeWidth={2} />
-          <Text className="student-course-instructor-text">{course.instructor}</Text>
+          <UserRound
+            aria-hidden="true"
+            color="#647084"
+            size={14}
+            strokeWidth={2}
+          />
+          <Text className="student-course-instructor-text">
+            {course.instructor}
+          </Text>
         </XStack>
       </YStack>
       <YStack className="student-course-progress-area">
-        <Text className="student-course-progress-label">{completion}% completed</Text>
+        <Text className="student-course-progress-label">
+          {completion}% completed
+        </Text>
         <YStack
           aria-label={`${course.title} ${completion}% complete`}
           aria-valuemax={100}
@@ -224,13 +256,22 @@ function CourseCard({
         type="button"
       >
         <span className="student-course-button-text">Continue</span>
-        <ChevronRight aria-hidden="true" color="#059669" size={18} strokeWidth={2.4} />
+        <ChevronRight
+          aria-hidden="true"
+          color="#059669"
+          size={18}
+          strokeWidth={2.4}
+        />
       </button>
     </Card>
   );
-}
+};
 
-function MyCoursesSection({ courses }: { courses: StudentDashboardCourse[] }) {
+const MyCoursesSection = ({
+  courses,
+}: {
+  courses: StudentDashboardCourse[];
+}) => {
   return (
     <Card className="student-panel student-courses-panel">
       <SectionHeader
@@ -257,9 +298,9 @@ function MyCoursesSection({ courses }: { courses: StudentDashboardCourse[] }) {
       )}
     </Card>
   );
-}
+};
 
-function IconBadge({ tone }: { tone: StudentNotificationTone }) {
+const IconBadge = ({ tone }: { tone: StudentNotificationTone }) => {
   const Icon = tone.Icon;
 
   return (
@@ -270,9 +311,9 @@ function IconBadge({ tone }: { tone: StudentNotificationTone }) {
       <Icon aria-hidden="true" color={tone.color} size={22} strokeWidth={2.2} />
     </YStack>
   );
-}
+};
 
-function NotificationItem({ item }: { item: StudentDashboardNotification }) {
+const NotificationItem = ({ item }: { item: StudentDashboardNotification }) => {
   return (
     <XStack className="student-feed-item">
       <IconBadge tone={notificationIconTones[item.type]} />
@@ -285,14 +326,21 @@ function NotificationItem({ item }: { item: StudentDashboardNotification }) {
           {formatRelativeTimestamp(item.timestamp)}
         </Text>
         {!item.isRead ? (
-          <YStack aria-label="Unread notification" className="student-unread-dot" />
+          <YStack
+            aria-label="Unread notification"
+            className="student-unread-dot"
+          />
         ) : null}
       </YStack>
     </XStack>
   );
-}
+};
 
-function ContentUpdateItem({ item }: { item: StudentDashboardContentUpdate }) {
+const ContentUpdateItem = ({
+  item,
+}: {
+  item: StudentDashboardContentUpdate;
+}) => {
   const router = useRouter();
 
   return (
@@ -311,13 +359,13 @@ function ContentUpdateItem({ item }: { item: StudentDashboardContentUpdate }) {
       </Text>
     </XStack>
   );
-}
+};
 
-function NotificationsSection({
+const NotificationsSection = ({
   notifications,
 }: {
   notifications: StudentDashboardNotification[];
-}) {
+}) => {
   return (
     <Card className="student-panel student-side-panel">
       <SectionHeader
@@ -340,13 +388,13 @@ function NotificationsSection({
       </YStack>
     </Card>
   );
-}
+};
 
-function ContentUpdatesSection({
+const ContentUpdatesSection = ({
   updates,
 }: {
   updates: StudentDashboardContentUpdate[];
-}) {
+}) => {
   return (
     <Card className="student-panel student-side-panel">
       <SectionHeader
@@ -356,9 +404,7 @@ function ContentUpdatesSection({
       />
       <YStack className="student-feed-list">
         {updates.length ? (
-          updates.map((item) => (
-            <ContentUpdateItem item={item} key={item.id} />
-          ))
+          updates.map((item) => <ContentUpdateItem item={item} key={item.id} />)
         ) : (
           <AppEmptyState
             description="New resources and assignments will appear here."
@@ -369,9 +415,9 @@ function ContentUpdatesSection({
       </YStack>
     </Card>
   );
-}
+};
 
-export function StudentDashboard() {
+export const StudentDashboard = () => {
   const dashboardQuery = useQuery({
     queryFn: studentsApi.findMyDashboard,
     queryKey: ["student-dashboard"],
@@ -423,11 +469,15 @@ export function StudentDashboard() {
   return (
     <YStack className="student-dashboard-page">
       <YStack className="student-dashboard-main-column">
-        <WelcomeCard
-          batch={dashboard.student.batch ?? "Not assigned"}
-          continuePath={dashboard.continueLearning.path}
-          studentName={dashboard.student.name}
-        />
+        {dashboard.banners.length ? (
+          <StudentDashboardBannerCarousel banners={dashboard.banners} />
+        ) : (
+          <WelcomeCard
+            batch={dashboard.student.batch ?? "Not assigned"}
+            continuePath={dashboard.continueLearning.path}
+            studentName={dashboard.student.name}
+          />
+        )}
         <MyCoursesSection courses={dashboard.courses} />
       </YStack>
       <YStack className="student-dashboard-side-column">
@@ -436,14 +486,14 @@ export function StudentDashboard() {
       </YStack>
     </YStack>
   );
-}
+};
 
-function clampPercentage(value: number) {
+const clampPercentage = (value: number) => {
   if (!Number.isFinite(value)) return 0;
   return Math.min(100, Math.max(0, Math.round(value)));
-}
+};
 
-function formatRelativeTimestamp(value: string) {
+const formatRelativeTimestamp = (value: string) => {
   const date = new Date(value);
   const delta = Date.now() - date.getTime();
 
@@ -461,4 +511,4 @@ function formatRelativeTimestamp(value: string) {
   if (days < 7) return `${days} days ago`;
 
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
+};

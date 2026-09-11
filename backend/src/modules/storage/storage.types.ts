@@ -38,7 +38,8 @@ export interface ManagedObjectOwner {
     | 'exam-imports'
     | 'student-avatars'
     | 'course-thumbnails'
-    | 'student-landing-images';
+    | 'student-landing-images'
+    | 'student-dashboard-banner-images';
   id: number;
   uuid: string;
 }

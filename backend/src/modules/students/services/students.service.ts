@@ -877,11 +877,17 @@ export class StudentsService {
     const sessionCourseIds = courseEnrollments.map(
       (courseEnrollment) => courseEnrollment.sessionCourseId,
     );
-    const [notifications, contentUpdates] = await Promise.all([
+    const [notifications, contentUpdates, banners] = await Promise.all([
       organization
         ? this.studentsRepository.findNotifications(student.id, organization.id)
         : Promise.resolve([]),
       this.studentsRepository.findContentUpdates(sessionCourseIds),
+      organization
+        ? this.studentsRepository.findDashboardBanners(
+            organization.id,
+            session?.id ?? null,
+          )
+        : Promise.resolve([]),
     ]);
     const courses = courseEnrollments.map((courseEnrollment) => {
       const sessionCourse = courseEnrollment.sessionCourse;
@@ -933,6 +939,7 @@ export class StudentsService {
         organization,
         session,
       },
+      banners,
       courses,
       notifications: notifications.map((notification) => ({
         id: notification.id,

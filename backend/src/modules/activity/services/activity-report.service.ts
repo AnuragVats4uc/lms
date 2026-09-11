@@ -9,6 +9,7 @@ import {
   ActivitySessionEndReason,
   AuthenticationAttemptOutcome,
   StudentActivityEventType,
+  StudentDashboardBannerEventType,
 } from '@prisma/client';
 import * as XLSX from 'xlsx';
 
@@ -66,6 +67,7 @@ export class ActivityReportService {
       activityEventCounts,
       userSessionDeviceBreakdown,
       landingCardBreakdown,
+      dashboardBannerBreakdown,
     ] = await Promise.all([
       this.activityReportRepository.authenticationAttempts(
         context.filters,
@@ -87,6 +89,7 @@ export class ActivityReportService {
       this.activityReportRepository.activityEventCounts(context.filters),
       this.activityReportRepository.userSessionDeviceBreakdown(context.filters),
       this.activityReportRepository.landingCardBreakdown(context.filters),
+      this.activityReportRepository.dashboardBannerBreakdown(context.filters),
     ]);
 
     const timeline = [
@@ -115,11 +118,26 @@ export class ActivityReportService {
       activityEventCounts.find(
         (row) => row.eventType === StudentActivityEventType.LANDING_CARD_CLICK,
       )?._count._all ?? 0;
+    const dashboardBannerImpressions = dashboardBannerBreakdown
+      .filter(
+        (row) => row.eventType === StudentDashboardBannerEventType.IMPRESSION,
+      )
+      .reduce((total, row) => total + row._count._all, 0);
+    const dashboardBannerClicks = dashboardBannerBreakdown
+      .filter(
+        (row) => row.eventType === StudentDashboardBannerEventType.CTA_CLICK,
+      )
+      .reduce((total, row) => total + row._count._all, 0);
+    const dashboardBannerActivities = dashboardBannerBreakdown.reduce(
+      (total, row) => total + row._count._all,
+      0,
+    );
     const activityCategoryBreakdown = this.activityCategoryBreakdown(
       successfulLogins,
       failedLogins,
       endedSessionCount,
       activityEventCounts,
+      dashboardBannerActivities,
     );
     const dailyTrend = this.dailyResourceTrend(resourceSessionTrendRows);
     const deviceBreakdown = userSessionDeviceBreakdown
@@ -178,6 +196,8 @@ export class ActivityReportService {
           activityLogEntries: total,
           landingPageViews,
           landingCardClicks,
+          dashboardBannerImpressions,
+          dashboardBannerClicks,
         },
         resourceBreakdown: resourceBreakdown
           .map((row) => ({
@@ -204,6 +224,9 @@ export class ActivityReportService {
             lastClickedAt: row._max.occurredAt,
           }))
           .sort((left, right) => right.clickCount - left.clickCount),
+        dashboardBannerBreakdown: this.toDashboardBannerBreakdown(
+          dashboardBannerBreakdown,
+        ),
         analytics: {
           dailyTrend,
           activityCategoryBreakdown,
@@ -612,10 +635,12 @@ export class ActivityReportService {
     eventCounts: Awaited<
       ReturnType<ActivityReportRepository['activityEventCounts']>
     >,
+    dashboardBannerActivities: number,
   ) {
     const categoryOrder = [
       'AUTHENTICATION',
       'LANDING',
+      'BANNER',
       'RESOURCE',
       'DOCUMENT',
       'VIDEO',
@@ -625,6 +650,7 @@ export class ActivityReportService {
     ] as const;
     const counts = new Map<(typeof categoryOrder)[number], number>([
       ['AUTHENTICATION', successfulLogins + failedLogins],
+      ['BANNER', dashboardBannerActivities],
       ['SESSION', endedSessionCount],
     ]);
     for (const row of eventCounts) {
@@ -637,6 +663,54 @@ export class ActivityReportService {
     }));
   }
 
+  private toDashboardBannerBreakdown(
+    rows: Awaited<
+      ReturnType<ActivityReportRepository['dashboardBannerBreakdown']>
+    >,
+  ) {
+    const values = new Map<
+      number | null,
+      {
+        dashboardBannerId: number | null;
+        title: string;
+        destinationUrl: string | null;
+        impressions: number;
+        clicks: number;
+        videoPlays: number;
+        videoCompletions: number;
+        lastActivityAt: Date | null;
+      }
+    >();
+    for (const row of rows) {
+      const item = values.get(row.bannerId) ?? {
+        dashboardBannerId: row.bannerId,
+        title: row.titleSnapshot ?? 'Dashboard banner',
+        destinationUrl: row.destinationUrlSnapshot,
+        impressions: 0,
+        clicks: 0,
+        videoPlays: 0,
+        videoCompletions: 0,
+        lastActivityAt: null,
+      };
+      if (row.eventType === StudentDashboardBannerEventType.IMPRESSION)
+        item.impressions += row._count._all;
+      if (row.eventType === StudentDashboardBannerEventType.CTA_CLICK)
+        item.clicks += row._count._all;
+      if (row.eventType === StudentDashboardBannerEventType.VIDEO_PLAY)
+        item.videoPlays += row._count._all;
+      if (row.eventType === StudentDashboardBannerEventType.VIDEO_COMPLETE)
+        item.videoCompletions += row._count._all;
+      if (
+        row._max.occurredAt &&
+        (!item.lastActivityAt || row._max.occurredAt > item.lastActivityAt)
+      )
+        item.lastActivityAt = row._max.occurredAt;
+      values.set(row.bannerId, item);
+    }
+    return [...values.values()].sort(
+      (left, right) => right.impressions - left.impressions,
+    );
+  }
   private dailyResourceTrend(
     rows: Awaited<
       ReturnType<ActivityReportRepository['resourceSessionTrendRows']>
@@ -813,6 +887,22 @@ export class ActivityReportService {
       workbook,
       XLSX.utils.json_to_sheet(summaryRows),
       'Summary',
+    );
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet(
+        (report.dashboardBannerBreakdown ?? []).map((banner) => ({
+          banner_id: banner.dashboardBannerId,
+          title: banner.title,
+          destination_url: banner.destinationUrl,
+          impressions: banner.impressions,
+          cta_clicks: banner.clicks,
+          video_plays: banner.videoPlays,
+          video_completions: banner.videoCompletions,
+          last_activity_at: banner.lastActivityAt,
+        })),
+      ),
+      'Banner Engagement',
     );
     XLSX.utils.book_append_sheet(
       workbook,

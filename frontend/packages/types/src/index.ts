@@ -20,3 +20,5 @@ export * from "./student-landing";
 export * from "./student-resources";
 export * from "./teacher-dashboard";
 export * from "./user";
+
+export * from "./student-dashboard-banner";

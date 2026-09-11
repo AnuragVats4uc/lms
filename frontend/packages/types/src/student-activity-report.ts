@@ -24,7 +24,12 @@ export type StudentReportActivityType =
   | "REPORT_VIEW"
   | "REPORT_EXPORT"
   | "LANDING_PAGE_VIEW"
-  | "LANDING_CARD_CLICK";
+  | "LANDING_CARD_CLICK"
+  | "DASHBOARD_BANNER_IMPRESSION"
+  | "DASHBOARD_BANNER_CTA_CLICK"
+  | "DASHBOARD_BANNER_VIDEO_PLAY"
+  | "DASHBOARD_BANNER_VIDEO_PAUSE"
+  | "DASHBOARD_BANNER_VIDEO_COMPLETE";
 
 export type StudentReportActivityCategory =
   | "AUTHENTICATION"
@@ -34,7 +39,8 @@ export type StudentReportActivityCategory =
   | "VIDEO"
   | "EXAM"
   | "REPORT"
-  | "LANDING";
+  | "LANDING"
+  | "BANNER";
 
 export interface StudentActivityReportQuery {
   from?: string;
@@ -69,6 +75,8 @@ export interface StudentActivityTimelineItem {
   landingCardTitle?: string | null;
   landingCardCta?: string | null;
   landingCardUrl?: string | null;
+  dashboardBannerTitle?: string | null;
+  dashboardBannerUrl?: string | null;
   sessionUuid: string | null;
   resourceSessionUuid: string | null;
   pageNumber: number | null;
@@ -104,6 +112,16 @@ export interface StudentLandingCardActivityBreakdown {
   lastClickedAt: string | null;
 }
 
+export interface StudentDashboardBannerActivityBreakdown {
+  dashboardBannerId: number | null;
+  title: string;
+  destinationUrl: string | null;
+  impressions: number;
+  clicks: number;
+  videoPlays: number;
+  videoCompletions: number;
+  lastActivityAt: string | null;
+}
 export interface StudentActivityDailyTrendPoint {
   date: string;
   sessionCount: number;
@@ -168,9 +186,12 @@ export interface StudentActivityReportData {
     activityLogEntries: number;
     landingPageViews?: number;
     landingCardClicks?: number;
+    dashboardBannerImpressions?: number;
+    dashboardBannerClicks?: number;
   };
   resourceBreakdown: StudentActivityResourceBreakdown[];
   landingCardBreakdown?: StudentLandingCardActivityBreakdown[];
+  dashboardBannerBreakdown?: StudentDashboardBannerActivityBreakdown[];
   analytics: {
     dailyTrend: StudentActivityDailyTrendPoint[];
     activityCategoryBreakdown: StudentActivityCategoryBreakdown[];

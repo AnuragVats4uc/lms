@@ -1,12 +1,7 @@
 import type { ResourceType, ResourceTypeId } from "./resource";
 
 export type StudentDashboardNotificationType =
-  | "ASSIGNMENT"
-  | "ANNOUNCEMENT"
-  | "EVENT"
-  | "EXAM"
-  | "RESOURCE"
-  | "SYSTEM";
+  "ASSIGNMENT" | "ANNOUNCEMENT" | "EVENT" | "EXAM" | "RESOURCE" | "SYSTEM";
 
 export interface StudentDashboardOrganization {
   id: number;
@@ -71,8 +66,35 @@ export interface StudentDashboardContinueLearning {
   path: string;
 }
 
+export type StudentDashboardBannerMediaType = "IMAGE" | "VIDEO";
+export type StudentDashboardBannerVideoProvider =
+  "YOUTUBE" | "VIMEO" | "DIRECT" | "HLS" | "EXTERNAL";
+
+export interface StudentDashboardBanner {
+  id: number;
+  uuid: string;
+  organizationId: number;
+  title: string;
+  description: string | null;
+  ctaLabel: string | null;
+  destinationUrl: string | null;
+  mediaType: StudentDashboardBannerMediaType;
+  mediaUrl: string;
+  mediaAlt: string | null;
+  videoProvider: StudentDashboardBannerVideoProvider | null;
+  posterUrl: string | null;
+  autoplay: boolean;
+  openInNewTab: boolean;
+  displayOrder: number;
+  isActive: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 export interface StudentDashboard {
   student: StudentDashboardStudent;
+  banners: StudentDashboardBanner[];
   courses: StudentDashboardCourse[];
   notifications: StudentDashboardNotification[];
   contentUpdates: StudentDashboardContentUpdate[];

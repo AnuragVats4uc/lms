@@ -146,9 +146,40 @@ export class StudentDashboardContinueLearningDto {
   path: string;
 }
 
+export class StudentDashboardBannerDto {
+  @ApiProperty({ example: 1 })
+  id: number;
+  @ApiProperty({ example: 'uuid' })
+  uuid: string;
+  @ApiProperty({ example: 'Admissions are open' })
+  title: string;
+  @ApiPropertyOptional({ nullable: true })
+  description: string | null;
+  @ApiPropertyOptional({ nullable: true })
+  ctaLabel: string | null;
+  @ApiPropertyOptional({ nullable: true })
+  destinationUrl: string | null;
+  @ApiProperty({ enum: ['IMAGE', 'VIDEO'] })
+  mediaType: 'IMAGE' | 'VIDEO';
+  @ApiProperty()
+  mediaUrl: string;
+  @ApiPropertyOptional({ nullable: true })
+  mediaAlt: string | null;
+  @ApiPropertyOptional({ nullable: true })
+  videoProvider: string | null;
+  @ApiPropertyOptional({ nullable: true })
+  posterUrl: string | null;
+  @ApiProperty({ example: false })
+  autoplay: boolean;
+  @ApiProperty()
+  openInNewTab: boolean;
+}
 export class StudentDashboardDataDto {
   @ApiProperty({ type: StudentDashboardStudentDto })
   student: StudentDashboardStudentDto;
+
+  @ApiProperty({ type: [StudentDashboardBannerDto] })
+  banners: StudentDashboardBannerDto[];
 
   @ApiProperty({ type: [StudentDashboardCourseDto] })
   courses: StudentDashboardCourseDto[];

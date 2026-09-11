@@ -7,6 +7,8 @@ import {
   ResourceStatus,
   SessionCourseStatus,
   SessionStatus,
+  StudentDashboardBannerMediaType,
+  StudentDashboardBannerVideoProvider,
   CourseStatus,
   StudentNotificationType,
   ExamStatus,
@@ -419,6 +421,7 @@ async function seedStudentDashboardDemo() {
     },
     select: { id: true },
   });
+  await seedAutoplayDashboardBanner(organization.id, session.id);
   const student = await prisma.user.upsert({
     where: { email: 'student.demo@lms.test' },
     update: {
@@ -726,6 +729,50 @@ async function seedStudentDashboardDemo() {
   );
 
   console.log('Dashboard student login: student.demo@lms.test / Admin@123');
+}
+
+async function seedAutoplayDashboardBanner(
+  organizationId: number,
+  sessionId: number,
+) {
+  const uuid = '10000000-0000-4000-8000-000000000401';
+  const data = {
+    organizationId,
+    title: 'Welcome to your learning dashboard',
+    description:
+      'Start with this short introduction, then continue to your enrolled courses.',
+    ctaLabel: 'View my courses',
+    destinationUrl: '/student/my-courses',
+    mediaType: StudentDashboardBannerMediaType.VIDEO,
+    mediaUrl:
+      'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+    mediaAlt: 'Flowers moving gently in the breeze',
+    videoProvider: StudentDashboardBannerVideoProvider.DIRECT,
+    posterUrl: null,
+    autoplay: true,
+    openInNewTab: false,
+    displayOrder: 0,
+    isActive: true,
+    startsAt: null,
+    endsAt: null,
+    deletedAt: null,
+  };
+
+  await prisma.studentDashboardBanner.upsert({
+    where: { uuid },
+    update: {
+      ...data,
+      sessions: {
+        deleteMany: {},
+        create: { sessionId },
+      },
+    },
+    create: {
+      uuid,
+      ...data,
+      sessions: { create: { sessionId } },
+    },
+  });
 }
 
 async function upsertDashboardFolder(

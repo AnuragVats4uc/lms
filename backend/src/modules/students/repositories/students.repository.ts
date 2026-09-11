@@ -428,6 +428,23 @@ export class StudentsRepository {
     });
   }
 
+  findDashboardBanners(organizationId: number, sessionId: number | null) {
+    if (!sessionId) return Promise.resolve([]);
+    const now = new Date();
+    return this.prisma.studentDashboardBanner.findMany({
+      where: {
+        organizationId,
+        deletedAt: null,
+        isActive: true,
+        sessions: { some: { sessionId } },
+        AND: [
+          { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+          { OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
+        ],
+      },
+      orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
+    });
+  }
   findNotifications(studentId: number, organizationId: number) {
     return this.prisma.studentNotification.findMany({
       where: {

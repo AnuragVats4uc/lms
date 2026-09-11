@@ -14,3 +14,5 @@ export * from "./registration.api";
 export * from "./teacher.api";
 export * from "./activity-reports.api";
 export * from "./student-landing.api";
+
+export * from "./student-dashboard-banners.api";

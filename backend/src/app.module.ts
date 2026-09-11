@@ -30,6 +30,7 @@ import { TeacherModule } from './modules/teacher/teacher.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { StudentLandingModule } from './modules/student-landing/student-landing.module';
+import { StudentDashboardBannerModule } from './modules/student-dashboard-banner/student-dashboard-banner.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { StudentLandingModule } from './modules/student-landing/student-landing.
     RegistrationModule,
     ActivityModule,
     StudentLandingModule,
+    StudentDashboardBannerModule,
   ],
   controllers: [AppController],
   providers: [
