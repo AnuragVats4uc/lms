@@ -37,7 +37,7 @@ import {
   DataTableTextCell,
   type DataTableColumn,
 } from "@/components/DataTable";
-import { CrudSelect } from "@/features/admin/components/crud";
+import { CrudSelect } from "@/features/shared/forms/CrudSelect";
 
 type FilterValues = {
   search: string;

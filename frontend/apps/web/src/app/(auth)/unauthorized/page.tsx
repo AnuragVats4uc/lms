@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Card, Text, YStack } from "@repo/ui";
 
-export default function UnauthorizedPage() {
+const UnauthorizedPage = () => {
   return (
     <Card
       width="100%"
@@ -17,11 +17,13 @@ export default function UnauthorizedPage() {
           Unauthorized
         </Text>
         <Text color="#647084" fontSize={14}>
-          Your account is authenticated, but it does not have
-          access to this area.
+          Your account is authenticated, but it does not have access to this
+          area.
         </Text>
         <Link href="/login">Go to login</Link>
       </YStack>
     </Card>
   );
-}
+};
+
+export default UnauthorizedPage;

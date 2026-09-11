@@ -36,7 +36,7 @@ import {
   DataTableTextCell,
   type DataTableColumn,
 } from "@/components/DataTable";
-import { CrudSelect } from "@/features/admin/components/crud";
+import { CrudSelect } from "@/features/shared/forms/CrudSelect";
 
 type StudentCourseViewMode = "cards" | "table";
 type CourseVisualVariant = "mint" | "purple" | "blue" | "amber";
