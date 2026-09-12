@@ -1,5 +1,7 @@
-import { TeacherDashboardPage } from "@/features/teacher/pages";
+import { TeacherDashboardPage } from "@/features/teacher";
 
-export default function TeacherDashboardRoute() {
+const TeacherDashboardRoute = () => {
   return <TeacherDashboardPage />;
-}
+};
+
+export default TeacherDashboardRoute;

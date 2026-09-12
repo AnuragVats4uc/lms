@@ -2,11 +2,7 @@
 
 import { YStack } from "@repo/ui";
 
-export function AuthLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export const AuthLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <YStack
       style={{
@@ -20,4 +16,4 @@ export function AuthLayout({
       {children}
     </YStack>
   );
-}
+};

@@ -5,11 +5,7 @@ import { ProtectedRoute } from "@repo/auth";
 import { RoleGuard } from "@/features/guards/RoleGuard";
 import { StudentLayout } from "@/features/layouts/StudentLayout";
 
-export default function Layout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <ProtectedRoute>
       <RoleGuard allowedRoles={["STUDENT"]}>
@@ -17,4 +13,6 @@ export default function Layout({
       </RoleGuard>
     </ProtectedRoute>
   );
-}
+};
+
+export default Layout;

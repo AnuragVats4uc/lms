@@ -12,16 +12,11 @@ interface RoleGuardProps {
   children: React.ReactNode;
 }
 
-export function RoleGuard({
-  allowedRoles,
-  children,
-}: RoleGuardProps) {
+export const RoleGuard = ({ allowedRoles, children }: RoleGuardProps) => {
   const router = useRouter();
   const { currentUser } = useAuthSession();
   const isAllowed =
-    currentUser?.roles.some((role) =>
-      allowedRoles.includes(role)
-    ) ?? false;
+    currentUser?.roles.some((role) => allowedRoles.includes(role)) ?? false;
 
   useEffect(() => {
     if (currentUser && !isAllowed) {
@@ -44,4 +39,4 @@ export function RoleGuard({
   }
 
   return <>{children}</>;
-}
+};

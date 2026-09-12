@@ -3,11 +3,11 @@
 import WorkspaceLayout from "./WorkspaceLayout";
 import { adminNavigation } from "./navigation";
 
-export function AdminLayout({
+export const AdminLayout = ({
   children,
 }: {
   children: React.ReactNode;
-}) {
+}) => {
   return (
     <WorkspaceLayout
       navigation={adminNavigation}

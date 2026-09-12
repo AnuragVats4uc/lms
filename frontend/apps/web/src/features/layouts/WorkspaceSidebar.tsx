@@ -56,7 +56,10 @@ interface GroupExpansionOverride {
   pathname: string;
 }
 
-function isNavigationActive(pathname: string, item: NavigationItem): boolean {
+const isNavigationActive = (
+  pathname: string,
+  item: NavigationItem,
+): boolean => {
   const isCurrent =
     pathname === item.href ||
     (item.href !== "/" && pathname.startsWith(`${item.href}/`));
@@ -65,9 +68,9 @@ function isNavigationActive(pathname: string, item: NavigationItem): boolean {
     isCurrent ||
     Boolean(item.children?.some((child) => isNavigationActive(pathname, child)))
   );
-}
+};
 
-function groupNavigationItems(items: NavigationItem[]) {
+const groupNavigationItems = (items: NavigationItem[]) => {
   return items.reduce<NavigationGroup[]>((groups, item) => {
     const label = item.group ?? "Navigation";
     const existingGroup = groups.find((group) => group.label === label);
@@ -79,20 +82,20 @@ function groupNavigationItems(items: NavigationItem[]) {
 
     return [...groups, { items: [item], label }];
   }, []);
-}
+};
 
-function isNavigationGroupActive(pathname: string, group: NavigationGroup) {
+const isNavigationGroupActive = (pathname: string, group: NavigationGroup) => {
   return group.items.some((item) => isNavigationActive(pathname, item));
-}
+};
 
-function SidebarNavItem({
+const SidebarNavItem = ({
   depth = 0,
   isActive,
   isCollapsed,
   isFocusable = true,
   item,
   onNavigate,
-}: SidebarNavItemProps) {
+}: SidebarNavItemProps) => {
   const pathname = usePathname();
   const Icon = item.icon;
   const hasChildren = Boolean(item.children?.length);
@@ -243,9 +246,9 @@ function SidebarNavItem({
       ) : null}
     </YStack>
   );
-}
+};
 
-function SidebarBrand({ title }: { title: string }) {
+const SidebarBrand = ({ title }: { title: string }) => {
   const isStudent = title.toLowerCase() === "student";
   const brandTitle = isStudent ? "The LMS" : `LMS ${title}`;
   const brandSubtitle = isStudent
@@ -301,7 +304,7 @@ function SidebarBrand({ title }: { title: string }) {
   );
 }
 
-function SidebarSupportCard() {
+const SidebarSupportCard = ()  =>{
   return (
     <YStack
       className="lms-sidebar-support"
@@ -324,13 +327,13 @@ function SidebarSupportCard() {
   );
 }
 
-export function WorkspaceSidebar({
+export const WorkspaceSidebar = ({
   isMobileOpen,
   navigation,
   onMobileClose,
   title,
   variant = "desktop",
-}: WorkspaceSidebarProps) {
+}: WorkspaceSidebarProps) => {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;

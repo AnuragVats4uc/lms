@@ -3,11 +3,11 @@
 import WorkspaceLayout  from "./WorkspaceLayout";
 import { studentNavigation } from "./navigation";
 
-export function StudentLayout({
+export const StudentLayout = ({
   children,
 }: {
   children: React.ReactNode;
-}) {
+})  =>{
   return (
     <WorkspaceLayout
       navigation={studentNavigation}

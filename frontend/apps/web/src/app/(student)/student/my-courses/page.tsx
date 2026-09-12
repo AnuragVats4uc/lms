@@ -1,5 +1,7 @@
-import { StudentCoursesPage } from "@/features/student/courses/StudentCoursesPage";
+import { StudentCoursesPage } from "@/features/student/courses";
 
-export default function Page() {
+const Page = () => {
   return <StudentCoursesPage />;
-}
+};
+
+export default Page;

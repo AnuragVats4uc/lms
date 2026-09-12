@@ -1,0 +1,234 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
+import { ExternalLink, FileText } from "lucide-react";
+import { getApiErrorMessage, teacherApi } from "@repo/api";
+import type { TeacherDashboardRecentResource } from "@repo/types";
+import { PageContainer } from "@repo/ui/dashboard";
+import { DataTable, type DataTableColumn } from "@/components/DataTable";
+import { CrudPageHeader, CrudToolbar } from "@/features/shared/crud";
+import {
+  isManagedResourceDocument,
+  openManagedResourceDocument,
+} from "@/features/resources/openManagedResourceDocument";
+import { createResourceColumns } from "./TeacherResourceColumns";
+
+const statusOptions = [
+  { label: "All statuses", value: "" },
+  { label: "Published", value: "PUBLISHED" },
+  { label: "Draft", value: "DRAFT" },
+  { label: "Archived", value: "ARCHIVED" },
+];
+
+const publishedOptions = [
+  { label: "All visibility", value: "" },
+  { label: "Published", value: "true" },
+  { label: "Unpublished", value: "false" },
+];
+
+export const TeacherResourcesPage = () => {
+  const searchParams = useSearchParams();
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
+  const [sessionCourseId, setSessionCourseId] = useState("");
+  const [resourceTypeId, setResourceTypeId] = useState("");
+  const [status, setStatus] = useState("");
+  const [published, setPublished] = useState("");
+
+  const coursesQuery = useQuery({
+    queryFn: () => teacherApi.findCourses({ limit: 100, page: 1 }),
+    queryKey: ["teacher-resource-course-options"],
+    staleTime: 60_000,
+  });
+
+  const resourceTypesQuery = useQuery({
+    queryFn: teacherApi.findResourceTypes,
+    queryKey: ["teacher-resource-types"],
+    staleTime: 300_000,
+  });
+
+  const resourcesQuery = useQuery({
+    queryFn: () =>
+      teacherApi.findResources({
+        limit,
+        page,
+        published: published ? published === "true" : undefined,
+        resourceTypeId: resourceTypeId ? Number(resourceTypeId) : undefined,
+        search: search || undefined,
+        sessionCourseId: sessionCourseId ? Number(sessionCourseId) : undefined,
+        status: status || undefined,
+      }),
+    queryKey: [
+      "teacher-resources",
+      page,
+      limit,
+      search,
+      sessionCourseId,
+      resourceTypeId,
+      status,
+      published,
+    ],
+    staleTime: 60_000,
+  });
+
+  const columns = useMemo<DataTableColumn<TeacherDashboardRecentResource>[]>(
+    () => createResourceColumns(),
+    [],
+  );
+
+  const data = resourcesQuery.data;
+
+  const courseOptions = [
+    { label: "All courses", value: "" },
+    ...(coursesQuery.data?.items.map((course) => ({
+      label: course.title,
+      value: String(course.sessionCourseId),
+    })) ?? []),
+  ];
+
+  const typeOptions = [
+    { label: "All types", value: "" },
+    ...(resourceTypesQuery.data?.map((type) => ({
+      label: type.name,
+      value: String(type.id),
+    })) ?? []),
+  ];
+
+  const toolbarFilters = [
+    { id: "course", label: "Course", options: courseOptions },
+    { id: "type", label: "Type", options: typeOptions },
+    { id: "status", label: "Status", options: statusOptions },
+    { id: "published", label: "Visibility", options: publishedOptions },
+  ];
+
+  const toolbarValues = {
+    course: sessionCourseId,
+    published,
+    status,
+    type: resourceTypeId,
+  };
+
+  const tableActions = [
+    {
+      icon: <ExternalLink aria-hidden="true" size={15} />,
+      id: "open",
+      label: "Open",
+      onAction: (resource: TeacherDashboardRecentResource) => {
+        const document = {
+          ...resource,
+          folderId: resource.folder.id,
+        };
+        if (resource.documentUrl && isManagedResourceDocument(document)) {
+          void openManagedResourceDocument(document);
+          return;
+        }
+        const href = resource.documentUrl ?? resource.videoUrl;
+        if (href) window.open(href, "_blank", "noopener,noreferrer");
+      },
+    },
+  ];
+
+  const tableEmptyState = {
+    description:
+      search || sessionCourseId || resourceTypeId || status || published
+        ? "No resources match the current filters."
+        : "No resources are available for your assigned courses.",
+    icon: <FileText aria-hidden="true" size={28} />,
+    title:
+      search || sessionCourseId || resourceTypeId || status || published
+        ? "No matching resources"
+        : "No resources found",
+  };
+
+  const tableError = resourcesQuery.isError
+    ? {
+        description: getApiErrorMessage(
+          resourcesQuery.error,
+          "The resource list could not be loaded.",
+        ),
+        onRetry: () => void resourcesQuery.refetch(),
+        title: "Unable to load resources",
+      }
+    : null;
+
+  const tablePagination = {
+    entityLabel: "resources",
+    mode: "server" as any,
+    page,
+    pageSize: limit,
+    pageSizeOptions: [10, 25, 50],
+    total: data?.meta.total ?? 0,
+    totalPages: data?.meta.totalPages ?? 0,
+  };
+
+  const handleOnClear = () => {
+    setSearch("");
+    setSessionCourseId("");
+    setResourceTypeId("");
+    setStatus("");
+    setPublished("");
+    setPage(1);
+  };
+
+  const handleOnFilterChange = (id: string, value: string) => {
+    if (id === "course") setSessionCourseId(value);
+    if (id === "type") setResourceTypeId(value);
+    if (id === "status") setStatus(value);
+    if (id === "published") setPublished(value);
+    setPage(1);
+  };
+
+  const handleOnSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const handlePageSizeChange = (nextLimit: number) => {
+    setLimit(nextLimit);
+    setPage(1);
+  };
+
+  return (
+    <PageContainer>
+      <CrudPageHeader
+        canCreate={false}
+        createLabel=""
+        description="Browse resources that belong to your assigned session courses."
+        isFetching={resourcesQuery.isFetching}
+        onCreate={() => undefined}
+        onRefresh={() => void resourcesQuery.refetch()}
+        title="Resources"
+      />
+      <CrudToolbar
+        entityLabel="Resources"
+        filters={toolbarFilters}
+        loading={resourcesQuery.isFetching}
+        onClear={handleOnClear}
+        onFilterChange={handleOnFilterChange}
+        onSearch={handleOnSearch}
+        searchPlaceholder="Search resources..."
+        searchValue={search}
+        values={toolbarValues}
+      />
+      <DataTable<TeacherDashboardRecentResource>
+        actions={tableActions}
+        columns={columns}
+        data={data?.items ?? []}
+        emptyState={tableEmptyState}
+        error={tableError}
+        getRowId={(resource) => resource.id}
+        loading={resourcesQuery.isLoading}
+        onPageChange={setPage}
+        onPageSizeChange={handlePageSizeChange}
+        pagination={tablePagination}
+        renderToolbar={() => null}
+        searchable={false}
+        stickyFirstColumn
+        stickyHeader
+      />
+    </PageContainer>
+  );
+};

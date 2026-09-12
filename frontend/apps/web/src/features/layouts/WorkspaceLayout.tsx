@@ -12,7 +12,9 @@ import {
   Menu,
   UserRound,
 } from "lucide-react";
+
 import { Button, DashboardHeader, ScrollView, XStack, YStack } from "@repo/ui";
+
 import { useAuthSession, useLogout } from "@repo/auth";
 import { organizationsApi, studentsApi } from "@repo/api";
 
@@ -20,12 +22,51 @@ import { userHasPermission } from "@/features/shared/access";
 import type { NavigationItem } from "./navigation";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
 
+type WorkspaceKind = "admin" | "student" | "teacher";
+
 interface WorkspaceLayoutProps {
   children: ReactNode;
   navigation: NavigationItem[];
   title: string;
-  workspace?: "admin" | "student" | "teacher";
+  workspace: WorkspaceKind;
 }
+
+const COLORS = {
+  background: "#FCFDFD",
+  border: "#E1E7F0",
+  navy: "#0F1D3A",
+  emerald: "#059669",
+  muted: "#52627A",
+  profileIcon: "#435266",
+  danger: "#DC2626",
+};
+
+const WORKSPACE_ROUTES = {
+  admin: {
+    profile: "/admin/settings",
+    calendar: "/admin/sessions",
+    notifications: "/admin/settings",
+  },
+
+  student: {
+    profile: "/student/profile",
+    calendar: "/student/schedule",
+    notifications: "/student/notifications",
+  },
+
+  teacher: {
+    profile: "/teacher/dashboard",
+    calendar: "/teacher/courses",
+    notifications: "/teacher/dashboard",
+  },
+} satisfies Record<
+  WorkspaceKind,
+  {
+    profile: string;
+    calendar: string;
+    notifications: string;
+  }
+>;
 
 const WorkspaceLayout = ({
   children,
@@ -33,72 +74,181 @@ const WorkspaceLayout = ({
   title,
   workspace,
 }: WorkspaceLayoutProps) => {
-  const { currentUser } = useAuthSession();
-  const logoutMutation = useLogout();
   const router = useRouter();
   const pathname = usePathname();
+
+  const { currentUser } = useAuthSession();
+  const logoutMutation = useLogout();
+
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const workspaceKind = workspace ?? title.toLowerCase();
-  const isAdminWorkspace = workspaceKind === "admin";
-  const isStudentWorkspace = workspaceKind === "student";
-  const isTeacherWorkspace = workspaceKind === "teacher";
+
+  /*
+   * --------------------------------------------------------------------------
+   * Workspace
+   * --------------------------------------------------------------------------
+   */
+
+  const isAdmin = workspace === "admin";
+  const isStudent = workspace === "student";
+  const isTeacher = workspace === "teacher";
+
   const isSuperAdmin = Boolean(currentUser?.roles.includes("SUPER_ADMIN"));
-  const isStudentStandaloneRoute = pathname === "/student";
-  const visibleNavigation = navigation.filter(
-    (item) =>
-      (!item.superAdminOnly || isSuperAdmin) &&
-      (!item.permission || userHasPermission(currentUser, item.permission)),
+
+  const routes = WORKSPACE_ROUTES[workspace];
+
+  /*
+   * --------------------------------------------------------------------------
+   * Routes without workspace shell
+   * --------------------------------------------------------------------------
+   */
+
+  const isStudentLandingRoute = pathname === "/student";
+
+  const isExamAttemptRoute = /^\/student\/exam-attempts\/[^/]+\/?$/.test(
+    pathname,
   );
+
+  const shouldHideWorkspaceShell = isStudentLandingRoute || isExamAttemptRoute;
+
+  /*
+   * --------------------------------------------------------------------------
+   * Navigation
+   * --------------------------------------------------------------------------
+   */
+
+  const visibleNavigation = navigation.filter((item) => {
+    const hasSuperAdminAccess = !item.superAdminOnly || isSuperAdmin;
+
+    const hasPermission =
+      !item.permission || userHasPermission(currentUser, item.permission);
+
+    return hasSuperAdminAccess && hasPermission;
+  });
+
+  /*
+   * --------------------------------------------------------------------------
+   * Organization
+   * --------------------------------------------------------------------------
+   */
+
   const organizationQuery = useQuery({
-    enabled: isAdminWorkspace && currentUser?.organizationId != null,
+    enabled: isAdmin && currentUser?.organizationId != null,
+
     queryFn: () =>
       organizationsApi.findOne(currentUser?.organizationId as number),
+
     queryKey: ["workspace-organization", currentUser?.organizationId],
+
     staleTime: 60_000,
   });
+
+  /*
+   * --------------------------------------------------------------------------
+   * Student dashboard
+   * --------------------------------------------------------------------------
+   */
+
   const studentDashboardQuery = useQuery({
-    enabled:
-      isStudentWorkspace && !isStudentStandaloneRoute && currentUser != null,
+    enabled: isStudent && !isStudentLandingRoute && currentUser != null,
+
     queryFn: studentsApi.findMyDashboard,
+
     queryKey: ["student-dashboard"],
+
     staleTime: 60_000,
   });
-  const profileName = currentUser
-    ? `${currentUser.firstName} ${currentUser.lastName ?? ""}`.trim()
-    : "User";
-  const studentProfile = studentDashboardQuery.data?.student;
+
+  /*
+   * --------------------------------------------------------------------------
+   * Student notifications
+   * --------------------------------------------------------------------------
+   */
+
   const unreadNotificationsQuery = useQuery({
-    enabled:
-      isStudentWorkspace && !isStudentStandaloneRoute && currentUser != null,
+    enabled: isStudent && !isStudentLandingRoute && currentUser != null,
+
     queryFn: studentsApi.findMyUnreadNotificationCount,
+
     queryKey: ["student-notifications", "unread-count"],
+
     staleTime: 30_000,
+
     refetchInterval: 60_000,
   });
-  const unreadStudentNotifications = unreadNotificationsQuery.data?.unread ?? 0;
-  const profileRole =
-    studentProfile?.batch ??
-    currentUser?.role ??
-    currentUser?.roles?.[0] ??
-    (isStudentWorkspace ? "Student" : "Admin");
-  const headerActions = isStudentWorkspace
-    ? [
-        {
-          icon: <CalendarDays color="#059669" size={20} strokeWidth={2.1} />,
-          label: "Open calendar",
-        },
-        {
-          icon: <Bell color="#0F1D3A" size={20} strokeWidth={2.1} />,
-          label: "View notifications",
-          notificationCount: unreadStudentNotifications,
-        },
-      ]
-    : [
-        {
-          icon: <CircleHelp color="#0F1D3A" size={20} strokeWidth={2.1} />,
-          label: "Open help",
-        },
-      ];
+
+  const unreadNotificationCount = unreadNotificationsQuery.data?.unread ?? 0;
+
+  /*
+   * --------------------------------------------------------------------------
+   * Profile
+   * --------------------------------------------------------------------------
+   */
+
+  const studentProfile = studentDashboardQuery.data?.student;
+
+  const fallbackProfileName = currentUser
+    ? [currentUser.firstName, currentUser.lastName].filter(Boolean).join(" ")
+    : "User";
+
+  const profile = {
+    name: studentProfile?.name ?? fallbackProfileName,
+
+    role:
+      studentProfile?.batch ??
+      currentUser?.role ??
+      currentUser?.roles?.[0] ??
+      (isStudent ? "Student" : "Admin"),
+  };
+
+  /*
+   * --------------------------------------------------------------------------
+   * Organization label
+   * --------------------------------------------------------------------------
+   */
+
+  const organizationLabel = !isAdmin
+    ? undefined
+    : (organizationQuery.data?.name ??
+      (currentUser?.organizationId ? "Organization" : "All organizations"));
+
+  /*
+   * --------------------------------------------------------------------------
+   * Handlers
+   * --------------------------------------------------------------------------
+   */
+
+  const openMobileNavigation = () => {
+    setIsMobileNavOpen(true);
+  };
+
+  const closeMobileNavigation = () => {
+    setIsMobileNavOpen(false);
+  };
+
+  const handleProfilePress = () => {
+    router.push(routes.profile);
+  };
+
+  const handleOrganizationPress = () => {
+    if (isAdmin && isSuperAdmin) {
+      router.push("/admin/organizations");
+      return;
+    }
+
+    router.push(routes.profile);
+  };
+
+  const handleTeacherSearch = (value: string) => {
+    const search = value.trim();
+
+    if (!search) {
+      router.push("/teacher/resources");
+      return;
+    }
+
+    router.push(`/teacher/resources?search=${encodeURIComponent(search)}`);
+  };
+
   const handleLogout = () => {
     if (logoutMutation.isPending) {
       return;
@@ -107,44 +257,142 @@ const WorkspaceLayout = ({
     void logoutMutation.mutateAsync();
   };
 
-  if (
-    isStudentStandaloneRoute ||
-    /^\/student\/exam-attempts\/[^/]+\/?$/.test(pathname)
-  ) {
+  /*
+   * --------------------------------------------------------------------------
+   * Header actions
+   * --------------------------------------------------------------------------
+   */
+
+  const headerActions = isStudent
+    ? [
+        {
+          icon: (
+            <CalendarDays color={COLORS.emerald} size={20} strokeWidth={2.1} />
+          ),
+          label: "Open calendar",
+          onPress: () => router.push(routes.calendar),
+        },
+
+        {
+          icon: <Bell color={COLORS.navy} size={20} strokeWidth={2.1} />,
+          label: "View notifications",
+          notificationCount: unreadNotificationCount,
+          onPress: () => router.push(routes.notifications),
+        },
+      ]
+    : [
+        {
+          icon: <CircleHelp color={COLORS.navy} size={20} strokeWidth={2.1} />,
+          label: "Open help",
+          onPress: handleProfilePress,
+        },
+      ];
+
+  /*
+   * --------------------------------------------------------------------------
+   * Profile dropdown actions
+   * --------------------------------------------------------------------------
+   */
+
+  const profileActions = [
+    {
+      icon: (
+        <UserRound aria-hidden="true" color={COLORS.profileIcon} size={15} />
+      ),
+
+      id: "profile",
+      label: "Profile",
+      onPress: handleProfilePress,
+    },
+
+    {
+      closeOnPress: false,
+      destructive: true,
+      disabled: logoutMutation.isPending,
+
+      icon: (
+        <LogOut
+          aria-hidden="true"
+          color={COLORS.danger}
+          size={15}
+          strokeWidth={2.1}
+        />
+      ),
+
+      id: "logout",
+
+      label: logoutMutation.isPending ? "Logging out" : "Logout",
+
+      loading: logoutMutation.isPending,
+
+      onPress: handleLogout,
+    },
+  ];
+
+  /*
+   * --------------------------------------------------------------------------
+   * Workspace CSS classes
+   * --------------------------------------------------------------------------
+   */
+
+  const workspaceClassName = [
+    "lms-workspace-shell",
+
+    isAdmin && "lms-admin-workspace",
+
+    isStudent && "lms-student-workspace",
+
+    isTeacher && "lms-teacher-workspace",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  /*
+   * --------------------------------------------------------------------------
+   * Standalone pages
+   * --------------------------------------------------------------------------
+   */
+
+  if (shouldHideWorkspaceShell) {
     return <>{children}</>;
   }
 
+  /*
+   * --------------------------------------------------------------------------
+   * Render
+   * --------------------------------------------------------------------------
+   */
+
   return (
     <XStack
-      className={[
-        "lms-workspace-shell",
-        isAdminWorkspace ? "lms-admin-workspace" : "",
-        isStudentWorkspace ? "lms-student-workspace" : "",
-        isTeacherWorkspace ? "lms-teacher-workspace" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className={workspaceClassName}
       style={{
-        backgroundColor: "#FCFDFD",
+        backgroundColor: COLORS.background,
         height: "100dvh",
         overflow: "hidden",
       }}
     >
+      {/* Desktop sidebar */}
+
       <WorkspaceSidebar navigation={visibleNavigation} title={title} />
+
+      {/* Mobile sidebar */}
 
       <WorkspaceSidebar
         isMobileOpen={isMobileNavOpen}
         navigation={visibleNavigation}
-        onMobileClose={() => setIsMobileNavOpen(false)}
+        onMobileClose={closeMobileNavigation}
         title={title}
         variant="mobile"
       />
+
+      {/* Main workspace */}
 
       <YStack
         className="lms-workspace-main"
         flex={1}
         style={{
-          backgroundColor: "#FCFDFD",
+          backgroundColor: COLORS.background,
           height: "100dvh",
           minHeight: 0,
           minWidth: 0,
@@ -152,131 +400,32 @@ const WorkspaceLayout = ({
         }}
       >
         <DashboardHeader
-          actions={headerActions.map((action) => ({
-            ...action,
-            onPress: () => {
-              if (action.label === "Open calendar") {
-                router.push(
-                  isStudentWorkspace
-                    ? "/student/schedule"
-                    : isTeacherWorkspace
-                      ? "/teacher/courses"
-                      : "/admin/sessions",
-                );
-              } else if (action.label === "View notifications") {
-                router.push(
-                  isStudentWorkspace
-                    ? "/student/notifications"
-                    : isTeacherWorkspace
-                      ? "/teacher/dashboard"
-                      : "/admin/settings",
-                );
-              } else {
-                router.push(
-                  isStudentWorkspace
-                    ? "/student/profile"
-                    : isTeacherWorkspace
-                      ? "/teacher/dashboard"
-                      : "/admin/settings",
-                );
-              }
-            },
-          }))}
+          actions={headerActions}
           leadingAction={
             <Button
               aria-label="Open navigation"
               background="#FFFFFF"
-              borderColor="#E1E7F0"
+              borderColor={COLORS.border as any}
               borderWidth={1}
               height={44}
-              onPress={() => setIsMobileNavOpen(true)}
+              onPress={openMobileNavigation}
               rounded="$4"
               width={44}
             >
-              <Menu aria-hidden="true" color="#0F1D3A" size={20} />
+              <Menu aria-hidden="true" color={COLORS.navy} size={20} />
             </Button>
           }
-          onSearchSubmit={
-            isTeacherWorkspace
-              ? (value) => {
-                  const search = value.trim();
-                  router.push(
-                    search
-                      ? `/teacher/resources?search=${encodeURIComponent(search)}`
-                      : "/teacher/resources",
-                  );
-                }
-              : undefined
-          }
+          onSearchSubmit={isTeacher ? handleTeacherSearch : undefined}
           organizationIcon={
-            <Building2 color="#52627A" size={20} strokeWidth={2} />
+            <Building2 color={COLORS.muted} size={20} strokeWidth={2} />
           }
-          organizationLabel={
-            !isAdminWorkspace
-              ? undefined
-              : (organizationQuery.data?.name ??
-                (currentUser?.organizationId
-                  ? "Organization"
-                  : "All organizations"))
-          }
-          organizationOnPress={() =>
-            router.push(
-              isStudentWorkspace
-                ? "/student/profile"
-                : isTeacherWorkspace
-                  ? "/teacher/dashboard"
-                  : isSuperAdmin
-                    ? "/admin/organizations"
-                    : "/admin/settings",
-            )
-          }
-          profile={{
-            name: studentProfile?.name ?? profileName,
-            role: profileRole,
-          }}
-          profileActions={[
-            {
-              icon: <UserRound aria-hidden="true" color="#435266" size={15} />,
-              id: "profile",
-              label: "Profile",
-              onPress: () =>
-                router.push(
-                  isStudentWorkspace
-                    ? "/student/profile"
-                    : isTeacherWorkspace
-                      ? "/teacher/dashboard"
-                      : "/admin/settings",
-                ),
-            },
-            {
-              closeOnPress: false,
-              destructive: true,
-              disabled: logoutMutation.isPending,
-              icon: (
-                <LogOut
-                  aria-hidden="true"
-                  color="#DC2626"
-                  size={15}
-                  strokeWidth={2.1}
-                />
-              ),
-              id: "logout",
-              label: logoutMutation.isPending ? "Logging out" : "Logout",
-              loading: logoutMutation.isPending,
-              onPress: handleLogout,
-            },
-          ]}
-          profileOnPress={() =>
-            router.push(
-              isStudentWorkspace
-                ? "/student/profile"
-                : isTeacherWorkspace
-                  ? "/teacher/dashboard"
-                  : "/admin/settings",
-            )
-          }
+          organizationLabel={organizationLabel}
+          organizationOnPress={handleOrganizationPress}
+          profile={profile}
+          profileActions={profileActions}
+          profileOnPress={handleProfilePress}
           searchPlaceholder={
-            isTeacherWorkspace
+            isTeacher
               ? "Search your courses, resources, or students..."
               : undefined
           }
@@ -288,7 +437,7 @@ const WorkspaceLayout = ({
             className="lms-workspace-content"
             p="$5"
             style={{
-              backgroundColor: "#FCFDFD",
+              backgroundColor: COLORS.background,
               minHeight: "100%",
               minWidth: 0,
               width: "100%",

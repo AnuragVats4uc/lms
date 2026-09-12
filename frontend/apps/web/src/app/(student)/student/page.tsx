@@ -1,5 +1,7 @@
 import { StudentLandingPage } from "@/features/student/landing/StudentLandingPage";
 
-export default function Page() {
+const Page = () => {
   return <StudentLandingPage />;
-}
+};
+
+export default Page;

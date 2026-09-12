@@ -1,4 +1,4 @@
-import { TeacherCoursesPage } from "@/features/teacher/pages/TeacherCoursesPage";
+import { TeacherCoursesPage } from "@/features/teacher";
 
 export default function TeacherCoursesRoute() {
   return <TeacherCoursesPage />;
