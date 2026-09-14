@@ -1,0 +1,1 @@
+export { StudentFolderResourcesPage } from "./StudentFolderResourcesPage";

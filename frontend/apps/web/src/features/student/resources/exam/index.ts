@@ -1,0 +1,1 @@
+export { StudentExamResourcePage } from "./StudentExamResourcePage";
