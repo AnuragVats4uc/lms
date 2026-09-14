@@ -1,0 +1,1 @@
+export { StudentDocumentViewPage } from "./StudentDocumentViewPage";
