@@ -1,0 +1,3 @@
+export const PROGRESS_SAVE_INTERVAL_MS = 15_000;
+export const DESCRIPTION_PREVIEW_LENGTH = 310;
+export const PLAYBACK_SPEEDS = [0.75, 1, 1.25, 1.5, 1.75, 2];
