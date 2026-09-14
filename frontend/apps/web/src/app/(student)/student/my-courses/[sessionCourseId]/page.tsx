@@ -1,4 +1,4 @@
-import { StudentCourseFoldersPage } from "@/features/student/courses/StudentCourseFoldersPage";
+import { StudentCourseFoldersPage } from "@/features/student/courses/folders/StudentCourseFoldersPage";
 
 export default async function Page({
   params,

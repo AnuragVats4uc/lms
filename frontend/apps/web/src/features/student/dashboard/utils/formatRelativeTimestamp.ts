@@ -1,14 +1,3 @@
-import { StudentCourseItem } from "@repo/types";
-
-export const clampPercentage = (value: number) => {
-  if (!Number.isFinite(value)) return 0;
-  return Math.min(100, Math.max(0, Math.round(value)));
-};
-
-export const getCompactActionLabel = (course: StudentCourseItem) => {
-  return course.completionPercentage > 0 ? "Continue" : "Start";
-};
-
 export const formatRelativeTimestamp = (value: string) => {
   const date = new Date(value);
   const delta = Date.now() - date.getTime();

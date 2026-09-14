@@ -1,4 +1,4 @@
-import { Button,Text, YStack } from "@repo/ui";
+import { Button, Text, YStack } from "@repo/ui";
 import { HelpCircle, RefreshCw } from "lucide-react";
 
 export const StudentCoursesError = ({ onRetry }: { onRetry: () => void }) => {

@@ -1,19 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import ReactPlayer from "react-player";
+import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import type { StudentDashboardBanner } from "@repo/types";
 
-import { studentDashboardBannersApi } from "@repo/api";
-import type {
-  DashboardBannerEventType,
-  StudentDashboardBanner,
-} from "@repo/types";
-
-import { useProtectedMediaUrl } from "@/hooks/useProtectedMediaUrl";
-
-import { getBannerPlaybackOptions } from "./bannerPlayback";
-import styles from "./StudentDashboardBannerCarousel.module.css";
+import { StudentDashboardBannerMedia } from "./components/StudentDashboardBannerMedia";
+import { useDashboardBannerTracking } from "./hooks/useDashboardBannerTracking";
+import styles from "../StudentDashboardBannerCarousel.module.css";
 
 export function StudentDashboardBannerCarousel({
   banners,
@@ -21,21 +14,17 @@ export function StudentDashboardBannerCarousel({
   banners: StudentDashboardBanner[];
 }) {
   const [active, setActive] = useState(0);
-  const seen = useRef(new Set<string>());
   const banner = banners[active];
+  const recordEvent = useDashboardBannerTracking(banner);
 
   useEffect(
     () =>
       setActive((value) => Math.min(value, Math.max(0, banners.length - 1))),
     [banners.length],
   );
-  useEffect(() => {
-    if (!banner || seen.current.has(banner.uuid)) return;
-    seen.current.add(banner.uuid);
-    record(banner, "DASHBOARD_BANNER_IMPRESSION");
-  }, [banner]);
 
   if (!banner) return null;
+
   const hasContent = Boolean(
     banner.title ||
     banner.description ||
@@ -47,7 +36,7 @@ export function StudentDashboardBannerCarousel({
   return (
     <section aria-label="Dashboard announcements" className={styles.carousel}>
       <article className={styles.banner} key={banner.uuid}>
-        <BannerMedia banner={banner} />
+        <StudentDashboardBannerMedia banner={banner} onEvent={recordEvent} />
         {hasContent ? <div className={styles.overlay} /> : null}
         {hasContent ? (
           <div className={styles.content}>
@@ -57,7 +46,7 @@ export function StudentDashboardBannerCarousel({
               <a
                 className={styles.cta}
                 href={banner.destinationUrl}
-                onClick={() => record(banner, "DASHBOARD_BANNER_CTA_CLICK")}
+                onClick={() => recordEvent("DASHBOARD_BANNER_CTA_CLICK")}
                 rel={banner.openInNewTab ? "noopener noreferrer" : undefined}
                 target={banner.openInNewTab ? "_blank" : undefined}
               >
@@ -106,70 +95,4 @@ export function StudentDashboardBannerCarousel({
       ) : null}
     </section>
   );
-}
-
-function BannerMedia({ banner }: { banner: StudentDashboardBanner }) {
-  const posterUrl = useProtectedMediaUrl(banner.posterUrl);
-  const mediaUrl = useProtectedMediaUrl(
-    banner.mediaType === "IMAGE" ? banner.mediaUrl : null,
-  );
-
-  if (banner.mediaType === "IMAGE") {
-    return (
-      <img
-        alt={banner.mediaAlt ?? banner.title}
-        className={styles.media}
-        src={mediaUrl}
-      />
-    );
-  }
-
-  if (banner.videoProvider === "EXTERNAL") {
-    return posterUrl ? (
-      <img
-        alt={banner.mediaAlt ?? banner.title}
-        className={styles.media}
-        src={posterUrl}
-      />
-    ) : (
-      <div className={styles.videoFallback}>
-        This video opens through the banner action.
-      </div>
-    );
-  }
-
-  const playback = getBannerPlaybackOptions(banner.autoplay, posterUrl);
-
-  return (
-    <ReactPlayer
-      className={styles.media}
-      controls={playback.controls}
-      height="100%"
-      light={playback.light}
-      loop={playback.loop}
-      muted={playback.muted}
-      onEnded={() => record(banner, "DASHBOARD_BANNER_VIDEO_COMPLETE")}
-      onPause={() => record(banner, "DASHBOARD_BANNER_VIDEO_PAUSE")}
-      onPlay={() => record(banner, "DASHBOARD_BANNER_VIDEO_PLAY")}
-      playing={playback.playing}
-      playsInline
-      src={banner.mediaUrl}
-      width="100%"
-    />
-  );
-}
-
-function record(
-  banner: StudentDashboardBanner,
-  eventType: DashboardBannerEventType,
-  position?: number,
-) {
-  void studentDashboardBannersApi
-    .recordEvent(
-      banner.uuid,
-      eventType,
-      crypto.randomUUID(),
-      position == null ? undefined : Math.max(0, Math.round(position)),
-    )
-    .catch(() => undefined);
 }

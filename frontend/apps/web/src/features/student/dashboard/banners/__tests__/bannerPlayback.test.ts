@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-const playbackModulePath = "./bannerPlayback.ts";
+const playbackModulePath = "../utils/bannerPlayback.ts";
 const { getBannerPlaybackOptions } = await import(playbackModulePath);
 
 test("autoplay banners start muted, loop, and hide controls", () => {

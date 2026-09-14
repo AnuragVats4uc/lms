@@ -5,9 +5,13 @@ import { useRouter } from "next/router";
 import { Play } from "lucide-react";
 import { CourseVisual } from "./CourseVisual";
 import { CircularProgress } from "./CircularProgress";
-import {  CourseProgressBar } from "./CourseProgressBar";
+import { CourseProgressBar } from "./CourseProgressBar";
 import { CourseResourceSummary } from "./CourseResourceSummary";
-import { clampPercentage, formatRelativeTimestamp, getCompactActionLabel } from "../utils/courses.list.util";
+import {
+  clampPercentage,
+  formatRelativeTimestamp,
+  getCompactActionLabel,
+} from "../utils/courses.list.util";
 import { CourseStatusBadge } from "./CourseStatusBadge";
 
 export const StudentCourseCard = ({
