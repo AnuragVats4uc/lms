@@ -1,1 +1,4 @@
-export { SessionCoursesPage as default, SessionCoursesPage } from "./SessionCoursesPage";
+export {
+  SessionCoursesPage as default,
+  SessionCoursesPage,
+} from "./SessionCoursesPage";
