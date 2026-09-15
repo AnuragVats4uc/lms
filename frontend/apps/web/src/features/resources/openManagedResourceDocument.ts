@@ -7,17 +7,19 @@ type ManagedDocumentIdentity = {
   documentUrl: string | null;
 };
 
-export function isManagedResourceDocument(resource: ManagedDocumentIdentity) {
+export const isManagedResourceDocument = (
+  resource: ManagedDocumentIdentity,
+) => {
   return Boolean(
     resource.documentUrl?.includes(
       `/folders/${resource.folderId}/resources/${resource.id}/${resource.uuid}/file`,
     ),
   );
-}
+};
 
-export async function openManagedResourceDocument(
+export const openManagedResourceDocument = async (
   resource: ManagedDocumentIdentity,
-) {
+) => {
   const preview = window.open("about:blank", "_blank");
   try {
     const file = await resourcesApi.findDocumentFile(
@@ -35,4 +37,4 @@ export async function openManagedResourceDocument(
       "The document could not be opened. Please retry or contact your administrator.",
     );
   }
-}
+};

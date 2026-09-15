@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { studentDashboardBannersApi } from "@repo/api";
 
-export function useProtectedMediaUrl(source: string | null | undefined) {
+export const useProtectedMediaUrl = (source: string | null | undefined) => {
   const [resolved, setResolved] = useState(source ?? "");
 
   useEffect(() => {
@@ -29,4 +29,4 @@ export function useProtectedMediaUrl(source: string | null | undefined) {
   }, [source]);
 
   return resolved;
-}
+};

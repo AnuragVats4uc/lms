@@ -1,9 +1,9 @@
 import type { AuthUser } from "@repo/auth";
 
-export function userHasPermission(
+export const userHasPermission =(
   user: AuthUser | null,
   permission: string
-) {
+) =>{
   if (!user) {
     return false;
   }
@@ -14,7 +14,7 @@ export function userHasPermission(
   );
 }
 
-export function getUserDisplayName(user: AuthUser | null) {
+export const getUserDisplayName = (user: AuthUser | null) => {
   if (!user) {
     return "";
   }
