@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  DashboardStats,
-  PageContainer,
-} from "@repo/ui/dashboard";
+import { DashboardStats, PageContainer } from "@repo/ui/dashboard";
 import type {
   BreadcrumbItem,
   FolderCardProps,
@@ -13,12 +10,16 @@ import type {
   TreeNodeItem,
   UploadDropzoneProps,
 } from "@repo/ui/dashboard";
-import type { DashboardContext, DashboardContextOptions, DashboardQuery } from "@repo/types";
+import type {
+  DashboardContext,
+  DashboardContextOptions,
+  DashboardQuery,
+} from "@repo/types";
 
-import { ResourceManagementSection } from "./ResourceManagementSection";
-import { RolesPermissionSection } from "./RolesPermissionSection";
+import { ResourceManagementSection } from "./components/resources/ResourceManagementSection";
+import { RolesPermissionSection } from "./components/roles/RolesPermissionSection";
 
-interface DashboardPageProps {
+export interface DashboardViewProps {
   breadcrumbs: BreadcrumbItem[];
   context: DashboardContext;
   selectedContext: DashboardQuery;
@@ -42,7 +43,7 @@ interface DashboardPageProps {
   upload: UploadDropzoneProps;
 }
 
-export function DashboardPage({
+export const DashboardView = ({
   breadcrumbs,
   context,
   selectedContext,
@@ -64,13 +65,10 @@ export function DashboardPage({
   treeOnly,
   refreshing,
   upload,
-}: DashboardPageProps) {
+}: DashboardViewProps) => {
   return (
     <PageContainer>
-      <DashboardStats
-        quickActions={quickActions}
-        stats={statistics}
-      />
+      <DashboardStats quickActions={quickActions} stats={statistics} />
       <ResourceManagementSection
         breadcrumbs={breadcrumbs}
         context={context}
@@ -94,4 +92,4 @@ export function DashboardPage({
       {/* <HelpCard {...support} /> */}
     </PageContainer>
   );
-}
+};

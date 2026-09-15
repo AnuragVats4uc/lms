@@ -6,15 +6,15 @@ import { RoleGrid } from "@repo/ui/dashboard";
 import { Button, Text, XStack, YStack } from "@repo/ui";
 import type { RoleCardProps } from "@repo/ui/dashboard";
 
-interface RolesPermissionSectionProps {
+export interface RolesPermissionSectionProps {
   onViewAllRoles?: () => void;
   roles: RoleCardProps[];
 }
 
-export function RolesPermissionSection({
+export const RolesPermissionSection = ({
   onViewAllRoles,
   roles,
-}: RolesPermissionSectionProps) {
+}: RolesPermissionSectionProps) => {
   return (
     <AppCard
       background="#FFFFFF"
@@ -115,4 +115,4 @@ export function RolesPermissionSection({
       </YStack>
     </AppCard>
   );
-}
+};
