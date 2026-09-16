@@ -3,7 +3,6 @@
 import type { ReactNode, ComponentProps } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Card, Text, XStack, YStack } from "@repo/ui";
-import React from "react";
 
 interface PaginatedResult<T> {
   items: T[];
@@ -51,7 +50,7 @@ const GREEN_GRADIENT_HOVER =
 const GREEN_GRADIENT_PRESS =
   "linear-gradient(135deg, #064E3B 0%, #047857 55%, #059669 100%)";
 
-export function DomainListPage<T>({
+export const DomainListPage = <T,>({
   description,
   emptyLabel,
   fields,
@@ -59,11 +58,12 @@ export function DomainListPage<T>({
   queryKey,
   title,
   buttonGroup,
-}: DomainListPageProps<T>) {
+}: DomainListPageProps<T>) => {
   const query = useQuery({
     queryFn,
     queryKey,
   });
+
   const data = query.data;
 
   return (
@@ -79,10 +79,12 @@ export function DomainListPage<T>({
           <Text color="#172033" fontSize={26} fontWeight="700">
             {title}
           </Text>
+
           <Text color="#647084" fontSize={14}>
             {description}
           </Text>
         </YStack>
+
         <XStack gap="$3">
           {buttonGroup?.map(
             (
@@ -95,7 +97,9 @@ export function DomainListPage<T>({
               },
               index,
             ) => {
-              const isDisabled = query.isFetching || buttonProps.disabled;
+              const isDisabled =
+                query.isFetching || buttonProps.disabled;
+
               return (
                 <Button
                   key={`${label}-${index}`}
@@ -166,8 +170,10 @@ export function DomainListPage<T>({
           <Text color="#172033" fontWeight="700">
             {data?.meta.total ?? 0} records
           </Text>
+
           <Text color="#647084" fontSize={13}>
-            Page {data?.meta.page ?? 1} of {data?.meta.totalPages ?? 1}
+            Page {data?.meta.page ?? 1} of{" "}
+            {data?.meta.totalPages ?? 1}
           </Text>
         </XStack>
 
@@ -202,9 +208,14 @@ export function DomainListPage<T>({
                       gap="$1"
                       style={{ minWidth: 160 }}
                     >
-                      <Text color="#647084" fontSize={12} fontWeight="700">
+                      <Text
+                        color="#647084"
+                        fontSize={12}
+                        fontWeight="700"
+                      >
                         {field.label}
                       </Text>
+
                       <Text color="#263244" fontSize={14}>
                         {field.render(item)}
                       </Text>
@@ -218,4 +229,4 @@ export function DomainListPage<T>({
       </Card>
     </YStack>
   );
-}
+};

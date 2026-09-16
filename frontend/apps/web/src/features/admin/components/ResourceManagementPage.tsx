@@ -139,7 +139,7 @@ export interface ResourceManagementPageProps<
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
-export function ResourceManagementPage<
+export const ResourceManagementPage = <
   Item extends { id: number },
   Form extends FieldValues,
   CreatePayload,
@@ -199,7 +199,7 @@ export function ResourceManagementPage<
   additionalDialogs,
   enabled = true,
   emptyDescription,
-}: ResourceManagementPageProps<Item, Form, CreatePayload, UpdatePayload>) {
+}: ResourceManagementPageProps<Item, Form, CreatePayload, UpdatePayload>) => {
   const { currentUser } = useAuthSession();
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -1029,4 +1029,4 @@ export function ResourceManagementPage<
       <CrudToast onDismiss={() => setToast(null)} toast={toast} />
     </YStack>
   );
-}
+};

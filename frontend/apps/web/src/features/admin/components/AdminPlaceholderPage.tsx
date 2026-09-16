@@ -7,17 +7,13 @@ interface AdminPlaceholderPageProps {
   description: string;
 }
 
-export function AdminPlaceholderPage({
+export const AdminPlaceholderPage = ({
   title,
   description,
-}: AdminPlaceholderPageProps) {
+}: AdminPlaceholderPageProps) => {
   return (
     <YStack gap="$4">
-      <Text
-        color="#172033"
-        fontSize={26}
-        fontWeight="700"
-      >
+      <Text color="#172033" fontSize={26} fontWeight="700">
         {title}
       </Text>
       <Card
@@ -33,4 +29,4 @@ export function AdminPlaceholderPage({
       </Card>
     </YStack>
   );
-}
+};
