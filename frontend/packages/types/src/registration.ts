@@ -187,6 +187,7 @@ export interface UpdateRegistrationPageRequest extends Partial<CreateRegistratio
 }
 
 export interface PublicRegistrationSubmitRequest {
+  password?: string;
   firstName: string;
   lastName?: string;
   gender: string;
@@ -200,6 +201,7 @@ export interface PublicRegistrationSubmitRequest {
 }
 
 export interface PublicRegistrationSubmitResponse {
+  loginEmail?: string;
   successTitle: string;
   successMessage: string;
   student: {

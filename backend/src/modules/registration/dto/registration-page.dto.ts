@@ -385,6 +385,13 @@ export class UpdateRegistrationPageDto {
 }
 
 export class PublicRegistrationSubmitDto {
+  @ApiPropertyOptional({ minLength: 8, maxLength: 128 })
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  password?: string;
+
   @ApiProperty({ example: 'Rahul' })
   @Transform(({ value }: { value: unknown }) => trimString(value))
   @IsString()

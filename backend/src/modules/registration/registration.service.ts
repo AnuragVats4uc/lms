@@ -139,7 +139,7 @@ export class RegistrationService {
     }
 
     const password = await this.passwordService.hash(
-      randomBytes(18).toString('base64url'),
+      dto.password ?? randomBytes(18).toString('base64url'),
     );
     const email = dto.email ?? this.placeholderEmail(page, dto.phone);
     const result = await this.prisma.$transaction(async (tx) => {
@@ -215,7 +215,8 @@ export class RegistrationService {
         uuid: sessionCourse.uuid,
         name: sessionCourse.displayName ?? sessionCourse.course.name,
       })),
-      loginAvailable: Boolean(dto.email),
+      loginAvailable: Boolean(dto.email && dto.password),
+      loginEmail: dto.email,
     };
   }
 
@@ -682,6 +683,9 @@ export class RegistrationService {
     }
 
     const existing = userByEmail ?? userByPhone;
+    if (existing && dto.password) {
+      throw new ConflictException('An account with this email or mobile number already exists. Please log in.');
+    }
     if (!existing) {
       return tx.user.create({
         data: {
