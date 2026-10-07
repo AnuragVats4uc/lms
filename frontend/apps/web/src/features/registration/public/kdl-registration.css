@@ -1,0 +1,328 @@
+.kdl-register {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  padding: 24px;
+  color: #0f1d3a;
+  font-family: "Manrope", sans-serif;
+  --registration-primary: #059669;
+  --registration-accent: #2563eb;
+  background:
+    radial-gradient(circle at 0% 0%, #10b9812e, transparent 360px),
+    radial-gradient(circle at 100% 100%, #2563eb1f, transparent 420px),
+    linear-gradient(#0f1d3a04 1px, transparent 1px),
+    linear-gradient(90deg, #0f1d3a04 1px, transparent 1px),
+    linear-gradient(135deg, #f7fcfa, #eef8f4 48%, #e5f5ee);
+  background-size:
+    auto,
+    auto,
+    36px 36px,
+    36px 36px,
+    auto;
+}
+.kdl-register-content {
+  max-width: 1200px;
+  height: 100%;
+  margin: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  align-items: center;
+}
+.kdl-register-intro {
+  padding-right: 48px;
+}
+.kdl-register-logo {
+  width: 260px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  border-radius: 14px;
+  margin-bottom: 22px;
+}
+.kdl-register-eyebrow {
+  color: #059669;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.kdl-register-intro h1 {
+  margin: 12px 0;
+  font-size: clamp(30px, 3.5vw, 46px);
+  line-height: 1.15;
+  font-weight: 750;
+  letter-spacing: -0.04em;
+}
+.kdl-register-intro h1 em {
+  font-style: normal;
+  color: #059669;
+}
+.kdl-register-intro p {
+  color: #52627a;
+  font-size: 14px;
+  line-height: 1.8;
+  margin-top: 18px;
+}
+.kdl-register-card {
+  min-width: 0;
+  border-radius: 18px;
+  border: 1px solid #dbe5ee;
+  background: white;
+  box-shadow: 0 12px 38px #0f1d3a10;
+}
+.kdl-register .registration-form-panel {
+  border: 0;
+  box-shadow: none;
+  border-radius: 18px;
+  padding: 26px;
+}
+.kdl-step-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #64748b;
+}
+.kdl-step-progress {
+  height: 4px;
+  background: #e7f2ed;
+  border-radius: 4px;
+  margin: 14px 0 22px;
+  overflow: hidden;
+}
+.kdl-step-progress span {
+  display: block;
+  height: 100%;
+  background: #059669;
+  transition: width 0.2s;
+}
+.kdl-register .registration-form-panel form {
+  gap: 16px;
+}
+.kdl-step-title {
+  font-size: 21px;
+  font-weight: 750;
+  margin: 0;
+}
+.kdl-step-fields {
+  min-height: 0;
+}
+.kdl-register .registration-form-grid {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.kdl-register .registration-field {
+  gap: 5px;
+}
+.kdl-register .registration-field input {
+  min-height: 40px;
+  padding: 8px 12px;
+}
+.kdl-register .registration-field .lms-crud-select.is-form {
+  min-height: 40px;
+}
+.kdl-register .registration-course-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.kdl-register .registration-course-choice {
+  min-height: 34px;
+  padding: 6px 8px;
+}
+.kdl-register .registration-section-heading strong {
+  font-size: 13px;
+}
+.kdl-register .registration-section-heading small {
+  font-size: 11px;
+  line-height: 1.4;
+}
+.kdl-register .registration-section-heading > span {
+  display: none;
+}
+.kdl-step-actions {
+  display: flex;
+  gap: 10px;
+}
+.kdl-step-actions > button {
+  min-height: 42px;
+  border-radius: 8px;
+  padding: 10px 18px;
+  cursor: pointer;
+}
+.kdl-step-actions > button[type="button"] {
+  border: 1px solid #cfd9e4;
+  color: #52627a;
+  background: white;
+}
+.kdl-register .registration-submit-button {
+  flex: 1;
+  min-height: 42px;
+  background: #059669;
+}
+.kdl-step-login {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #047857;
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #ecfdf5;
+}
+.kdl-step-login-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-top: 1px solid #e5edf3;
+  padding-top: 12px;
+  color: #64748b;
+  font-size: 12px;
+}
+.kdl-step-login:hover { background: #d1fae5; color: #065f46; }
+.kdl-step-login:focus-visible { outline: 2px solid #059669; outline-offset: 3px; }
+.kdl-register .registration-state-panel,
+.kdl-register .registration-success-panel {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  border: 0;
+  box-shadow: none;
+  border-radius: 18px;
+}
+@media (max-width: 760px) {
+  .kdl-register {
+    padding: 14px;
+  }
+  .kdl-register-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 14px;
+    align-items: center;
+  }
+  .kdl-register-intro {
+    padding: 0;
+  }
+  .kdl-register-intro-copy {
+    position: relative;
+    padding-left: 94px;
+    min-height: 80px;
+  }
+  .kdl-register-logo {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80px;
+    height: 80px;
+    margin: 0;
+  }
+  .kdl-register-intro .kdl-register-eyebrow {
+    display: none;
+  }
+  .kdl-register-intro h1 {
+    margin: 0;
+    font-size: 23px;
+  }
+  .kdl-register-intro p {
+    margin: 6px 0 0;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .kdl-register-card {
+    align-self: center;
+  }
+  .kdl-register .registration-form-panel {
+    padding: 18px;
+  }
+  .kdl-register .registration-form-panel form {
+    gap: 12px;
+  }
+  .kdl-step-title {
+    font-size: 18px;
+  }
+  .kdl-step-progress {
+    margin: 10px 0 14px;
+  }
+  .kdl-step-fields {
+    min-height: 0;
+  }
+}
+@media (max-height: 620px) {
+  .kdl-register {
+    padding: 10px;
+  }
+  .kdl-register-intro p {
+    display: none;
+  }
+  .kdl-register-logo {
+    width: 80px;
+  }
+  .kdl-register .registration-form-panel {
+    padding: 14px;
+  }
+  .kdl-step-progress {
+    margin: 8px 0;
+  }
+  .kdl-register .registration-form-panel form {
+    gap: 8px;
+  }
+  .kdl-step-fields {
+    min-height: 0;
+  }
+  .kdl-register .registration-form-grid {
+    gap: 7px;
+  }
+}
+@media (max-height: 480px) and (min-width: 600px) {
+  .kdl-register .registration-form-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .kdl-register-content {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    grid-template-rows: 1fr;
+  }
+  .kdl-register-intro-copy {
+    padding-left: 0;
+  }
+  .kdl-register-logo {
+    position: static;
+    margin-bottom: 8px;
+  }
+  .kdl-register .registration-course-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.kdl-register .registration-form-grid.kdl-security-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 761px) and (max-height: 620px) {
+  .kdl-register-logo { width: 144px; height: auto; }
+}
+.kdl-register, .kdl-register * { box-sizing: border-box; }
+.kdl-register .registration-form-panel form { display: flex; flex-direction: column; }
+.kdl-register .registration-form-grid { display: grid; }
+.kdl-register .registration-field { display: flex; flex-direction: column; min-width: 0; }
+.kdl-register .registration-field > span { color: #334155; font-size: 12px; font-weight: 650; line-height: 18px; }
+.kdl-register .registration-field b { color: #dc2626; margin-left: 3px; }
+.kdl-register .registration-field input,
+.kdl-register .registration-field textarea {
+  display: block; width: 100%; min-width: 0; background: #fff;
+  border: 1px solid #cfd9e4; border-radius: 7px; color: #0f172a;
+  font: inherit; font-size: 13px; line-height: 20px; outline: none;
+}
+.kdl-register .registration-field input:focus,
+.kdl-register .registration-field textarea:focus { border-color: #059669; box-shadow: 0 0 0 3px #0596691f; }
+.kdl-register .registration-password-field { position: relative; width: 100%; }
+.kdl-register .registration-password-field input { padding-right: 42px; }
+.kdl-register .registration-password-field button {
+  position: absolute; top: 0; right: 0; height: 100%; width: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; background: transparent; color: #52627a; cursor: pointer;
+}
+.kdl-register .registration-submit-button { border: 0; color: white; font: inherit; font-size: 14px; font-weight: 700; }
+.kdl-register .registration-submit-button:hover { background: #047857; }
+.kdl-register button:disabled { opacity: .6; cursor: not-allowed; }
+.kdl-register .registration-error { padding: 9px 12px; border-radius: 7px; background: #fff1f2; color: #b91c1c; font-size: 12px; }
