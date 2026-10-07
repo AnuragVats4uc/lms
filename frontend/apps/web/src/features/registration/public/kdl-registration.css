@@ -326,3 +326,14 @@
 .kdl-register .registration-submit-button:hover { background: #047857; }
 .kdl-register button:disabled { opacity: .6; cursor: not-allowed; }
 .kdl-register .registration-error { padding: 9px 12px; border-radius: 7px; background: #fff1f2; color: #b91c1c; font-size: 12px; }
+
+.kdl-register .registration-field .registration-password-field button {
+  inset: 0 0 0 auto;
+  transform: none;
+  padding: 0;
+  margin: 0;
+  min-height: 0;
+  height: 100%;
+  width: 40px;
+}
+.kdl-register .registration-password-field button svg { display: block; flex-shrink: 0; }

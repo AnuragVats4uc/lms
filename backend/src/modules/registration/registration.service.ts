@@ -776,37 +776,21 @@ export class RegistrationService {
     }
 
     const existing = userByEmail ?? userByPhone;
-    if (!existing) {
-      return tx.user.create({
-        data: {
-          email: account.email,
-          firstName: dto.firstName,
-          lastName: dto.lastName,
-          organizationId: page.organizationId,
-          password: account.password,
-          phone: dto.phone,
-          isVerified: false,
-        },
-      });
-    }
-
-    if (
-      existing.organizationId !== null &&
-      existing.organizationId !== page.organizationId
-    ) {
+    if (existing) {
       throw new ConflictException(
-        'Account already belongs to another organization',
+        'An account with this email or mobile number already exists. Please log in with your existing account.',
       );
     }
 
-    return tx.user.update({
-      where: { id: existing.id },
+    return tx.user.create({
       data: {
+        email: account.email,
         firstName: dto.firstName,
         lastName: dto.lastName,
-        organizationId: existing.organizationId ?? page.organizationId,
+        organizationId: page.organizationId,
         password: account.password,
         phone: dto.phone,
+        isVerified: false,
       },
     });
   }
