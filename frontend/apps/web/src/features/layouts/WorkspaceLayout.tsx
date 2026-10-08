@@ -3,12 +3,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Bell,
   Building2,
   CalendarDays,
   CircleHelp,
   LogOut,
+  House,
   Menu,
   UserRound,
 } from "lucide-react";
@@ -16,6 +18,8 @@ import { Button, DashboardHeader, ScrollView, XStack, YStack } from "@repo/ui";
 import { useAuthSession, useLogout } from "@repo/auth";
 import { organizationsApi, studentsApi } from "@repo/api";
 
+import { STUDENT_HOME_PATH } from "@/features/auth/routes";
+import { prepareStudentWelcome } from "@/features/auth/student-welcome-session";
 import { userHasPermission } from "@/features/shared/access";
 import type { NavigationItem } from "./navigation";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
@@ -109,7 +113,7 @@ const WorkspaceLayout = ({
 
   if (
     isStudentStandaloneRoute ||
-    /^\/student\/exam-attempts\/[^/]+\/?$/.test(pathname)
+    /^\/student\/exam-attempts\/[^/]+\/[^/]+\/?$/.test(pathname)
   ) {
     return <>{children}</>;
   }
@@ -152,6 +156,18 @@ const WorkspaceLayout = ({
         }}
       >
         <DashboardHeader
+          navigationAction={isStudentWorkspace ? (
+            <Link
+              className="lms-go-home-button"
+              href={STUDENT_HOME_PATH}
+              onClick={() => {
+                if (currentUser) prepareStudentWelcome(currentUser.uuid);
+              }}
+            >
+              <House aria-hidden="true" size={16} />
+              <span>Go To Home</span>
+            </Link>
+          ) : undefined}
           actions={headerActions.map((action) => ({
             ...action,
             onPress: () => {

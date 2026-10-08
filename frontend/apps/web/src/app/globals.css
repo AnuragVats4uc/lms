@@ -7957,3 +7957,27 @@ body {
     width: 100%;
   }
 }
+
+.lms-go-home-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #a7dfca;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 20px;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.lms-go-home-button:hover { background: #d1fae5; border-color: #059669; }
+.lms-go-home-button:focus-visible { outline: 2px solid #059669; outline-offset: 3px; }
+@media (max-width: 480px) {
+  .lms-go-home-button { min-height: 36px; padding: 6px 8px; font-size: 12px; gap: 5px; }
+}

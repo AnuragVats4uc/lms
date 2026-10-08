@@ -274,6 +274,7 @@ const profileMenuStyle = {
 export const DashboardHeader = memo(function DashboardHeader({
   actions = [],
   leadingAction,
+  navigationAction,
   organizationIcon,
   organizationLabel,
   organizationOnPress,
@@ -408,6 +409,7 @@ export const DashboardHeader = memo(function DashboardHeader({
         className="lms-dashboard-header-actions"
         style={actionsStyle}
       >
+        {navigationAction}
         <HeaderIconGroup
           className="lms-dashboard-header-icons"
           style={iconGroupStyle}
